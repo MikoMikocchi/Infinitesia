@@ -176,8 +176,6 @@ namespace Infinitesia
                 const int la2 = std::clamp(la + 1, 0, latB - 1);
                 const int lo1 = ((lo - 1) + lonS) % lonS;
                 const int lo2 = ((lo + 1) + lonS) % lonS;
-                constexpr double kElevationRangeKm = kMaxElevationKm * 2.0;
-
                 // Central-difference elevation gradients in km.
                 // Use the actual planet radius so that the slope calculation
                 // is correct for any planet size, not just Earth.
@@ -204,10 +202,10 @@ namespace Infinitesia
 
                 const double dElevLat =
                     (Cell(la2, lo).elevationNormalized -
-                     Cell(la1, lo).elevationNormalized) * kElevationRangeKm; // km
+                     Cell(la1, lo).elevationNormalized) * kMaxElevationKm; // km
                 const double dElevLon =
                     (Cell(la, lo2).elevationNormalized -
-                     Cell(la, lo1).elevationNormalized) * kElevationRangeKm; // km
+                     Cell(la, lo1).elevationNormalized) * kMaxElevationKm; // km
 
                 // Gradient magnitude [km/km = dimensionless].
                 // Normalise by a reference slope of 0.05 (rise/run ≈ 3°) so
