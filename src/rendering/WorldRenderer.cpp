@@ -2,6 +2,7 @@
 #include "raymath.h"
 #include "rlgl.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -133,7 +134,33 @@ namespace Infinitesia
                 color);
         }
 
-        void DrawItem(const Grid& grid, const WorldObject& object)
+        void DrawLitMesh(
+            Mesh mesh,
+            Material material,
+            WorldPosition position,
+            Vector3 scale,
+            Color color,
+            float rotationAroundZ = 0.0f)
+        {
+            material.maps[MATERIAL_MAP_DIFFUSE].color = color;
+            Matrix transform = MatrixScale(scale.x, scale.y, scale.z);
+            if (rotationAroundZ != 0.0f)
+            {
+                transform = MatrixMultiply(
+                    transform,
+                    MatrixRotate({ 0.0f, 0.0f, 1.0f }, rotationAroundZ * kDegreesToRadians));
+            }
+            transform = MatrixMultiply(
+                transform,
+                MatrixTranslate(position.x, position.y, position.z));
+            DrawMesh(mesh, material, transform);
+        }
+
+        void DrawItem(
+            const Grid& grid,
+            const WorldObject& object,
+            Mesh cylinderMesh,
+            Material material)
         {
             if (!object.item.has_value())
             {
@@ -153,34 +180,41 @@ namespace Infinitesia
                 return;
             }
 
+            const int quantity = object.item->GetQuantity();
+            const int bottomRowCount = static_cast<int>(
+                (std::sqrt(8.0 * static_cast<double>(quantity) + 1.0) - 1.0) * 0.5);
+            const float logRadius = cellSize * 0.09f;
             const float logLength = cellSize * 0.62f;
-            for (int log = 0; log < object.item->GetQuantity(); ++log)
-            {
-                const float offset =
-                    (static_cast<float>(log) - static_cast<float>(object.item->GetQuantity() - 1) * 0.5f) *
-                    cellSize * 0.14f;
-                DrawCylinderEx(
-                    { center.x - logLength * 0.5f, center.y + cellSize * 0.12f + offset, center.z },
-                    { center.x + logLength * 0.5f, center.y + cellSize * 0.12f + offset, center.z },
-                    cellSize * 0.09f,
-                    cellSize * 0.09f,
-                    8,
-                    { 145, 95, 55, 255 });
-            }
-        }
+            const float rowSpacing = logRadius * 1.8f;
+            int remainingLogs = quantity;
+            int row = 0;
 
-        void DrawLitMesh(
-            Mesh mesh,
-            Material material,
-            WorldPosition position,
-            Vector3 scale,
-            Color color)
-        {
-            material.maps[MATERIAL_MAP_DIFFUSE].color = color;
-            const Matrix transform = MatrixMultiply(
-                MatrixScale(scale.x, scale.y, scale.z),
-                MatrixTranslate(position.x, position.y, position.z));
-            DrawMesh(mesh, material, transform);
+            while (remainingLogs > 0)
+            {
+                const int desiredRowCount = row < bottomRowCount
+                    ? bottomRowCount - row
+                    : remainingLogs;
+                const int rowCount = std::min(desiredRowCount, remainingLogs);
+                for (int log = 0; log < rowCount; ++log)
+                {
+                    const float offset =
+                        (static_cast<float>(log) - static_cast<float>(rowCount - 1) * 0.5f) *
+                        rowSpacing;
+                    DrawLitMesh(
+                        cylinderMesh,
+                        material,
+                        {
+                            center.x + logLength * 0.5f,
+                            center.y + logRadius + static_cast<float>(row) * rowSpacing,
+                            center.z + offset
+                        },
+                        { logRadius, logLength, logRadius },
+                        { 145, 95, 55, 255 },
+                        90.0f);
+                }
+                remainingLogs -= rowCount;
+                ++row;
+            }
         }
 
         void DrawWorldObject(
@@ -198,7 +232,7 @@ namespace Infinitesia
                 DrawLitMesh(
                     cylinderMesh,
                     material,
-                    { cellCenter.x, cellCenter.y + cellSize * 0.38f, cellCenter.z },
+                    cellCenter,
                     { cellSize * 0.24f, cellSize * 0.76f, cellSize * 0.24f },
                     { 75, 135, 220, 255 });
                 DrawLitMesh(
@@ -215,19 +249,19 @@ namespace Infinitesia
                 DrawLitMesh(
                     cylinderMesh,
                     material,
-                    { cellCenter.x, cellCenter.y + cellSize * 0.43f, cellCenter.z },
+                    cellCenter,
                     { cellSize * 0.15f, cellSize * 0.86f, cellSize * 0.15f },
                     { 115, 75, 45, 255 });
                 DrawLitMesh(
                     sphereMesh,
                     material,
-                    { cellCenter.x, cellCenter.y + cellSize * 1.38f, cellCenter.z },
+                    { cellCenter.x, cellCenter.y + cellSize * 1.2f, cellCenter.z },
                     { cellSize * 0.48f, cellSize * 0.48f, cellSize * 0.48f },
                     { 65, 145, 75, 255 });
                 return;
             }
 
-            DrawItem(grid, object);
+            DrawItem(grid, object, cylinderMesh, material);
         }
 
         void DrawObjectShadow(const Grid& grid, const WorldObject& object)
@@ -400,12 +434,14 @@ namespace Infinitesia
         }
         EndShaderMode();
 
+        rlDisableDepthMask();
         BeginShaderMode(m_shadowShader);
         for (const WorldObject& object : world.GetObjects())
         {
             DrawObjectShadow(grid, object);
         }
         EndShaderMode();
+        rlEnableDepthMask();
 
         BeginShaderMode(m_worldShader);
         for (const WorldObject& object : world.GetObjects())
