@@ -98,9 +98,10 @@ namespace Infinitesia
 
         // --- Hydrology ---
         bool   hasRiver = false;
-        double riverDischarge = 0.0;      // relative 0..1
+        double riverDischarge = 0.0;      // relative 0..1 (normalised)
+        double annualRunoffVolumeKm3 = 0.0; // physical annual runoff volume [km³/yr]
         bool   isLake = false;
-        double drainageAccumulation = 0.0; // watershed flow count normalized
+        double drainageAccumulation = 0.0; // watershed flow, area-weighted, normalised
 
         // --- Soil ---
         double soilFertility = 0.0;       // 0..1

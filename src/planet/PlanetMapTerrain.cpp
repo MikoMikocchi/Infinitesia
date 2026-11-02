@@ -191,9 +191,16 @@ namespace Infinitesia
                     (360.0 / lonS) * (std::numbers::pi / 180.0) * radiusKm *
                     cosLat;
 
-                // Two-cell central-difference horizontal distances (km):
-                const double dxLat = 2.0 * latStepKm;
-                const double dxLon = 2.0 * lonStepKm;
+                // Actual horizontal span of the central-difference stencil.
+                //
+                // At the polar boundaries la1==la or la2==la (clamped), so
+                // the stencil degenerates from a two-cell span to a one-cell
+                // span.  Using the constant 2*step at the poles would halve
+                // the denominator and underestimate the gradient.  We measure
+                // the actual number of grid steps between la1 and la2 instead.
+                const double latSpanKm = static_cast<double>(la2 - la1) * latStepKm;
+                // Longitude always wraps, so the span is always 2 steps.
+                const double lonSpanKm = 2.0 * lonStepKm;
 
                 const double dElevLat =
                     (Cell(la2, lo).elevationNormalized -
@@ -204,10 +211,12 @@ namespace Infinitesia
 
                 // Gradient magnitude [km/km = dimensionless].
                 // Normalise by a reference slope of 0.05 (rise/run ≈ 3°) so
-                // that typical mountain flanks read ~0.5 and not ~0.001.
+                // that typical mountain flanks read ~0.5.
                 constexpr double kRefSlope = 0.05;
-                const double rise = std::hypot(dElevLat / dxLat, dElevLon / dxLon);
-                c.slopeNormalized = std::clamp(rise / kRefSlope, 0.0, 1.0);
+                const double gradLat = latSpanKm > 0.0 ? dElevLat / latSpanKm : 0.0;
+                const double gradLon = lonSpanKm > 0.0 ? dElevLon / lonSpanKm : 0.0;
+                c.slopeNormalized =
+                    std::clamp(std::hypot(gradLat, gradLon) / kRefSlope, 0.0, 1.0);
             }
         }
     }

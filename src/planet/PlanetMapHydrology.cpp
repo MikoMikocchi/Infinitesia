@@ -163,25 +163,26 @@ namespace Infinitesia
         });
 
         // -----------------------------------------------------------------------
-        // Step 4: Area-weighted water-balance accumulation.
+        // Step 4a: Area-weighted normalised accumulation (for drainageAccumulation).
         //
         //   Q_out = Q_in + max(0, P − ET) × (A_cell / A_mean)
         //
-        // Weighting by cell area is essential on a lat-lon grid: an equatorial
-        // cell covers ~cos(0°)/cos(89°) ≈ 57× more surface than a polar cell.
-        // Without the weight, rivers draining through high-latitude headwaters
-        // appear artificially powerful compared to rivers in the tropics.
+        // Dimensionless area ratio preserves the 0..1 normalised range while
+        // correcting for the convergence of meridians at high latitudes.
+        //
+        // Step 4b: Physical runoff volume accumulation (for annualRunoffVolumeKm3).
+        //
+        //   V_out = V_in + max(0, P − ET) × A_cell × 1e-6
+        //
+        // where P, ET are in mm/yr and A_cell is in km².
+        // The factor 1e-6 converts mm·km² to km³  (1 mm·km² = 10⁻⁶ km³).
         //
         // ET approximation (Penman-inspired linear fit):
-        //   At  0 °C → ET ≈ 120 mm/yr (cold, low evaporation)
-        //   At 30 °C → ET ≈ 480 mm/yr (warm, high evaporation)
-        //
-        // waterAccum units: mm/yr · (dimensionless area ratio), accumulated
-        // upstream.  drainageAccumulation is this value normalised by the
-        // global maximum, giving a 0..1 relative discharge that is both
-        // resolution-independent and planet-size-independent.
+        //   At  0 °C → ET ≈ 120 mm/yr
+        //   At 30 °C → ET ≈ 480 mm/yr
         // -----------------------------------------------------------------------
-        std::vector<double> waterAccum(cellCount, 0.0);
+        std::vector<double> waterAccum(cellCount, 0.0);  // dimensionless (norm)
+        std::vector<double> volumeAccum(cellCount, 0.0); // km³/yr (physical)
         for (const int idx : order)
         {
             const int la = idx / lonS;
@@ -192,16 +193,21 @@ namespace Infinitesia
             const double etAnnualMm =
                 std::clamp(120.0 + c.temperatureCelsius * 12.0, 0.0, 600.0);
             const double runoffMm = std::max(0.0, c.precipitationMm - etAnnualMm);
+            const double areaCellKm2 = cellAreaKm2[static_cast<std::size_t>(la)];
             const double areaRatio =
-                meanCellAreaKm2 > 0.0
-                    ? cellAreaKm2[static_cast<std::size_t>(la)] / meanCellAreaKm2
-                    : 1.0;
+                meanCellAreaKm2 > 0.0 ? areaCellKm2 / meanCellAreaKm2 : 1.0;
+
             waterAccum[static_cast<std::size_t>(idx)] += runoffMm * areaRatio;
+            volumeAccum[static_cast<std::size_t>(idx)] += runoffMm * areaCellKm2 * 1e-6;
 
             const int target = flowDir[static_cast<std::size_t>(idx)];
             if (target >= 0)
+            {
                 waterAccum[static_cast<std::size_t>(target)] +=
                     waterAccum[static_cast<std::size_t>(idx)];
+                volumeAccum[static_cast<std::size_t>(target)] +=
+                    volumeAccum[static_cast<std::size_t>(idx)];
+            }
         }
 
         const double maxWater =
@@ -232,12 +238,34 @@ namespace Infinitesia
                 c.hasRiver = !c.isOcean &&
                     c.drainageAccumulation > kRiverDischargeThreshold;
                 c.riverDischarge = c.hasRiver ? c.drainageAccumulation : 0.0;
+                c.annualRunoffVolumeKm3 = c.hasRiver
+                    ? volumeAccum[idx]
+                    : 0.0;
 
                 constexpr double kLakeFillThreshold = 0.001;
                 const double fillDelta = filledElev[idx] - c.elevationNormalized;
-                c.isLake = !c.isOcean &&
-                    fillDelta > kLakeFillThreshold &&
-                    c.drainageAccumulation > 0.002;
+
+                // A cell becomes a lake only when three conditions all hold:
+                //
+                // 1. Geometric sink: the Priority-Flood raised this cell's
+                //    elevation by more than a noise epsilon, meaning it sits in
+                //    a genuine depression that could hold water.
+                //
+                // 2. Upstream drainage: non-trivial catchment area flows into
+                //    this point (filters isolated single-cell pits).
+                //
+                // 3. Positive water balance: the accumulated runoff volume
+                //    (P − ET integrated over the catchment) is positive, meaning
+                //    more water arrives than evaporates.  A geometric depression
+                //    in an extremely arid region receives no net water and would
+                //    not sustain a standing lake.
+                //
+                // This separates dry endorheic basins (geographic depressions
+                // with no net water input) from true lakes.
+                const bool genuineSink   = fillDelta > kLakeFillThreshold;
+                const bool hasUpstream   = c.drainageAccumulation > 0.002;
+                const bool positiveWater = volumeAccum[idx] > 0.0;
+                c.isLake = !c.isOcean && genuineSink && hasUpstream && positiveWater;
             }
         }
     }
