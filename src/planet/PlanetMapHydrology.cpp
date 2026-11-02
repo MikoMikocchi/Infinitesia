@@ -237,10 +237,13 @@ namespace Infinitesia
                 constexpr double kRiverDischargeThreshold = 0.005;
                 c.hasRiver = !c.isOcean &&
                     c.drainageAccumulation > kRiverDischargeThreshold;
-                c.riverDischarge = c.hasRiver ? c.drainageAccumulation : 0.0;
-                c.annualRunoffVolumeKm3 = c.hasRiver
-                    ? volumeAccum[idx]
-                    : 0.0;
+c.riverDischarge = c.hasRiver ? c.drainageAccumulation : 0.0;
+c.annualRunoffVolumeKm3 = c.hasRiver
+    ? volumeAccum[idx]
+    : 0.0;
+c.riverDischargeM3PerSecond = c.hasRiver
+    ? c.annualRunoffVolumeKm3 * 1e9 / 31557600.0
+    : 0.0;
 
                 constexpr double kLakeFillThreshold = 0.001;
                 const double fillDelta = filledElev[idx] - c.elevationNormalized;
