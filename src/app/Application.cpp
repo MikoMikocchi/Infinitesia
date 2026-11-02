@@ -169,7 +169,15 @@ namespace Infinitesia
             m_selectedLevel);
         m_chunkViewCenter.y = m_selectedLevel;
         m_chunkRenderRadius = GetChunkRenderRadius(m_worldRenderer.GetCamera(), m_grid);
-        m_world.RequestChunksAround(m_chunkViewCenter, m_chunkRenderRadius);
+        const int verticalChunkRadius =
+            m_selectedLevel % kChunkSize == 0 ||
+            m_selectedLevel % kChunkSize == kChunkSize - 1
+                ? 1
+                : 0;
+        m_world.RequestChunksAround(
+            m_chunkViewCenter,
+            m_chunkRenderRadius,
+            verticalChunkRadius);
         m_world.GeneratePendingChunks(kChunksGeneratedPerFrame);
         m_worldInteraction.Update(
             {

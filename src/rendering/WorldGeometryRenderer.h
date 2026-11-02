@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <map>
+#include <utility>
 
 namespace Infinitesia
 {
@@ -15,10 +16,10 @@ namespace Infinitesia
         {
             Mesh mesh{};
             std::uint64_t terrainRevision = 0;
-            int level = -1;
         };
 
-        using ChunkMeshCache = std::map<ChunkCoordinate, ChunkMeshCacheEntry>;
+        using ChunkMeshKey = std::pair<ChunkCoordinate, int>;
+        using ChunkMeshCache = std::map<ChunkMeshKey, ChunkMeshCacheEntry>;
 
         void DrawBlocks(
             const Grid& grid,
