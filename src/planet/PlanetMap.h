@@ -6,6 +6,24 @@
 
 namespace Infinitesia
 {
+    // Biome classification used for rendering hints.
+    enum class Biome : std::uint8_t
+    {
+        Ocean,
+        DeepOcean,
+        IceCap,
+        Tundra,
+        Boreal,
+        Temperate,
+        Grassland,
+        Shrubland,
+        Desert,
+        Savanna,
+        TropicalRainforest,
+        AlpineRock,
+        Glacier,
+    };
+
     struct PlanetRegion
     {
         int latitudeIndex = 0;
@@ -16,16 +34,29 @@ namespace Infinitesia
         double elevationNormalized = 0.0;
         double temperatureCelsius = 0.0;
         double precipitationMm = 0.0;
+        double humidityNormalized = 0.0;    // 0..1
         bool isOcean = false;
+        Biome biome = Biome::Ocean;
+    };
+
+    // Subset of StarSystem data that drives climate calculations.
+    struct ClimateInputs
+    {
+        double meanIncidentFluxInEarthUnits = 1.0;
+        double axialTiltDegrees = 23.44;
+        double atmospherePressureKPa = 101.325;
+        double volatileMassFraction = 0.02;
+        double gravityMetersPerSecondSquared = 9.81;
     };
 
     class PlanetMap
     {
     public:
-        explicit PlanetMap(PlanetParameters parameters = {});
+        explicit PlanetMap(PlanetParameters parameters = {}, ClimateInputs climate = {});
 
         const Planet& GetPlanet() const noexcept;
         const PlanetParameters& GetParameters() const noexcept;
+        const ClimateInputs& GetClimateInputs() const noexcept;
         int GetLatitudeBandCount() const noexcept;
         int GetLongitudeSegmentCount() const noexcept;
 
@@ -35,5 +66,6 @@ namespace Infinitesia
 
     private:
         Planet m_planet;
+        ClimateInputs m_climate;
     };
 }

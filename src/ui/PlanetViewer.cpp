@@ -108,34 +108,124 @@ namespace Infinitesia
             };
         }
 
+        float SmootherStepF(float value)
+        {
+            const float t = std::clamp(value, 0.0f, 1.0f);
+            return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
+        }
+
         Color GetRegionColor(const PlanetRegion& region)
         {
             if (region.isOcean)
             {
-                const float depth = std::clamp((0.12f - static_cast<float>(region.elevationNormalized)) / 1.12f, 0.0f, 1.0f);
-                return LerpColor({ 36, 155, 164, 255 }, { 13, 35, 83, 255 }, depth);
+                // Deep ocean → shallow ocean: smooth gradient
+                const float depth = std::clamp(
+                    (-static_cast<float>(region.elevationNormalized)) / 1.0f, 0.0f, 1.0f);
+                // Shallow: teal-blue (36, 155, 164)
+                // Deep: dark navy (13, 35, 83)
+                return LerpColor({ 44, 160, 172, 255 }, { 13, 35, 83, 255 }, depth * depth);
             }
 
-            const float elevation = std::clamp(
+            const float temp = static_cast<float>(region.temperatureCelsius);
+            const float precip = static_cast<float>(region.precipitationMm);
+            const float elev = std::clamp(
                 (static_cast<float>(region.elevationNormalized) - 0.12f) / 0.88f,
-                0.0f,
-                1.0f);
-            const float temperature = static_cast<float>(region.temperatureCelsius);
-            const float precipitation = static_cast<float>(region.precipitationMm);
+                0.0f, 1.0f);
 
-            if (temperature < -5.0f || elevation > 0.82f)
+            // --- Define palette per biome ---
+            switch (region.biome)
             {
-                return LerpColor({ 126, 137, 139, 255 }, { 238, 242, 238, 255 }, elevation);
+                case Biome::DeepOcean:
+                    return LerpColor({ 13, 35, 83, 255 }, { 10, 22, 56, 255 }, elev);
+
+                case Biome::Ocean:
+                    return LerpColor({ 44, 160, 172, 255 }, { 26, 100, 130, 255 }, elev);
+
+                case Biome::Glacier:
+                case Biome::IceCap:
+                {
+                    // Pure white/blue ice with altitude tint
+                    const float iciness = std::clamp((0.0f - temp) / 30.0f, 0.0f, 1.0f);
+                    return LerpColor({ 170, 200, 210, 255 }, { 238, 245, 248, 255 }, iciness * 0.6f + elev * 0.4f);
+                }
+
+                case Biome::AlpineRock:
+                {
+                    // Dark grey rock with snow patches at high elevation
+                    const float snowBlend = std::clamp((elev - 0.6f) / 0.4f, 0.0f, 1.0f);
+                    const Color rock = LerpColor({ 100, 96, 92, 255 }, { 78, 74, 72, 255 }, elev);
+                    const Color snow = { 220, 225, 228, 255 };
+                    return LerpColor(rock, snow, SmootherStepF(snowBlend));
+                }
+
+                case Biome::Tundra:
+                {
+                    // Pale green/ochre tundra, transitions to snow when very cold
+                    const float coldBlend = std::clamp((-temp) / 15.0f, 0.0f, 1.0f);
+                    const Color tundraWarm = LerpColor({ 138, 158, 122, 255 }, { 120, 130, 100, 255 }, elev);
+                    const Color tundraCold = { 195, 200, 190, 255 };
+                    return LerpColor(tundraWarm, tundraCold, SmootherStepF(coldBlend));
+                }
+
+                case Biome::Boreal:
+                {
+                    // Dark conifer green; lighter at lower elevation, brighter with more rain
+                    const float moistBlend = std::clamp(precip / 700.0f, 0.0f, 1.0f);
+                    return LerpColor({ 62, 92, 70, 255 }, { 48, 78, 58, 255 },
+                        SmootherStepF(moistBlend * 0.5f + elev * 0.5f));
+                }
+
+                case Biome::Temperate:
+                {
+                    // Rich green forest; desaturates slightly at high altitude
+                    const float warmBlend = std::clamp((temp - 8.0f) / 14.0f, 0.0f, 1.0f);
+                    const Color coolTemperate = { 72, 120, 78, 255 };
+                    const Color warmTemperate = { 80, 138, 72, 255 };
+                    const Color tempColor = LerpColor(coolTemperate, warmTemperate, SmootherStepF(warmBlend));
+                    const Color highElev = { 88, 100, 82, 255 };
+                    return LerpColor(tempColor, highElev, SmootherStepF(elev));
+                }
+
+                case Biome::Grassland:
+                {
+                    const float moistBlend = std::clamp(precip / 600.0f, 0.0f, 1.0f);
+                    return LerpColor({ 138, 158, 78, 255 }, { 98, 138, 68, 255 },
+                        SmootherStepF(moistBlend));
+                }
+
+                case Biome::Shrubland:
+                {
+                    const float dryBlend = std::clamp(1.0f - precip / 400.0f, 0.0f, 1.0f);
+                    return LerpColor({ 148, 148, 90, 255 }, { 168, 155, 98, 255 },
+                        SmootherStepF(dryBlend));
+                }
+
+                case Biome::Desert:
+                {
+                    // Warm sand to hot orange-red depending on temperature
+                    const float hotBlend = std::clamp((temp - 22.0f) / 20.0f, 0.0f, 1.0f);
+                    return LerpColor({ 194, 175, 118, 255 }, { 178, 118, 68, 255 },
+                        SmootherStepF(hotBlend));
+                }
+
+                case Biome::Savanna:
+                {
+                    const float dryBlend = std::clamp(1.0f - precip / 900.0f, 0.0f, 1.0f);
+                    return LerpColor({ 152, 168, 88, 255 }, { 188, 162, 90, 255 },
+                        SmootherStepF(dryBlend));
+                }
+
+                case Biome::TropicalRainforest:
+                {
+                    // Deep tropical green; darker at lower elevation / wetter
+                    const float lushBlend = std::clamp(precip / 1800.0f, 0.0f, 1.0f);
+                    return LerpColor({ 52, 112, 58, 255 }, { 34, 88, 48, 255 },
+                        SmootherStepF(lushBlend));
+                }
             }
-            if (temperature > 24.0f && precipitation < 650.0f)
-            {
-                return LerpColor({ 189, 154, 91, 255 }, { 137, 103, 65, 255 }, elevation);
-            }
-            if (precipitation < 430.0f)
-            {
-                return LerpColor({ 154, 151, 92, 255 }, { 112, 121, 82, 255 }, elevation);
-            }
-            return LerpColor({ 89, 143, 91, 255 }, { 91, 111, 86, 255 }, elevation);
+
+            // Fallback — should not be reached
+            return { 128, 128, 128, 255 };
         }
 
         Color ShadeColor(Color color, float brightness)
@@ -180,7 +270,15 @@ namespace Infinitesia
 
     PlanetViewer::PlanetViewer(StarSystem system)
         : m_system(std::move(system)),
-          m_planetMap(m_system.planet),
+          m_planetMap(
+              m_system.planet,
+              ClimateInputs{
+                  m_system.planetOrbit.meanIncidentFluxInEarthUnits,
+                  m_system.planet.axialTiltDegrees,
+                  m_system.planet.atmospherePressureKPa,
+                  m_system.planet.volatileMassFraction,
+                  m_system.planet.gravityMetersPerSecondSquared,
+              }),
           m_selectedLatitude(m_planetMap.GetLatitudeBandCount() / 2),
           m_selectedLongitude(m_planetMap.GetLongitudeSegmentCount() / 2)
     {
@@ -468,19 +566,41 @@ namespace Infinitesia
         EndMode3D();
         EndScissorMode();
 
-        char selectionText[160];
+        char selectionText[256];
         const PlanetRegion& selectedRegion =
             m_regions[static_cast<std::size_t>(m_selectedLatitude) * columns + m_selectedLongitude];
+
+        const char* biomeName = [](Biome b) -> const char* {
+            switch (b) {
+                case Biome::Ocean:             return "Ocean";
+                case Biome::DeepOcean:         return "Deep Ocean";
+                case Biome::IceCap:            return "Ice Cap";
+                case Biome::Glacier:           return "Glacier";
+                case Biome::AlpineRock:        return "Alpine Rock";
+                case Biome::Tundra:            return "Tundra";
+                case Biome::Boreal:            return "Boreal";
+                case Biome::Temperate:         return "Temperate";
+                case Biome::Grassland:         return "Grassland";
+                case Biome::Shrubland:         return "Shrubland";
+                case Biome::Desert:            return "Desert";
+                case Biome::Savanna:           return "Savanna";
+                case Biome::TropicalRainforest: return "Tropical Rainforest";
+                default:                       return "Unknown";
+            }
+        }(selectedRegion.biome);
+
         std::snprintf(
             selectionText,
             sizeof(selectionText),
-            "Region %d, %d  |  %.1f deg, %.1f deg  |  Elevation %.2f (normalized)  |  %.1f C",
+            "Region %d, %d  |  %.1f deg, %.1f deg  |  Elev %.2f  |  %.1f C  |  %.0f mm/yr  |  %s",
             m_selectedLatitude,
             m_selectedLongitude,
             selectedRegion.latitudeDegrees,
             selectedRegion.longitudeDegrees,
             selectedRegion.elevationNormalized,
-            selectedRegion.temperatureCelsius);
+            selectedRegion.temperatureCelsius,
+            selectedRegion.precipitationMm,
+            biomeName);
 
         const int footerY = screenHeight - 70;
         DrawText(selectionText, 30, footerY, 16, RAYWHITE);
