@@ -1,4 +1,4 @@
-#include "world/CommandRegistry.h"
+#include "commands/CommandRegistry.h"
 
 #include <stdexcept>
 #include <string>

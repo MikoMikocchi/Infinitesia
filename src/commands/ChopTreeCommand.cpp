@@ -1,4 +1,4 @@
-#include "world/ChopTreeCommand.h"
+#include "commands/ChopTreeCommand.h"
 
 #include "world/WorkSystem.h"
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "raylib.h"
-#include "world/Command.h"
+#include "commands/Command.h"
 
 #include <optional>
 #include <vector>

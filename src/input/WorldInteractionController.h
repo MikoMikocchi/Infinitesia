@@ -4,7 +4,7 @@
 #include "input/WorldObjectPicker.h"
 #include "raylib.h"
 #include "ui/WorldContextMenu.h"
-#include "world/CommandRegistry.h"
+#include "commands/CommandRegistry.h"
 #include "world/Grid.h"
 
 #include <optional>

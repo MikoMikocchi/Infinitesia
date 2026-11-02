@@ -41,13 +41,13 @@ add_executable(Infinitesia
   src/world/World.cpp
   src/world/WorkSystem.h
   src/world/WorkSystem.cpp
-  src/world/Command.h
-  src/world/CommandRegistry.h
-  src/world/CommandRegistry.cpp
-  src/world/ChopTreeCommand.h
-  src/world/ChopTreeCommand.cpp
-  src/world/PickUpLogsCommand.h
-  src/world/PickUpLogsCommand.cpp
+  src/commands/Command.h
+  src/commands/CommandRegistry.h
+  src/commands/CommandRegistry.cpp
+  src/commands/ChopTreeCommand.h
+  src/commands/ChopTreeCommand.cpp
+  src/commands/PickUpLogsCommand.h
+  src/commands/PickUpLogsCommand.cpp
   src/input/CameraController.h
   src/input/CameraController.cpp
   src/input/GridPointer.h

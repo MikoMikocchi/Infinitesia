@@ -1,6 +1,6 @@
 #pragma once
 
-#include "world/Command.h"
+#include "commands/Command.h"
 
 namespace Infinitesia
 {

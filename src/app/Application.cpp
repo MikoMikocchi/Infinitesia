@@ -1,7 +1,7 @@
 #include "app/Application.h"
 #include "raylib.h"
-#include "world/ChopTreeCommand.h"
-#include "world/PickUpLogsCommand.h"
+#include "commands/ChopTreeCommand.h"
+#include "commands/PickUpLogsCommand.h"
 
 #include <memory>
 #include <optional>

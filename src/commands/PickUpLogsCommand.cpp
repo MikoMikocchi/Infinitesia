@@ -1,4 +1,4 @@
-#include "world/PickUpLogsCommand.h"
+#include "commands/PickUpLogsCommand.h"
 
 namespace Infinitesia
 {

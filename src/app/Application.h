@@ -7,7 +7,7 @@
 #include "input/WorldInteractionController.h"
 #include "rendering/WorldRenderer.h"
 #include "ui/DebugOverlay.h"
-#include "world/CommandRegistry.h"
+#include "commands/CommandRegistry.h"
 #include "world/Grid.h"
 #include "world/WorkSystem.h"
 
