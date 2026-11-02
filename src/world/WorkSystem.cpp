@@ -11,10 +11,10 @@ namespace Infinitesia
     namespace
     {
         constexpr std::array<GridCell, 4> kAdjacentOffsets{
-            GridCell{ 0, -1 },
-            GridCell{ 1, 0 },
-            GridCell{ 0, 1 },
-            GridCell{ -1, 0 }
+            GridCell{ 0, 0, -1 },
+            GridCell{ 1, 0, 0 },
+            GridCell{ 0, 0, 1 },
+            GridCell{ -1, 0, 0 }
         };
 
     }
@@ -62,7 +62,11 @@ namespace Infinitesia
         std::vector<GridCell> bestPath;
         for (const GridCell offset : kAdjacentOffsets)
         {
-            const GridCell candidate{ tree->cell.column + offset.column, tree->cell.row + offset.row };
+            const GridCell candidate{
+                tree->cell.x + offset.x,
+                tree->cell.y + offset.y,
+                tree->cell.z + offset.z
+            };
             if (!grid.Contains(candidate) || IsReserved(candidate))
             {
                 continue;
@@ -190,7 +194,8 @@ namespace Infinitesia
     {
         for (const WorkOrder& order : m_orders)
         {
-            if (order.workCell.column == cell.column && order.workCell.row == cell.row)
+            if (order.workCell.x == cell.x && order.workCell.y == cell.y &&
+                order.workCell.z == cell.z)
             {
                 return true;
             }
@@ -210,7 +215,7 @@ namespace Infinitesia
             const std::optional<WorldObjectId> occupant = world.FindObjectAt(cell);
             const bool occupiedByAnotherObject = occupant.has_value() && *occupant != worker;
             const bool reservedForAnotherOrder =
-                IsReserved(cell) && (cell.column != goal.column || cell.row != goal.row);
+                IsReserved(cell) && (cell.x != goal.x || cell.y != goal.y || cell.z != goal.z);
             return !occupiedByAnotherObject && !reservedForAnotherOrder;
         });
     }
@@ -263,7 +268,7 @@ namespace Infinitesia
                 continue;
             }
 
-            const WorldPosition destination = grid.CellToWorld(nextCell);
+            const WorldPosition destination = grid.CellToSurface(nextCell);
             const float deltaX = destination.x - worker->position.x;
             const float deltaZ = destination.z - worker->position.z;
             const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);

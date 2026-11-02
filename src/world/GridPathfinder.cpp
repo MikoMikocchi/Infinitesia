@@ -31,7 +31,8 @@ namespace Infinitesia
 
         int ManhattanDistance(GridCell from, GridCell to)
         {
-            return std::abs(from.column - to.column) + std::abs(from.row - to.row);
+            return std::abs(from.x - to.x) + std::abs(from.y - to.y) +
+                   std::abs(from.z - to.z);
         }
     }
 
@@ -46,17 +47,21 @@ namespace Infinitesia
             return std::nullopt;
         }
 
-        const std::size_t columns = static_cast<std::size_t>(grid.GetColumns());
-        const std::size_t cellCount = columns * static_cast<std::size_t>(grid.GetRows());
-        const auto cellIndex = [columns](GridCell cell)
+        const std::size_t width = static_cast<std::size_t>(grid.GetWidth());
+        const std::size_t height = static_cast<std::size_t>(grid.GetHeight());
+        const std::size_t cellCount = grid.GetCellCount();
+        const auto cellIndex = [width, height](GridCell cell)
         {
-            return static_cast<std::size_t>(cell.row) * columns + static_cast<std::size_t>(cell.column);
+            return (static_cast<std::size_t>(cell.z) * height +
+                    static_cast<std::size_t>(cell.y)) * width +
+                   static_cast<std::size_t>(cell.x);
         };
-        const auto indexCell = [columns](std::size_t index)
+        const auto indexCell = [width, height](std::size_t index)
         {
             return GridCell{
-                static_cast<int>(index % columns),
-                static_cast<int>(index / columns)
+                static_cast<int>(index % width),
+                static_cast<int>((index / width) % height),
+                static_cast<int>(index / (width * height))
             };
         };
 
@@ -69,10 +74,10 @@ namespace Infinitesia
         openNodes.push({ startIndex, 0, ManhattanDistance(start, goal) });
 
         constexpr std::array<GridCell, 4> neighborOffsets{
-            GridCell{ 0, -1 },
-            GridCell{ 1, 0 },
-            GridCell{ 0, 1 },
-            GridCell{ -1, 0 }
+            GridCell{ 0, 0, -1 },
+            GridCell{ 1, 0, 0 },
+            GridCell{ 0, 0, 1 },
+            GridCell{ -1, 0, 0 }
         };
 
         while (!openNodes.empty())
@@ -92,8 +97,9 @@ namespace Infinitesia
             for (const GridCell offset : neighborOffsets)
             {
                 const GridCell neighbor{
-                    currentCell.column + offset.column,
-                    currentCell.row + offset.row
+                    currentCell.x + offset.x,
+                    currentCell.y + offset.y,
+                    currentCell.z + offset.z
                 };
                 if (!grid.Contains(neighbor) || !isCellPassable(neighbor))
                 {
@@ -131,7 +137,8 @@ namespace Infinitesia
                 break;
             }
         }
-        if (path.empty() || path.back().column != start.column || path.back().row != start.row)
+        if (path.empty() || path.back().x != start.x ||
+            path.back().y != start.y || path.back().z != start.z)
         {
             return std::nullopt;
         }

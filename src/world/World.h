@@ -1,5 +1,6 @@
 #pragma once
 
+#include "world/Block.h"
 #include "world/Grid.h"
 #include "world/Item.h"
 
@@ -64,14 +65,22 @@ namespace Infinitesia
         bool RemoveObject(WorldObjectId id);
         bool SetObjectPosition(WorldObjectId id, WorldPosition position);
         bool SetObjectCell(WorldObjectId id, GridCell cell, const Grid& grid);
+        const Block* GetBlock(GridCell cell) const;
+        void SetBlockType(GridCell cell, BlockType type);
+        const std::vector<Block>& GetBlocks() const;
         std::optional<WorldObjectId> FindObjectAt(GridCell cell) const;
         const WorldObject* FindObject(WorldObjectId id) const;
         const std::vector<WorldObject>& GetObjects() const;
 
     private:
         WorldObject* FindMutableObject(WorldObjectId id);
+        std::size_t GetBlockIndex(GridCell cell) const;
 
         std::vector<WorldObject> m_objects;
+        std::vector<Block> m_blocks;
+        int m_gridWidth;
+        int m_gridHeight;
+        int m_gridDepth;
         std::uint64_t m_nextObjectId = 1;
     };
 }

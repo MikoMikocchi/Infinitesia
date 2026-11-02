@@ -10,10 +10,8 @@ namespace Infinitesia
     namespace
     {
         constexpr float kDegreesToRadians = PI / 180.0f;
-        constexpr float kGroundPlaneOffset = 0.01f;
         constexpr float kGridLineHeight = 0.01f;
         constexpr float kHighlightHeight = 0.005f;
-        constexpr Color kGroundColor = { 48, 54, 60, 255 };
         constexpr Color kGridLineColor = { 85, 95, 105, 255 };
         constexpr Color kGridBoundaryColor = { 145, 155, 165, 255 };
         constexpr Color kHoveredCellColor = { 245, 190, 55, 100 };
@@ -56,21 +54,21 @@ namespace Infinitesia
         {
             const float halfWidth = grid.GetWorldWidth() * 0.5f;
             const float halfDepth = grid.GetWorldDepth() * 0.5f;
-            const float lineY = kGridLineHeight;
+            const float lineY = grid.GetWorldHeight() + kGridLineHeight;
 
-            for (std::int64_t column = 0; column <= grid.GetColumns(); ++column)
+            for (std::int64_t column = 0; column <= grid.GetWidth(); ++column)
             {
                 const float x = -halfWidth + static_cast<float>(column) * grid.GetCellSize();
-                const Color color = (column == 0 || column == grid.GetColumns())
+                const Color color = (column == 0 || column == grid.GetWidth())
                     ? kGridBoundaryColor
                     : kGridLineColor;
                 DrawLine3D({ x, lineY, -halfDepth }, { x, lineY, halfDepth }, color);
             }
 
-            for (std::int64_t row = 0; row <= grid.GetRows(); ++row)
+            for (std::int64_t row = 0; row <= grid.GetDepth(); ++row)
             {
                 const float z = -halfDepth + static_cast<float>(row) * grid.GetCellSize();
-                const Color color = (row == 0 || row == grid.GetRows())
+                const Color color = (row == 0 || row == grid.GetDepth())
                     ? kGridBoundaryColor
                     : kGridLineColor;
                 DrawLine3D({ -halfWidth, lineY, z }, { halfWidth, lineY, z }, color);
@@ -84,7 +82,7 @@ namespace Infinitesia
                 return;
             }
 
-            const WorldPosition center = grid.CellToWorld(cell);
+            const WorldPosition center = grid.CellToSurface(cell);
             const float halfCell = grid.GetCellSize() * 0.5f;
             const float left = center.x - halfCell;
             const float right = center.x + halfCell;
@@ -92,13 +90,42 @@ namespace Infinitesia
             const float bottom = center.z + halfCell;
 
             DrawPlane(
-                { center.x, kHighlightHeight, center.z },
+                { center.x, center.y + kHighlightHeight, center.z },
                 { grid.GetCellSize(), grid.GetCellSize() },
                 kHoveredCellColor);
-            DrawLine3D({ left, kHighlightHeight, top }, { right, kHighlightHeight, top }, kHoveredCellOutlineColor);
-            DrawLine3D({ right, kHighlightHeight, top }, { right, kHighlightHeight, bottom }, kHoveredCellOutlineColor);
-            DrawLine3D({ right, kHighlightHeight, bottom }, { left, kHighlightHeight, bottom }, kHoveredCellOutlineColor);
-            DrawLine3D({ left, kHighlightHeight, bottom }, { left, kHighlightHeight, top }, kHoveredCellOutlineColor);
+            const float outlineY = center.y + kHighlightHeight;
+            DrawLine3D({ left, outlineY, top }, { right, outlineY, top }, kHoveredCellOutlineColor);
+            DrawLine3D({ right, outlineY, top }, { right, outlineY, bottom }, kHoveredCellOutlineColor);
+            DrawLine3D({ right, outlineY, bottom }, { left, outlineY, bottom }, kHoveredCellOutlineColor);
+            DrawLine3D({ left, outlineY, bottom }, { left, outlineY, top }, kHoveredCellOutlineColor);
+        }
+
+        void DrawBlock(const Grid& grid, const Block& block)
+        {
+            const WorldPosition center = grid.CellToWorld(block.cell);
+            Color color;
+            switch (block.type)
+            {
+            case BlockType::Grass:
+                color = { 82, 145, 66, 255 };
+                break;
+            case BlockType::Dirt:
+                color = { 139, 94, 60, 255 };
+                break;
+            case BlockType::Stone:
+                color = { 132, 137, 142, 255 };
+                break;
+            default:
+                throw std::invalid_argument("Block has an unsupported type.");
+            }
+
+            const float cellSize = grid.GetCellSize();
+            DrawCube(
+                { center.x, center.y, center.z },
+                cellSize,
+                cellSize,
+                cellSize,
+                color);
         }
 
         void DrawItem(const Grid& grid, const WorldObject& object)
@@ -113,7 +140,7 @@ namespace Infinitesia
             if (object.item->GetType() != ItemType::Logs)
             {
                 DrawCube(
-                    { center.x, cellSize * 0.16f, center.z },
+                    { center.x, center.y + cellSize * 0.16f, center.z },
                     cellSize * 0.3f,
                     cellSize * 0.3f,
                     cellSize * 0.3f,
@@ -128,8 +155,8 @@ namespace Infinitesia
                     (static_cast<float>(log) - static_cast<float>(object.item->GetQuantity() - 1) * 0.5f) *
                     cellSize * 0.14f;
                 DrawCylinderEx(
-                    { center.x - logLength * 0.5f, cellSize * 0.12f + offset, center.z },
-                    { center.x + logLength * 0.5f, cellSize * 0.12f + offset, center.z },
+                    { center.x - logLength * 0.5f, center.y + cellSize * 0.12f + offset, center.z },
+                    { center.x + logLength * 0.5f, center.y + cellSize * 0.12f + offset, center.z },
                     cellSize * 0.09f,
                     cellSize * 0.09f,
                     8,
@@ -145,14 +172,14 @@ namespace Infinitesia
             if (object.type == WorldObjectType::Worker)
             {
                 DrawCylinder(
-                    { cellCenter.x, cellSize * 0.38f, cellCenter.z },
+                    { cellCenter.x, cellCenter.y + cellSize * 0.38f, cellCenter.z },
                     cellSize * 0.24f,
                     cellSize * 0.24f,
                     cellSize * 0.76f,
                     8,
                     { 75, 135, 220, 255 });
                 DrawSphere(
-                    { cellCenter.x, cellSize * 0.93f, cellCenter.z },
+                    { cellCenter.x, cellCenter.y + cellSize * 0.93f, cellCenter.z },
                     cellSize * 0.20f,
                     { 225, 190, 150, 255 });
                 return;
@@ -161,14 +188,14 @@ namespace Infinitesia
             if (object.type == WorldObjectType::Tree)
             {
                 DrawCylinder(
-                    { cellCenter.x, cellSize * 0.43f, cellCenter.z },
+                    { cellCenter.x, cellCenter.y + cellSize * 0.43f, cellCenter.z },
                     cellSize * 0.13f,
                     cellSize * 0.17f,
                     cellSize * 0.86f,
                     8,
                     { 115, 75, 45, 255 });
                 DrawSphere(
-                    { cellCenter.x, cellSize * 1.38f, cellCenter.z },
+                    { cellCenter.x, cellCenter.y + cellSize * 1.38f, cellCenter.z },
                     cellSize * 0.48f,
                     { 65, 145, 75, 255 });
                 return;
@@ -184,8 +211,8 @@ namespace Infinitesia
 
             DrawBoundingBox(
                 {
-                    { center.x - size.width * 0.5f, 0.0f, center.z - size.width * 0.5f },
-                    { center.x + size.width * 0.5f, size.height, center.z + size.width * 0.5f }
+                    { center.x - size.width * 0.5f, center.y, center.z - size.width * 0.5f },
+                    { center.x + size.width * 0.5f, center.y + size.height, center.z + size.width * 0.5f }
                 },
                 color);
         }
@@ -201,11 +228,11 @@ namespace Infinitesia
             const float bendRadius = grid.GetCellSize() * 0.12f;
             std::vector<Vector3> points;
             points.reserve(path.size() + 1);
-            points.push_back({ origin.x, pathHeight, origin.z });
+            points.push_back({ origin.x, origin.y + pathHeight, origin.z });
             for (const GridCell cell : path)
             {
-                const WorldPosition position = grid.CellToWorld(cell);
-                points.push_back({ position.x, pathHeight, position.z });
+                const WorldPosition position = grid.CellToSurface(cell);
+                points.push_back({ position.x, position.y + pathHeight, position.z });
             }
 
             for (std::size_t index = 1; index < points.size(); ++index)
@@ -251,10 +278,10 @@ namespace Infinitesia
         const std::vector<GridCell>& debugPath) const
     {
         BeginMode3D(m_camera);
-        DrawPlane(
-            { 0.0f, -kGroundPlaneOffset, 0.0f },
-            { grid.GetWorldWidth(), grid.GetWorldDepth() },
-            kGroundColor);
+        for (const Block& block : world.GetBlocks())
+        {
+            DrawBlock(grid, block);
+        }
         if (hoveredCell.has_value())
         {
             DrawHoveredCell(grid, *hoveredCell);

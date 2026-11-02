@@ -16,7 +16,8 @@ namespace Infinitesia
             return std::nullopt;
         }
 
-        const float distance = -ray.position.y / ray.direction.y;
+        const float surfaceHeight = grid.GetWorldHeight();
+        const float distance = (surfaceHeight - ray.position.y) / ray.direction.y;
         if (!std::isfinite(distance) || distance < 0.0f)
         {
             return std::nullopt;
@@ -24,7 +25,7 @@ namespace Infinitesia
 
         const Vector3 intersection{
             ray.position.x + ray.direction.x * distance,
-            0.0f,
+            surfaceHeight,
             ray.position.z + ray.direction.z * distance
         };
         return grid.WorldToCell({ intersection.x, intersection.y, intersection.z });

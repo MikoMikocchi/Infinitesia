@@ -31,7 +31,13 @@ namespace Infinitesia
             static_cast<unsigned long long>(data.tickCount));
         DrawText(buffer, padding, padding + 2 * lineHeight, fontSize, ORANGE);
 
-        std::snprintf(buffer, sizeof(buffer), "Grid: %d x %d", data.gridColumns, data.gridRows);
+        std::snprintf(
+            buffer,
+            sizeof(buffer),
+            "Grid: %d x %d x %d",
+            data.gridWidth,
+            data.gridHeight,
+            data.gridDepth);
         DrawText(buffer, padding, padding + 3 * lineHeight, fontSize, RAYWHITE);
 
         if (data.hoveredCell.has_value())
@@ -39,9 +45,10 @@ namespace Infinitesia
             std::snprintf(
                 buffer,
                 sizeof(buffer),
-                "Cell: %d, %d",
-                data.hoveredCell->column,
-                data.hoveredCell->row);
+                "Cell: %d, %d, %d",
+                data.hoveredCell->x,
+                data.hoveredCell->y,
+                data.hoveredCell->z);
             DrawText(buffer, padding, padding + 4 * lineHeight, fontSize, GOLD);
         }
 

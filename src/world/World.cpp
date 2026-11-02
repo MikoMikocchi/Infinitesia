@@ -47,7 +47,23 @@ namespace Infinitesia
     }
 
     World::World(const Grid& grid, const std::vector<WorldObjectPlacement>& initialObjects)
+        : m_blocks(grid.GetCellCount()),
+          m_gridWidth(grid.GetWidth()),
+          m_gridHeight(grid.GetHeight()),
+          m_gridDepth(grid.GetDepth())
     {
+        for (int z = 0; z < m_gridDepth; ++z)
+        {
+            for (int y = 0; y < m_gridHeight; ++y)
+            {
+                for (int x = 0; x < m_gridWidth; ++x)
+                {
+                    const GridCell cell{ x, y, z };
+                    m_blocks[GetBlockIndex(cell)] = { cell, BlockType::Grass };
+                }
+            }
+        }
+
         m_objects.reserve(initialObjects.size());
         for (const WorldObjectPlacement& placement : initialObjects)
         {
@@ -76,7 +92,7 @@ namespace Infinitesia
         }
 
         const WorldObjectId id{ m_nextObjectId++ };
-        m_objects.push_back({ id, type, cell, grid.CellToWorld(cell), std::move(item) });
+        m_objects.push_back({ id, type, cell, grid.CellToSurface(cell), std::move(item) });
         return id;
     }
 
@@ -140,7 +156,8 @@ namespace Infinitesia
         }
         for (const WorldObject& object : m_objects)
         {
-            if (object.id != id && object.cell.column == cell.column && object.cell.row == cell.row)
+            if (object.id != id && object.cell.x == cell.x &&
+                object.cell.y == cell.y && object.cell.z == cell.z)
             {
                 return false;
             }
@@ -152,15 +169,40 @@ namespace Infinitesia
             return false;
         }
         object->cell = cell;
-        object->position = grid.CellToWorld(cell);
+        object->position = grid.CellToSurface(cell);
         return true;
+    }
+
+    const Block* World::GetBlock(GridCell cell) const
+    {
+        if (cell.x < 0 || cell.x >= m_gridWidth ||
+            cell.y < 0 || cell.y >= m_gridHeight ||
+            cell.z < 0 || cell.z >= m_gridDepth)
+        {
+            return nullptr;
+        }
+        return &m_blocks[GetBlockIndex(cell)];
+    }
+
+    void World::SetBlockType(GridCell cell, BlockType type)
+    {
+        if (type != BlockType::Grass && type != BlockType::Dirt && type != BlockType::Stone)
+        {
+            throw std::invalid_argument("Block has an unsupported type.");
+        }
+        m_blocks[GetBlockIndex(cell)].type = type;
+    }
+
+    const std::vector<Block>& World::GetBlocks() const
+    {
+        return m_blocks;
     }
 
     std::optional<WorldObjectId> World::FindObjectAt(GridCell cell) const
     {
         for (const WorldObject& object : m_objects)
         {
-            if (object.cell.column == cell.column && object.cell.row == cell.row)
+            if (object.cell.x == cell.x && object.cell.y == cell.y && object.cell.z == cell.z)
             {
                 return object.id;
             }
@@ -192,6 +234,20 @@ namespace Infinitesia
             }
         }
         return nullptr;
+    }
+
+    std::size_t World::GetBlockIndex(GridCell cell) const
+    {
+        if (cell.x < 0 || cell.x >= m_gridWidth ||
+            cell.y < 0 || cell.y >= m_gridHeight ||
+            cell.z < 0 || cell.z >= m_gridDepth)
+        {
+            throw std::out_of_range("Block cell is outside the grid.");
+        }
+
+        return (static_cast<std::size_t>(cell.z) * static_cast<std::size_t>(m_gridHeight) +
+                static_cast<std::size_t>(cell.y)) * static_cast<std::size_t>(m_gridWidth) +
+               static_cast<std::size_t>(cell.x);
     }
 
     const std::vector<WorldObject>& World::GetObjects() const

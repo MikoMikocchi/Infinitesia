@@ -14,8 +14,9 @@ namespace Infinitesia
         int framesPerSecond;
         double totalTime;
         std::uint64_t tickCount;
-        int gridColumns;
-        int gridRows;
+        int gridWidth;
+        int gridHeight;
+        int gridDepth;
         std::optional<GridCell> hoveredCell;
         std::optional<WorldObjectType> selectedObjectType;
         std::optional<WorkerActivity> workerActivity;
