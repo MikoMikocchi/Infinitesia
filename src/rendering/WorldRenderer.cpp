@@ -101,6 +101,42 @@ namespace Infinitesia
             DrawLine3D({ left, kHighlightHeight, bottom }, { left, kHighlightHeight, top }, kHoveredCellOutlineColor);
         }
 
+        void DrawItem(const Grid& grid, const WorldObject& object)
+        {
+            if (!object.item.has_value())
+            {
+                return;
+            }
+
+            const WorldPosition center = object.position;
+            const float cellSize = grid.GetCellSize();
+            if (object.item->GetType() != ItemType::Logs)
+            {
+                DrawCube(
+                    { center.x, cellSize * 0.16f, center.z },
+                    cellSize * 0.3f,
+                    cellSize * 0.3f,
+                    cellSize * 0.3f,
+                    { 190, 170, 125, 255 });
+                return;
+            }
+
+            const float logLength = cellSize * 0.62f;
+            for (int log = 0; log < object.item->GetQuantity(); ++log)
+            {
+                const float offset =
+                    (static_cast<float>(log) - static_cast<float>(object.item->GetQuantity() - 1) * 0.5f) *
+                    cellSize * 0.14f;
+                DrawCylinderEx(
+                    { center.x - logLength * 0.5f, cellSize * 0.12f + offset, center.z },
+                    { center.x + logLength * 0.5f, cellSize * 0.12f + offset, center.z },
+                    cellSize * 0.09f,
+                    cellSize * 0.09f,
+                    8,
+                    { 145, 95, 55, 255 });
+            }
+        }
+
         void DrawWorldObject(const Grid& grid, const WorldObject& object)
         {
             const WorldPosition cellCenter = object.position;
@@ -138,19 +174,7 @@ namespace Infinitesia
                 return;
             }
 
-            const float logLength = cellSize * 0.62f;
-            for (int log = 0; log < object.quantity; ++log)
-            {
-                const float offset = (static_cast<float>(log) - static_cast<float>(object.quantity - 1) * 0.5f) *
-                    cellSize * 0.14f;
-                DrawCylinderEx(
-                    { cellCenter.x - logLength * 0.5f, cellSize * 0.12f + offset, cellCenter.z },
-                    { cellCenter.x + logLength * 0.5f, cellSize * 0.12f + offset, cellCenter.z },
-                    cellSize * 0.09f,
-                    cellSize * 0.09f,
-                    8,
-                    { 145, 95, 55, 255 });
-            }
+            DrawItem(grid, object);
         }
 
         void DrawObjectOutline(const Grid& grid, const WorldObject& object, Color color)

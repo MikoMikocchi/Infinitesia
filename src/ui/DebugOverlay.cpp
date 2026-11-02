@@ -47,7 +47,7 @@ namespace Infinitesia
 
         if (data.selectedObjectType.has_value())
         {
-            const char* typeName = "Logs";
+            const char* typeName = "Item";
             if (*data.selectedObjectType == WorldObjectType::Worker)
             {
                 typeName = "Worker";

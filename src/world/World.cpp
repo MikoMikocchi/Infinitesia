@@ -3,24 +3,31 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 namespace Infinitesia
 {
     namespace
     {
-        void ValidateObjectState(WorldObjectType type, int quantity)
+        void ValidateObjectState(WorldObjectType type, const std::optional<Item>& item)
         {
-            if (type != WorldObjectType::Worker &&
-                type != WorldObjectType::Tree &&
-                type != WorldObjectType::Logs)
+            switch (type)
             {
-                throw std::invalid_argument("World object has an unsupported type.");
+            case WorldObjectType::Worker:
+            case WorldObjectType::Tree:
+                if (item.has_value())
+                {
+                    throw std::invalid_argument("Non-item world objects cannot contain an item.");
+                }
+                return;
+            case WorldObjectType::Item:
+                if (!item.has_value())
+                {
+                    throw std::invalid_argument("World item is invalid.");
+                }
+                return;
             }
-            if ((type == WorldObjectType::Logs && quantity <= 0) ||
-                (type != WorldObjectType::Logs && quantity != 0))
-            {
-                throw std::invalid_argument("World object quantity is invalid for its type.");
-            }
+            throw std::invalid_argument("World object has an unsupported type.");
         }
     }
 
@@ -32,7 +39,7 @@ namespace Infinitesia
             return { cellSize * 0.62f, cellSize * 1.2f };
         case WorldObjectType::Tree:
             return { cellSize * 0.98f, cellSize * 1.95f };
-        case WorldObjectType::Logs:
+        case WorldObjectType::Item:
             return { cellSize * 0.78f, cellSize * 0.36f };
         }
 
@@ -44,13 +51,17 @@ namespace Infinitesia
         m_objects.reserve(initialObjects.size());
         for (const WorldObjectPlacement& placement : initialObjects)
         {
-            AddObject(placement.type, placement.cell, grid);
+            AddObject(placement.type, placement.cell, grid, placement.item);
         }
     }
 
-    WorldObjectId World::AddObject(WorldObjectType type, GridCell cell, const Grid& grid, int quantity)
+    WorldObjectId World::AddObject(
+        WorldObjectType type,
+        GridCell cell,
+        const Grid& grid,
+        std::optional<Item> item)
     {
-        ValidateObjectState(type, quantity);
+        ValidateObjectState(type, item);
         if (!grid.Contains(cell))
         {
             throw std::out_of_range("World object cell is outside the grid.");
@@ -65,13 +76,16 @@ namespace Infinitesia
         }
 
         const WorldObjectId id{ m_nextObjectId++ };
-        m_objects.push_back({ id, type, cell, grid.CellToWorld(cell), quantity });
+        m_objects.push_back({ id, type, cell, grid.CellToWorld(cell), std::move(item) });
         return id;
     }
 
-    WorldObjectId World::TransformObject(WorldObjectId id, WorldObjectType type, int quantity)
+    WorldObjectId World::TransformObject(
+        WorldObjectId id,
+        WorldObjectType type,
+        std::optional<Item> item)
     {
-        ValidateObjectState(type, quantity);
+        ValidateObjectState(type, item);
 
         WorldObject* object = FindMutableObject(id);
         if (object == nullptr)
@@ -85,7 +99,7 @@ namespace Infinitesia
 
         object->id = { m_nextObjectId++ };
         object->type = type;
-        object->quantity = quantity;
+        object->item = std::move(item);
         return object->id;
     }
 

@@ -4,7 +4,7 @@
 
 namespace Infinitesia
 {
-    class PickUpLogsCommand final : public Command
+    class PickUpItemCommand final : public Command
     {
     public:
         std::string_view GetId() const override;

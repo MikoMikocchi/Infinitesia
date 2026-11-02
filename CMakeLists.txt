@@ -37,6 +37,8 @@ add_executable(Infinitesia
   src/world/Grid.cpp
   src/world/GridPathfinder.h
   src/world/GridPathfinder.cpp
+  src/world/Item.h
+  src/world/Item.cpp
   src/world/World.h
   src/world/World.cpp
   src/world/WorkSystem.h
@@ -46,8 +48,8 @@ add_executable(Infinitesia
   src/commands/CommandRegistry.cpp
   src/commands/ChopTreeCommand.h
   src/commands/ChopTreeCommand.cpp
-  src/commands/PickUpLogsCommand.h
-  src/commands/PickUpLogsCommand.cpp
+  src/commands/PickUpItemCommand.h
+  src/commands/PickUpItemCommand.cpp
   src/input/CameraController.h
   src/input/CameraController.cpp
   src/input/GridPointer.h

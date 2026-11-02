@@ -1,7 +1,7 @@
 #include "app/Application.h"
 #include "raylib.h"
 #include "commands/ChopTreeCommand.h"
-#include "commands/PickUpLogsCommand.h"
+#include "commands/PickUpItemCommand.h"
 
 #include <memory>
 #include <optional>
@@ -53,7 +53,7 @@ namespace Infinitesia
           m_showPathDebug(m_config.showPathDebug)
     {
         m_commands.Register(std::make_unique<ChopTreeCommand>(m_workSystem, m_grid));
-        m_commands.Register(std::make_unique<PickUpLogsCommand>());
+        m_commands.Register(std::make_unique<PickUpItemCommand>());
 
         if (m_config.camera.distance < m_config.cameraControls.minimumDistance ||
             m_config.camera.distance > m_config.cameraControls.maximumDistance ||

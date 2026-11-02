@@ -1,30 +1,30 @@
-#include "commands/PickUpLogsCommand.h"
+#include "commands/PickUpItemCommand.h"
 
 namespace Infinitesia
 {
-    std::string_view PickUpLogsCommand::GetId() const
+    std::string_view PickUpItemCommand::GetId() const
     {
-        return "pick_up_logs";
+        return "pick_up_item";
     }
 
-    std::string_view PickUpLogsCommand::GetLabel() const
+    std::string_view PickUpItemCommand::GetLabel() const
     {
         return "Pick up";
     }
 
-    bool PickUpLogsCommand::IsApplicable(const WorldObject& target) const
+    bool PickUpItemCommand::IsApplicable(const WorldObject& target) const
     {
-        return target.type == WorldObjectType::Logs;
+        return target.type == WorldObjectType::Item;
     }
 
-    std::string PickUpLogsCommand::GetDisabledReason(
+    std::string PickUpItemCommand::GetDisabledReason(
         std::optional<WorldObjectId> actor,
         const WorldObject& target,
         const World& world) const
     {
         if (!IsApplicable(target))
         {
-            return "This command requires logs";
+            return "This command requires an item";
         }
         if (!actor.has_value())
         {
@@ -39,7 +39,7 @@ namespace Infinitesia
         return {};
     }
 
-    CommandResult PickUpLogsCommand::Execute(
+    CommandResult PickUpItemCommand::Execute(
         std::optional<WorldObjectId> actor,
         WorldObjectId target,
         World& world) const
@@ -55,16 +55,16 @@ namespace Infinitesia
             return { false, "Selected worker is no longer available" };
         }
 
-        const WorldObject* logs = world.FindObject(target);
-        if (logs == nullptr || !IsApplicable(*logs))
+        const WorldObject* item = world.FindObject(target);
+        if (item == nullptr || !IsApplicable(*item))
         {
-            return { false, "Logs are no longer available" };
+            return { false, "Item is no longer available" };
         }
 
         if (!world.RemoveObject(target))
         {
-            return { false, "Logs are no longer available" };
+            return { false, "Item is no longer available" };
         }
-        return { true, "Logs picked up" };
+        return { true, "Item picked up" };
     }
 }

@@ -110,7 +110,10 @@ namespace Infinitesia
             if (m_orders[index].phase == WorkPhase::Chopping &&
                 m_orders[index].choppingProgress >= m_config.choppingDuration)
             {
-                world.TransformObject(m_orders[index].tree, WorldObjectType::Logs, m_config.logsPerTree);
+                world.TransformObject(
+                    m_orders[index].tree,
+                    WorldObjectType::Item,
+                    Item{ ItemType::Logs, m_config.logsPerTree });
                 m_orders.erase(m_orders.begin() + static_cast<std::ptrdiff_t>(index));
                 continue;
             }

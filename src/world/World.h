@@ -1,6 +1,7 @@
 #pragma once
 
 #include "world/Grid.h"
+#include "world/Item.h"
 
 #include <cstdint>
 #include <optional>
@@ -12,7 +13,7 @@ namespace Infinitesia
     {
         Worker,
         Tree,
-        Logs
+        Item
     };
 
     struct WorldObjectId
@@ -26,6 +27,7 @@ namespace Infinitesia
     {
         WorldObjectType type;
         GridCell cell;
+        std::optional<Item> item = std::nullopt;
     };
 
     struct WorldObject
@@ -34,7 +36,7 @@ namespace Infinitesia
         WorldObjectType type;
         GridCell cell;
         WorldPosition position;
-        int quantity;
+        std::optional<Item> item;
     };
 
     struct WorldObjectSize
@@ -50,8 +52,15 @@ namespace Infinitesia
     public:
         World(const Grid& grid, const std::vector<WorldObjectPlacement>& initialObjects = {});
 
-        WorldObjectId AddObject(WorldObjectType type, GridCell cell, const Grid& grid, int quantity = 0);
-        WorldObjectId TransformObject(WorldObjectId id, WorldObjectType type, int quantity);
+        WorldObjectId AddObject(
+            WorldObjectType type,
+            GridCell cell,
+            const Grid& grid,
+            std::optional<Item> item = std::nullopt);
+        WorldObjectId TransformObject(
+            WorldObjectId id,
+            WorldObjectType type,
+            std::optional<Item> item = std::nullopt);
         bool RemoveObject(WorldObjectId id);
         bool SetObjectPosition(WorldObjectId id, WorldPosition position);
         bool SetObjectCell(WorldObjectId id, GridCell cell, const Grid& grid);
