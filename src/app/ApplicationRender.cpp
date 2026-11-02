@@ -37,12 +37,6 @@ namespace Infinitesia
             m_chunkViewCenter,
             m_chunkRenderRadius,
             m_selectedLevel);
-        DrawText(
-            m_config.window.title.c_str(),
-            (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,
-            12,
-            24,
-            RAYWHITE);
         DrawDebugOverlay();
         m_worldInteraction.DrawOverlay();
 
