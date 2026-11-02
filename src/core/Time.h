@@ -5,15 +5,13 @@ namespace Infinitesia
     class Time
     {
     public:
-        static void UpdateFrameTime();
+        void Advance(float deltaTime);
         
-        static float GetDeltaTime();
-        static double GetTotalTime();
-        static double GetTotalTimeMilliseconds();
-        static int GetFPS();
+        float GetDeltaTime() const;
+        double GetTotalTime() const;
         
     private:
-        static float m_deltaTime;
-        static double m_totalTime;
+        float m_deltaTime = 0.0f;
+        double m_totalTime = 0.0;
     };
 }

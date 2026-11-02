@@ -1,5 +1,8 @@
 #pragma once
 
+#include "core/Simulation.h"
+#include "core/Time.h"
+
 namespace Infinitesia
 {
     class Application
@@ -8,14 +11,14 @@ namespace Infinitesia
         void Run();
 
     private:
-        void Initialize();
-        void UpdateFrame();
         void Render();
         void DrawDebugOverlay();
-        void Shutdown();
 
-        const int m_screenWidth = 1280;
-        const int m_screenHeight = 720;
-        const char* m_windowTitle = "Infinitesia";
+        static constexpr int m_screenWidth = 1280;
+        static constexpr int m_screenHeight = 720;
+        static constexpr const char* m_windowTitle = "Infinitesia";
+
+        Time m_time;
+        Simulation m_simulation;
     };
 }

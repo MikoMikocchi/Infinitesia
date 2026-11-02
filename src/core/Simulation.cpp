@@ -1,29 +1,33 @@
 #include "core/Simulation.h"
 
 #include <cmath>
+#include <stdexcept>
 
 namespace Infinitesia
 {
-    float Simulation::m_ticksPerSecond = 20.0f;
-    float Simulation::m_fixedDeltaTime = 0.05f;
-    float Simulation::m_accumulator = 0.0f;
-    int Simulation::m_tickCount = 0;
-
-    void Simulation::Initialize(float ticksPerSecond)
+    Simulation::Simulation(float ticksPerSecond)
+        : m_ticksPerSecond(ticksPerSecond),
+          m_fixedDeltaTime(0.0f)
     {
         if (!std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.0f)
         {
-            ticksPerSecond = 20.0f;
+            throw std::invalid_argument("Simulation tick rate must be finite and greater than zero.");
         }
 
-        m_ticksPerSecond = ticksPerSecond;
         m_fixedDeltaTime = 1.0f / m_ticksPerSecond;
-        m_accumulator = 0.0f;
-        m_tickCount = 0;
+        if (!std::isfinite(m_fixedDeltaTime) || m_fixedDeltaTime <= 0.0f)
+        {
+            throw std::invalid_argument("Simulation tick rate produces an invalid fixed time step.");
+        }
     }
 
     void Simulation::AdvanceFrame(float frameDelta)
     {
+        if (!std::isfinite(frameDelta) || frameDelta < 0.0f)
+        {
+            throw std::invalid_argument("Frame delta time must be finite and non-negative.");
+        }
+
         m_accumulator += frameDelta;
 
         while (m_accumulator >= m_fixedDeltaTime)
@@ -35,21 +39,21 @@ namespace Infinitesia
 
     void Simulation::Tick()
     {
-        // Логика симуляции будет здесь
+        // Simulation logic will go here
         ++m_tickCount;
     }
 
-    int Simulation::GetTickCount()
+    std::uint64_t Simulation::GetTickCount() const
     {
         return m_tickCount;
     }
 
-    float Simulation::GetFixedDeltaTime()
+    float Simulation::GetFixedDeltaTime() const
     {
         return m_fixedDeltaTime;
     }
 
-    float Simulation::GetTicksPerSecond()
+    float Simulation::GetTicksPerSecond() const
     {
         return m_ticksPerSecond;
     }

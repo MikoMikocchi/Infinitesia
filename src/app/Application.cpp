@@ -1,34 +1,47 @@
 #include "app/Application.h"
 #include "core/Time.h"
-#include "core/Simulation.h"
 #include "raylib.h"
 
 #include <cstdio>
+#include <stdexcept>
 
 namespace Infinitesia
 {
+    namespace
+    {
+        class WindowGuard
+        {
+        public:
+            WindowGuard(int width, int height, const char* title)
+            {
+                InitWindow(width, height, title);
+                if (!IsWindowReady())
+                {
+                    throw std::runtime_error("Failed to initialize the application window.");
+                }
+            }
+
+            ~WindowGuard()
+            {
+                CloseWindow();
+            }
+
+            WindowGuard(const WindowGuard&) = delete;
+            WindowGuard& operator=(const WindowGuard&) = delete;
+        };
+    }
+
     void Application::Run()
     {
-        Initialize();
+        WindowGuard window(m_screenWidth, m_screenHeight, m_windowTitle);
+        SetTargetFPS(60);
+
         while (!WindowShouldClose())
         {
-            Time::UpdateFrameTime();
-            Simulation::AdvanceFrame(Time::GetDeltaTime());
-            UpdateFrame();
+            m_time.Advance(GetFrameTime());
+            m_simulation.AdvanceFrame(m_time.GetDeltaTime());
             Render();
         }
-        Shutdown();
-    }
-
-    void Application::Initialize()
-    {
-        InitWindow(m_screenWidth, m_screenHeight, m_windowTitle);
-        SetTargetFPS(60);
-        Simulation::Initialize(20.0f);
-    }
-
-    void Application::UpdateFrame()
-    {
     }
 
     void Application::Render()
@@ -53,18 +66,13 @@ namespace Infinitesia
 
         DrawRectangle(padding - 4, padding - 4, 250, 3 * lineHeight + padding, Fade(BLACK, 0.4f));
 
-        std::snprintf(buf, sizeof(buf), "FPS: %d", Time::GetFPS());
+        std::snprintf(buf, sizeof(buf), "FPS: %d", GetFPS());
         DrawText(buf, padding, padding, fontSize, LIME);
 
-        std::snprintf(buf, sizeof(buf), "Time since start: %.3f s", Time::GetTotalTime());
+        std::snprintf(buf, sizeof(buf), "Time since start: %.3f s", m_time.GetTotalTime());
         DrawText(buf, padding, padding + lineHeight, fontSize, SKYBLUE);
 
-        std::snprintf(buf, sizeof(buf), "Ticks: %d", Simulation::GetTickCount());
+        std::snprintf(buf, sizeof(buf), "Ticks: %llu", static_cast<unsigned long long>(m_simulation.GetTickCount()));
         DrawText(buf, padding, padding + 2 * lineHeight, fontSize, ORANGE);
-    }
-
-    void Application::Shutdown()
-    {
-        CloseWindow();
     }
 }

@@ -1,22 +1,26 @@
 #pragma once
 
+#include <cstdint>
+
 namespace Infinitesia
 {
     class Simulation
     {
     public:
-        static void Initialize(float ticksPerSecond = 20.0f);
-        static void AdvanceFrame(float frameDelta);
-        static void Tick();
+        explicit Simulation(float ticksPerSecond = 20.0f);
 
-        static int GetTickCount();
-        static float GetFixedDeltaTime();
-        static float GetTicksPerSecond();
+        void AdvanceFrame(float frameDelta);
+
+        std::uint64_t GetTickCount() const;
+        float GetFixedDeltaTime() const;
+        float GetTicksPerSecond() const;
 
     private:
-        static float m_ticksPerSecond;
-        static float m_fixedDeltaTime;
-        static float m_accumulator;
-        static int m_tickCount;
+        void Tick();
+
+        float m_ticksPerSecond;
+        float m_fixedDeltaTime;
+        float m_accumulator = 0.0f;
+        std::uint64_t m_tickCount = 0;
     };
 }
