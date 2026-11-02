@@ -17,6 +17,7 @@ namespace Infinitesia
           m_workSystem(m_config.worker),
           m_worldRenderer(m_config.camera),
           m_cameraController(m_config.cameraControls),
+          m_planetViewer(PlanetParameters{ .seed = m_config.worldSeed }),
           m_chunkViewCenter{
               m_config.grid.width / 2,
               m_config.grid.height - 1,

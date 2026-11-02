@@ -93,6 +93,8 @@ add_executable(Infinitesia
   src/ui/CharacterProfilePanel.cpp
   src/ui/DebugOverlay.h
   src/ui/DebugOverlay.cpp
+  src/ui/PlanetViewer.h
+  src/ui/PlanetViewer.cpp
   src/rendering/WorldRenderer.h
   src/rendering/WorldRenderer.cpp
   src/rendering/WorldGeometryRenderer.h

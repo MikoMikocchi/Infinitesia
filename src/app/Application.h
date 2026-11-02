@@ -8,6 +8,7 @@
 #include "input/WorldInteractionController.h"
 #include "rendering/WorldRenderer.h"
 #include "ui/DebugOverlay.h"
+#include "ui/PlanetViewer.h"
 #include "commands/CommandRegistry.h"
 #include "world/Grid.h"
 #include "world/WorkSystem.h"
@@ -37,6 +38,7 @@ namespace Infinitesia
         CameraController m_cameraController;
         WorldInteractionController m_worldInteraction;
         DebugOverlay m_debugOverlay;
+        PlanetViewer m_planetViewer;
         GridCell m_chunkViewCenter{};
         int m_chunkRenderRadius = 1;
         int m_selectedLevel = 0;

@@ -1,45 +1,12 @@
 #include "app/Application.h"
 #include "raylib.h"
 
-#include <optional>
-#include <vector>
-
 namespace Infinitesia
 {
     void Application::Render()
     {
-        WorldPosition pathOrigin{};
-        std::vector<GridCell> debugPath;
-        const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
-        if (m_showPathDebug && selectedObjectId.has_value())
-        {
-            const WorldObject* selectedObject = m_world.FindObject(*selectedObjectId);
-            if (selectedObject != nullptr &&
-                selectedObject->type == WorldObjectType::Worker &&
-                selectedObject->cell.y == m_selectedLevel)
-            {
-                pathOrigin = selectedObject->position;
-                debugPath = m_workSystem.GetRemainingPath(selectedObject->id);
-            }
-        }
-
         BeginDrawing();
-        ClearBackground({ 30, 34, 39, 255 });
-
-        m_worldRenderer.Draw(
-            m_grid,
-            m_world,
-            m_worldInteraction.GetHoveredCell(),
-            m_worldInteraction.GetHoveredObject(),
-            selectedObjectId,
-            pathOrigin,
-            debugPath,
-            m_chunkViewCenter,
-            m_chunkRenderRadius,
-            m_selectedLevel);
-        DrawDebugOverlay();
-        m_worldInteraction.DrawOverlay(m_world, m_textureAssets);
-
+        m_planetViewer.Draw();
         EndDrawing();
     }
 
