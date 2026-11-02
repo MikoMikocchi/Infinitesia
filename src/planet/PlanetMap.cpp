@@ -516,7 +516,7 @@ double SoilDepth(RockType rock, double precipMm, double slope, double planetAgeF
 }
 
 // --------------------------------------------------------------------------
-// Biome classification — Köppen-extended, 23 types
+// Biome classification — Köppen-extended, 25 types
 // --------------------------------------------------------------------------
 Biome ClassifyBiome(const PlanetRegion& r)
 {
@@ -575,6 +575,7 @@ Biome ClassifyBiome(const PlanetRegion& r)
     if (t < 18.0)
     {
         if (dry > 3.0 && p > 300.0 && p < 900.0) return Biome::MediterraneanShrub;
+        if (p > 1500.0 && dry < 2.0) return Biome::TemperateRainforest;
         if (p > 700.0) return Biome::TemperateDeciduous;
         if (p > 400.0) return Biome::TemperateMixed;
         if (p > 200.0) return Biome::TemperateSteppe;
@@ -585,6 +586,8 @@ Biome ClassifyBiome(const PlanetRegion& r)
     if (p < 200.0) return Biome::HotDesert;
 
     // Subtropical / tropical
+    if (dry >= 2.0 && dry <= 7.0 && p > 1100.0)
+        return Biome::TropicalMonsoonForest;
     if (dry > 4.0)
     {
         if (p > 800.0) return Biome::TropicalDryForest;

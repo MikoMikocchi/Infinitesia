@@ -53,7 +53,7 @@ namespace Infinitesia
     struct GenerationScenario
     {
         std::uint64_t seed = 1;
-        std::uint32_t generatorVersion = 5;
+        std::uint32_t generatorVersion = 6;
         GenerationMode mode = GenerationMode::Standard;
         PlanetaryPreset preset = PlanetaryPreset::RockyTemperate;
         GenerationConstraints constraints{};

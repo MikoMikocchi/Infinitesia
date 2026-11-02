@@ -15,6 +15,7 @@ namespace Infinitesia
 
         void Update();
         void Draw() const;
+        void ReleaseRenderResources() noexcept;
 
     private:
         void HandleInput();
@@ -28,6 +29,7 @@ namespace Infinitesia
         std::vector<Vector3> m_sphereVertices;
         std::vector<Color> m_sphereVertexColors;
         std::vector<float> m_sphereVertexBrightness;
+        mutable Texture2D m_surfaceTexture{};
         int m_selectedLatitude = 0;
         int m_selectedLongitude = 0;
         float m_rotationDegrees = 0.0f;

@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <numbers>
 #include <stdexcept>
 #include <utility>
@@ -76,8 +77,8 @@ namespace
     {
         const Infinitesia::StarSystem system =
             Infinitesia::StarSystemGenerator::Generate({ .seed = 2026 });
-        Require(system.scenario.generatorVersion == 5,
-                "The revised planet-generation model did not use generator version 5.");
+        Require(system.scenario.generatorVersion == 6,
+                "The revised planet-generation model did not use generator version 6.");
         const double massEarths = system.planet.massKilograms / kEarthMassKilograms;
         const double semiMajorAxisAu =
             system.planetOrbit.semiMajorAxisMeters / kAstronomicalUnitMeters;
@@ -264,6 +265,9 @@ namespace
         double maximumTectonicUpliftKm = 0.0;
         double minimumTectonicReliefKm = 0.0;
         double maximumAdjacentElevationStepKm = 0.0;
+        double maximumSeasonalTemperatureRangeC = 0.0;
+        double minimumLandOrographicFactor = 1.0;
+        double maximumLandOrographicFactor = 0.0;
         std::vector<std::pair<bool, bool>> plateCrustKinds;
         for (int latitude = 0; latitude < defaultMap.GetLatitudeBandCount(); ++latitude)
         {
@@ -294,6 +298,18 @@ namespace
                     std::cos(region.latitudeDegrees * std::numbers::pi / 180.0);
                 totalAreaWeight += areaWeight;
                 meanTemperatureNumerator += areaWeight * region.temperatureCelsius;
+                maximumSeasonalTemperatureRangeC = std::max(
+                    maximumSeasonalTemperatureRangeC,
+                    region.temperatureAnnualRangeC);
+                if (!region.isOcean)
+                {
+                    minimumLandOrographicFactor = std::min(
+                        minimumLandOrographicFactor,
+                        region.windMoistureFactor);
+                    maximumLandOrographicFactor = std::max(
+                        maximumLandOrographicFactor,
+                        region.windMoistureFactor);
+                }
                 if (region.tectonicStress > 0.6)
                     highStressAreaWeight += areaWeight;
                 if (region.continentalCrustFraction > 0.1 &&
@@ -343,6 +359,48 @@ namespace
                         std::isfinite(region.precipitationMm) &&
                         region.precipitationMm >= 0.0,
                         "Generated climate contains invalid values.");
+                double monthlyTemperatureMean = 0.0;
+                double monthlyPrecipitationTotal = 0.0;
+                double minimumMonthlyTemperature =
+                    std::numeric_limits<double>::infinity();
+                double maximumMonthlyTemperature =
+                    -std::numeric_limits<double>::infinity();
+                std::size_t dryMonthCount = 0;
+                for (std::size_t month = 0;
+                     month < region.monthlyTemperatureCelsius.size();
+                     ++month)
+                {
+                    Require(std::isfinite(region.monthlyTemperatureCelsius[month]) &&
+                            std::isfinite(region.monthlyPrecipitationMm[month]) &&
+                            region.monthlyPrecipitationMm[month] >= 0.0,
+                            "Monthly climate contains invalid values.");
+                    monthlyTemperatureMean +=
+                        region.monthlyTemperatureCelsius[month] / 12.0;
+                    monthlyPrecipitationTotal +=
+                        region.monthlyPrecipitationMm[month];
+                    minimumMonthlyTemperature = std::min(
+                        minimumMonthlyTemperature,
+                        region.monthlyTemperatureCelsius[month]);
+                    maximumMonthlyTemperature = std::max(
+                        maximumMonthlyTemperature,
+                        region.monthlyTemperatureCelsius[month]);
+                    dryMonthCount += region.monthlyPrecipitationMm[month] < 30.0
+                        ? 1
+                        : 0;
+                }
+                Require(std::abs(monthlyTemperatureMean - region.temperatureCelsius) < 1e-8 &&
+                        std::abs(monthlyPrecipitationTotal - region.precipitationMm) <
+                            std::max(1e-8, region.precipitationMm * 1e-8) &&
+                        std::abs(maximumMonthlyTemperature -
+                                 minimumMonthlyTemperature -
+                                 region.temperatureAnnualRangeC) < 1e-8 &&
+                        dryMonthCount == static_cast<std::size_t>(
+                            region.drySeasonMonths),
+                        "Annual climate does not agree with its monthly values.");
+                Require(std::isfinite(region.windMoistureFactor) &&
+                        region.windMoistureFactor >= 0.25 &&
+                        region.windMoistureFactor <= 1.8,
+                        "Wind-driven moisture transfer is outside its calibrated range.");
                 Require(region.soilFertility >= 0.0 &&
                         region.soilFertility <= 1.0 &&
                         region.soilDepthNorm >= 0.0 &&
@@ -370,6 +428,11 @@ namespace
                 "Convergent and divergent boundaries lack broad mountain/trench relief.");
         Require(maximumAdjacentElevationStepKm < 3.0,
                 "Adjacent terrain cells still form abrupt tectonic cliffs.");
+        Require(maximumSeasonalTemperatureRangeC > 8.0,
+                "Seasonal insolation is not producing a meaningful temperature range.");
+        Require(minimumLandOrographicFactor < 0.9 &&
+                maximumLandOrographicFactor > 1.0,
+                "Windward uplift and lee-side drying are not affecting precipitation.");
         Require(std::any_of(plateCrustKinds.begin(), plateCrustKinds.end(),
                     [](const auto& crustKinds)
                     {
@@ -409,7 +472,7 @@ namespace
                 currentSeedOne.planet.rotationHours,
                 currentSeedOne.planet.ageYears
             });
-        std::array<std::size_t, 23> biomeCounts{};
+        std::array<std::size_t, 25> biomeCounts{};
         double meanPrecipitation = 0.0;
         std::size_t totalCells = 0;
         for (int latitude = 0; latitude < currentSeedOneMap.GetLatitudeBandCount(); ++latitude)
@@ -436,6 +499,9 @@ namespace
                 (biomeArea(Infinitesia::Biome::Savanna) > 0 ||
                  biomeArea(Infinitesia::Biome::HotDesert) > 0),
                 "The seed-1 world is missing tropical, temperate, or warm-dry biomes.");
+        Require(biomeArea(Infinitesia::Biome::TropicalMonsoonForest) > 0 ||
+                biomeArea(Infinitesia::Biome::TemperateRainforest) > 0,
+                "Seasonal climate did not produce any newly differentiated forest biome.");
         Require(meanPrecipitation / totalCells > 250.0,
                 "The Earth-like climate still has globally suppressed precipitation.");
 

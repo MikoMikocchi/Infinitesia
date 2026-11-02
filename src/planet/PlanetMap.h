@@ -2,13 +2,14 @@
 
 #include "planet/Planet.h"
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
 namespace Infinitesia
 {
     // -----------------------------------------------------------------------
-    // Biome classification — Köppen-extended, 23 types
+    // Biome classification — Köppen-extended, 25 types
     // -----------------------------------------------------------------------
     enum class Biome : std::uint8_t
     {
@@ -31,6 +32,7 @@ namespace Infinitesia
         // Temperate
         TemperateDeciduous,
         TemperateMixed,
+        TemperateRainforest,
         TemperateSteppe,
         MediterraneanShrub,
 
@@ -42,6 +44,7 @@ namespace Infinitesia
         // Tropical/subtropical
         Savanna,
         TropicalDryForest,
+        TropicalMonsoonForest,
         TropicalRainforest,
 
         // Alpine
@@ -107,11 +110,14 @@ namespace Infinitesia
         double temperatureCelsius = 0.0;
         double temperatureAnnualRangeC = 0.0; // difference winter/summer
         double precipitationMm = 0.0;
+        std::array<double, 12> monthlyTemperatureCelsius{};
+        std::array<double, 12> monthlyPrecipitationMm{};
         double drySeasonMonths = 0.0;         // months with precip < 30mm
         double humidityNormalized = 0.0;
         double soilMoisture = 0.0;            // 0..1
         double snowDays = 0.0;                // days per year with snow
         double continentality = 0.0;          // 0=maritime, 1=continental
+        double windMoistureFactor = 1.0; // ocean fetch, windward uplift and lee drying
 
         // --- Classification ---
         Biome biome = Biome::DeepOcean;

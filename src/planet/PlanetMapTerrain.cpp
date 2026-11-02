@@ -38,7 +38,50 @@ namespace Infinitesia
 
                 const double detail = SphericalFbm(
                     c.latitudeDegrees, c.longitudeDegrees, seed, 4, 6);
-                elev += (detail - 0.5) * 0.9;
+                const double fineDetail = SphericalFbm(
+                    c.latitudeDegrees, c.longitudeDegrees, seed ^ 0x74657272u, 18, 4);
+                elev += (detail - 0.5) * 0.9 + (fineDetail - 0.5) * 0.3;
+
+                double nearbyMountainRelief = 0.0;
+                int nearbyWeight = 0;
+                for (int latitudeOffset = -2; latitudeOffset <= 2; ++latitudeOffset)
+                {
+                    for (int longitudeOffset = -2; longitudeOffset <= 2; ++longitudeOffset)
+                    {
+                        const int neighborLatitude =
+                            std::clamp(la + latitudeOffset, 0, latB - 1);
+                        const int neighborLongitude =
+                            (lo + longitudeOffset + lonS) % lonS;
+                        nearbyMountainRelief += std::max(
+                            0.0,
+                            Cell(neighborLatitude, neighborLongitude).tectonicReliefKm);
+                        ++nearbyWeight;
+                    }
+                }
+                nearbyMountainRelief /= nearbyWeight;
+                const double localMountainRelief =
+                    std::max(0.0, c.tectonicReliefKm);
+                const double forelandBasin =
+                    std::clamp(nearbyMountainRelief - localMountainRelief, 0.0, 1.8);
+                if (c.continentalCrustFraction > 0.5)
+                {
+                    elev -= forelandBasin * 0.45;
+                    if (c.surfaceRock == RockType::GraniticShield)
+                    {
+                        elev += std::clamp(
+                            (c.crustAge - 0.65) / 0.35, 0.0, 1.0) * 0.45;
+                    }
+                    else if (c.surfaceRock == RockType::SedimentaryBasin)
+                    {
+                        elev -= std::clamp(
+                            (0.65 - c.crustAge) / 0.65, 0.0, 1.0) * 0.3;
+                    }
+                }
+                const double mountainFraction =
+                    std::clamp(localMountainRelief / 4.5, 0.0, 1.0);
+                const double ridgeNoise =
+                    1.0 - std::abs(2.0 * fineDetail - 1.0);
+                elev += (ridgeNoise - 0.5) * mountainFraction * 0.9;
                 elevKm[idx] = elev;
             }
         }

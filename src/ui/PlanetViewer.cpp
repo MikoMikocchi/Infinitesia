@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <stdexcept>
 #include <utility>
 
 namespace Infinitesia
@@ -218,6 +219,10 @@ namespace Infinitesia
                     return LerpColor({ 120, 148, 82, 255 }, { 78, 118, 72, 255 }, moistBlend);
                 }
 
+                case Biome::TemperateRainforest:
+                    return LerpColor({ 46, 112, 78, 255 }, { 34, 86, 62, 255 },
+                        SmootherStepF(std::clamp(precip / 2400.0f, 0.0f, 1.0f)));
+
                 case Biome::TemperateSteppe:
                 {
                     const float dryness = SmootherStepF(1.0f - std::clamp(precip / 450.0f, 0.0f, 1.0f));
@@ -259,6 +264,10 @@ namespace Infinitesia
                     const float lush = SmootherStepF(std::clamp(precip / 1200.0f, 0.0f, 1.0f));
                     return LerpColor({ 108, 148, 72, 255 }, { 78, 128, 60, 255 }, lush);
                 }
+
+                case Biome::TropicalMonsoonForest:
+                    return LerpColor({ 44, 128, 62, 255 }, { 30, 96, 46, 255 },
+                        SmootherStepF(std::clamp(precip / 1800.0f, 0.0f, 1.0f)));
 
                 case Biome::TropicalRainforest:
                 {
@@ -455,9 +464,9 @@ namespace Infinitesia
         const std::vector<Color> biomeColors = m_regionColors;
         constexpr int kColorOffsets[3] = { -1, 0, 1 };
         constexpr int kColorWeights[3][3] = {
-            { 1, 2, 1 },
-            { 2, 4, 2 },
-            { 1, 2, 1 }
+            { 1, 1, 1 },
+            { 1, 8, 1 },
+            { 1, 1, 1 }
         };
         for (int latitude = 0; latitude < rows; ++latitude)
         {
@@ -571,6 +580,7 @@ namespace Infinitesia
                      adjacentBrightness[2] + adjacentBrightness[3]) * 0.25f);
             }
         }
+
     }
 
     void PlanetViewer::Update()
@@ -579,6 +589,15 @@ namespace Infinitesia
         if (!m_draggingGlobe)
         {
             m_rotationDegrees = std::fmod(m_rotationDegrees + GetFrameTime() * 8.0f, 360.0f);
+        }
+    }
+
+    void PlanetViewer::ReleaseRenderResources() noexcept
+    {
+        if (m_surfaceTexture.id != 0)
+        {
+            UnloadTexture(m_surfaceTexture);
+            m_surfaceTexture = {};
         }
     }
 
@@ -696,6 +715,31 @@ namespace Infinitesia
         const int rows = m_planetMap.GetLatitudeBandCount();
         const int columns = m_planetMap.GetLongitudeSegmentCount();
 
+        if (m_surfaceTexture.id == 0)
+        {
+            Image surfaceImage = GenImageColor(columns, rows, BLACK);
+            if (surfaceImage.data == nullptr)
+                throw std::runtime_error("Failed to allocate the planet surface map image.");
+            auto* surfacePixels = static_cast<Color*>(surfaceImage.data);
+            for (int latitude = 0; latitude < rows; ++latitude)
+            {
+                for (int longitude = 0; longitude < columns; ++longitude)
+                {
+                    const std::size_t regionIndex =
+                        static_cast<std::size_t>(latitude) * columns + longitude;
+                    surfacePixels[
+                        static_cast<std::size_t>(rows - 1 - latitude) * columns +
+                        longitude] = m_regionColors[regionIndex];
+                }
+            }
+            m_surfaceTexture = LoadTextureFromImage(surfaceImage);
+            UnloadImage(surfaceImage);
+            if (m_surfaceTexture.id == 0)
+                throw std::runtime_error(
+                    "Failed to create the planet surface map texture.");
+            SetTextureFilter(m_surfaceTexture, TEXTURE_FILTER_BILINEAR);
+        }
+
         ClearBackground({ 11, 17, 26, 255 });
 
         DrawText("INFINITESIA  /  PLANET VIEWER", 28, 22, 24, RAYWHITE);
@@ -719,35 +763,30 @@ namespace Infinitesia
         DrawText("SURFACE MAP", static_cast<int>(layout.mapPanel.x + 18.0f), static_cast<int>(layout.mapPanel.y + 16.0f), 16, SKYBLUE);
         DrawText("ROTATING GLOBE", static_cast<int>(layout.globePanel.x + 18.0f), static_cast<int>(layout.globePanel.y + 16.0f), 16, SKYBLUE);
 
+        const Rectangle textureSource{
+            0.0f,
+            0.0f,
+            static_cast<float>(columns),
+            static_cast<float>(rows)
+        };
+        DrawTexturePro(
+            m_surfaceTexture,
+            textureSource,
+            layout.mapBounds,
+            { 0.0f, 0.0f },
+            0.0f,
+            WHITE);
         const float cellWidth = layout.mapBounds.width / static_cast<float>(columns);
         const float cellHeight = layout.mapBounds.height / static_cast<float>(rows);
-        for (int latitude = 0; latitude < rows; ++latitude)
-        {
-            for (int longitude = 0; longitude < columns; ++longitude)
-            {
-                const int planetLatitude = rows - 1 - latitude;
-                const std::size_t regionIndex =
-                    static_cast<std::size_t>(planetLatitude) * columns + longitude;
-                const Color color = planetLatitude == m_selectedLatitude &&
-                                    longitude == m_selectedLongitude
-                    ? Color{ 255, 202, 87, 255 }
-                    : m_regionColors[regionIndex];
-                const int left = static_cast<int>(std::floor(
-                    layout.mapBounds.x + longitude * cellWidth));
-                const int top = static_cast<int>(std::floor(
-                    layout.mapBounds.y + latitude * cellHeight));
-                const int right = static_cast<int>(std::floor(
-                    layout.mapBounds.x + (longitude + 1) * cellWidth));
-                const int bottom = static_cast<int>(std::floor(
-                    layout.mapBounds.y + (latitude + 1) * cellHeight));
-                DrawRectangle(
-                    left,
-                    top,
-                    std::max(1, right - left),
-                    std::max(1, bottom - top),
-                    color);
-            }
-        }
+        const int selectedMapLatitude = rows - 1 - m_selectedLatitude;
+        DrawRectangle(
+            static_cast<int>(std::floor(
+                layout.mapBounds.x + m_selectedLongitude * cellWidth)),
+            static_cast<int>(std::floor(
+                layout.mapBounds.y + selectedMapLatitude * cellHeight)),
+            std::max(1, static_cast<int>(std::ceil(cellWidth))),
+            std::max(1, static_cast<int>(std::ceil(cellHeight))),
+            { 255, 202, 87, 255 });
 
         for (int longitude = 0; longitude <= 12; ++longitude)
         {
@@ -858,6 +897,7 @@ namespace Infinitesia
                 case Biome::BorealWetland:       return "Boreal Wetland";
                 case Biome::TemperateDeciduous:  return "Temperate Deciduous";
                 case Biome::TemperateMixed:      return "Temperate Mixed";
+                case Biome::TemperateRainforest: return "Temperate Rainforest";
                 case Biome::TemperateSteppe:     return "Temperate Steppe";
                 case Biome::MediterraneanShrub:  return "Mediterranean Shrub";
                 case Biome::ColdDesert:          return "Cold Desert";
@@ -865,6 +905,7 @@ namespace Infinitesia
                 case Biome::SaltFlat:            return "Salt Flat";
                 case Biome::Savanna:             return "Savanna";
                 case Biome::TropicalDryForest:   return "Tropical Dry Forest";
+                case Biome::TropicalMonsoonForest: return "Tropical Monsoon Forest";
                 case Biome::TropicalRainforest:  return "Tropical Rainforest";
                 case Biome::AlpineGrassland:     return "Alpine Grassland";
                 case Biome::AlpineRock:          return "Alpine Rock";
@@ -914,11 +955,31 @@ namespace Infinitesia
             selectedRegion.hasRiver ? "Yes" : "No");
         DrawText(detailText, 30, footerY + 20, 14, { 180, 195, 210, 255 });
 
+        char seasonalText[256];
+        constexpr int kSeasonMonths[4] = { 0, 3, 6, 9 };
+        std::snprintf(
+            seasonalText,
+            sizeof(seasonalText),
+            "Jan %.0f C / %.0f mm  |  Apr %.0f C / %.0f mm  |  Jul %.0f C / %.0f mm  |  Oct %.0f C / %.0f mm",
+            selectedRegion.monthlyTemperatureCelsius[kSeasonMonths[0]],
+            selectedRegion.monthlyPrecipitationMm[kSeasonMonths[0]],
+            selectedRegion.monthlyTemperatureCelsius[kSeasonMonths[1]],
+            selectedRegion.monthlyPrecipitationMm[kSeasonMonths[1]],
+            selectedRegion.monthlyTemperatureCelsius[kSeasonMonths[2]],
+            selectedRegion.monthlyPrecipitationMm[kSeasonMonths[2]],
+            selectedRegion.monthlyTemperatureCelsius[kSeasonMonths[3]],
+            selectedRegion.monthlyPrecipitationMm[kSeasonMonths[3]]);
         DrawText(
-            "Click the map or globe to select a region  |  Drag to rotate  |  Scroll to zoom",
+            seasonalText,
             30,
             footerY + 40,
             13,
+            { 100, 118, 140, 255 });
+        DrawText(
+            "Click the map or globe to select a region  |  Drag to rotate  |  Scroll to zoom",
+            30,
+            footerY + 57,
+            12,
             { 100, 118, 140, 255 });
     }
 }

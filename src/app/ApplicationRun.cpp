@@ -40,12 +40,21 @@ namespace Infinitesia
         WindowGuard window(m_config.window);
         SetTargetFPS(m_config.window.targetFramesPerSecond);
 
-        while (!WindowShouldClose())
+        try
         {
-            m_time.Advance(GetFrameTime());
-            m_simulation.AdvanceFrame(m_time.GetDeltaTime());
-            Update();
-            Render();
+            while (!WindowShouldClose())
+            {
+                m_time.Advance(GetFrameTime());
+                m_simulation.AdvanceFrame(m_time.GetDeltaTime());
+                Update();
+                Render();
+            }
         }
+        catch (...)
+        {
+            m_planetViewer.ReleaseRenderResources();
+            throw;
+        }
+        m_planetViewer.ReleaseRenderResources();
     }
 }
