@@ -54,14 +54,19 @@ namespace Infinitesia
         }
 
         std::optional<WorldObjectId> actor = m_selectedObject;
-        if (actor.has_value() && world.FindObject(*actor) == nullptr)
-        {
-            actor.reset();
-        }
         if (actor.has_value())
         {
             const WorldObject* selectedObject = world.FindObject(*actor);
-            if (selectedObject == nullptr || selectedObject->cell.y != selectedLevel)
+            if (selectedObject == nullptr)
+            {
+                actor.reset();
+                m_selectedObject.reset();
+            }
+            else if (selectedObject->type != WorldObjectType::Worker)
+            {
+                actor.reset();
+            }
+            else if (selectedObject->cell.y != selectedLevel)
             {
                 actor.reset();
                 m_selectedObject.reset();
