@@ -3,6 +3,8 @@
 #include "raylib.h"
 #include "world/Grid.h"
 
+#include <optional>
+
 namespace Infinitesia
 {
     struct CameraConfig
@@ -17,7 +19,8 @@ namespace Infinitesia
     public:
         explicit WorldRenderer(CameraConfig config);
 
-        void Draw(const Grid& grid) const;
+        void Draw(const Grid& grid, std::optional<GridCell> hoveredCell) const;
+        const Camera3D& GetCamera() const;
 
     private:
         Camera3D m_camera;

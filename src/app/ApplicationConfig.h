@@ -17,7 +17,7 @@ namespace Infinitesia
 
     struct ApplicationConfig
     {
-        WindowConfig window{ 1280, 720, 60, "Infinitesia" };
+        WindowConfig window{ 1920, 1080, 60, "Infinitesia" };
         GridConfig grid{ 24, 24, 1.0f };
         CameraConfig camera{ 30.0f, 55.0f, 45.0f };
         float simulationTicksPerSecond = 20.0f;

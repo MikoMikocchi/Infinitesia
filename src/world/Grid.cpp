@@ -46,6 +46,28 @@ namespace Infinitesia
         };
     }
 
+    std::optional<GridCell> Grid::WorldToCell(WorldPosition position) const
+    {
+        if (!std::isfinite(position.x) || !std::isfinite(position.z))
+        {
+            return std::nullopt;
+        }
+
+        const float localX = position.x + m_worldWidth * 0.5f;
+        const float localZ = position.z + m_worldDepth * 0.5f;
+        if (localX < 0.0f || localX >= m_worldWidth ||
+            localZ < 0.0f || localZ >= m_worldDepth)
+        {
+            return std::nullopt;
+        }
+
+        const GridCell cell{
+            static_cast<int>(localX / m_config.cellSize),
+            static_cast<int>(localZ / m_config.cellSize)
+        };
+        return Contains(cell) ? std::optional<GridCell>{ cell } : std::nullopt;
+    }
+
     int Grid::GetColumns() const
     {
         return m_config.columns;

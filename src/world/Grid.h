@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 namespace Infinitesia
 {
     struct GridConfig
@@ -29,6 +31,7 @@ namespace Infinitesia
 
         bool Contains(GridCell cell) const;
         WorldPosition CellToWorld(GridCell cell) const;
+        std::optional<GridCell> WorldToCell(WorldPosition position) const;
 
         int GetColumns() const;
         int GetRows() const;

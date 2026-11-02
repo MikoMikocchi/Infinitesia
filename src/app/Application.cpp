@@ -55,8 +55,17 @@ namespace Infinitesia
         {
             m_time.Advance(GetFrameTime());
             m_simulation.AdvanceFrame(m_time.GetDeltaTime());
+            Update();
             Render();
         }
+    }
+
+    void Application::Update()
+    {
+        m_hoveredCell = m_gridPointer.PickCell(
+            m_grid,
+            m_worldRenderer.GetCamera(),
+            GetMousePosition());
     }
 
     void Application::Render()
@@ -64,7 +73,7 @@ namespace Infinitesia
         BeginDrawing();
         ClearBackground({ 30, 34, 39, 255 });
 
-        m_worldRenderer.Draw(m_grid);
+        m_worldRenderer.Draw(m_grid, m_hoveredCell);
         DrawText(
             m_config.window.title.c_str(),
             (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,
@@ -82,7 +91,7 @@ namespace Infinitesia
         const int fontSize = 16;
         const int lineHeight = 20;
         const int panelWidth = 250;
-        const int panelHeight = 4 * lineHeight + padding;
+        const int panelHeight = 5 * lineHeight + padding;
 
         char buf[128];
 
@@ -99,5 +108,16 @@ namespace Infinitesia
 
         std::snprintf(buf, sizeof(buf), "Grid: %d x %d", m_grid.GetColumns(), m_grid.GetRows());
         DrawText(buf, padding, padding + 3 * lineHeight, fontSize, RAYWHITE);
+
+        if (m_hoveredCell.has_value())
+        {
+            std::snprintf(
+                buf,
+                sizeof(buf),
+                "Cell: %d, %d",
+                m_hoveredCell->column,
+                m_hoveredCell->row);
+            DrawText(buf, padding, padding + 4 * lineHeight, fontSize, GOLD);
+        }
     }
 }
