@@ -22,13 +22,13 @@ namespace Infinitesia
         bool rightClickPressed,
         bool leftClickPressed,
         bool escapePressed,
-        std::optional<WorldObjectId> hoveredTree,
+        std::optional<WorldObjectId> hoveredTarget,
         std::optional<WorldObjectId> selectedWorker,
+        const std::vector<WorkerCommandOption>& targetCommands,
         int screenWidth,
         int screenHeight)
     {
         ContextMenuUpdate result;
-        m_actionEnabled = selectedWorker.has_value();
 
         if (escapePressed && m_isOpen)
         {
@@ -39,9 +39,15 @@ namespace Infinitesia
 
         if (rightClickPressed)
         {
-            if (hoveredTree.has_value())
+            if (hoveredTarget.has_value() && !targetCommands.empty())
             {
-                Open(mousePosition, *hoveredTree, selectedWorker, screenWidth, screenHeight);
+                Open(
+                    mousePosition,
+                    *hoveredTarget,
+                    selectedWorker,
+                    targetCommands,
+                    screenWidth,
+                    screenHeight);
             }
             else
             {
@@ -57,11 +63,21 @@ namespace Infinitesia
         }
 
         result.consumedMouseClick = true;
-        if (CheckCollisionPointRec(mousePosition, GetActionBounds()))
+        for (std::size_t index = 0; index < m_commands.size(); ++index)
         {
-            if (m_actionEnabled && m_actor.has_value())
+            if (!CheckCollisionPointRec(mousePosition, GetActionBounds(index)))
             {
-                result.actionRequest = WorldActionRequest{ WorldAction::Chop, *m_actor, m_target };
+                continue;
+            }
+
+            const WorkerCommandOption& command = m_commands[index];
+            if (command.enabled && m_actor.has_value())
+            {
+                result.commandRequest = WorkerCommandRequest{
+                    command.id,
+                    *m_actor,
+                    m_target
+                };
                 Close();
             }
             return result;
@@ -79,28 +95,33 @@ namespace Infinitesia
         }
 
         const Rectangle bounds = GetBounds();
-        const bool hovered = m_actionEnabled &&
-            CheckCollisionPointRec(GetMousePosition(), GetActionBounds());
         DrawRectangleRec(bounds, kMenuColor);
         DrawRectangleLinesEx(bounds, 1.0f, kMenuBorderColor);
-        if (hovered)
+
+        for (std::size_t index = 0; index < m_commands.size(); ++index)
         {
-            DrawRectangleRec(GetActionBounds(), kHoveredItemColor);
+            const WorkerCommandOption& command = m_commands[index];
+            const Rectangle actionBounds = GetActionBounds(index);
+            if (command.enabled && CheckCollisionPointRec(GetMousePosition(), actionBounds))
+            {
+                DrawRectangleRec(actionBounds, kHoveredItemColor);
+            }
+
+            DrawText(
+                command.label.c_str(),
+                static_cast<int>(m_position.x + kTextInsetX),
+                static_cast<int>(m_position.y + static_cast<float>(index) * m_actionHeight + kTextInsetY),
+                kFontSize,
+                command.enabled ? kEnabledTextColor : kDisabledTextColor);
         }
 
-        DrawText(
-            "Chop",
-            static_cast<int>(m_position.x + kTextInsetX),
-            static_cast<int>(m_position.y + kTextInsetY),
-            kFontSize,
-            m_actionEnabled ? kEnabledTextColor : kDisabledTextColor);
-
-        if (!m_actionEnabled)
+        const char* disabledHint = GetDisabledHint();
+        if (disabledHint != nullptr)
         {
             DrawText(
-                "Select a worker first",
+                disabledHint,
                 static_cast<int>(m_position.x),
-                static_cast<int>(m_position.y + m_actionHeight + 2.0f),
+                static_cast<int>(m_position.y + static_cast<float>(m_commands.size()) * m_actionHeight + 2.0f),
                 kFontSize - 4,
                 kDisabledHintColor);
         }
@@ -113,28 +134,71 @@ namespace Infinitesia
 
     Rectangle WorldContextMenu::GetBounds() const
     {
-        const float height = m_actionHeight + (m_actionEnabled ? 0.0f : m_disabledHintHeight);
+        const float height = static_cast<float>(m_commands.size()) * m_actionHeight +
+            (HasDisabledCommands() ? m_disabledHintHeight : 0.0f);
         return { m_position.x, m_position.y, m_width, height };
     }
 
-    Rectangle WorldContextMenu::GetActionBounds() const
+    Rectangle WorldContextMenu::GetActionBounds(std::size_t index) const
     {
-        return { m_position.x, m_position.y, m_width, m_actionHeight };
+        return {
+            m_position.x,
+            m_position.y + static_cast<float>(index) * m_actionHeight,
+            m_width,
+            m_actionHeight
+        };
+    }
+
+    const char* WorldContextMenu::GetDisabledHint() const
+    {
+        if (!m_actor.has_value())
+        {
+            return "Select a worker first";
+        }
+
+        for (const WorkerCommandOption& command : m_commands)
+        {
+            if (!command.enabled && !command.disabledReason.empty())
+            {
+                return command.disabledReason.c_str();
+            }
+        }
+        return nullptr;
+    }
+
+    bool WorldContextMenu::HasDisabledCommands() const
+    {
+        if (!m_actor.has_value())
+        {
+            return true;
+        }
+
+        for (const WorkerCommandOption& command : m_commands)
+        {
+            if (!command.enabled)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     void WorldContextMenu::Open(
         Vector2 position,
         WorldObjectId target,
         std::optional<WorldObjectId> actor,
+        const std::vector<WorkerCommandOption>& commands,
         int screenWidth,
         int screenHeight)
     {
         m_isOpen = true;
         m_target = target;
         m_actor = actor;
+        m_commands = commands;
 
         const float maximumX = std::max(m_screenMargin, static_cast<float>(screenWidth) - m_width - m_screenMargin);
-        const float menuHeight = m_actionHeight + (actor.has_value() ? 0.0f : m_disabledHintHeight);
+        const float menuHeight = static_cast<float>(m_commands.size()) * m_actionHeight +
+            (HasDisabledCommands() ? m_disabledHintHeight : 0.0f);
         const float maximumY = std::max(m_screenMargin, static_cast<float>(screenHeight) - menuHeight - m_screenMargin);
         m_position = {
             std::clamp(position.x + m_mouseOffset, m_screenMargin, maximumX),
@@ -146,5 +210,6 @@ namespace Infinitesia
     {
         m_isOpen = false;
         m_actor.reset();
+        m_commands.clear();
     }
 }

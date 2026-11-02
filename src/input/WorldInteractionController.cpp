@@ -4,27 +4,6 @@ namespace Infinitesia
 {
     namespace
     {
-        const char* GetWorkOrderMessage(WorkOrderResult result)
-        {
-            switch (result)
-            {
-            case WorkOrderResult::Accepted:
-                return "Worker is moving to the tree";
-            case WorkOrderResult::InvalidWorker:
-                return "Selected worker is no longer available";
-            case WorkOrderResult::InvalidTarget:
-                return "Tree is no longer available";
-            case WorkOrderResult::WorkerBusy:
-                return "Worker already has an order";
-            case WorkOrderResult::TargetBusy:
-                return "Tree is already being chopped";
-            case WorkOrderResult::NoReachableWorkCell:
-                return "No free adjacent cell for the worker";
-            }
-
-            return "Could not assign work order";
-        }
-
         std::optional<WorldObjectId> GetObjectOfType(
             const World& world,
             std::optional<WorldObjectId> objectId,
@@ -49,6 +28,7 @@ namespace Infinitesia
         const Grid& grid,
         World& world,
         const Camera3D& camera,
+        const WorkerCommandRegistry& commands,
         WorkSystem& workSystem,
         int screenWidth,
         int screenHeight)
@@ -64,29 +44,41 @@ namespace Infinitesia
                 grid, world, camera, input.mousePosition);
         }
 
-        const std::optional<WorldObjectId> hoveredTree =
-            GetObjectOfType(world, m_hoveredObject, WorldObjectType::Tree);
         const std::optional<WorldObjectId> selectedWorker =
             GetObjectOfType(world, m_selectedObject, WorldObjectType::Worker);
+        std::vector<WorkerCommandOption> targetCommands;
+        if (m_hoveredObject.has_value())
+        {
+            targetCommands = commands.GetOptions(
+                *m_hoveredObject,
+                selectedWorker,
+                world,
+                grid,
+                workSystem);
+        }
 
         const ContextMenuUpdate menuUpdate = m_contextMenu.Update(
             input.mousePosition,
             input.rightClickPressed,
             input.leftClickPressed,
             input.escapePressed,
-            hoveredTree,
+            m_hoveredObject,
             selectedWorker,
+            targetCommands,
             screenWidth,
             screenHeight);
 
-        if (menuUpdate.actionRequest.has_value())
+        if (menuUpdate.commandRequest.has_value())
         {
-            const WorldActionRequest& request = *menuUpdate.actionRequest;
-            if (request.action == WorldAction::Chop)
-            {
-                m_actionNotice = GetWorkOrderMessage(
-                    workSystem.AssignChopOrder(request.actor, request.target, world, grid));
-            }
+            const WorkerCommandRequest& request = *menuUpdate.commandRequest;
+            const WorkerCommandResult result = commands.Execute(
+                request.commandId,
+                request.actor,
+                request.target,
+                world,
+                grid,
+                workSystem);
+            m_actionNotice = result.message;
         }
         else if (input.leftClickPressed && !menuUpdate.consumedMouseClick)
         {

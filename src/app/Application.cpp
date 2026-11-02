@@ -1,6 +1,8 @@
 #include "app/Application.h"
 #include "raylib.h"
+#include "world/ChopTreeCommand.h"
 
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -49,6 +51,8 @@ namespace Infinitesia
           m_cameraController(m_config.cameraControls),
           m_showPathDebug(m_config.showPathDebug)
     {
+        m_workerCommands.Register(std::make_unique<ChopTreeCommand>());
+
         if (m_config.camera.distance < m_config.cameraControls.minimumDistance ||
             m_config.camera.distance > m_config.cameraControls.maximumDistance ||
             m_config.camera.elevationDegrees < m_config.cameraControls.minimumElevationDegrees ||
@@ -94,6 +98,7 @@ namespace Infinitesia
             m_grid,
             m_world,
             m_worldRenderer.GetCamera(),
+            m_workerCommands,
             m_workSystem,
             m_config.window.width,
             m_config.window.height);

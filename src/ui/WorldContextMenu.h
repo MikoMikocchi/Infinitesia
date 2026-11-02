@@ -1,28 +1,17 @@
 #pragma once
 
 #include "raylib.h"
-#include "world/World.h"
+#include "world/WorkerCommand.h"
 
 #include <optional>
+#include <vector>
 
 namespace Infinitesia
 {
-    enum class WorldAction
-    {
-        Chop
-    };
-
-    struct WorldActionRequest
-    {
-        WorldAction action;
-        WorldObjectId actor;
-        WorldObjectId target;
-    };
-
     struct ContextMenuUpdate
     {
         bool consumedMouseClick = false;
-        std::optional<WorldActionRequest> actionRequest;
+        std::optional<WorkerCommandRequest> commandRequest;
     };
 
     class WorldContextMenu
@@ -33,8 +22,9 @@ namespace Infinitesia
             bool rightClickPressed,
             bool leftClickPressed,
             bool escapePressed,
-            std::optional<WorldObjectId> hoveredTree,
+            std::optional<WorldObjectId> hoveredTarget,
             std::optional<WorldObjectId> selectedWorker,
+            const std::vector<WorkerCommandOption>& targetCommands,
             int screenWidth,
             int screenHeight);
 
@@ -42,21 +32,29 @@ namespace Infinitesia
         bool BlocksWorldInput(Vector2 mousePosition) const;
 
     private:
-        static constexpr float m_width = 184.0f;
-        static constexpr float m_actionHeight = 48.0f;
+        static constexpr float m_width = 220.0f;
+        static constexpr float m_actionHeight = 36.0f;
         static constexpr float m_disabledHintHeight = 22.0f;
         static constexpr float m_screenMargin = 8.0f;
         static constexpr float m_mouseOffset = 6.0f;
 
         Rectangle GetBounds() const;
-        Rectangle GetActionBounds() const;
-        void Open(Vector2 position, WorldObjectId target, std::optional<WorldObjectId> actor, int screenWidth, int screenHeight);
+        Rectangle GetActionBounds(std::size_t index) const;
+        const char* GetDisabledHint() const;
+        bool HasDisabledCommands() const;
+        void Open(
+            Vector2 position,
+            WorldObjectId target,
+            std::optional<WorldObjectId> actor,
+            const std::vector<WorkerCommandOption>& commands,
+            int screenWidth,
+            int screenHeight);
         void Close();
 
         bool m_isOpen = false;
         Vector2 m_position{ 0.0f, 0.0f };
         WorldObjectId m_target{ 0 };
         std::optional<WorldObjectId> m_actor;
-        bool m_actionEnabled = false;
+        std::vector<WorkerCommandOption> m_commands;
     };
 }

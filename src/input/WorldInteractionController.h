@@ -5,6 +5,7 @@
 #include "raylib.h"
 #include "ui/WorldContextMenu.h"
 #include "world/Grid.h"
+#include "world/WorkerCommandRegistry.h"
 #include "world/WorkSystem.h"
 
 #include <optional>
@@ -28,6 +29,7 @@ namespace Infinitesia
             const Grid& grid,
             World& world,
             const Camera3D& camera,
+            const WorkerCommandRegistry& commands,
             WorkSystem& workSystem,
             int screenWidth,
             int screenHeight);
