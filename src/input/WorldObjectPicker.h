@@ -15,6 +15,7 @@ namespace Infinitesia
             const Grid& grid,
             const World& world,
             const Camera3D& camera,
-            Vector2 screenPosition) const;
+            Vector2 screenPosition,
+            int selectedLevel) const;
     };
 }

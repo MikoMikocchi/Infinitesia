@@ -40,7 +40,8 @@ namespace Infinitesia
             const Grid& grid,
             GridCell viewCenter,
             int chunkRadius,
-            bool showCellGrid)
+            bool showCellGrid,
+            int viewLevel)
         {
             const int firstColumn = std::max(
                 0,
@@ -62,7 +63,8 @@ namespace Infinitesia
                                  static_cast<float>(firstRow) * grid.GetCellSize();
             const float lastZ = -grid.GetWorldDepth() * 0.5f +
                                 static_cast<float>(lastRow) * grid.GetCellSize();
-            const float lineY = grid.GetWorldHeight() + kGridLineHeight;
+            const float lineY =
+                static_cast<float>(viewLevel + 1) * grid.GetCellSize() + kGridLineHeight;
             const int lineSpacing = showCellGrid ? 1 : kChunkSize;
 
             for (int column = firstColumn; column < lastColumn; column += lineSpacing)

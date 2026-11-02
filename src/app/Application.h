@@ -37,6 +37,7 @@ namespace Infinitesia
         DebugOverlay m_debugOverlay;
         GridCell m_chunkViewCenter{};
         int m_chunkRenderRadius = 1;
+        int m_selectedLevel = 0;
         bool m_showPathDebug = true;
         Time m_time;
     };

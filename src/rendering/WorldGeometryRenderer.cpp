@@ -36,13 +36,18 @@ namespace Infinitesia
                 throw std::invalid_argument("Block has an unsupported type.");
             }
 
-            bool IsChunkVisible(GridCell cell, GridCell viewCenter, int chunkRadius)
+            bool IsChunkVisible(
+                GridCell cell,
+                GridCell viewCenter,
+                int chunkRadius,
+                int viewLevel)
             {
                 const int chunkX = cell.x / kChunkSize;
                 const int chunkZ = cell.z / kChunkSize;
                 const int centerChunkX = viewCenter.x / kChunkSize;
                 const int centerChunkZ = viewCenter.z / kChunkSize;
-                return std::abs(chunkX - centerChunkX) <= chunkRadius &&
+                return cell.y == viewLevel &&
+                       std::abs(chunkX - centerChunkX) <= chunkRadius &&
                        std::abs(chunkZ - centerChunkZ) <= chunkRadius;
             }
 
@@ -70,11 +75,13 @@ namespace Infinitesia
                 return copy;
             }
 
-            Mesh BuildSurfaceChunkMesh(const Grid& grid, const WorldChunk& chunk)
+            Mesh BuildLevelChunkMesh(
+                const Grid& grid,
+                const WorldChunk& chunk,
+                int viewLevel)
             {
-                const int surfaceLocalY = grid.GetHeight() - 1 -
-                                          chunk.coordinate.y * kChunkSize;
-                if (surfaceLocalY < 0 || surfaceLocalY >= chunk.height)
+                const int localY = viewLevel - chunk.coordinate.y * kChunkSize;
+                if (localY < 0 || localY >= chunk.height)
                 {
                     return {};
                 }
@@ -93,7 +100,7 @@ namespace Infinitesia
                 colors.reserve(surfaceCellCount * 16);
                 indices.reserve(surfaceCellCount * 6);
                 const float cellSize = grid.GetCellSize();
-                const float topY = grid.GetWorldHeight();
+                const float topY = static_cast<float>(viewLevel + 1) * cellSize;
                 const float worldLeft = -grid.GetWorldWidth() * 0.5f;
                 const float worldFront = -grid.GetWorldDepth() * 0.5f;
                 for (int localZ = 0; localZ < chunk.depth; ++localZ)
@@ -103,7 +110,7 @@ namespace Infinitesia
                         const std::size_t blockIndex =
                             (static_cast<std::size_t>(localZ) *
                                  static_cast<std::size_t>(chunk.height) +
-                             static_cast<std::size_t>(surfaceLocalY)) *
+                             static_cast<std::size_t>(localY)) *
                                 static_cast<std::size_t>(chunk.width) +
                             static_cast<std::size_t>(localX);
                         const Block& block = chunk.blocks[blockIndex];
@@ -330,6 +337,7 @@ namespace Infinitesia
             const World& world,
             GridCell viewCenter,
             int chunkRadius,
+            int viewLevel,
             Material material,
             ChunkMeshCache& meshCache)
         {
@@ -338,14 +346,17 @@ namespace Infinitesia
             for (const auto& [coordinate, chunk] : world.GetChunks())
             {
                 if (std::abs(coordinate.x - centerChunkX) > chunkRadius ||
-                    std::abs(coordinate.z - centerChunkZ) > chunkRadius)
+                    std::abs(coordinate.z - centerChunkZ) > chunkRadius ||
+                    viewLevel < coordinate.y * kChunkSize ||
+                    viewLevel >= (coordinate.y + 1) * kChunkSize)
                 {
                     continue;
                 }
 
                 auto cachedMesh = meshCache.find(coordinate);
                 if (cachedMesh == meshCache.end() ||
-                    cachedMesh->second.terrainRevision != chunk.terrainRevision)
+                    cachedMesh->second.terrainRevision != chunk.terrainRevision ||
+                    cachedMesh->second.level != viewLevel)
                 {
                     if (cachedMesh != meshCache.end() &&
                         (cachedMesh->second.mesh.vaoId != 0 ||
@@ -354,8 +365,9 @@ namespace Infinitesia
                         UnloadMesh(cachedMesh->second.mesh);
                     }
                     ChunkMeshCacheEntry entry{
-                        BuildSurfaceChunkMesh(grid, chunk),
-                        chunk.terrainRevision
+                        BuildLevelChunkMesh(grid, chunk, viewLevel),
+                        chunk.terrainRevision,
+                        viewLevel
                     };
                     if (cachedMesh == meshCache.end())
                     {
@@ -382,11 +394,12 @@ namespace Infinitesia
             const Grid& grid,
             const World& world,
             GridCell viewCenter,
-            int chunkRadius)
+            int chunkRadius,
+            int viewLevel)
         {
             for (const WorldObject& object : world.GetObjects())
             {
-                if (IsChunkVisible(object.cell, viewCenter, chunkRadius))
+                if (IsChunkVisible(object.cell, viewCenter, chunkRadius, viewLevel))
                 {
                     DrawObjectShadow(grid, object);
                 }
@@ -400,11 +413,12 @@ namespace Infinitesia
             Mesh sphereMesh,
             Material material,
             GridCell viewCenter,
-            int chunkRadius)
+            int chunkRadius,
+            int viewLevel)
         {
             for (const WorldObject& object : world.GetObjects())
             {
-                if (IsChunkVisible(object.cell, viewCenter, chunkRadius))
+                if (IsChunkVisible(object.cell, viewCenter, chunkRadius, viewLevel))
                 {
                     DrawWorldObject(grid, object, cylinderMesh, sphereMesh, material);
                 }

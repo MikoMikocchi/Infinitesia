@@ -8,7 +8,8 @@ namespace Infinitesia
         const Grid& grid,
         const World& world,
         const Camera3D& camera,
-        Vector2 screenPosition) const
+        Vector2 screenPosition,
+        int selectedLevel) const
     {
         const Ray ray = GetMouseRay(screenPosition, camera);
         float nearestDistance = std::numeric_limits<float>::max();
@@ -16,6 +17,11 @@ namespace Infinitesia
 
         for (const WorldObject& object : world.GetObjects())
         {
+            if (object.cell.y != selectedLevel)
+            {
+                continue;
+            }
+
             const WorldPosition center = object.position;
             const WorldObjectSize size = GetWorldObjectSize(object.type, grid.GetCellSize());
             const BoundingBox bounds{

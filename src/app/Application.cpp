@@ -18,14 +18,14 @@ namespace Infinitesia
         constexpr float kDegreesToRadians = PI / 180.0f;
         constexpr std::size_t kChunksGeneratedPerFrame = 4;
 
-        GridCell GetCameraGridCell(const Grid& grid, Vector3 cameraTarget)
+        GridCell GetCameraGridCell(const Grid& grid, Vector3 cameraTarget, int selectedLevel)
         {
             const float halfWidth = grid.GetWorldWidth() * 0.5f;
             const float halfDepth = grid.GetWorldDepth() * 0.5f;
             const float edgeInset = grid.GetCellSize() * 0.001f;
             const WorldPosition target{
                 std::clamp(cameraTarget.x, -halfWidth + edgeInset, halfWidth - edgeInset),
-                grid.GetWorldHeight(),
+                static_cast<float>(selectedLevel + 1) * grid.GetCellSize(),
                 std::clamp(cameraTarget.z, -halfDepth + edgeInset, halfDepth - edgeInset)
             };
             const std::optional<GridCell> cell = grid.WorldToCell(target);
@@ -114,6 +114,7 @@ namespace Infinitesia
               m_config.grid.height - 1,
               m_config.grid.depth / 2
           },
+          m_selectedLevel(m_config.grid.height - 1),
           m_showPathDebug(m_config.showPathDebug)
     {
         Camera3D& camera = m_worldRenderer.GetCamera();
@@ -158,8 +159,32 @@ namespace Infinitesia
             m_showPathDebug = !m_showPathDebug;
         }
 
+        int nextLevel = m_selectedLevel;
+        if (IsKeyPressed(KEY_PAGE_DOWN))
+        {
+            nextLevel = std::max(0, m_selectedLevel - 1);
+        }
+        else if (IsKeyPressed(KEY_PAGE_UP))
+        {
+            nextLevel = std::min(m_grid.GetHeight() - 1, m_selectedLevel + 1);
+        }
+        if (nextLevel != m_selectedLevel)
+        {
+            Camera3D& camera = m_worldRenderer.GetCamera();
+            const float levelHeight =
+                static_cast<float>(nextLevel + 1) * m_grid.GetCellSize();
+            const float verticalOffset = levelHeight - camera.target.y;
+            camera.target.y = levelHeight;
+            camera.position.y += verticalOffset;
+            m_selectedLevel = nextLevel;
+        }
+
         m_cameraController.Update(m_worldRenderer.GetCamera(), m_time.GetDeltaTime());
-        m_chunkViewCenter = GetCameraGridCell(m_grid, m_worldRenderer.GetCamera().target);
+        m_chunkViewCenter = GetCameraGridCell(
+            m_grid,
+            m_worldRenderer.GetCamera().target,
+            m_selectedLevel);
+        m_chunkViewCenter.y = m_selectedLevel;
         m_chunkRenderRadius = GetChunkRenderRadius(m_worldRenderer.GetCamera(), m_grid);
         m_world.RequestChunksAround(m_chunkViewCenter, m_chunkRenderRadius);
         m_world.GeneratePendingChunks(kChunksGeneratedPerFrame);
@@ -175,7 +200,8 @@ namespace Infinitesia
             m_worldRenderer.GetCamera(),
             m_commands,
             m_config.window.width,
-            m_config.window.height);
+            m_config.window.height,
+            m_selectedLevel);
     }
 
     void Application::Render()
@@ -186,7 +212,9 @@ namespace Infinitesia
         if (m_showPathDebug && selectedObjectId.has_value())
         {
             const WorldObject* selectedObject = m_world.FindObject(*selectedObjectId);
-            if (selectedObject != nullptr && selectedObject->type == WorldObjectType::Worker)
+            if (selectedObject != nullptr &&
+                selectedObject->type == WorldObjectType::Worker &&
+                selectedObject->cell.y == m_selectedLevel)
             {
                 pathOrigin = selectedObject->position;
                 debugPath = m_workSystem.GetRemainingPath(selectedObject->id);
@@ -205,7 +233,8 @@ namespace Infinitesia
             pathOrigin,
             debugPath,
             m_chunkViewCenter,
-            m_chunkRenderRadius);
+            m_chunkRenderRadius,
+            m_selectedLevel);
         DrawText(
             m_config.window.title.c_str(),
             (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,
@@ -257,7 +286,8 @@ namespace Infinitesia
             m_config.window.height,
             m_worldInteraction.GetActionNotice(),
             m_world.GetLoadedChunkCount(),
-            m_world.GetTotalChunkCount()
+            m_world.GetTotalChunkCount(),
+            m_selectedLevel
         });
     }
 }

@@ -15,6 +15,7 @@ namespace Infinitesia
         {
             Mesh mesh{};
             std::uint64_t terrainRevision = 0;
+            int level = -1;
         };
 
         using ChunkMeshCache = std::map<ChunkCoordinate, ChunkMeshCacheEntry>;
@@ -24,13 +25,15 @@ namespace Infinitesia
             const World& world,
             GridCell viewCenter,
             int chunkRadius,
+            int viewLevel,
             Material material,
             ChunkMeshCache& meshCache);
         void DrawObjectShadows(
             const Grid& grid,
             const World& world,
             GridCell viewCenter,
-            int chunkRadius);
+            int chunkRadius,
+            int viewLevel);
         void DrawObjects(
             const Grid& grid,
             const World& world,
@@ -38,6 +41,7 @@ namespace Infinitesia
             Mesh sphereMesh,
             Material material,
             GridCell viewCenter,
-            int chunkRadius);
+            int chunkRadius,
+            int viewLevel);
     }
 }

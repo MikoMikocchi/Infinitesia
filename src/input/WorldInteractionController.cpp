@@ -9,9 +9,14 @@ namespace Infinitesia
         const Camera3D& camera,
         const CommandRegistry& commands,
         int screenWidth,
-        int screenHeight)
+        int screenHeight,
+        int selectedLevel)
     {
-        m_hoveredCell = m_gridPointer.PickCell(grid, camera, input.mousePosition);
+        m_hoveredCell = m_gridPointer.PickCell(
+            grid,
+            camera,
+            input.mousePosition,
+            selectedLevel);
         if (m_contextMenu.BlocksWorldInput(input.mousePosition))
         {
             m_hoveredObject.reset();
@@ -19,13 +24,22 @@ namespace Infinitesia
         else
         {
             m_hoveredObject = m_worldObjectPicker.PickObject(
-                grid, world, camera, input.mousePosition);
+                grid, world, camera, input.mousePosition, selectedLevel);
         }
 
         std::optional<WorldObjectId> actor = m_selectedObject;
         if (actor.has_value() && world.FindObject(*actor) == nullptr)
         {
             actor.reset();
+        }
+        if (actor.has_value())
+        {
+            const WorldObject* selectedObject = world.FindObject(*actor);
+            if (selectedObject == nullptr || selectedObject->cell.y != selectedLevel)
+            {
+                actor.reset();
+                m_selectedObject.reset();
+            }
         }
 
         std::vector<CommandOption> targetCommands;

@@ -13,6 +13,7 @@ namespace Infinitesia
         std::optional<GridCell> PickCell(
             const Grid& grid,
             const Camera3D& camera,
-            Vector2 screenPosition) const;
+            Vector2 screenPosition,
+            int selectedLevel) const;
     };
 }

@@ -133,7 +133,8 @@ namespace Infinitesia
         WorldPosition pathOrigin,
         const std::vector<GridCell>& debugPath,
         GridCell chunkViewCenter,
-        int chunkRenderRadius) const
+        int chunkRenderRadius,
+        int viewLevel) const
     {
         BeginMode3D(m_camera);
         BeginShaderMode(m_worldShader);
@@ -142,6 +143,7 @@ namespace Infinitesia
             world,
             chunkViewCenter,
             chunkRenderRadius,
+            viewLevel,
             m_worldMaterial,
             m_chunkMeshes);
         EndShaderMode();
@@ -152,7 +154,8 @@ namespace Infinitesia
             grid,
             world,
             chunkViewCenter,
-            chunkRenderRadius);
+            chunkRenderRadius,
+            viewLevel);
         EndShaderMode();
         rlEnableDepthMask();
 
@@ -164,7 +167,8 @@ namespace Infinitesia
             m_sphereMesh,
             m_worldMaterial,
             chunkViewCenter,
-            chunkRenderRadius);
+            chunkRenderRadius,
+            viewLevel);
         EndShaderMode();
 
         if (hoveredCell.has_value())
@@ -175,7 +179,8 @@ namespace Infinitesia
             grid,
             chunkViewCenter,
             chunkRenderRadius,
-            chunkRenderRadius <= 2);
+            chunkRenderRadius <= 2,
+            viewLevel);
         WorldOverlayRenderer::DrawDebugPath(grid, pathOrigin, debugPath);
         WorldOverlayRenderer::DrawObjectHighlights(grid, world, hoveredObject, selectedObject);
         EndMode3D();

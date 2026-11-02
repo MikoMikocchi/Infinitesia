@@ -35,7 +35,8 @@ namespace Infinitesia
             WorldPosition pathOrigin,
             const std::vector<GridCell>& debugPath,
             GridCell chunkViewCenter,
-            int chunkRenderRadius) const;
+            int chunkRenderRadius,
+            int viewLevel) const;
         Camera3D& GetCamera();
         const Camera3D& GetCamera() const;
 

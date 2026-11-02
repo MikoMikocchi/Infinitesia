@@ -30,7 +30,8 @@ namespace Infinitesia
             const Camera3D& camera,
             const CommandRegistry& commands,
             int screenWidth,
-            int screenHeight);
+            int screenHeight,
+            int selectedLevel);
 
         std::optional<GridCell> GetHoveredCell() const;
         std::optional<WorldObjectId> GetHoveredObject() const;

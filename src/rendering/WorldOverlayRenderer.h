@@ -15,7 +15,8 @@ namespace Infinitesia
             const Grid& grid,
             GridCell viewCenter,
             int chunkRadius,
-            bool showCellGrid);
+            bool showCellGrid,
+            int viewLevel);
         void DrawHoveredCell(const Grid& grid, GridCell cell);
         void DrawDebugPath(const Grid& grid, WorldPosition origin, const std::vector<GridCell>& path);
         void DrawObjectHighlights(
