@@ -20,6 +20,8 @@ namespace Infinitesia
     {
     public:
         explicit WorldRenderer(CameraConfig config);
+        WorldRenderer(const WorldRenderer&) = delete;
+        WorldRenderer& operator=(const WorldRenderer&) = delete;
 
         void LoadShaders();
         void UnloadShaders();

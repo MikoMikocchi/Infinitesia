@@ -65,6 +65,10 @@ add_executable(Infinitesia
   src/ui/DebugOverlay.cpp
   src/rendering/WorldRenderer.h
   src/rendering/WorldRenderer.cpp
+  src/rendering/WorldGeometryRenderer.h
+  src/rendering/WorldGeometryRenderer.cpp
+  src/rendering/WorldOverlayRenderer.h
+  src/rendering/WorldOverlayRenderer.cpp
 )
 
 set(INFINITESIA_SHADER_FILES
