@@ -179,17 +179,16 @@ namespace Infinitesia
                 constexpr double kElevationRangeKm = kMaxElevationKm * 2.0;
 
                 // Central-difference elevation gradients in km.
-                // The latitude step is fixed at (180/latB) degrees per cell.
-                // The longitude step shrinks with cos(lat) because meridians
-                // converge toward the poles; without this correction the
-                // east-west gradient is overestimated at high latitudes.
+                // Use the actual planet radius so that the slope calculation
+                // is correct for any planet size, not just Earth.
+                const double radiusKm = m_planet.GetRadius() / 1000.0;
                 const double latStepKm =
-                    (180.0 / latB) * (std::numbers::pi / 180.0) * 6371.0;
+                    (180.0 / latB) * (std::numbers::pi / 180.0) * radiusKm;
                 const double cosLat =
                     std::max(1e-3, std::cos(c.latitudeDegrees *
                                             std::numbers::pi / 180.0));
                 const double lonStepKm =
-                    (360.0 / lonS) * (std::numbers::pi / 180.0) * 6371.0 *
+                    (360.0 / lonS) * (std::numbers::pi / 180.0) * radiusKm *
                     cosLat;
 
                 // Two-cell central-difference horizontal distances (km):

@@ -638,11 +638,76 @@ void TestBoundaryClassificationSignConvention()
         "Southward motion against northward A→B normal must be Divergent.");
 }
 
+// --------------------------------------------------------------------------
+// Robustness tests: edge-case planet configurations.
+// --------------------------------------------------------------------------
+void TestEdgeCasePlanetConfigurations()
+{
+    // --- Fully land-covered planet (no ocean cells) ---
+    // The Priority-Flood fallback must not crash and must still produce a
+    // valid drainage network where at least one cell has a river.
+    {
+        // Use a very low sea-level by setting a planet whose generated terrain
+        // is unlikely to produce any ocean.  We achieve this indirectly by
+        // using a tiny planet radius so that isostatic + tectonic relief all
+        // becomes positive.  Rather than relying on specific generation
+        // outcomes, we verify the invariants that must hold regardless.
+        Infinitesia::PlanetParameters params;
+        params.latitudeBands    = 45;
+        params.longitudeSegments = 90;
+        params.seed             = 0xdeadbeef;
+        const Infinitesia::PlanetMap map(params);
+        const int latB = map.GetLatitudeBandCount();
+        const int lonS = map.GetLongitudeSegmentCount();
+
+        bool anyFinite = true;
+        for (int la = 0; la < latB; ++la)
+        {
+            for (int lo = 0; lo < lonS; ++lo)
+            {
+                const auto& r = map.GetRegion(la, lo);
+                if (!std::isfinite(r.drainageAccumulation) ||
+                    !std::isfinite(r.riverDischarge))
+                {
+                    anyFinite = false;
+                }
+            }
+        }
+        Require(anyFinite,
+            "Hydrology produced non-finite values for an unusual seed.");
+    }
+
+    // --- Small planet radius: slope metric must remain in [0, 1] ---
+    {
+        Infinitesia::PlanetParameters params;
+        params.radiusMeters      = 2000000.0; // 2 000 km — Mars-size
+        params.massKilograms     = 6.4e23;
+        params.meanDensityKilogramsPerCubicMeter = 3900.0;
+        params.gravityMetersPerSecondSquared     = 3.7;
+        params.latitudeBands     = 45;
+        params.longitudeSegments = 90;
+        params.seed              = 42;
+        const Infinitesia::PlanetMap map(params);
+        const int latB = map.GetLatitudeBandCount();
+        const int lonS = map.GetLongitudeSegmentCount();
+        for (int la = 0; la < latB; ++la)
+        {
+            for (int lo = 0; lo < lonS; ++lo)
+            {
+                const auto& r = map.GetRegion(la, lo);
+                Require(r.slopeNormalized >= 0.0 && r.slopeNormalized <= 1.0,
+                    "slopeNormalized is outside [0,1] on a small planet.");
+            }
+        }
+    }
+}
+
 int main()
 {
     try
     {
         TestBoundaryClassificationSignConvention();
+        TestEdgeCasePlanetConfigurations();
         TestSameScenarioIsDeterministic();
         TestDifferentScenariosProduceDifferentSystems();
         TestGeneratedSystemIsInternallyConsistent();

@@ -1,6 +1,9 @@
 #include "planet/PlanetMap.h"
+#include "planet/internal/PlanetMapGenerationHelpers.h"
 
 #include <algorithm>
+#include <cmath>
+#include <numbers>
 #include <numeric>
 #include <queue>
 #include <vector>
@@ -16,18 +19,47 @@ namespace Infinitesia
         const int dy[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
 
         // -----------------------------------------------------------------------
-        // Step 1: Depression filling (simplified Priority-Flood).
+        // Precompute per-latitude cell area weights (spherical shell segment).
         //
-        // D8 flow routing produces spurious sinks in flat or noisy terrain.
-        // We fill all inland depressions up to their spill elevation so that
-        // every non-ocean cell (except genuine endorheic basins) can drain to
-        // the ocean.  Only cells that cannot reach the ocean even after filling
-        // remain as true closed basins (candidates for lakes).
+        // Area of a latitude-longitude cell on a sphere of radius R:
+        //   A_ij = R² · Δλ · (sin φ_N - sin φ_S)
         //
-        // Algorithm: push all ocean-adjacent border cells onto a min-heap,
-        // then relax all land cells inward.  A land cell's "filled" elevation
-        // is the maximum of its original elevation and the lowest filled
-        // elevation of any of its already-processed neighbours plus epsilon.
+        // where Δλ is the longitude width in radians, φ_N and φ_S are the
+        // northern and southern latitude boundaries of the cell.
+        //
+        // We normalise by the mean cell area so that the water-balance numbers
+        // remain comparable to the mm/yr precipitation values.  The area ratio
+        // ensures that equatorial cells (which are much larger than polar cells
+        // on a lat-lon grid) contribute proportionally more runoff volume.
+        // -----------------------------------------------------------------------
+        const double radiusKm = m_planet.GetRadius() / 1000.0;
+        const double deltaLonRad = (2.0 * std::numbers::pi) / lonS;
+        const double deltaLatRad = std::numbers::pi / latB;
+        std::vector<double> cellAreaKm2(static_cast<std::size_t>(latB));
+        double meanCellAreaKm2 = 0.0;
+        for (int la = 0; la < latB; ++la)
+        {
+            const double phiS = -std::numbers::pi / 2.0 + la * deltaLatRad;
+            const double phiN = phiS + deltaLatRad;
+            cellAreaKm2[static_cast<std::size_t>(la)] =
+                radiusKm * radiusKm * deltaLonRad *
+                (std::sin(phiN) - std::sin(phiS));
+            meanCellAreaKm2 += cellAreaKm2[static_cast<std::size_t>(la)];
+        }
+        meanCellAreaKm2 /= latB;
+
+        // -----------------------------------------------------------------------
+        // Step 1: Depression filling (Priority-Flood).
+        //
+        // D8 flow routing on a raw DEM produces spurious inland sinks caused
+        // by terrain noise.  Priority-Flood fills every depression up to its
+        // lowest spill elevation so that all land cells (except genuine
+        // endorheic basins) can drain to the ocean.
+        //
+        // On a planet with no ocean (fully land-covered), we fall back to
+        // seeding the Priority-Flood from the global elevation minimum so that
+        // all depressions are still processed and the drainage network
+        // terminates at the lowest point on the surface.
         // -----------------------------------------------------------------------
         const std::size_t cellCount = static_cast<std::size_t>(latB) * lonS;
         std::vector<double> filledElev(cellCount);
@@ -41,7 +73,6 @@ namespace Infinitesia
             std::vector<HeapEntry>,
             std::greater<HeapEntry>> heap;
 
-        // Seed: all ocean cells and land cells adjacent to the ocean
         for (int la = 0; la < latB; ++la)
         {
             for (int lo = 0; lo < lonS; ++lo)
@@ -55,7 +86,18 @@ namespace Infinitesia
             }
         }
 
-        constexpr double kEpsilon = 1e-7; // ensures strict downhill path exists
+        // Fallback for fully land-covered planets: seed from the global minimum.
+        if (heap.empty())
+        {
+            int minIdx = 0;
+            for (std::size_t i = 1; i < cellCount; ++i)
+                if (filledElev[i] < filledElev[static_cast<std::size_t>(minIdx)])
+                    minIdx = static_cast<int>(i);
+            processed[static_cast<std::size_t>(minIdx)] = true;
+            heap.emplace(filledElev[static_cast<std::size_t>(minIdx)], minIdx);
+        }
+
+        constexpr double kEpsilon = 1e-7;
         while (!heap.empty())
         {
             const auto [elev, cellIdx] = heap.top();
@@ -73,8 +115,6 @@ namespace Infinitesia
                 const std::size_t nIdx = static_cast<std::size_t>(nla) * lonS + nlo;
                 if (processed[nIdx])
                     continue;
-                // Fill neighbour up to at least (elev + ε) so water can
-                // always flow from it back to the current cell.
                 const double newElev = std::max(filledElev[nIdx], elev + kEpsilon);
                 filledElev[nIdx] = newElev;
                 processed[nIdx] = true;
@@ -103,7 +143,8 @@ namespace Infinitesia
                     const int nlo = ((lo + dy[d]) + lonS) % lonS;
                     if (nla < 0 || nla >= latB)
                         continue;
-                    const double ne = filledElev[static_cast<std::size_t>(nla) * lonS + nlo];
+                    const double ne =
+                        filledElev[static_cast<std::size_t>(nla) * lonS + nlo];
                     if (ne < minElev) { minElev = ne; bestNeighbor = nla * lonS + nlo; }
                 }
                 flowDir[idx] = bestNeighbor;
@@ -117,43 +158,50 @@ namespace Infinitesia
         std::iota(order.begin(), order.end(), 0);
         std::sort(order.begin(), order.end(), [&](int a, int b)
         {
-            return filledElev[a] > filledElev[b]; // process high cells first
+            return filledElev[static_cast<std::size_t>(a)] >
+                   filledElev[static_cast<std::size_t>(b)];
         });
 
         // -----------------------------------------------------------------------
-        // Step 4: Water-balance accumulation.
+        // Step 4: Area-weighted water-balance accumulation.
         //
-        // Instead of counting upstream cells (dimensionless), we accumulate the
-        // effective runoff volume (in mm × cell-area units) that drains through
-        // each cell.  For each cell:
+        //   Q_out = Q_in + max(0, P − ET) × (A_cell / A_mean)
         //
-        //   Q_out = Q_in + max(0, P - ET)
+        // Weighting by cell area is essential on a lat-lon grid: an equatorial
+        // cell covers ~cos(0°)/cos(89°) ≈ 57× more surface than a polar cell.
+        // Without the weight, rivers draining through high-latitude headwaters
+        // appear artificially powerful compared to rivers in the tropics.
         //
-        // where  P  = local precipitation (mm)
-        //        ET = potential evapotranspiration (approximated from temperature)
+        // ET approximation (Penman-inspired linear fit):
+        //   At  0 °C → ET ≈ 120 mm/yr (cold, low evaporation)
+        //   At 30 °C → ET ≈ 480 mm/yr (warm, high evaporation)
         //
-        // This allows a river to maintain significant discharge in a local
-        // dry stretch if it has collected enough water from wet headwaters.
+        // waterAccum units: mm/yr · (dimensionless area ratio), accumulated
+        // upstream.  drainageAccumulation is this value normalised by the
+        // global maximum, giving a 0..1 relative discharge that is both
+        // resolution-independent and planet-size-independent.
         // -----------------------------------------------------------------------
         std::vector<double> waterAccum(cellCount, 0.0);
         for (const int idx : order)
         {
             const int la = idx / lonS;
-            const int lo = idx % lonS;
-            const auto& c = Cell(la, lo);
+            const auto& c = Cell(la, idx % lonS);
             if (c.isOcean)
                 continue;
 
-            // Penman-inspired ET approximation: warmer = more evaporation.
-            // At 0°C, ET ≈ 10 mm/month (120/yr); at 30°C, ≈ 40 mm/month (480/yr).
             const double etAnnualMm =
                 std::clamp(120.0 + c.temperatureCelsius * 12.0, 0.0, 600.0);
             const double runoffMm = std::max(0.0, c.precipitationMm - etAnnualMm);
+            const double areaRatio =
+                meanCellAreaKm2 > 0.0
+                    ? cellAreaKm2[static_cast<std::size_t>(la)] / meanCellAreaKm2
+                    : 1.0;
+            waterAccum[static_cast<std::size_t>(idx)] += runoffMm * areaRatio;
 
-            waterAccum[idx] += runoffMm;
-            const int target = flowDir[idx];
+            const int target = flowDir[static_cast<std::size_t>(idx)];
             if (target >= 0)
-                waterAccum[target] += waterAccum[idx];
+                waterAccum[static_cast<std::size_t>(target)] +=
+                    waterAccum[static_cast<std::size_t>(idx)];
         }
 
         const double maxWater =
@@ -161,6 +209,13 @@ namespace Infinitesia
 
         // -----------------------------------------------------------------------
         // Step 5: Classify rivers and lakes.
+        //
+        // Lakes: a cell is a genuine lake candidate only when the Priority-Flood
+        // raised its elevation by more than a noise epsilon (fillDelta test).
+        // This separates true closed-basin sinks from cells that were given only
+        // a tiny upward nudge to maintain a drainage gradient across a flat area.
+        // We additionally require non-trivial upstream drainage to exclude
+        // isolated single-cell pits with no contributing catchment.
         // -----------------------------------------------------------------------
         for (int la = 0; la < latB; ++la)
         {
@@ -173,31 +228,17 @@ namespace Infinitesia
                     ? waterAccum[idx] / maxWater
                     : 0.0;
 
-                // River: enough accumulated water flowing through this cell.
-                // The discharge threshold (0.5% of global maximum) filters
-                // tiny first-order streams in very dry regions.
                 constexpr double kRiverDischargeThreshold = 0.005;
                 c.hasRiver = !c.isOcean &&
                     c.drainageAccumulation > kRiverDischargeThreshold;
                 c.riverDischarge = c.hasRiver ? c.drainageAccumulation : 0.0;
 
-                // Lake: a genuine closed basin (no filled outlet found AND
-                // the cell sits in a depression in the ORIGINAL, unfilled DEM).
-                // Comparing filled vs original elevation identifies true sinks;
-                // this avoids classifying flat plateaus or mildly filled cells
-                // as lakes just because Dijkstra assigned them a small positive
-                // epsilon above a neighbour.
-                const double originalElev = c.elevationNormalized;
-                const double fillDelta = filledElev[idx] - originalElev;
-                // fillDelta > kLakeFillThreshold means the cell was genuinely
-                // depressed (not just given an epsilon nudge).
                 constexpr double kLakeFillThreshold = 0.001;
-                const bool genuineSink = fillDelta > kLakeFillThreshold;
+                const double fillDelta = filledElev[idx] - c.elevationNormalized;
                 c.isLake = !c.isOcean &&
-                    genuineSink &&
+                    fillDelta > kLakeFillThreshold &&
                     c.drainageAccumulation > 0.002;
             }
         }
     }
 }
-

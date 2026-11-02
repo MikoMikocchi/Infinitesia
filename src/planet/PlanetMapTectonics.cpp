@@ -222,21 +222,38 @@ void PlanetMap::GenerateTectonics()
             const std::size_t cellIndex = static_cast<std::size_t>(la) * lonS + lo;
             const bool continentalCell = isContinentalCrust[cellIndex];
 
-            // Use the local per-cell crust type to drive the DetailedBoundary
-            // subtype, not the plate-centre isOceanic flag.  A plate whose
-            // centre is oceanic can carry continental crust at its margins;
-            // using the cell-local value gives the geologically correct subtype
-            // (e.g. continental-collision rather than oceanic-subduction) even
-            // for mixed plates.
+            // Determine the local crust character on each side of the boundary
+            // using the per-cell fBm field, not the plate-centre isOceanic flag.
             //
-            // "Oceanic" for this purpose means the local crust fraction is below
-            // the mid-point of the transition zone.
+            // Side A: the current cell itself.
             const bool cellAOceanic = continentalField[cellIndex] <= continentalThreshold;
-            // The second-nearest plate's dominant character at this boundary
-            // is approximated using the plate-centre value; refining it to a
-            // second per-cell field would require a separate fBm sample for
-            // the neighbouring plate, which is not available here.
-            const BoundarySubtype bst = DetailedBoundary(bt, cellAOceanic, plateB.isOceanic);
+
+            // Side B: find the nearest 8-connected neighbour assigned to plateB
+            // and read its fBm field value.  This gives a local reading of what
+            // the crust on the other side of this specific boundary segment
+            // actually is, even when plateB's centre is far away and of a
+            // different character than its margin.
+            //
+            // Fall back to plateB.isOceanic if no B-side neighbour is found
+            // (e.g., isolated single-cell plates at coarse resolutions).
+            constexpr int kNbrDLa[8] = { -1, -1, -1, 0, 0,  1, 1, 1 };
+            constexpr int kNbrDLo[8] = { -1,  0,  1,-1, 1, -1, 0, 1 };
+            bool cellBOceanic = plateB.isOceanic;
+            for (int nd = 0; nd < 8; ++nd)
+            {
+                const int nla = la + kNbrDLa[nd];
+                if (nla < 0 || nla >= latB)
+                    continue;
+                const int nloW = (lo + kNbrDLo[nd] + lonS) % lonS;
+                const std::size_t nIdx = static_cast<std::size_t>(nla) * lonS + nloW;
+                if (assignments[nIdx].best == a.second)
+                {
+                    cellBOceanic = continentalField[nIdx] <= continentalThreshold;
+                    break;
+                }
+            }
+
+            const BoundarySubtype bst = DetailedBoundary(bt, cellAOceanic, cellBOceanic);
 
             const double beltStrength =
                 broadBoundaryInfluence * broadBoundaryInfluence;
