@@ -2,6 +2,7 @@
 
 #include "raylib.h"
 #include "world/Grid.h"
+#include "world/World.h"
 
 #include <optional>
 
@@ -19,7 +20,12 @@ namespace Infinitesia
     public:
         explicit WorldRenderer(CameraConfig config);
 
-        void Draw(const Grid& grid, std::optional<GridCell> hoveredCell) const;
+        void Draw(
+            const Grid& grid,
+            const World& world,
+            std::optional<GridCell> hoveredCell,
+            std::optional<WorldObjectId> hoveredObject,
+            std::optional<WorldObjectId> selectedObject) const;
         Camera3D& GetCamera();
         const Camera3D& GetCamera() const;
 

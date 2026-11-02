@@ -5,6 +5,7 @@
 #include "core/Time.h"
 #include "input/CameraController.h"
 #include "input/GridPointer.h"
+#include "input/WorldObjectPicker.h"
 #include "rendering/WorldRenderer.h"
 #include "world/Grid.h"
 
@@ -26,11 +27,15 @@ namespace Infinitesia
 
         ApplicationConfig m_config;
         Grid m_grid;
+        World m_world;
         Simulation m_simulation;
         WorldRenderer m_worldRenderer;
         CameraController m_cameraController;
         GridPointer m_gridPointer;
+        WorldObjectPicker m_worldObjectPicker;
         std::optional<GridCell> m_hoveredCell;
+        std::optional<WorldObjectId> m_hoveredObject;
+        std::optional<WorldObjectId> m_selectedObject;
         Time m_time;
     };
 }

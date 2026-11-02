@@ -35,10 +35,14 @@ add_executable(Infinitesia
   src/core/Simulation.cpp
   src/world/Grid.h
   src/world/Grid.cpp
+  src/world/World.h
+  src/world/World.cpp
   src/input/CameraController.h
   src/input/CameraController.cpp
   src/input/GridPointer.h
   src/input/GridPointer.cpp
+  src/input/WorldObjectPicker.h
+  src/input/WorldObjectPicker.cpp
   src/rendering/WorldRenderer.h
   src/rendering/WorldRenderer.cpp
 )

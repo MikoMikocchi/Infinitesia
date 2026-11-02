@@ -41,6 +41,7 @@ namespace Infinitesia
     Application::Application(ApplicationConfig config)
         : m_config(std::move(config)),
           m_grid(m_config.grid),
+          m_world(m_grid, m_config.initialWorldObjects),
           m_simulation(m_config.simulationTicksPerSecond),
           m_worldRenderer(m_config.camera),
           m_cameraController(m_config.cameraControls)
@@ -75,6 +76,16 @@ namespace Infinitesia
             m_grid,
             m_worldRenderer.GetCamera(),
             GetMousePosition());
+        m_hoveredObject = m_worldObjectPicker.PickObject(
+            m_grid,
+            m_world,
+            m_worldRenderer.GetCamera(),
+            GetMousePosition());
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            m_selectedObject = m_hoveredObject;
+        }
     }
 
     void Application::Render()
@@ -82,7 +93,7 @@ namespace Infinitesia
         BeginDrawing();
         ClearBackground({ 30, 34, 39, 255 });
 
-        m_worldRenderer.Draw(m_grid, m_hoveredCell);
+        m_worldRenderer.Draw(m_grid, m_world, m_hoveredCell, m_hoveredObject, m_selectedObject);
         DrawText(
             m_config.window.title.c_str(),
             (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,
@@ -127,6 +138,17 @@ namespace Infinitesia
                 m_hoveredCell->column,
                 m_hoveredCell->row);
             DrawText(buf, padding, padding + 4 * lineHeight, fontSize, GOLD);
+        }
+
+        if (m_selectedObject.has_value())
+        {
+            const WorldObject* selectedObject = m_world.FindObject(*m_selectedObject);
+            if (selectedObject != nullptr)
+            {
+                const char* typeName = selectedObject->type == WorldObjectType::Worker ? "Worker" : "Tree";
+                std::snprintf(buf, sizeof(buf), "Selected: %s", typeName);
+                DrawText(buf, padding, padding + 5 * lineHeight, fontSize, GREEN);
+            }
         }
     }
 }

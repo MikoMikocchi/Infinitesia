@@ -18,6 +18,8 @@ namespace Infinitesia
         constexpr Color kGridBoundaryColor = { 145, 155, 165, 255 };
         constexpr Color kHoveredCellColor = { 245, 190, 55, 100 };
         constexpr Color kHoveredCellOutlineColor = { 255, 215, 90, 255 };
+        constexpr Color kHoveredObjectOutlineColor = { 245, 245, 245, 255 };
+        constexpr Color kSelectedObjectOutlineColor = { 70, 220, 110, 255 };
 
         Camera3D CreateCamera(CameraConfig config)
         {
@@ -96,6 +98,53 @@ namespace Infinitesia
             DrawLine3D({ right, kHighlightHeight, bottom }, { left, kHighlightHeight, bottom }, kHoveredCellOutlineColor);
             DrawLine3D({ left, kHighlightHeight, bottom }, { left, kHighlightHeight, top }, kHoveredCellOutlineColor);
         }
+
+        void DrawWorldObject(const Grid& grid, const WorldObject& object)
+        {
+            const WorldPosition cellCenter = grid.CellToWorld(object.cell);
+            const float cellSize = grid.GetCellSize();
+
+            if (object.type == WorldObjectType::Worker)
+            {
+                DrawCylinder(
+                    { cellCenter.x, cellSize * 0.38f, cellCenter.z },
+                    cellSize * 0.24f,
+                    cellSize * 0.24f,
+                    cellSize * 0.76f,
+                    8,
+                    { 75, 135, 220, 255 });
+                DrawSphere(
+                    { cellCenter.x, cellSize * 0.93f, cellCenter.z },
+                    cellSize * 0.20f,
+                    { 225, 190, 150, 255 });
+                return;
+            }
+
+            DrawCylinder(
+                { cellCenter.x, cellSize * 0.43f, cellCenter.z },
+                cellSize * 0.13f,
+                cellSize * 0.17f,
+                cellSize * 0.86f,
+                8,
+                { 115, 75, 45, 255 });
+            DrawSphere(
+                { cellCenter.x, cellSize * 1.38f, cellCenter.z },
+                cellSize * 0.48f,
+                { 65, 145, 75, 255 });
+        }
+
+        void DrawObjectOutline(const Grid& grid, const WorldObject& object, Color color)
+        {
+            const WorldPosition center = grid.CellToWorld(object.cell);
+            const WorldObjectSize size = GetWorldObjectSize(object.type, grid.GetCellSize());
+
+            DrawBoundingBox(
+                {
+                    { center.x - size.width * 0.5f, 0.0f, center.z - size.width * 0.5f },
+                    { center.x + size.width * 0.5f, size.height, center.z + size.width * 0.5f }
+                },
+                color);
+        }
     }
 
     WorldRenderer::WorldRenderer(CameraConfig config)
@@ -103,7 +152,12 @@ namespace Infinitesia
     {
     }
 
-    void WorldRenderer::Draw(const Grid& grid, std::optional<GridCell> hoveredCell) const
+    void WorldRenderer::Draw(
+        const Grid& grid,
+        const World& world,
+        std::optional<GridCell> hoveredCell,
+        std::optional<WorldObjectId> hoveredObject,
+        std::optional<WorldObjectId> selectedObject) const
     {
         BeginMode3D(m_camera);
         DrawPlane(
@@ -114,7 +168,24 @@ namespace Infinitesia
         {
             DrawHoveredCell(grid, *hoveredCell);
         }
+        for (const WorldObject& object : world.GetObjects())
+        {
+            DrawWorldObject(grid, object);
+        }
         DrawGridLines(grid);
+        for (const WorldObject& object : world.GetObjects())
+        {
+            const bool isSelected = selectedObject.has_value() && object.id == *selectedObject;
+            const bool isHovered = hoveredObject.has_value() && object.id == *hoveredObject;
+            if (isSelected)
+            {
+                DrawObjectOutline(grid, object, kSelectedObjectOutlineColor);
+            }
+            else if (isHovered)
+            {
+                DrawObjectOutline(grid, object, kHoveredObjectOutlineColor);
+            }
+        }
         EndMode3D();
     }
 
