@@ -43,8 +43,10 @@ add_executable(Infinitesia
   src/world/Item.cpp
   src/world/World.h
   src/world/World.cpp
+  src/world/WorldTerrain.cpp
   src/world/WorkSystem.h
   src/world/WorkSystem.cpp
+  src/world/WorkExecution.cpp
   src/commands/Command.h
   src/commands/CommandRegistry.h
   src/commands/CommandRegistry.cpp
@@ -67,7 +69,8 @@ add_executable(Infinitesia
   src/rendering/WorldRenderer.h
   src/rendering/WorldRenderer.cpp
   src/rendering/WorldGeometryRenderer.h
-  src/rendering/WorldGeometryRenderer.cpp
+  src/rendering/WorldTerrainRenderer.cpp
+  src/rendering/WorldObjectRenderer.cpp
   src/rendering/WorldOverlayRenderer.h
   src/rendering/WorldOverlayRenderer.cpp
 )
