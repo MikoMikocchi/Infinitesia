@@ -218,10 +218,26 @@ void PlanetMap::GenerateTectonics()
 
             const BoundaryType bt = ClassifyBoundaryFromVelocity(
                 vLatA, vLonA, vLatB, vLonB, normalLat, normalLon);
-            const BoundarySubtype bst = DetailedBoundary(bt, plateA.isOceanic, plateB.isOceanic);
 
             const std::size_t cellIndex = static_cast<std::size_t>(la) * lonS + lo;
             const bool continentalCell = isContinentalCrust[cellIndex];
+
+            // Use the local per-cell crust type to drive the DetailedBoundary
+            // subtype, not the plate-centre isOceanic flag.  A plate whose
+            // centre is oceanic can carry continental crust at its margins;
+            // using the cell-local value gives the geologically correct subtype
+            // (e.g. continental-collision rather than oceanic-subduction) even
+            // for mixed plates.
+            //
+            // "Oceanic" for this purpose means the local crust fraction is below
+            // the mid-point of the transition zone.
+            const bool cellAOceanic = continentalField[cellIndex] <= continentalThreshold;
+            // The second-nearest plate's dominant character at this boundary
+            // is approximated using the plate-centre value; refining it to a
+            // second per-cell field would require a separate fBm sample for
+            // the neighbouring plate, which is not available here.
+            const BoundarySubtype bst = DetailedBoundary(bt, cellAOceanic, plateB.isOceanic);
+
             const double beltStrength =
                 broadBoundaryInfluence * broadBoundaryInfluence;
             if (bt == BoundaryType::Convergent)
@@ -423,6 +439,17 @@ void PlanetMap::GenerateTectonics()
                         continue;
                     const int nextLongitude =
                         (lo + dLon[direction] + lonS) % lonS;
+                    const std::size_t nextIndex =
+                        static_cast<std::size_t>(nextLatitude) * lonS + nextLongitude;
+
+                    // Ocean-crust age is only meaningful within the oceanic domain.
+                    // Blocking propagation through continental cells prevents
+                    // Dijkstra from routing a "short-cut" path across a continent
+                    // and giving the oceanic crust on the far side an artificially
+                    // young age that does not reflect its actual spreading history.
+                    if (isContinentalCrust[nextIndex])
+                        continue;
+
                     const double nextLatitudeDegrees =
                         (static_cast<double>(nextLatitude) + 0.5) * latitudeStep - 90.0;
                     const double meanLatitudeRadians =
@@ -436,8 +463,6 @@ void PlanetMap::GenerateTectonics()
                     const double edgeDistance =
                         std::hypot(northwardDistance, eastwardDistance);
                     const double candidateDistance = distanceToCell + edgeDistance;
-                    const std::size_t nextIndex =
-                        static_cast<std::size_t>(nextLatitude) * lonS + nextLongitude;
                     if (candidateDistance < distance[nextIndex])
                     {
                         distance[nextIndex] = candidateDistance;
@@ -485,7 +510,7 @@ void PlanetMap::GenerateTectonics()
             relief[static_cast<std::size_t>(la) * lonS + lo] =
                 Cell(la, lo).tectonicReliefKm;
 
-    for (int pass = 0; pass < 4; ++pass)
+    for (int pass = 0; pass < 5; ++pass)
     {
         std::vector<double> smoothed(relief.size());
         for (int la = 0; la < latB; ++la)

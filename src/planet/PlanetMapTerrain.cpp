@@ -177,14 +177,38 @@ namespace Infinitesia
                 const int lo1 = ((lo - 1) + lonS) % lonS;
                 const int lo2 = ((lo + 1) + lonS) % lonS;
                 constexpr double kElevationRangeKm = kMaxElevationKm * 2.0;
-                const double dLat =
+
+                // Central-difference elevation gradients in km.
+                // The latitude step is fixed at (180/latB) degrees per cell.
+                // The longitude step shrinks with cos(lat) because meridians
+                // converge toward the poles; without this correction the
+                // east-west gradient is overestimated at high latitudes.
+                const double latStepKm =
+                    (180.0 / latB) * (std::numbers::pi / 180.0) * 6371.0;
+                const double cosLat =
+                    std::max(1e-3, std::cos(c.latitudeDegrees *
+                                            std::numbers::pi / 180.0));
+                const double lonStepKm =
+                    (360.0 / lonS) * (std::numbers::pi / 180.0) * 6371.0 *
+                    cosLat;
+
+                // Two-cell central-difference horizontal distances (km):
+                const double dxLat = 2.0 * latStepKm;
+                const double dxLon = 2.0 * lonStepKm;
+
+                const double dElevLat =
                     (Cell(la2, lo).elevationNormalized -
-                     Cell(la1, lo).elevationNormalized) * kElevationRangeKm;
-                const double dLon =
+                     Cell(la1, lo).elevationNormalized) * kElevationRangeKm; // km
+                const double dElevLon =
                     (Cell(la, lo2).elevationNormalized -
-                     Cell(la, lo1).elevationNormalized) * kElevationRangeKm;
-                c.slopeNormalized =
-                    std::clamp(std::hypot(dLat, dLon) / (2.0 * 200.0), 0.0, 1.0);
+                     Cell(la, lo1).elevationNormalized) * kElevationRangeKm; // km
+
+                // Gradient magnitude [km/km = dimensionless].
+                // Normalise by a reference slope of 0.05 (rise/run ≈ 3°) so
+                // that typical mountain flanks read ~0.5 and not ~0.001.
+                constexpr double kRefSlope = 0.05;
+                const double rise = std::hypot(dElevLat / dxLat, dElevLon / dxLon);
+                c.slopeNormalized = std::clamp(rise / kRefSlope, 0.0, 1.0);
             }
         }
     }

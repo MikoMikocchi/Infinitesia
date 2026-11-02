@@ -269,10 +269,16 @@ std::pair<double,double> EulerVelocityDegPerMy(
 // --------------------------------------------------------------------------
 // Boundary classification using Euler-pole velocities
 //
-// normalComponent:  positive → A moves away from B → Divergent
-//                   negative → A moves toward  B → Convergent
+// The boundary normal is the unit vector pointing from plate A's centre toward
+// plate B's centre (A→B direction in lat/lon tangent space).
 //
-// tangential / normal ratio distinguishes Transform from pure Convergent/Divergent.
+// dvLat/dvLon = vA − vB is the velocity of plate A in plate B's reference frame.
+//
+// normalComponent = (vA−vB) · normal:
+//   positive → A advances in the A→B direction → plates closing → Convergent
+//   negative → A retreats in the A→B direction → plates opening → Divergent
+//
+// tangential / normal ratio distinguishes Transform from Convergent/Divergent.
 //
 // Thresholds scaled to actual velocity magnitudes (~0.01–0.1 deg/Myr).
 // A boundary is Convergent/Divergent when the normal component exceeds
@@ -289,8 +295,14 @@ BoundaryType ClassifyBoundaryFromVelocity(
     const double dvLon = vLonA - vLonB;
 
     // Component along boundary normal:
-    //   positive → A moves away from B (Divergent)
-    //   negative → A moves toward  B  (Convergent)
+    //   positive → A moves toward  B  (Convergent)
+    //   negative → A moves away from B (Divergent)
+    //
+    // Derivation: dvLat/dvLon = vA - vB is the velocity of A in B's reference
+    // frame.  The unit normal points from A's centre toward B's centre (A→B).
+    // When dvA-dvB · normal > 0, plate A is advancing in the A→B direction,
+    // i.e. the two plates are closing → Convergent.
+    // When dvA-dvB · normal < 0, plate A is retreating from B → Divergent.
     const double normalComponent = dvLat * normalLat + dvLon * normalLon;
 
     // Tangential (strike-slip) magnitude
@@ -311,9 +323,9 @@ BoundaryType ClassifyBoundaryFromVelocity(
     // This correctly handles both fast and slow plates without hard-coded units.
     const double threshold = totalRelSpeed * 0.25;
 
-    if (normalComponent < -threshold)
+    if (normalComponent > threshold)
         return BoundaryType::Convergent;
-    if (normalComponent >  threshold)
+    if (normalComponent < -threshold)
         return BoundaryType::Divergent;
 
     return BoundaryType::Transform;
@@ -415,24 +427,44 @@ double SeasonalAmplitude(double latDeg, double tiltDeg, double rotHours)
 
 // Physically-grounded equilibrium temperature.
 //
-// Stefan-Boltzmann for a planet with Bond albedo ≈ 0.30:
-//   T_eff = 255 K × flux^0.25   (255 K = Earth effective emission temperature)
+// Stefan-Boltzmann for a planet with a given Bond albedo:
+//   T_eff = 278.5 K × (1 - A)^0.25 × flux^0.25
 //
-// Surface temperature adds the greenhouse delta separately, so that
-// GreenhouseK() is not implicitly baked into the base.
+// 278.5 K = (S₀ / 4σ)^0.25 where S₀ = 1361 W/m² and σ = 5.67e-8 W/m²/K⁴.
+// For Earth (A = 0.30, flux = 1.0) this gives 255 K, matching observations.
+//
+// The Bond albedo is kept at the Earth-like default of 0.30 here.
+// A future improvement would vary it with ice coverage and cloud fraction
+// derived from the climate system.  For now, the fixed value is documented
+// as a known approximation (see ClimateInputs).
 double EquilibriumTempK(double flux)
 {
-    // 255 K is the effective emission temperature of Earth at 1 AU
-    // (Bond albedo ~0.30, Solar constant ~1361 W/m²).
-    return 255.0 * std::pow(std::max(0.01, flux), 0.25);
+    // Bond albedo A = 0.30 (Earth-like; fixed approximation — see comment above).
+    constexpr double kBondAlbedo = 0.30;
+    // 278.5 K = (S₀ / 4σ)^0.25
+    constexpr double kStefanBase = 278.5;
+    return kStefanBase *
+        std::pow(1.0 - kBondAlbedo, 0.25) *
+        std::pow(std::max(0.01, flux), 0.25);
 }
 
-// Greenhouse warming from atmospheric pressure and volatile inventory
+// Greenhouse warming from atmospheric pressure.
+//
+// APPROXIMATION: this function models the greenhouse effect as a function of
+// total surface pressure alone, calibrated to reproduce Earth's ~33 K warming
+// at 101.325 kPa.  It does NOT account for:
+//   • Atmospheric composition (CO₂ fraction, CH₄, H₂O vapour pressure).
+//   • Spectroscopic line strengths of individual greenhouse gases.
+//   • volatileMassFraction from ClimateInputs (stored but currently unused).
+//
+// The √(pressure) scaling is a rough proxy; real greenhouse sensitivity is
+// logarithmic in CO₂ concentration.  This is acceptable for an Earth-like
+// default scenario but will be inaccurate for high-CO₂ or pure-N₂ atmospheres.
+// A future improvement: split the contribution into a CO₂ term (logarithmic)
+// and a water-vapour feedback term (temperature-dependent).
 double GreenhouseK(double pressKPa)
 {
     if (pressKPa <= 0.0) return 0.0;
-    // Effective greenhouse calibration for an Earth-like atmosphere. Total
-    // volatile inventory is not a proxy for atmospheric greenhouse-gas mix.
     return 33.0 * std::sqrt(pressKPa / 101.325);
 }
 
