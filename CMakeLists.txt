@@ -27,11 +27,16 @@ FetchContent_MakeAvailable(raylib)
 add_executable(Infinitesia
   src/main.cpp
   src/app/Application.h
+  src/app/ApplicationConfig.h
   src/app/Application.cpp
   src/core/Time.h
   src/core/Time.cpp
   src/core/Simulation.h
   src/core/Simulation.cpp
+  src/world/Grid.h
+  src/world/Grid.cpp
+  src/rendering/WorldRenderer.h
+  src/rendering/WorldRenderer.cpp
 )
 
 target_include_directories(Infinitesia PRIVATE
