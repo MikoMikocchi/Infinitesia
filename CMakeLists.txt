@@ -30,9 +30,9 @@ add_executable(Infinitesia
   src/app/ApplicationConfig.h
   src/app/internal/AppHelpers.h
   src/app/internal/AppHelpers.cpp
-  src/app/internal/AppHelpers.h
-  src/app/internal/AppHelpers.cpp
   src/app/Application.cpp
+  src/app/ApplicationUpdate.cpp
+  src/app/ApplicationRender.cpp
   src/core/Time.h
   src/core/Time.cpp
   src/core/Simulation.h
@@ -47,6 +47,7 @@ add_executable(Infinitesia
   src/world/Item.cpp
   src/world/World.h
   src/world/World.cpp
+  src/world/WorldChunks.cpp
   src/world/internal/WorldTerrainGen.h
   src/world/internal/WorldTerrainGen.cpp
   src/world/WorldTerrain.cpp
@@ -81,6 +82,8 @@ add_executable(Infinitesia
   src/rendering/WorldRenderer.h
   src/rendering/WorldRenderer.cpp
   src/rendering/WorldGeometryRenderer.h
+  src/rendering/terrain/internal/TerrainMeshGeometry.h
+  src/rendering/terrain/internal/TerrainMeshGeometry.cpp
   src/rendering/terrain/TerrainMeshBuilder.h
   src/rendering/terrain/TerrainMeshBuilder.cpp
   src/rendering/WorldTerrainRenderer.cpp
