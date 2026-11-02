@@ -35,6 +35,8 @@ add_executable(Infinitesia
   src/core/Simulation.cpp
   src/world/Grid.h
   src/world/Grid.cpp
+  src/world/GridPathfinder.h
+  src/world/GridPathfinder.cpp
   src/world/World.h
   src/world/World.cpp
   src/world/WorkSystem.h

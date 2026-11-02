@@ -1,6 +1,7 @@
 #pragma once
 
 #include "world/Grid.h"
+#include "world/GridPathfinder.h"
 #include "world/World.h"
 
 #include <cstddef>
@@ -74,6 +75,7 @@ namespace Infinitesia
         bool AdvanceOrder(WorkOrder& order, World& world, const Grid& grid, float fixedDeltaTime);
 
         WorkerConfig m_config;
+        GridPathfinder m_pathfinder;
         std::vector<WorkOrder> m_orders;
     };
 }
