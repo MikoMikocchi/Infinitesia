@@ -35,6 +35,13 @@ namespace Infinitesia
             levelHeight,
             ray.position.z + ray.direction.z * distance
         };
-        return grid.WorldToCell({ intersection.x, intersection.y, intersection.z });
+        const std::optional<GridCell> intersectedCell =
+            grid.WorldToCell({ intersection.x, intersection.y, intersection.z });
+        if (!intersectedCell.has_value())
+        {
+            return std::nullopt;
+        }
+
+        return GridCell{ intersectedCell->x, selectedLevel, intersectedCell->z };
     }
 }
