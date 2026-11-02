@@ -23,6 +23,9 @@ Testing/
 *.vcxproj
 *.vcxproj.filters
 
+# Visual Studio Code
+.vscode/
+
 # Binaries
 *.exe
 *.dll
