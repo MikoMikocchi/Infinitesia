@@ -44,6 +44,10 @@ add_executable(Infinitesia
   src/planet/PlanetParameters.h
   src/planet/Planet.h
   src/planet/Planet.cpp
+  src/planet/GenerationScenario.h
+  src/planet/StarSystem.h
+  src/planet/StarSystemGenerator.h
+  src/planet/StarSystemGenerator.cpp
   src/planet/PlanetMap.h
   src/planet/PlanetMap.cpp
   src/world/Grid.h
@@ -128,4 +132,17 @@ target_link_libraries(Infinitesia PRIVATE raylib)
 
 if (WIN32)
   target_link_libraries(Infinitesia PRIVATE winmm)
+endif()
+
+include(CTest)
+if (BUILD_TESTING)
+  add_executable(PlanetGenerationTests
+    tests/PlanetGenerationTests.cpp
+    src/planet/Planet.cpp
+    src/planet/StarSystemGenerator.cpp
+  )
+  target_include_directories(PlanetGenerationTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+  )
+  add_test(NAME PlanetGenerationTests COMMAND PlanetGenerationTests)
 endif()

@@ -2,6 +2,7 @@
 #include "raylib.h"
 #include "commands/ChopTreeCommand.h"
 #include "commands/PickUpItemCommand.h"
+#include "planet/StarSystemGenerator.h"
 
 #include <memory>
 #include <stdexcept>
@@ -17,7 +18,8 @@ namespace Infinitesia
           m_workSystem(m_config.worker),
           m_worldRenderer(m_config.camera),
           m_cameraController(m_config.cameraControls),
-          m_planetViewer(PlanetParameters{ .seed = m_config.worldSeed }),
+          m_planetViewer(StarSystemGenerator::Generate(
+              GenerationScenario{ .seed = m_config.worldSeed })),
           m_chunkViewCenter{
               m_config.grid.width / 2,
               m_config.grid.height - 1,

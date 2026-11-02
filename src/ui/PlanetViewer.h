@@ -1,5 +1,6 @@
 #pragma once
 
+#include "planet/StarSystem.h"
 #include "planet/PlanetMap.h"
 #include "raylib.h"
 
@@ -10,7 +11,7 @@ namespace Infinitesia
     class PlanetViewer
     {
     public:
-        explicit PlanetViewer(PlanetParameters parameters = {});
+        explicit PlanetViewer(StarSystem system);
 
         void Update();
         void Draw() const;
@@ -19,6 +20,7 @@ namespace Infinitesia
         void HandleInput();
         Camera3D MakeCamera() const;
 
+        StarSystem m_system;
         PlanetMap m_planetMap;
         std::vector<PlanetRegion> m_regions;
         std::vector<Color> m_regionColors;

@@ -162,8 +162,9 @@ namespace Infinitesia
         }
     }
 
-    PlanetViewer::PlanetViewer(PlanetParameters parameters)
-        : m_planetMap(std::move(parameters)),
+    PlanetViewer::PlanetViewer(StarSystem system)
+        : m_system(std::move(system)),
+          m_planetMap(m_system.planet),
           m_selectedLatitude(m_planetMap.GetLatitudeBandCount() / 2),
           m_selectedLongitude(m_planetMap.GetLongitudeSegmentCount() / 2)
     {
@@ -329,7 +330,19 @@ namespace Infinitesia
         ClearBackground({ 11, 17, 26, 255 });
 
         DrawText("INFINITESIA  /  PLANET VIEWER", 28, 22, 24, RAYWHITE);
-        DrawText("Global map and interactive globe", 30, 52, 16, { 139, 158, 177, 255 });
+        char systemSummary[192];
+        std::snprintf(
+            systemSummary,
+            sizeof(systemSummary),
+            "Star %.2f M_sun / %.2f L_sun  |  Age %.2f Gyr  |  Orbit %.2f AU  |  Planet %.2f M_earth  |  Seed %llu  |  Gen v%u",
+            m_system.star.massKilograms / 1.98847e30,
+            m_system.star.luminosityWatts / 3.828e26,
+            m_system.galacticContext.systemAgeYears / 1.0e9,
+            m_system.planetOrbit.semiMajorAxisMeters / 149597870700.0,
+            m_system.planet.massKilograms / 5.9722e24,
+            static_cast<unsigned long long>(m_system.scenario.seed),
+            m_system.scenario.generatorVersion);
+        DrawText(systemSummary, 30, 52, 15, { 139, 158, 177, 255 });
         DrawFPS(screenWidth - 80, 24);
 
         DrawRectangleRounded(layout.mapPanel, 0.035f, 8, { 19, 28, 40, 255 });
