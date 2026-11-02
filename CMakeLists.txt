@@ -46,6 +46,8 @@ add_executable(Infinitesia
   src/world/CommandRegistry.cpp
   src/world/ChopTreeCommand.h
   src/world/ChopTreeCommand.cpp
+  src/world/PickUpLogsCommand.h
+  src/world/PickUpLogsCommand.cpp
   src/input/CameraController.h
   src/input/CameraController.cpp
   src/input/GridPointer.h
