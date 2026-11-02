@@ -24,6 +24,8 @@ namespace Infinitesia
         bool pathDebugEnabled;
         int screenHeight;
         const std::string& actionNotice;
+        std::size_t loadedChunkCount;
+        std::size_t totalChunkCount;
     };
 
     class DebugOverlay

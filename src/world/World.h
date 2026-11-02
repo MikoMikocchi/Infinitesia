@@ -1,10 +1,13 @@
 #pragma once
 
 #include "world/Block.h"
+#include "world/Chunk.h"
 #include "world/Grid.h"
 #include "world/Item.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <vector>
 
@@ -51,7 +54,10 @@ namespace Infinitesia
     class World
     {
     public:
-        World(const Grid& grid, const std::vector<WorldObjectPlacement>& initialObjects = {});
+        World(
+            const Grid& grid,
+            const std::vector<WorldObjectPlacement>& initialObjects = {},
+            std::uint32_t seed = 1);
 
         WorldObjectId AddObject(
             WorldObjectType type,
@@ -65,22 +71,31 @@ namespace Infinitesia
         bool RemoveObject(WorldObjectId id);
         bool SetObjectPosition(WorldObjectId id, WorldPosition position);
         bool SetObjectCell(WorldObjectId id, GridCell cell, const Grid& grid);
+        void RequestChunksAround(GridCell center, int horizontalRadius, int verticalRadius = 0);
+        std::size_t GeneratePendingChunks(std::size_t maximumChunks);
         const Block* GetBlock(GridCell cell) const;
         void SetBlockType(GridCell cell, BlockType type);
-        const std::vector<Block>& GetBlocks() const;
+        const std::map<ChunkCoordinate, WorldChunk>& GetChunks() const;
+        std::size_t GetLoadedChunkCount() const;
+        std::size_t GetTotalChunkCount() const;
         std::optional<WorldObjectId> FindObjectAt(GridCell cell) const;
         const WorldObject* FindObject(WorldObjectId id) const;
         const std::vector<WorldObject>& GetObjects() const;
 
     private:
         WorldObject* FindMutableObject(WorldObjectId id);
-        std::size_t GetBlockIndex(GridCell cell) const;
+        void EnsureChunkGenerated(ChunkCoordinate coordinate);
+        ChunkCoordinate GetChunkCoordinate(GridCell cell) const;
+        std::size_t GetBlockIndex(const WorldChunk& chunk, GridCell cell) const;
+        BlockType GenerateBlockType(GridCell cell) const;
 
         std::vector<WorldObject> m_objects;
-        std::vector<Block> m_blocks;
+        std::map<ChunkCoordinate, WorldChunk> m_chunks;
+        std::vector<ChunkCoordinate> m_pendingChunks;
         int m_gridWidth;
         int m_gridHeight;
         int m_gridDepth;
+        std::uint32_t m_seed;
         std::uint64_t m_nextObjectId = 1;
     };
 }

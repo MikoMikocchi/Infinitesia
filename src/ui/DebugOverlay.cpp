@@ -3,6 +3,7 @@
 #include "raylib.h"
 
 #include <cstdio>
+#include <cstddef>
 
 namespace Infinitesia
 {
@@ -12,7 +13,7 @@ namespace Infinitesia
         constexpr int fontSize = 16;
         constexpr int lineHeight = 20;
         constexpr int panelWidth = 250;
-        constexpr int panelHeight = 8 * lineHeight + padding;
+        constexpr int panelHeight = 9 * lineHeight + padding;
 
         char buffer[128];
 
@@ -40,6 +41,14 @@ namespace Infinitesia
             data.gridDepth);
         DrawText(buffer, padding, padding + 3 * lineHeight, fontSize, RAYWHITE);
 
+        std::snprintf(
+            buffer,
+            sizeof(buffer),
+            "Chunks: %zu / %zu",
+            data.loadedChunkCount,
+            data.totalChunkCount);
+        DrawText(buffer, padding, padding + 4 * lineHeight, fontSize, RAYWHITE);
+
         if (data.hoveredCell.has_value())
         {
             std::snprintf(
@@ -49,7 +58,7 @@ namespace Infinitesia
                 data.hoveredCell->x,
                 data.hoveredCell->y,
                 data.hoveredCell->z);
-            DrawText(buffer, padding, padding + 4 * lineHeight, fontSize, GOLD);
+            DrawText(buffer, padding, padding + 5 * lineHeight, fontSize, GOLD);
         }
 
         if (data.selectedObjectType.has_value())
@@ -64,7 +73,7 @@ namespace Infinitesia
                 typeName = "Tree";
             }
             std::snprintf(buffer, sizeof(buffer), "Selected: %s", typeName);
-            DrawText(buffer, padding, padding + 5 * lineHeight, fontSize, GREEN);
+            DrawText(buffer, padding, padding + 6 * lineHeight, fontSize, GREEN);
 
             if (data.workerActivity.has_value())
             {
@@ -80,14 +89,14 @@ namespace Infinitesia
                         sizeof(buffer),
                         "Chopping: %.0f%%",
                         data.workProgress * 100.0f);
-                    DrawText(buffer, padding, padding + 6 * lineHeight, fontSize, ORANGE);
+                    DrawText(buffer, padding, padding + 7 * lineHeight, fontSize, ORANGE);
                     activityName = nullptr;
                 }
 
                 if (activityName != nullptr)
                 {
                     std::snprintf(buffer, sizeof(buffer), "Activity: %s", activityName);
-                    DrawText(buffer, padding, padding + 6 * lineHeight, fontSize, ORANGE);
+                    DrawText(buffer, padding, padding + 7 * lineHeight, fontSize, ORANGE);
                 }
             }
         }
@@ -107,6 +116,6 @@ namespace Infinitesia
             sizeof(buffer),
             "Path debug: %s (F3)",
             data.pathDebugEnabled ? "on" : "off");
-        DrawText(buffer, padding, padding + 7 * lineHeight, fontSize, SKYBLUE);
+        DrawText(buffer, padding, padding + 8 * lineHeight, fontSize, SKYBLUE);
     }
 }

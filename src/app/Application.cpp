@@ -3,6 +3,8 @@
 #include "commands/ChopTreeCommand.h"
 #include "commands/PickUpItemCommand.h"
 
+#include <algorithm>
+#include <cmath>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -13,6 +15,42 @@ namespace Infinitesia
 {
     namespace
     {
+        constexpr float kDegreesToRadians = PI / 180.0f;
+        constexpr std::size_t kChunksGeneratedPerFrame = 4;
+
+        GridCell GetCameraGridCell(const Grid& grid, Vector3 cameraTarget)
+        {
+            const float halfWidth = grid.GetWorldWidth() * 0.5f;
+            const float halfDepth = grid.GetWorldDepth() * 0.5f;
+            const float edgeInset = grid.GetCellSize() * 0.001f;
+            const WorldPosition target{
+                std::clamp(cameraTarget.x, -halfWidth + edgeInset, halfWidth - edgeInset),
+                grid.GetWorldHeight(),
+                std::clamp(cameraTarget.z, -halfDepth + edgeInset, halfDepth - edgeInset)
+            };
+            const std::optional<GridCell> cell = grid.WorldToCell(target);
+            if (!cell.has_value())
+            {
+                throw std::logic_error("Clamped camera target must map to a grid cell.");
+            }
+            return *cell;
+        }
+
+        int GetChunkRenderRadius(const Camera3D& camera, const Grid& grid)
+        {
+            const float offsetX = camera.position.x - camera.target.x;
+            const float offsetY = camera.position.y - camera.target.y;
+            const float offsetZ = camera.position.z - camera.target.z;
+            const float cameraDistance = std::sqrt(
+                offsetX * offsetX + offsetY * offsetY + offsetZ * offsetZ);
+            const float aspectRatio = static_cast<float>(GetScreenWidth()) /
+                                      static_cast<float>(GetScreenHeight());
+            const float visibleHalfWidth =
+                cameraDistance * std::tan(camera.fovy * kDegreesToRadians * 0.5f) * aspectRatio;
+            const float chunkWorldSize = static_cast<float>(kChunkSize) * grid.GetCellSize();
+            return static_cast<int>(std::ceil(visibleHalfWidth / chunkWorldSize)) + 1;
+        }
+
         class WindowGuard
         {
         public:
@@ -66,13 +104,22 @@ namespace Infinitesia
     Application::Application(ApplicationConfig config)
         : m_config(std::move(config)),
           m_grid(m_config.grid),
-          m_world(m_grid, m_config.initialWorldObjects),
+          m_world(m_grid, m_config.initialWorldObjects, m_config.worldSeed),
           m_simulation(m_config.simulationTicksPerSecond),
           m_workSystem(m_config.worker),
           m_worldRenderer(m_config.camera),
           m_cameraController(m_config.cameraControls),
+          m_chunkViewCenter{
+              m_config.grid.width / 2,
+              m_config.grid.height - 1,
+              m_config.grid.depth / 2
+          },
           m_showPathDebug(m_config.showPathDebug)
     {
+        Camera3D& camera = m_worldRenderer.GetCamera();
+        camera.position.y += m_grid.GetWorldHeight();
+        camera.target.y = m_grid.GetWorldHeight();
+
         m_commands.Register(std::make_unique<ChopTreeCommand>(m_workSystem, m_grid));
         m_commands.Register(std::make_unique<PickUpItemCommand>());
 
@@ -112,6 +159,10 @@ namespace Infinitesia
         }
 
         m_cameraController.Update(m_worldRenderer.GetCamera(), m_time.GetDeltaTime());
+        m_chunkViewCenter = GetCameraGridCell(m_grid, m_worldRenderer.GetCamera().target);
+        m_chunkRenderRadius = GetChunkRenderRadius(m_worldRenderer.GetCamera(), m_grid);
+        m_world.RequestChunksAround(m_chunkViewCenter, m_chunkRenderRadius);
+        m_world.GeneratePendingChunks(kChunksGeneratedPerFrame);
         m_worldInteraction.Update(
             {
                 GetMousePosition(),
@@ -152,7 +203,9 @@ namespace Infinitesia
             m_worldInteraction.GetHoveredObject(),
             selectedObjectId,
             pathOrigin,
-            debugPath);
+            debugPath,
+            m_chunkViewCenter,
+            m_chunkRenderRadius);
         DrawText(
             m_config.window.title.c_str(),
             (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,
@@ -202,7 +255,9 @@ namespace Infinitesia
             workProgress,
             m_showPathDebug,
             m_config.window.height,
-            m_worldInteraction.GetActionNotice()
+            m_worldInteraction.GetActionNotice(),
+            m_world.GetLoadedChunkCount(),
+            m_world.GetTotalChunkCount()
         });
     }
 }

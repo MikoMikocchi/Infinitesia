@@ -11,7 +11,11 @@ namespace Infinitesia
 {
     namespace WorldOverlayRenderer
     {
-        void DrawGridLines(const Grid& grid);
+        void DrawGridLines(
+            const Grid& grid,
+            GridCell viewCenter,
+            int chunkRadius,
+            bool showCellGrid);
         void DrawHoveredCell(const Grid& grid, GridCell cell);
         void DrawDebugPath(const Grid& grid, WorldPosition origin, const std::vector<GridCell>& path);
         void DrawObjectHighlights(

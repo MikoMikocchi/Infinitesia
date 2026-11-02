@@ -35,6 +35,8 @@ namespace Infinitesia
         CameraController m_cameraController;
         WorldInteractionController m_worldInteraction;
         DebugOverlay m_debugOverlay;
+        GridCell m_chunkViewCenter{};
+        int m_chunkRenderRadius = 1;
         bool m_showPathDebug = true;
         Time m_time;
     };

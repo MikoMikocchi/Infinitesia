@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <limits>
 #include <queue>
+#include <unordered_map>
 
 namespace Infinitesia
 {
@@ -49,7 +49,6 @@ namespace Infinitesia
 
         const std::size_t width = static_cast<std::size_t>(grid.GetWidth());
         const std::size_t height = static_cast<std::size_t>(grid.GetHeight());
-        const std::size_t cellCount = grid.GetCellCount();
         const auto cellIndex = [width, height](GridCell cell)
         {
             return (static_cast<std::size_t>(cell.z) * height +
@@ -67,10 +66,10 @@ namespace Infinitesia
 
         const std::size_t startIndex = cellIndex(start);
         const std::size_t goalIndex = cellIndex(goal);
-        std::vector<int> pathCosts(cellCount, std::numeric_limits<int>::max());
-        std::vector<std::size_t> parents(cellCount, cellCount);
+        std::unordered_map<std::size_t, int> pathCosts;
+        std::unordered_map<std::size_t, std::size_t> parents;
         std::priority_queue<OpenPathNode, std::vector<OpenPathNode>, OpenPathNodeOrder> openNodes;
-        pathCosts[startIndex] = 0;
+        pathCosts.emplace(startIndex, 0);
         openNodes.push({ startIndex, 0, ManhattanDistance(start, goal) });
 
         constexpr std::array<GridCell, 4> neighborOffsets{
@@ -84,7 +83,8 @@ namespace Infinitesia
         {
             const OpenPathNode current = openNodes.top();
             openNodes.pop();
-            if (current.pathCost != pathCosts[current.index])
+            const auto currentCost = pathCosts.find(current.index);
+            if (currentCost == pathCosts.end() || current.pathCost != currentCost->second)
             {
                 continue;
             }
@@ -108,13 +108,14 @@ namespace Infinitesia
 
                 const std::size_t neighborIndex = cellIndex(neighbor);
                 const int nextCost = current.pathCost + 1;
-                if (nextCost >= pathCosts[neighborIndex])
+                const auto neighborCost = pathCosts.find(neighborIndex);
+                if (neighborCost != pathCosts.end() && nextCost >= neighborCost->second)
                 {
                     continue;
                 }
 
-                pathCosts[neighborIndex] = nextCost;
-                parents[neighborIndex] = current.index;
+                pathCosts.insert_or_assign(neighborIndex, nextCost);
+                parents.insert_or_assign(neighborIndex, current.index);
                 openNodes.push({
                     neighborIndex,
                     nextCost,
@@ -123,24 +124,25 @@ namespace Infinitesia
             }
         }
 
-        if (pathCosts[goalIndex] == std::numeric_limits<int>::max())
+        if (pathCosts.find(goalIndex) == pathCosts.end())
         {
             return std::nullopt;
         }
 
         std::vector<GridCell> path;
-        for (std::size_t current = goalIndex; current != cellCount; current = parents[current])
+        for (std::size_t current = goalIndex;;)
         {
             path.push_back(indexCell(current));
             if (current == startIndex)
             {
                 break;
             }
-        }
-        if (path.empty() || path.back().x != start.x ||
-            path.back().y != start.y || path.back().z != start.z)
-        {
-            return std::nullopt;
+            const auto parent = parents.find(current);
+            if (parent == parents.end())
+            {
+                return std::nullopt;
+            }
+            current = parent->second;
         }
         std::reverse(path.begin(), path.end());
         return path;

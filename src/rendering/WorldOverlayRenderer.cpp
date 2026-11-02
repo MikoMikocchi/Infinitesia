@@ -1,5 +1,6 @@
 #include "rendering/WorldOverlayRenderer.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -35,29 +36,66 @@ namespace Infinitesia
             }
         }
 
-        void DrawGridLines(const Grid& grid)
+        void DrawGridLines(
+            const Grid& grid,
+            GridCell viewCenter,
+            int chunkRadius,
+            bool showCellGrid)
         {
-            const float halfWidth = grid.GetWorldWidth() * 0.5f;
-            const float halfDepth = grid.GetWorldDepth() * 0.5f;
+            const int firstColumn = std::max(
+                0,
+                (viewCenter.x / kChunkSize - chunkRadius) * kChunkSize);
+            const int lastColumn = std::min(
+                grid.GetWidth(),
+                (viewCenter.x / kChunkSize + chunkRadius + 1) * kChunkSize);
+            const int firstRow = std::max(
+                0,
+                (viewCenter.z / kChunkSize - chunkRadius) * kChunkSize);
+            const int lastRow = std::min(
+                grid.GetDepth(),
+                (viewCenter.z / kChunkSize + chunkRadius + 1) * kChunkSize);
+            const float firstX = -grid.GetWorldWidth() * 0.5f +
+                                 static_cast<float>(firstColumn) * grid.GetCellSize();
+            const float lastX = -grid.GetWorldWidth() * 0.5f +
+                                static_cast<float>(lastColumn) * grid.GetCellSize();
+            const float firstZ = -grid.GetWorldDepth() * 0.5f +
+                                 static_cast<float>(firstRow) * grid.GetCellSize();
+            const float lastZ = -grid.GetWorldDepth() * 0.5f +
+                                static_cast<float>(lastRow) * grid.GetCellSize();
             const float lineY = grid.GetWorldHeight() + kGridLineHeight;
+            const int lineSpacing = showCellGrid ? 1 : kChunkSize;
 
-            for (std::int64_t column = 0; column <= grid.GetWidth(); ++column)
+            for (int column = firstColumn; column < lastColumn; column += lineSpacing)
             {
-                const float x = -halfWidth + static_cast<float>(column) * grid.GetCellSize();
+                const float x = -grid.GetWorldWidth() * 0.5f +
+                                static_cast<float>(column) * grid.GetCellSize();
                 const Color color = (column == 0 || column == grid.GetWidth())
                     ? kGridBoundaryColor
                     : kGridLineColor;
-                DrawLine3D({ x, lineY, -halfDepth }, { x, lineY, halfDepth }, color);
+                DrawLine3D({ x, lineY, firstZ }, { x, lineY, lastZ }, color);
             }
+            const float finalX = -grid.GetWorldWidth() * 0.5f +
+                                 static_cast<float>(lastColumn) * grid.GetCellSize();
+            DrawLine3D(
+                { finalX, lineY, firstZ },
+                { finalX, lineY, lastZ },
+                lastColumn == grid.GetWidth() ? kGridBoundaryColor : kGridLineColor);
 
-            for (std::int64_t row = 0; row <= grid.GetDepth(); ++row)
+            for (int row = firstRow; row < lastRow; row += lineSpacing)
             {
-                const float z = -halfDepth + static_cast<float>(row) * grid.GetCellSize();
+                const float z = -grid.GetWorldDepth() * 0.5f +
+                                static_cast<float>(row) * grid.GetCellSize();
                 const Color color = (row == 0 || row == grid.GetDepth())
                     ? kGridBoundaryColor
                     : kGridLineColor;
-                DrawLine3D({ -halfWidth, lineY, z }, { halfWidth, lineY, z }, color);
+                DrawLine3D({ firstX, lineY, z }, { lastX, lineY, z }, color);
             }
+            const float finalZ = -grid.GetWorldDepth() * 0.5f +
+                                 static_cast<float>(lastRow) * grid.GetCellSize();
+            DrawLine3D(
+                { firstX, lineY, finalZ },
+                { lastX, lineY, finalZ },
+                lastRow == grid.GetDepth() ? kGridBoundaryColor : kGridLineColor);
         }
 
         void DrawHoveredCell(const Grid& grid, GridCell cell)

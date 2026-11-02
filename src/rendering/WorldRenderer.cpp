@@ -78,12 +78,24 @@ namespace Infinitesia
 
         m_worldMaterial = LoadMaterialDefault();
         m_worldMaterial.shader = m_worldShader;
+        m_worldMaterial.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
         m_cylinderMesh = GenMeshCylinder(1.0f, 1.0f, 8);
         m_sphereMesh = GenMeshSphere(1.0f, 8, 8);
     }
 
     void WorldRenderer::UnloadShaders()
     {
+        for (auto& [coordinate, chunkMesh] : m_chunkMeshes)
+        {
+            static_cast<void>(coordinate);
+            if (chunkMesh.mesh.vaoId != 0 || chunkMesh.mesh.vboId != nullptr)
+            {
+                UnloadMesh(chunkMesh.mesh);
+                chunkMesh.mesh = {};
+            }
+        }
+        m_chunkMeshes.clear();
+
         if (m_cylinderMesh.vaoId != 0 || m_cylinderMesh.vboId != nullptr)
         {
             UnloadMesh(m_cylinderMesh);
@@ -119,16 +131,28 @@ namespace Infinitesia
         std::optional<WorldObjectId> hoveredObject,
         std::optional<WorldObjectId> selectedObject,
         WorldPosition pathOrigin,
-        const std::vector<GridCell>& debugPath) const
+        const std::vector<GridCell>& debugPath,
+        GridCell chunkViewCenter,
+        int chunkRenderRadius) const
     {
         BeginMode3D(m_camera);
         BeginShaderMode(m_worldShader);
-        WorldGeometryRenderer::DrawBlocks(grid, world);
+        WorldGeometryRenderer::DrawBlocks(
+            grid,
+            world,
+            chunkViewCenter,
+            chunkRenderRadius,
+            m_worldMaterial,
+            m_chunkMeshes);
         EndShaderMode();
 
         rlDisableDepthMask();
         BeginShaderMode(m_shadowShader);
-        WorldGeometryRenderer::DrawObjectShadows(grid, world);
+        WorldGeometryRenderer::DrawObjectShadows(
+            grid,
+            world,
+            chunkViewCenter,
+            chunkRenderRadius);
         EndShaderMode();
         rlEnableDepthMask();
 
@@ -138,14 +162,20 @@ namespace Infinitesia
             world,
             m_cylinderMesh,
             m_sphereMesh,
-            m_worldMaterial);
+            m_worldMaterial,
+            chunkViewCenter,
+            chunkRenderRadius);
         EndShaderMode();
 
         if (hoveredCell.has_value())
         {
             WorldOverlayRenderer::DrawHoveredCell(grid, *hoveredCell);
         }
-        WorldOverlayRenderer::DrawGridLines(grid);
+        WorldOverlayRenderer::DrawGridLines(
+            grid,
+            chunkViewCenter,
+            chunkRenderRadius,
+            chunkRenderRadius <= 2);
         WorldOverlayRenderer::DrawDebugPath(grid, pathOrigin, debugPath);
         WorldOverlayRenderer::DrawObjectHighlights(grid, world, hoveredObject, selectedObject);
         EndMode3D();

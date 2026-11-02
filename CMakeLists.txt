@@ -36,6 +36,7 @@ add_executable(Infinitesia
   src/world/Grid.h
   src/world/Grid.cpp
   src/world/Block.h
+  src/world/Chunk.h
   src/world/GridPathfinder.h
   src/world/GridPathfinder.cpp
   src/world/Item.h

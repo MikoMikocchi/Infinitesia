@@ -3,6 +3,7 @@
 #include "raylib.h"
 #include "world/Grid.h"
 #include "world/World.h"
+#include "rendering/WorldGeometryRenderer.h"
 
 #include <optional>
 #include <vector>
@@ -32,7 +33,9 @@ namespace Infinitesia
             std::optional<WorldObjectId> hoveredObject,
             std::optional<WorldObjectId> selectedObject,
             WorldPosition pathOrigin,
-            const std::vector<GridCell>& debugPath) const;
+            const std::vector<GridCell>& debugPath,
+            GridCell chunkViewCenter,
+            int chunkRenderRadius) const;
         Camera3D& GetCamera();
         const Camera3D& GetCamera() const;
 
@@ -43,5 +46,6 @@ namespace Infinitesia
         Material m_worldMaterial{};
         Mesh m_cylinderMesh{};
         Mesh m_sphereMesh{};
+        mutable WorldGeometryRenderer::ChunkMeshCache m_chunkMeshes;
     };
 }

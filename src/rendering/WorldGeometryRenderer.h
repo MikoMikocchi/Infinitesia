@@ -4,17 +4,40 @@
 #include "world/Grid.h"
 #include "world/World.h"
 
+#include <cstdint>
+#include <map>
+
 namespace Infinitesia
 {
     namespace WorldGeometryRenderer
     {
-        void DrawBlocks(const Grid& grid, const World& world);
-        void DrawObjectShadows(const Grid& grid, const World& world);
+        struct ChunkMeshCacheEntry
+        {
+            Mesh mesh{};
+            std::uint64_t terrainRevision = 0;
+        };
+
+        using ChunkMeshCache = std::map<ChunkCoordinate, ChunkMeshCacheEntry>;
+
+        void DrawBlocks(
+            const Grid& grid,
+            const World& world,
+            GridCell viewCenter,
+            int chunkRadius,
+            Material material,
+            ChunkMeshCache& meshCache);
+        void DrawObjectShadows(
+            const Grid& grid,
+            const World& world,
+            GridCell viewCenter,
+            int chunkRadius);
         void DrawObjects(
             const Grid& grid,
             const World& world,
             Mesh cylinderMesh,
             Mesh sphereMesh,
-            Material material);
+            Material material,
+            GridCell viewCenter,
+            int chunkRadius);
     }
 }
