@@ -24,11 +24,15 @@ set(BUILD_GAMES    OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(raylib)
 
-file(GLOB_RECURSE INF_SOURCE_FILES
-  "${CMAKE_SOURCE_DIR}/src/*.cpp"
+add_executable(Infinitesia
+  src/main.cpp
+  src/app/Application.h
+  src/app/Application.cpp
+  src/core/Time.h
+  src/core/Time.cpp
+  src/core/Simulation.h
+  src/core/Simulation.cpp
 )
-
-add_executable(Infinitesia ${INF_SOURCE_FILES})
 
 target_include_directories(Infinitesia PRIVATE
   ${CMAKE_SOURCE_DIR}/src

@@ -1,21 +1,17 @@
 #pragma once
 
-#include "raylib.h"
-
 namespace Infinitesia
 {
     class Application
     {
     public:
-        Application();
-        ~Application();
-
         void Run();
 
     private:
-        void Init();
-        void Update();
-        void Draw();
+        void Initialize();
+        void UpdateFrame();
+        void Render();
+        void DrawDebugOverlay();
         void Shutdown();
 
         const int m_screenWidth = 1280;
