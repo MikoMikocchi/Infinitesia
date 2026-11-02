@@ -30,6 +30,7 @@ namespace Infinitesia
             { WorldObjectType::Tree, { 12, 12 } }
         };
         WorkerConfig worker{ 3.0f, 4.0f, 3 };
+        bool showPathDebug = true;
         float simulationTicksPerSecond = 20.0f;
     };
 }

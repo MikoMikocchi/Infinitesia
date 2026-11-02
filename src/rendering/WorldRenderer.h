@@ -5,6 +5,7 @@
 #include "world/World.h"
 
 #include <optional>
+#include <vector>
 
 namespace Infinitesia
 {
@@ -25,7 +26,9 @@ namespace Infinitesia
             const World& world,
             std::optional<GridCell> hoveredCell,
             std::optional<WorldObjectId> hoveredObject,
-            std::optional<WorldObjectId> selectedObject) const;
+            std::optional<WorldObjectId> selectedObject,
+            WorldPosition pathOrigin,
+            const std::vector<GridCell>& debugPath) const;
         Camera3D& GetCamera();
         const Camera3D& GetCamera() const;
 

@@ -20,6 +20,8 @@ namespace Infinitesia
         constexpr Color kHoveredCellOutlineColor = { 255, 215, 90, 255 };
         constexpr Color kHoveredObjectOutlineColor = { 245, 245, 245, 255 };
         constexpr Color kSelectedObjectOutlineColor = { 70, 220, 110, 255 };
+        constexpr Color kDebugPathColor = { 70, 205, 235, 230 };
+        constexpr Color kDebugPathBendColor = { 255, 195, 65, 255 };
 
         Camera3D CreateCamera(CameraConfig config)
         {
@@ -163,6 +165,51 @@ namespace Infinitesia
                 },
                 color);
         }
+
+        void DrawDebugPath(const Grid& grid, WorldPosition origin, const std::vector<GridCell>& path)
+        {
+            if (path.empty())
+            {
+                return;
+            }
+
+            constexpr float pathHeight = 0.075f;
+            const float bendRadius = grid.GetCellSize() * 0.12f;
+            std::vector<Vector3> points;
+            points.reserve(path.size() + 1);
+            points.push_back({ origin.x, pathHeight, origin.z });
+            for (const GridCell cell : path)
+            {
+                const WorldPosition position = grid.CellToWorld(cell);
+                points.push_back({ position.x, pathHeight, position.z });
+            }
+
+            for (std::size_t index = 1; index < points.size(); ++index)
+            {
+                DrawLine3D(points[index - 1], points[index], kDebugPathColor);
+            }
+
+            for (std::size_t index = 1; index + 1 < points.size(); ++index)
+            {
+                const Vector3 incoming{
+                    points[index].x - points[index - 1].x,
+                    0.0f,
+                    points[index].z - points[index - 1].z
+                };
+                const Vector3 outgoing{
+                    points[index + 1].x - points[index].x,
+                    0.0f,
+                    points[index + 1].z - points[index].z
+                };
+                if (std::abs(incoming.x * outgoing.z - incoming.z * outgoing.x) > 1.0e-5f)
+                {
+                    DrawSphere(
+                        { points[index].x, pathHeight + bendRadius, points[index].z },
+                        bendRadius,
+                        kDebugPathBendColor);
+                }
+            }
+        }
     }
 
     WorldRenderer::WorldRenderer(CameraConfig config)
@@ -175,7 +222,9 @@ namespace Infinitesia
         const World& world,
         std::optional<GridCell> hoveredCell,
         std::optional<WorldObjectId> hoveredObject,
-        std::optional<WorldObjectId> selectedObject) const
+        std::optional<WorldObjectId> selectedObject,
+        WorldPosition pathOrigin,
+        const std::vector<GridCell>& debugPath) const
     {
         BeginMode3D(m_camera);
         DrawPlane(
@@ -191,6 +240,7 @@ namespace Infinitesia
             DrawWorldObject(grid, object);
         }
         DrawGridLines(grid);
+        DrawDebugPath(grid, pathOrigin, debugPath);
         for (const WorldObject& object : world.GetObjects())
         {
             const bool isSelected = selectedObject.has_value() && object.id == *selectedObject;

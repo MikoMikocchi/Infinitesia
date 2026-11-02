@@ -66,7 +66,8 @@ namespace Infinitesia
           m_simulation(m_config.simulationTicksPerSecond),
           m_workSystem(m_config.worker),
           m_worldRenderer(m_config.camera),
-          m_cameraController(m_config.cameraControls)
+          m_cameraController(m_config.cameraControls),
+          m_showPathDebug(m_config.showPathDebug)
     {
         if (m_config.camera.distance < m_config.cameraControls.minimumDistance ||
             m_config.camera.distance > m_config.cameraControls.maximumDistance ||
@@ -97,6 +98,11 @@ namespace Infinitesia
 
     void Application::Update()
     {
+        if (IsKeyPressed(KEY_F3))
+        {
+            m_showPathDebug = !m_showPathDebug;
+        }
+
         m_cameraController.Update(m_worldRenderer.GetCamera(), m_time.GetDeltaTime());
         const Vector2 mousePosition = GetMousePosition();
         m_hoveredCell = m_gridPointer.PickCell(
@@ -164,10 +170,29 @@ namespace Infinitesia
 
     void Application::Render()
     {
+        WorldPosition pathOrigin{};
+        std::vector<GridCell> debugPath;
+        if (m_showPathDebug && m_selectedObject.has_value())
+        {
+            const WorldObject* selectedObject = m_world.FindObject(*m_selectedObject);
+            if (selectedObject != nullptr && selectedObject->type == WorldObjectType::Worker)
+            {
+                pathOrigin = selectedObject->position;
+                debugPath = m_workSystem.GetRemainingPath(selectedObject->id);
+            }
+        }
+
         BeginDrawing();
         ClearBackground({ 30, 34, 39, 255 });
 
-        m_worldRenderer.Draw(m_grid, m_world, m_hoveredCell, m_hoveredObject, m_selectedObject);
+        m_worldRenderer.Draw(
+            m_grid,
+            m_world,
+            m_hoveredCell,
+            m_hoveredObject,
+            m_selectedObject,
+            pathOrigin,
+            debugPath);
         DrawText(
             m_config.window.title.c_str(),
             (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,
@@ -186,7 +211,7 @@ namespace Infinitesia
         const int fontSize = 16;
         const int lineHeight = 20;
         const int panelWidth = 250;
-        const int panelHeight = 7 * lineHeight + padding;
+        const int panelHeight = 8 * lineHeight + padding;
 
         char buf[128];
 
@@ -269,5 +294,8 @@ namespace Infinitesia
                 fontSize,
                 GOLD);
         }
+
+        std::snprintf(buf, sizeof(buf), "Path debug: %s (F3)", m_showPathDebug ? "on" : "off");
+        DrawText(buf, padding, padding + 7 * lineHeight, fontSize, SKYBLUE);
     }
 }

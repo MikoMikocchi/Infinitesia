@@ -42,6 +42,7 @@ namespace Infinitesia
         std::optional<WorldObjectId> m_hoveredObject;
         std::optional<WorldObjectId> m_selectedObject;
         std::string m_actionNotice;
+        bool m_showPathDebug = true;
         Time m_time;
     };
 }

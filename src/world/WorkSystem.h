@@ -4,6 +4,7 @@
 #include "world/World.h"
 
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace Infinitesia
@@ -41,6 +42,7 @@ namespace Infinitesia
         void Tick(World& world, const Grid& grid, float fixedDeltaTime);
         WorkerActivity GetActivity(WorldObjectId worker) const;
         float GetWorkProgress(WorldObjectId worker) const;
+        std::vector<GridCell> GetRemainingPath(WorldObjectId worker) const;
 
     private:
         enum class WorkPhase
@@ -54,6 +56,8 @@ namespace Infinitesia
             WorldObjectId worker;
             WorldObjectId tree;
             GridCell workCell;
+            std::vector<GridCell> path;
+            std::size_t nextPathCell = 1;
             WorkPhase phase;
             float choppingProgress = 0.0f;
         };
@@ -61,7 +65,13 @@ namespace Infinitesia
         bool HasOrderForWorker(WorldObjectId worker) const;
         bool HasOrderForTree(WorldObjectId tree) const;
         bool IsReserved(GridCell cell) const;
-        void AdvanceOrder(WorkOrder& order, World& world, const Grid& grid, float fixedDeltaTime);
+        std::optional<std::vector<GridCell>> FindPath(
+            GridCell start,
+            GridCell goal,
+            WorldObjectId worker,
+            const World& world,
+            const Grid& grid) const;
+        bool AdvanceOrder(WorkOrder& order, World& world, const Grid& grid, float fixedDeltaTime);
 
         WorkerConfig m_config;
         std::vector<WorkOrder> m_orders;
