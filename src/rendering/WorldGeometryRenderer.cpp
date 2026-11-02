@@ -36,6 +36,133 @@ namespace Infinitesia
                 throw std::invalid_argument("Block has an unsupported type.");
             }
 
+            void AppendFace(
+                const std::array<Vector3, 4>& corners,
+                Vector3 normal,
+                Color color,
+                std::vector<float>& vertices,
+                std::vector<float>& texcoords,
+                std::vector<float>& normals,
+                std::vector<unsigned char>& colors,
+                std::vector<unsigned short>& indices)
+            {
+                const unsigned short firstVertex =
+                    static_cast<unsigned short>(vertices.size() / 3);
+                for (const Vector3 corner : corners)
+                {
+                    vertices.insert(vertices.end(), { corner.x, corner.y, corner.z });
+                    texcoords.insert(texcoords.end(), { 0.0f, 0.0f });
+                    normals.insert(normals.end(), { normal.x, normal.y, normal.z });
+                    colors.insert(colors.end(), { color.r, color.g, color.b, color.a });
+                }
+
+                const Vector3 firstEdge = Vector3Subtract(corners[1], corners[0]);
+                const Vector3 secondEdge = Vector3Subtract(corners[2], corners[0]);
+                const bool reverseWinding =
+                    Vector3DotProduct(Vector3CrossProduct(firstEdge, secondEdge), normal) < 0.0f;
+                if (reverseWinding)
+                {
+                    indices.insert(indices.end(), {
+                        firstVertex,
+                        static_cast<unsigned short>(firstVertex + 2),
+                        static_cast<unsigned short>(firstVertex + 1),
+                        firstVertex,
+                        static_cast<unsigned short>(firstVertex + 3),
+                        static_cast<unsigned short>(firstVertex + 2)
+                    });
+                    return;
+                }
+
+                indices.insert(indices.end(), {
+                    firstVertex,
+                    static_cast<unsigned short>(firstVertex + 1),
+                    static_cast<unsigned short>(firstVertex + 2),
+                    firstVertex,
+                    static_cast<unsigned short>(firstVertex + 2),
+                    static_cast<unsigned short>(firstVertex + 3)
+                });
+            }
+
+            void AppendExposedSideFaces(
+                const Grid& grid,
+                const World& world,
+                GridCell cell,
+                int level,
+                float left,
+                float right,
+                float front,
+                float back,
+                float bottomY,
+                float topY,
+                Color color,
+                std::vector<float>& vertices,
+                std::vector<float>& texcoords,
+                std::vector<float>& normals,
+                std::vector<unsigned char>& colors,
+                std::vector<unsigned short>& indices)
+            {
+                const std::array<GridCell, 4> neighbors{
+                    GridCell{ cell.x - 1, level, cell.z },
+                    GridCell{ cell.x + 1, level, cell.z },
+                    GridCell{ cell.x, level, cell.z - 1 },
+                    GridCell{ cell.x, level, cell.z + 1 }
+                };
+                const std::array<std::array<Vector3, 4>, 4> sideCorners{
+                    std::array<Vector3, 4>{
+                        Vector3{ left, bottomY, front },
+                        Vector3{ left, bottomY, back },
+                        Vector3{ left, topY, back },
+                        Vector3{ left, topY, front }
+                    },
+                    std::array<Vector3, 4>{
+                        Vector3{ right, bottomY, back },
+                        Vector3{ right, bottomY, front },
+                        Vector3{ right, topY, front },
+                        Vector3{ right, topY, back }
+                    },
+                    std::array<Vector3, 4>{
+                        Vector3{ right, bottomY, front },
+                        Vector3{ left, bottomY, front },
+                        Vector3{ left, topY, front },
+                        Vector3{ right, topY, front }
+                    },
+                    std::array<Vector3, 4>{
+                        Vector3{ left, bottomY, back },
+                        Vector3{ right, bottomY, back },
+                        Vector3{ right, topY, back },
+                        Vector3{ left, topY, back }
+                    }
+                };
+                const std::array<Vector3, 4> sideNormals{
+                    Vector3{ -1.0f, 0.0f, 0.0f },
+                    Vector3{ 1.0f, 0.0f, 0.0f },
+                    Vector3{ 0.0f, 0.0f, -1.0f },
+                    Vector3{ 0.0f, 0.0f, 1.0f }
+                };
+
+                for (std::size_t side = 0; side < neighbors.size(); ++side)
+                {
+                    if (grid.Contains(neighbors[side]))
+                    {
+                        const Block* neighbor = world.GetBlock(neighbors[side]);
+                        if (neighbor == nullptr || neighbor->type != BlockType::Air)
+                        {
+                            continue;
+                        }
+                    }
+
+                    AppendFace(
+                        sideCorners[side],
+                        sideNormals[side],
+                        color,
+                        vertices,
+                        texcoords,
+                        normals,
+                        colors,
+                        indices);
+                }
+            }
+
             bool IsChunkVisible(
                 GridCell cell,
                 GridCell viewCenter,
@@ -95,11 +222,11 @@ namespace Infinitesia
                 const std::size_t surfaceCellCount =
                     static_cast<std::size_t>(chunk.width) *
                     static_cast<std::size_t>(chunk.depth);
-                vertices.reserve(surfaceCellCount * 12);
-                texcoords.reserve(surfaceCellCount * 8);
-                normals.reserve(surfaceCellCount * 12);
-                colors.reserve(surfaceCellCount * 16);
-                indices.reserve(surfaceCellCount * 6);
+                vertices.reserve(surfaceCellCount * 60);
+                texcoords.reserve(surfaceCellCount * 40);
+                normals.reserve(surfaceCellCount * 60);
+                colors.reserve(surfaceCellCount * 80);
+                indices.reserve(surfaceCellCount * 30);
                 const float cellSize = grid.GetCellSize();
                 const float blockTopY = static_cast<float>(viewLevel + 1) * cellSize;
                 const float floorY = static_cast<float>(viewLevel) * cellSize;
@@ -116,11 +243,6 @@ namespace Infinitesia
                                 static_cast<std::size_t>(chunk.width) +
                             static_cast<std::size_t>(localX);
                         const Block& block = chunk.blocks[blockIndex];
-                        if (block.type == BlockType::Air)
-                        {
-                            continue;
-                        }
-
                         const bool isAir = block.type == BlockType::Air;
                         const GridCell lightingCell = isAir
                             ? GridCell{ block.cell.x, viewLevel - 1, block.cell.z }
@@ -141,12 +263,6 @@ namespace Infinitesia
                         const float right = left + cellSize;
                         const float back = front + cellSize;
                         const float topY = isAir ? floorY : blockTopY;
-                        const std::array<Vector3, 4> corners{
-                            Vector3{ left, topY, front },
-                            Vector3{ right, topY, front },
-                            Vector3{ right, topY, back },
-                            Vector3{ left, topY, back }
-                        };
                         const BlockType visibleBlockType = isAir
                             ? floorBlock->type
                             : block.type;
@@ -155,23 +271,77 @@ namespace Infinitesia
                         {
                             color = BLACK;
                         }
-                        const unsigned short firstVertex =
-                            static_cast<unsigned short>(vertices.size() / 3);
-                        for (const Vector3 corner : corners)
+                        AppendFace(
+                            {
+                                Vector3{ left, topY, front },
+                                Vector3{ right, topY, front },
+                                Vector3{ right, topY, back },
+                                Vector3{ left, topY, back }
+                            },
+                            { 0.0f, 1.0f, 0.0f },
+                            color,
+                            vertices,
+                            texcoords,
+                            normals,
+                            colors,
+                            indices);
+
+                        if (!isAir)
                         {
-                            vertices.insert(vertices.end(), { corner.x, corner.y, corner.z });
-                            texcoords.insert(texcoords.end(), { 0.0f, 0.0f });
-                            normals.insert(normals.end(), { 0.0f, 1.0f, 0.0f });
-                            colors.insert(colors.end(), { color.r, color.g, color.b, color.a });
+                            AppendExposedSideFaces(
+                                grid,
+                                world,
+                                block.cell,
+                                viewLevel,
+                                left,
+                                right,
+                                front,
+                                back,
+                                floorY,
+                                blockTopY,
+                                color,
+                                vertices,
+                                texcoords,
+                                normals,
+                                colors,
+                                indices);
                         }
-                        indices.insert(indices.end(), {
-                            static_cast<unsigned short>(firstVertex),
-                            static_cast<unsigned short>(firstVertex + 2),
-                            static_cast<unsigned short>(firstVertex + 1),
-                            static_cast<unsigned short>(firstVertex),
-                            static_cast<unsigned short>(firstVertex + 3),
-                            static_cast<unsigned short>(firstVertex + 2)
-                        });
+
+                        if (viewLevel + 1 < grid.GetHeight())
+                        {
+                            const GridCell upperCell{
+                                block.cell.x,
+                                viewLevel + 1,
+                                block.cell.z
+                            };
+                            const Block* upperBlock = world.GetBlock(upperCell);
+                            if (upperBlock != nullptr && upperBlock->type != BlockType::Air)
+                            {
+                                Color upperColor = GetBlockColor(upperBlock->type);
+                                if (!world.HasSkyAccess(upperCell))
+                                {
+                                    upperColor = BLACK;
+                                }
+
+                                AppendExposedSideFaces(
+                                    grid,
+                                    world,
+                                    upperCell,
+                                    viewLevel + 1,
+                                    left,
+                                    right,
+                                    front,
+                                    back,
+                                    blockTopY,
+                                    blockTopY + cellSize,
+                                    upperColor,
+                                    vertices,
+                                    texcoords,
+                                    normals,
+                                    colors,
+                                    indices);
+                            }
+                        }
                     }
                 }
 
