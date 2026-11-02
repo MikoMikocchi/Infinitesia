@@ -1,5 +1,7 @@
 #include "input/WorldInteractionController.h"
 
+#include "raylib.h"
+
 namespace Infinitesia
 {
     void WorldInteractionController::Update(
@@ -13,6 +15,28 @@ namespace Infinitesia
         int screenHeight,
         int selectedLevel)
     {
+        if (m_characterProfilePanel.IsOpen())
+        {
+            const WorldObject* character = world.FindObject(m_characterProfilePanel.GetCharacter());
+            if (character == nullptr || character->type != WorldObjectType::Worker)
+            {
+                m_characterProfilePanel.Close();
+            }
+            else
+            {
+                m_characterProfilePanel.Update(
+                    input.mousePosition,
+                    input.leftClickPressed,
+                    input.escapePressed,
+                    screenWidth,
+                    screenHeight,
+                    character->inventory.GetSlots().size());
+                m_hoveredObject.reset();
+                m_hoveredCell.reset();
+                return;
+            }
+        }
+
         m_hoveredCell = m_gridPointer.PickCell(
             grid,
             camera,
@@ -104,6 +128,16 @@ namespace Infinitesia
             });
         }
 
+        std::optional<WorldObjectId> profileTarget;
+        if (m_hoveredObject.has_value())
+        {
+            const WorldObject* hoveredObject = world.FindObject(*m_hoveredObject);
+            if (hoveredObject != nullptr && hoveredObject->type == WorldObjectType::Worker)
+            {
+                profileTarget = hoveredObject->id;
+            }
+        }
+
         const ContextMenuUpdate menuUpdate = m_contextMenu.Update(
             input.mousePosition,
             input.rightClickPressed,
@@ -114,10 +148,16 @@ namespace Infinitesia
             actor,
             targetCommands,
             cellCommands,
+            profileTarget,
             screenWidth,
             screenHeight);
 
-        if (menuUpdate.commandRequest.has_value())
+        if (menuUpdate.profileRequest.has_value())
+        {
+            m_characterProfilePanel.Open(*menuUpdate.profileRequest);
+            m_lastClickedObject.reset();
+        }
+        else if (menuUpdate.commandRequest.has_value())
         {
             const CommandRequest& request = *menuUpdate.commandRequest;
             const CommandResult result = commands.Execute(
@@ -173,6 +213,31 @@ namespace Infinitesia
         {
             m_selectedObject = m_hoveredObject;
             m_actionNotice.clear();
+
+            const WorldObject* clickedObject = m_hoveredObject.has_value()
+                ? world.FindObject(*m_hoveredObject)
+                : nullptr;
+            if (clickedObject != nullptr && clickedObject->type == WorldObjectType::Worker)
+            {
+                const double clickTime = GetTime();
+                constexpr double kDoubleClickInterval = 0.35;
+                if (m_lastClickedObject == clickedObject->id &&
+                    clickTime - m_lastObjectClickTime <= kDoubleClickInterval)
+                {
+                    m_characterProfilePanel.Open(clickedObject->id);
+                    m_contextMenu.Close();
+                    m_lastClickedObject.reset();
+                }
+                else
+                {
+                    m_lastClickedObject = clickedObject->id;
+                    m_lastObjectClickTime = clickTime;
+                }
+            }
+            else
+            {
+                m_lastClickedObject.reset();
+            }
         }
     }
 
@@ -196,8 +261,16 @@ namespace Infinitesia
         return m_actionNotice;
     }
 
-    void WorldInteractionController::DrawOverlay() const
+    void WorldInteractionController::DrawOverlay(const World& world) const
     {
         m_contextMenu.Draw();
+        if (m_characterProfilePanel.IsOpen())
+        {
+            const WorldObject* character = world.FindObject(m_characterProfilePanel.GetCharacter());
+            if (character != nullptr && character->type == WorldObjectType::Worker)
+            {
+                m_characterProfilePanel.Draw(*character, GetScreenWidth(), GetScreenHeight());
+            }
+        }
     }
 }

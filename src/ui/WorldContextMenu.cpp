@@ -27,6 +27,7 @@ namespace Infinitesia
         std::optional<WorldObjectId> actor,
         const std::vector<CommandOption>& targetCommands,
         const std::vector<CommandOption>& cellCommands,
+        std::optional<WorldObjectId> profileTarget,
         int screenWidth,
         int screenHeight)
     {
@@ -41,7 +42,8 @@ namespace Infinitesia
 
         if (rightClickPressed)
         {
-            if (hoveredTarget.has_value() && !targetCommands.empty())
+            if (hoveredTarget.has_value() &&
+                (!targetCommands.empty() || profileTarget.has_value()))
             {
                 Open(
                     mousePosition,
@@ -49,6 +51,7 @@ namespace Infinitesia
                     std::nullopt,
                     actor,
                     targetCommands,
+                    profileTarget,
                     screenWidth,
                     screenHeight);
             }
@@ -60,6 +63,7 @@ namespace Infinitesia
                     hoveredCell,
                     actor,
                     cellCommands,
+                    std::nullopt,
                     screenWidth,
                     screenHeight);
             }
@@ -108,6 +112,14 @@ namespace Infinitesia
             return result;
         }
 
+        if (m_profileTarget.has_value() &&
+            CheckCollisionPointRec(mousePosition, GetActionBounds(m_commands.size())))
+        {
+            result.profileRequest = m_profileTarget;
+            Close();
+            return result;
+        }
+
         Close();
         return result;
     }
@@ -140,13 +152,30 @@ namespace Infinitesia
                 command.enabled ? kEnabledTextColor : kDisabledTextColor);
         }
 
+        if (m_profileTarget.has_value())
+        {
+            const Rectangle profileBounds = GetActionBounds(m_commands.size());
+            if (CheckCollisionPointRec(GetMousePosition(), profileBounds))
+            {
+                DrawRectangleRec(profileBounds, kHoveredItemColor);
+            }
+            DrawText(
+                "Profile",
+                static_cast<int>(m_position.x + kTextInsetX),
+                static_cast<int>(profileBounds.y + kTextInsetY),
+                kFontSize,
+                kEnabledTextColor);
+        }
+
         const char* disabledHint = GetDisabledHint();
         if (disabledHint != nullptr)
         {
+            const std::size_t actionCount =
+                m_commands.size() + (m_profileTarget.has_value() ? 1 : 0);
             DrawText(
                 disabledHint,
                 static_cast<int>(m_position.x),
-                static_cast<int>(m_position.y + static_cast<float>(m_commands.size()) * m_actionHeight + 2.0f),
+                static_cast<int>(m_position.y + static_cast<float>(actionCount) * m_actionHeight + 2.0f),
                 kFontSize - 4,
                 kDisabledHintColor);
         }
@@ -159,7 +188,8 @@ namespace Infinitesia
 
     Rectangle WorldContextMenu::GetBounds() const
     {
-        const float height = static_cast<float>(m_commands.size()) * m_actionHeight +
+        const float height = static_cast<float>(m_commands.size() + (m_profileTarget.has_value() ? 1 : 0)) *
+                m_actionHeight +
             (HasDisabledCommands() ? m_disabledHintHeight : 0.0f);
         return { m_position.x, m_position.y, m_width, height };
     }
@@ -204,6 +234,7 @@ namespace Infinitesia
         std::optional<GridCell> targetCell,
         std::optional<WorldObjectId> actor,
         const std::vector<CommandOption>& commands,
+        std::optional<WorldObjectId> profileTarget,
         int screenWidth,
         int screenHeight)
     {
@@ -211,10 +242,13 @@ namespace Infinitesia
         m_target = target;
         m_targetCell = targetCell;
         m_actor = actor;
+        m_profileTarget = profileTarget;
         m_commands = commands;
 
         const float maximumX = std::max(m_screenMargin, static_cast<float>(screenWidth) - m_width - m_screenMargin);
-        const float menuHeight = static_cast<float>(m_commands.size()) * m_actionHeight +
+        const float menuHeight = static_cast<float>(
+                m_commands.size() + (m_profileTarget.has_value() ? 1 : 0)) *
+                m_actionHeight +
             (HasDisabledCommands() ? m_disabledHintHeight : 0.0f);
         const float maximumY = std::max(m_screenMargin, static_cast<float>(screenHeight) - menuHeight - m_screenMargin);
         m_position = {
@@ -229,6 +263,7 @@ namespace Infinitesia
         m_target.reset();
         m_targetCell.reset();
         m_actor.reset();
+        m_profileTarget.reset();
         m_commands.clear();
     }
 }

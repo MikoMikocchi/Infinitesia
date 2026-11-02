@@ -36,6 +36,10 @@ namespace Infinitesia
         {
             return "Selected worker is no longer available";
         }
+        if (!target.item.has_value() || !worker->inventory.CanStore(*target.item))
+        {
+            return "Inventory has no room";
+        }
         return {};
     }
 
@@ -61,6 +65,11 @@ namespace Infinitesia
             return { false, "Item is no longer available" };
         }
 
+        const Item pickedUpItem = *item->item;
+        if (!world.TryAddToInventory(*actor, pickedUpItem))
+        {
+            return { false, "Inventory has no room" };
+        }
         if (!world.RemoveObject(target))
         {
             return { false, "Item is no longer available" };

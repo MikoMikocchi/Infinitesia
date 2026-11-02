@@ -84,7 +84,14 @@ namespace Infinitesia
         }
 
         const WorldObjectId id{ m_nextObjectId++ };
-        m_objects.push_back({ id, type, cell, grid.CellToSurface(cell), std::move(item) });
+        m_objects.push_back({
+            id,
+            type,
+            cell,
+            grid.CellToSurface(cell),
+            std::move(item),
+            {}
+        });
         return id;
     }
 
@@ -122,6 +129,14 @@ namespace Infinitesia
             }
         }
         return false;
+    }
+
+    bool World::TryAddToInventory(WorldObjectId workerId, const Item& item)
+    {
+        WorldObject* worker = FindMutableObject(workerId);
+        return worker != nullptr &&
+               worker->type == WorldObjectType::Worker &&
+               worker->inventory.TryAdd(item);
     }
 
     bool World::SetObjectPosition(WorldObjectId id, WorldPosition position)

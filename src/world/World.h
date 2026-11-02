@@ -3,6 +3,7 @@
 #include "world/Block.h"
 #include "world/Chunk.h"
 #include "world/Grid.h"
+#include "world/Inventory.h"
 #include "world/Item.h"
 
 #include <cstddef>
@@ -41,6 +42,7 @@ namespace Infinitesia
         GridCell cell;
         WorldPosition position;
         std::optional<Item> item;
+        Inventory inventory;
     };
 
     struct WorldObjectSize
@@ -69,6 +71,7 @@ namespace Infinitesia
             WorldObjectType type,
             std::optional<Item> item = std::nullopt);
         bool RemoveObject(WorldObjectId id);
+        bool TryAddToInventory(WorldObjectId worker, const Item& item);
         bool SetObjectPosition(WorldObjectId id, WorldPosition position);
         bool SetObjectCell(WorldObjectId id, GridCell cell, const Grid& grid);
         void RequestChunksAround(GridCell center, int horizontalRadius, int verticalRadius = 0);

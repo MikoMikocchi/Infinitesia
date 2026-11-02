@@ -3,6 +3,7 @@
 #include "input/GridPointer.h"
 #include "input/WorldObjectPicker.h"
 #include "raylib.h"
+#include "ui/CharacterProfilePanel.h"
 #include "ui/WorldContextMenu.h"
 #include "commands/CommandRegistry.h"
 #include "world/Grid.h"
@@ -39,15 +40,18 @@ namespace Infinitesia
         std::optional<WorldObjectId> GetHoveredObject() const;
         std::optional<WorldObjectId> GetSelectedObject() const;
         const std::string& GetActionNotice() const;
-        void DrawOverlay() const;
+        void DrawOverlay(const World& world) const;
 
     private:
         GridPointer m_gridPointer;
         WorldObjectPicker m_worldObjectPicker;
         WorldContextMenu m_contextMenu;
+        CharacterProfilePanel m_characterProfilePanel;
         std::optional<GridCell> m_hoveredCell;
         std::optional<WorldObjectId> m_hoveredObject;
         std::optional<WorldObjectId> m_selectedObject;
+        std::optional<WorldObjectId> m_lastClickedObject;
+        double m_lastObjectClickTime = -1.0;
         std::string m_actionNotice;
     };
 }

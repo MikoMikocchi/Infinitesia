@@ -46,6 +46,8 @@ add_executable(Infinitesia
   src/world/GridPathfinder.cpp
   src/world/Item.h
   src/world/Item.cpp
+  src/world/Inventory.h
+  src/world/Inventory.cpp
   src/world/World.h
   src/world/World.cpp
   src/world/WorldChunks.cpp
@@ -79,6 +81,8 @@ add_executable(Infinitesia
   src/input/WorldInteractionController.cpp
   src/ui/WorldContextMenu.h
   src/ui/WorldContextMenu.cpp
+  src/ui/CharacterProfilePanel.h
+  src/ui/CharacterProfilePanel.cpp
   src/ui/DebugOverlay.h
   src/ui/DebugOverlay.cpp
   src/rendering/WorldRenderer.h

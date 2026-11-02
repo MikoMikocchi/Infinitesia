@@ -13,6 +13,7 @@ namespace Infinitesia
     {
         bool consumedMouseClick = false;
         std::optional<CommandRequest> commandRequest;
+        std::optional<WorldObjectId> profileRequest;
         struct CellCommandRequest
         {
             std::string commandId;
@@ -35,11 +36,13 @@ namespace Infinitesia
             std::optional<WorldObjectId> actor,
             const std::vector<CommandOption>& targetCommands,
             const std::vector<CommandOption>& cellCommands,
+            std::optional<WorldObjectId> profileTarget,
             int screenWidth,
             int screenHeight);
 
         void Draw() const;
         bool BlocksWorldInput(Vector2 mousePosition) const;
+        void Close();
 
     private:
         static constexpr float m_width = 220.0f;
@@ -58,15 +61,16 @@ namespace Infinitesia
             std::optional<GridCell> targetCell,
             std::optional<WorldObjectId> actor,
             const std::vector<CommandOption>& commands,
+            std::optional<WorldObjectId> profileTarget,
             int screenWidth,
             int screenHeight);
-        void Close();
 
         bool m_isOpen = false;
         Vector2 m_position{ 0.0f, 0.0f };
         std::optional<WorldObjectId> m_target;
         std::optional<GridCell> m_targetCell;
         std::optional<WorldObjectId> m_actor;
+        std::optional<WorldObjectId> m_profileTarget;
         std::vector<CommandOption> m_commands;
     };
 }
