@@ -6,6 +6,24 @@
 
 namespace Infinitesia
 {
+    namespace
+    {
+        void ValidateObjectState(WorldObjectType type, int quantity)
+        {
+            if (type != WorldObjectType::Worker &&
+                type != WorldObjectType::Tree &&
+                type != WorldObjectType::Logs)
+            {
+                throw std::invalid_argument("World object has an unsupported type.");
+            }
+            if ((type == WorldObjectType::Logs && quantity <= 0) ||
+                (type != WorldObjectType::Logs && quantity != 0))
+            {
+                throw std::invalid_argument("World object quantity is invalid for its type.");
+            }
+        }
+    }
+
     WorldObjectSize GetWorldObjectSize(WorldObjectType type, float cellSize)
     {
         switch (type)
@@ -32,15 +50,7 @@ namespace Infinitesia
 
     WorldObjectId World::AddObject(WorldObjectType type, GridCell cell, const Grid& grid, int quantity)
     {
-        if (type != WorldObjectType::Worker && type != WorldObjectType::Tree && type != WorldObjectType::Logs)
-        {
-            throw std::invalid_argument("World object has an unsupported type.");
-        }
-        if ((type == WorldObjectType::Logs && quantity <= 0) ||
-            (type != WorldObjectType::Logs && quantity != 0))
-        {
-            throw std::invalid_argument("World object quantity is invalid for its type.");
-        }
+        ValidateObjectState(type, quantity);
         if (!grid.Contains(cell))
         {
             throw std::out_of_range("World object cell is outside the grid.");
@@ -61,15 +71,7 @@ namespace Infinitesia
 
     WorldObjectId World::TransformObject(WorldObjectId id, WorldObjectType type, int quantity)
     {
-        if (type != WorldObjectType::Worker && type != WorldObjectType::Tree && type != WorldObjectType::Logs)
-        {
-            throw std::invalid_argument("World object has an unsupported type.");
-        }
-        if ((type == WorldObjectType::Logs && quantity <= 0) ||
-            (type != WorldObjectType::Logs && quantity != 0))
-        {
-            throw std::invalid_argument("World object quantity is invalid for its type.");
-        }
+        ValidateObjectState(type, quantity);
 
         WorldObject* object = FindMutableObject(id);
         if (object == nullptr)

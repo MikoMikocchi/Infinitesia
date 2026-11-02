@@ -73,6 +73,7 @@ namespace Infinitesia
             const World& world,
             const Grid& grid) const;
         bool AdvanceOrder(WorkOrder& order, World& world, const Grid& grid, float fixedDeltaTime);
+        bool AdvanceMovement(WorkOrder& order, World& world, const Grid& grid, float fixedDeltaTime);
 
         WorkerConfig m_config;
         GridPathfinder m_pathfinder;

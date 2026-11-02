@@ -1,35 +1,15 @@
 #include "app/Application.h"
 #include "raylib.h"
 
-#include <cstdio>
+#include <optional>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace Infinitesia
 {
     namespace
     {
-        const char* GetWorkOrderMessage(WorkOrderResult result)
-        {
-            switch (result)
-            {
-            case WorkOrderResult::Accepted:
-                return "Worker is moving to the tree";
-            case WorkOrderResult::InvalidWorker:
-                return "Selected worker is no longer available";
-            case WorkOrderResult::InvalidTarget:
-                return "Tree is no longer available";
-            case WorkOrderResult::WorkerBusy:
-                return "Worker already has an order";
-            case WorkOrderResult::TargetBusy:
-                return "Tree is already being chopped";
-            case WorkOrderResult::NoReachableWorkCell:
-                return "No free adjacent cell for the worker";
-            }
-
-            return "Could not assign work order";
-        }
-
         class WindowGuard
         {
         public:
@@ -104,77 +84,29 @@ namespace Infinitesia
         }
 
         m_cameraController.Update(m_worldRenderer.GetCamera(), m_time.GetDeltaTime());
-        const Vector2 mousePosition = GetMousePosition();
-        m_hoveredCell = m_gridPointer.PickCell(
+        m_worldInteraction.Update(
+            {
+                GetMousePosition(),
+                IsMouseButtonPressed(MOUSE_BUTTON_RIGHT),
+                IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
+                IsKeyPressed(KEY_ESCAPE)
+            },
             m_grid,
+            m_world,
             m_worldRenderer.GetCamera(),
-            mousePosition);
-        if (m_contextMenu.BlocksWorldInput(mousePosition))
-        {
-            m_hoveredObject.reset();
-        }
-        else
-        {
-            m_hoveredObject = m_worldObjectPicker.PickObject(
-                m_grid,
-                m_world,
-                m_worldRenderer.GetCamera(),
-                mousePosition);
-        }
-
-        std::optional<WorldObjectId> hoveredTree;
-        if (m_hoveredObject.has_value())
-        {
-            const WorldObject* hoveredObject = m_world.FindObject(*m_hoveredObject);
-            if (hoveredObject != nullptr && hoveredObject->type == WorldObjectType::Tree)
-            {
-                hoveredTree = hoveredObject->id;
-            }
-        }
-
-        std::optional<WorldObjectId> selectedWorker;
-        if (m_selectedObject.has_value())
-        {
-            const WorldObject* selectedObject = m_world.FindObject(*m_selectedObject);
-            if (selectedObject != nullptr && selectedObject->type == WorldObjectType::Worker)
-            {
-                selectedWorker = selectedObject->id;
-            }
-        }
-
-        const ContextMenuUpdate menuUpdate = m_contextMenu.Update(
-            mousePosition,
-            IsMouseButtonPressed(MOUSE_BUTTON_RIGHT),
-            IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
-            IsKeyPressed(KEY_ESCAPE),
-            hoveredTree,
-            selectedWorker,
+            m_workSystem,
             m_config.window.width,
             m_config.window.height);
-
-        if (menuUpdate.actionRequest.has_value())
-        {
-            const WorldActionRequest& request = *menuUpdate.actionRequest;
-            if (request.action == WorldAction::Chop)
-            {
-                m_actionNotice = GetWorkOrderMessage(
-                    m_workSystem.AssignChopOrder(request.actor, request.target, m_world, m_grid));
-            }
-        }
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !menuUpdate.consumedMouseClick)
-        {
-            m_selectedObject = m_hoveredObject;
-            m_actionNotice.clear();
-        }
     }
 
     void Application::Render()
     {
         WorldPosition pathOrigin{};
         std::vector<GridCell> debugPath;
-        if (m_showPathDebug && m_selectedObject.has_value())
+        const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
+        if (m_showPathDebug && selectedObjectId.has_value())
         {
-            const WorldObject* selectedObject = m_world.FindObject(*m_selectedObject);
+            const WorldObject* selectedObject = m_world.FindObject(*selectedObjectId);
             if (selectedObject != nullptr && selectedObject->type == WorldObjectType::Worker)
             {
                 pathOrigin = selectedObject->position;
@@ -188,9 +120,9 @@ namespace Infinitesia
         m_worldRenderer.Draw(
             m_grid,
             m_world,
-            m_hoveredCell,
-            m_hoveredObject,
-            m_selectedObject,
+            m_worldInteraction.GetHoveredCell(),
+            m_worldInteraction.GetHoveredObject(),
+            selectedObjectId,
             pathOrigin,
             debugPath);
         DrawText(
@@ -200,102 +132,48 @@ namespace Infinitesia
             24,
             RAYWHITE);
         DrawDebugOverlay();
-        m_contextMenu.Draw();
+        m_worldInteraction.DrawOverlay();
 
         EndDrawing();
     }
 
     void Application::DrawDebugOverlay()
     {
-        const int padding = 8;
-        const int fontSize = 16;
-        const int lineHeight = 20;
-        const int panelWidth = 250;
-        const int panelHeight = 8 * lineHeight + padding;
-
-        char buf[128];
-
-        DrawRectangle(padding - 4, padding - 4, panelWidth, panelHeight, Fade(BLACK, 0.4f));
-
-        std::snprintf(buf, sizeof(buf), "FPS: %d", GetFPS());
-        DrawText(buf, padding, padding, fontSize, LIME);
-
-        std::snprintf(buf, sizeof(buf), "Time since start: %.3f s", m_time.GetTotalTime());
-        DrawText(buf, padding, padding + lineHeight, fontSize, SKYBLUE);
-
-        std::snprintf(buf, sizeof(buf), "Ticks: %llu", static_cast<unsigned long long>(m_simulation.GetTickCount()));
-        DrawText(buf, padding, padding + 2 * lineHeight, fontSize, ORANGE);
-
-        std::snprintf(buf, sizeof(buf), "Grid: %d x %d", m_grid.GetColumns(), m_grid.GetRows());
-        DrawText(buf, padding, padding + 3 * lineHeight, fontSize, RAYWHITE);
-
-        if (m_hoveredCell.has_value())
+        std::optional<WorldObjectType> selectedObjectType;
+        std::optional<WorkerActivity> workerActivity;
+        float workProgress = 0.0f;
+        const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
+        if (selectedObjectId.has_value())
         {
-            std::snprintf(
-                buf,
-                sizeof(buf),
-                "Cell: %d, %d",
-                m_hoveredCell->column,
-                m_hoveredCell->row);
-            DrawText(buf, padding, padding + 4 * lineHeight, fontSize, GOLD);
-        }
-
-        if (m_selectedObject.has_value())
-        {
-            const WorldObject* selectedObject = m_world.FindObject(*m_selectedObject);
+            const WorldObject* selectedObject = m_world.FindObject(*selectedObjectId);
             if (selectedObject != nullptr)
             {
-                const char* typeName = "Logs";
-                if (selectedObject->type == WorldObjectType::Worker)
-                {
-                    typeName = "Worker";
-                }
-                else if (selectedObject->type == WorldObjectType::Tree)
-                {
-                    typeName = "Tree";
-                }
-                std::snprintf(buf, sizeof(buf), "Selected: %s", typeName);
-                DrawText(buf, padding, padding + 5 * lineHeight, fontSize, GREEN);
-
+                selectedObjectType = selectedObject->type;
                 if (selectedObject->type == WorldObjectType::Worker)
                 {
                     const WorkerActivity activity = m_workSystem.GetActivity(selectedObject->id);
-                    const char* activityName = "Idle";
-                    if (activity == WorkerActivity::Moving)
+                    workerActivity = activity;
+                    if (activity == WorkerActivity::Working)
                     {
-                        activityName = "Moving";
-                    }
-                    else if (activity == WorkerActivity::Working)
-                    {
-                        std::snprintf(
-                            buf,
-                            sizeof(buf),
-                            "Chopping: %.0f%%",
-                            m_workSystem.GetWorkProgress(selectedObject->id) * 100.0f);
-                        DrawText(buf, padding, padding + 6 * lineHeight, fontSize, ORANGE);
-                        activityName = nullptr;
-                    }
-
-                    if (activityName != nullptr)
-                    {
-                        std::snprintf(buf, sizeof(buf), "Activity: %s", activityName);
-                        DrawText(buf, padding, padding + 6 * lineHeight, fontSize, ORANGE);
+                        workProgress = m_workSystem.GetWorkProgress(selectedObject->id);
                     }
                 }
             }
         }
 
-        if (!m_actionNotice.empty())
-        {
-            DrawText(
-                m_actionNotice.c_str(),
-                padding,
-                m_config.window.height - lineHeight - padding,
-                fontSize,
-                GOLD);
-        }
-
-        std::snprintf(buf, sizeof(buf), "Path debug: %s (F3)", m_showPathDebug ? "on" : "off");
-        DrawText(buf, padding, padding + 7 * lineHeight, fontSize, SKYBLUE);
+        m_debugOverlay.Draw({
+            GetFPS(),
+            m_time.GetTotalTime(),
+            m_simulation.GetTickCount(),
+            m_grid.GetColumns(),
+            m_grid.GetRows(),
+            m_worldInteraction.GetHoveredCell(),
+            selectedObjectType,
+            workerActivity,
+            workProgress,
+            m_showPathDebug,
+            m_config.window.height,
+            m_worldInteraction.GetActionNotice()
+        });
     }
 }

@@ -223,60 +223,74 @@ namespace Infinitesia
 
         if (order.phase == WorkPhase::Moving)
         {
-            float remainingMovement = m_config.movementSpeed * fixedDeltaTime;
-            while (remainingMovement > 0.0f && order.nextPathCell < order.path.size())
-            {
-                worker = world.FindObject(order.worker);
-                const GridCell nextCell = order.path[order.nextPathCell];
-                const std::optional<WorldObjectId> occupant = world.FindObjectAt(nextCell);
-                if (occupant.has_value() && *occupant != order.worker)
-                {
-                    const std::optional<std::vector<GridCell>> newPath =
-                        FindPath(worker->cell, order.workCell, order.worker, world, grid);
-                    if (!newPath.has_value() || newPath->size() <= 1)
-                    {
-                        return false;
-                    }
-                    order.path = *newPath;
-                    order.nextPathCell = 1;
-                    continue;
-                }
-
-                const WorldPosition destination = grid.CellToWorld(nextCell);
-                const float deltaX = destination.x - worker->position.x;
-                const float deltaZ = destination.z - worker->position.z;
-                const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
-
-                if (distance <= remainingMovement)
-                {
-                    if (!world.SetObjectCell(order.worker, nextCell, grid))
-                    {
-                        return false;
-                    }
-                    remainingMovement -= distance;
-                    ++order.nextPathCell;
-                    continue;
-                }
-
-                const float movementRatio = remainingMovement / distance;
-                world.SetObjectPosition(
-                    order.worker,
-                    {
-                        worker->position.x + deltaX * movementRatio,
-                        worker->position.y,
-                        worker->position.z + deltaZ * movementRatio
-                    });
-                remainingMovement = 0.0f;
-            }
-
-            if (order.nextPathCell >= order.path.size())
-            {
-                order.phase = WorkPhase::Chopping;
-            }
-            return true;
+            return AdvanceMovement(order, world, grid, fixedDeltaTime);
         }
 
         order.choppingProgress += fixedDeltaTime;
+        return true;
+    }
+
+    bool WorkSystem::AdvanceMovement(
+        WorkOrder& order,
+        World& world,
+        const Grid& grid,
+        float fixedDeltaTime)
+    {
+        float remainingMovement = m_config.movementSpeed * fixedDeltaTime;
+        while (remainingMovement > 0.0f && order.nextPathCell < order.path.size())
+        {
+            const WorldObject* worker = world.FindObject(order.worker);
+            if (worker == nullptr)
+            {
+                return false;
+            }
+
+            const GridCell nextCell = order.path[order.nextPathCell];
+            const std::optional<WorldObjectId> occupant = world.FindObjectAt(nextCell);
+            if (occupant.has_value() && *occupant != order.worker)
+            {
+                const std::optional<std::vector<GridCell>> newPath =
+                    FindPath(worker->cell, order.workCell, order.worker, world, grid);
+                if (!newPath.has_value() || newPath->size() <= 1)
+                {
+                    return false;
+                }
+                order.path = *newPath;
+                order.nextPathCell = 1;
+                continue;
+            }
+
+            const WorldPosition destination = grid.CellToWorld(nextCell);
+            const float deltaX = destination.x - worker->position.x;
+            const float deltaZ = destination.z - worker->position.z;
+            const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
+
+            if (distance <= remainingMovement)
+            {
+                if (!world.SetObjectCell(order.worker, nextCell, grid))
+                {
+                    return false;
+                }
+                remainingMovement -= distance;
+                ++order.nextPathCell;
+                continue;
+            }
+
+            const float movementRatio = remainingMovement / distance;
+            world.SetObjectPosition(
+                order.worker,
+                {
+                    worker->position.x + deltaX * movementRatio,
+                    worker->position.y,
+                    worker->position.z + deltaZ * movementRatio
+                });
+            remainingMovement = 0.0f;
+        }
+
+        if (order.nextPathCell >= order.path.size())
+        {
+            order.phase = WorkPhase::Chopping;
+        }
         return true;
     }
 }

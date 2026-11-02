@@ -4,15 +4,11 @@
 #include "core/Simulation.h"
 #include "core/Time.h"
 #include "input/CameraController.h"
-#include "input/GridPointer.h"
-#include "input/WorldObjectPicker.h"
+#include "input/WorldInteractionController.h"
 #include "rendering/WorldRenderer.h"
-#include "ui/WorldContextMenu.h"
+#include "ui/DebugOverlay.h"
 #include "world/Grid.h"
 #include "world/WorkSystem.h"
-
-#include <optional>
-#include <string>
 
 namespace Infinitesia
 {
@@ -35,13 +31,8 @@ namespace Infinitesia
         WorkSystem m_workSystem;
         WorldRenderer m_worldRenderer;
         CameraController m_cameraController;
-        GridPointer m_gridPointer;
-        WorldObjectPicker m_worldObjectPicker;
-        WorldContextMenu m_contextMenu;
-        std::optional<GridCell> m_hoveredCell;
-        std::optional<WorldObjectId> m_hoveredObject;
-        std::optional<WorldObjectId> m_selectedObject;
-        std::string m_actionNotice;
+        WorldInteractionController m_worldInteraction;
+        DebugOverlay m_debugOverlay;
         bool m_showPathDebug = true;
         Time m_time;
     };
