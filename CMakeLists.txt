@@ -40,6 +40,12 @@ add_executable(Infinitesia
   src/core/Time.cpp
   src/core/Simulation.h
   src/core/Simulation.cpp
+  src/coordinates/PlanetaryCoordinates.h
+  src/planet/PlanetParameters.h
+  src/planet/Planet.h
+  src/planet/Planet.cpp
+  src/planet/PlanetMap.h
+  src/planet/PlanetMap.cpp
   src/world/Grid.h
   src/world/Grid.cpp
   src/world/Block.h
