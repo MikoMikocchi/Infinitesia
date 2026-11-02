@@ -4,6 +4,7 @@
 #include "commands/Command.h"
 
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace Infinitesia
@@ -12,6 +13,13 @@ namespace Infinitesia
     {
         bool consumedMouseClick = false;
         std::optional<CommandRequest> commandRequest;
+        struct CellCommandRequest
+        {
+            std::string commandId;
+            std::optional<WorldObjectId> actor;
+            GridCell target;
+        };
+        std::optional<CellCommandRequest> cellCommandRequest;
     };
 
     class WorldContextMenu
@@ -23,8 +31,10 @@ namespace Infinitesia
             bool leftClickPressed,
             bool escapePressed,
             std::optional<WorldObjectId> hoveredTarget,
+            std::optional<GridCell> hoveredCell,
             std::optional<WorldObjectId> actor,
             const std::vector<CommandOption>& targetCommands,
+            const std::vector<CommandOption>& cellCommands,
             int screenWidth,
             int screenHeight);
 
@@ -44,7 +54,8 @@ namespace Infinitesia
         bool HasDisabledCommands() const;
         void Open(
             Vector2 position,
-            WorldObjectId target,
+            std::optional<WorldObjectId> target,
+            std::optional<GridCell> targetCell,
             std::optional<WorldObjectId> actor,
             const std::vector<CommandOption>& commands,
             int screenWidth,
@@ -53,7 +64,8 @@ namespace Infinitesia
 
         bool m_isOpen = false;
         Vector2 m_position{ 0.0f, 0.0f };
-        WorldObjectId m_target{ 0 };
+        std::optional<WorldObjectId> m_target;
+        std::optional<GridCell> m_targetCell;
         std::optional<WorldObjectId> m_actor;
         std::vector<CommandOption> m_commands;
     };

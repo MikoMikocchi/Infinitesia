@@ -23,8 +23,10 @@ namespace Infinitesia
         bool leftClickPressed,
         bool escapePressed,
         std::optional<WorldObjectId> hoveredTarget,
+        std::optional<GridCell> hoveredCell,
         std::optional<WorldObjectId> actor,
         const std::vector<CommandOption>& targetCommands,
+        const std::vector<CommandOption>& cellCommands,
         int screenWidth,
         int screenHeight)
     {
@@ -44,8 +46,20 @@ namespace Infinitesia
                 Open(
                     mousePosition,
                     *hoveredTarget,
+                    std::nullopt,
                     actor,
                     targetCommands,
+                    screenWidth,
+                    screenHeight);
+            }
+            else if (hoveredCell.has_value() && !cellCommands.empty())
+            {
+                Open(
+                    mousePosition,
+                    std::nullopt,
+                    hoveredCell,
+                    actor,
+                    cellCommands,
                     screenWidth,
                     screenHeight);
             }
@@ -73,11 +87,22 @@ namespace Infinitesia
             const CommandOption& command = m_commands[index];
             if (command.enabled)
             {
-                result.commandRequest = CommandRequest{
-                    command.id,
-                    m_actor,
-                    m_target
-                };
+                if (m_targetCell.has_value())
+                {
+                    result.cellCommandRequest = ContextMenuUpdate::CellCommandRequest{
+                        command.id,
+                        m_actor,
+                        *m_targetCell
+                    };
+                }
+                else if (m_target.has_value())
+                {
+                    result.commandRequest = CommandRequest{
+                        command.id,
+                        m_actor,
+                        *m_target
+                    };
+                }
                 Close();
             }
             return result;
@@ -175,7 +200,8 @@ namespace Infinitesia
 
     void WorldContextMenu::Open(
         Vector2 position,
-        WorldObjectId target,
+        std::optional<WorldObjectId> target,
+        std::optional<GridCell> targetCell,
         std::optional<WorldObjectId> actor,
         const std::vector<CommandOption>& commands,
         int screenWidth,
@@ -183,6 +209,7 @@ namespace Infinitesia
     {
         m_isOpen = true;
         m_target = target;
+        m_targetCell = targetCell;
         m_actor = actor;
         m_commands = commands;
 
@@ -199,6 +226,8 @@ namespace Infinitesia
     void WorldContextMenu::Close()
     {
         m_isOpen = false;
+        m_target.reset();
+        m_targetCell.reset();
         m_actor.reset();
         m_commands.clear();
     }

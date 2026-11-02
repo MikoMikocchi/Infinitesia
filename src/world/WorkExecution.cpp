@@ -34,6 +34,13 @@ namespace Infinitesia
                 continue;
             }
 
+            if (m_orders[index].type == WorkType::MoveToCell &&
+                m_orders[index].phase == WorkPhase::Working)
+            {
+                m_orders.erase(m_orders.begin() + static_cast<std::ptrdiff_t>(index));
+                continue;
+            }
+
             if (m_orders[index].phase == WorkPhase::Working &&
                 m_orders[index].workProgress >= GetWorkDuration(m_orders[index]))
             {

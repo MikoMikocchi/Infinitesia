@@ -58,9 +58,16 @@ namespace Infinitesia
 
         float GetWorkDuration(const WorkerConfig& config, const WorkSystem::WorkOrder& order)
         {
-            return order.type == WorkSystem::WorkType::ChopTree
-                ? config.choppingDuration
-                : config.diggingDuration;
+            switch (order.type)
+            {
+            case WorkSystem::WorkType::ChopTree:
+                return config.choppingDuration;
+            case WorkSystem::WorkType::DigBlock:
+                return config.diggingDuration;
+            case WorkSystem::WorkType::MoveToCell:
+                return 0.0f;
+            }
+            return 0.0f;
         }
     }
 }

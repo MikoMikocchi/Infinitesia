@@ -125,6 +125,6 @@ namespace Infinitesia
             data.pathDebugEnabled ? "on" : "off");
         DrawText(buffer, padding, padding + 9 * lineHeight, fontSize, SKYBLUE);
 
-        DrawText("Dig hovered cell (G)", padding, padding + 10 * lineHeight, fontSize, GOLD);
+        DrawText("Right-click a cell for actions", padding, padding + 10 * lineHeight, fontSize, GOLD);
     }
 }

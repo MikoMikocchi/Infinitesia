@@ -159,4 +159,59 @@ namespace Infinitesia
         });
         return WorkOrderResult::Accepted;
     }
+
+    WorkOrderResult WorkSystem::AssignMoveOrder(
+        WorldObjectId workerId,
+        GridCell target,
+        World& world,
+        const Grid& grid)
+    {
+        const WorldObject* worker = world.FindObject(workerId);
+        if (worker == nullptr || worker->type != WorldObjectType::Worker)
+        {
+            return WorkOrderResult::InvalidWorker;
+        }
+        if (!grid.Contains(target) || worker->cell.y != target.y)
+        {
+            return WorkOrderResult::InvalidTarget;
+        }
+
+        const Block* block = world.GetBlock(target);
+        if (block == nullptr || block->type == BlockType::Air)
+        {
+            return WorkOrderResult::InvalidTarget;
+        }
+        const std::optional<WorldObjectId> occupant = world.FindObjectAt(target);
+        if (occupant.has_value() && *occupant != workerId)
+        {
+            return WorkOrderResult::InvalidTarget;
+        }
+        if (HasOrderForWorker(workerId))
+        {
+            return WorkOrderResult::WorkerBusy;
+        }
+        if (IsReserved(target))
+        {
+            return WorkOrderResult::TargetBusy;
+        }
+
+        const std::optional<std::vector<GridCell>> path =
+            FindPath(worker->cell, target, workerId, world, grid);
+        if (!path.has_value())
+        {
+            return WorkOrderResult::NoReachableWorkCell;
+        }
+
+        m_orders.push_back({
+            WorkType::MoveToCell,
+            workerId,
+            std::nullopt,
+            target,
+            target,
+            *path,
+            1,
+            path->size() <= 1 ? WorkPhase::Working : WorkPhase::Moving
+        });
+        return WorkOrderResult::Accepted;
+    }
 }

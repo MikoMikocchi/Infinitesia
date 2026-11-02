@@ -83,55 +83,11 @@ namespace Infinitesia
             },
             m_grid,
             m_world,
+            m_workSystem,
             m_worldRenderer.GetCamera(),
             m_commands,
             m_config.window.width,
             m_config.window.height,
             m_selectedLevel);
-
-        if (IsKeyPressed(KEY_G))
-        {
-            const std::optional<WorldObjectId> selectedWorker =
-                m_worldInteraction.GetSelectedObject();
-            const std::optional<GridCell> targetCell =
-                m_worldInteraction.GetHoveredCell();
-            if (!selectedWorker.has_value())
-            {
-                m_worldInteraction.SetActionNotice("Select a worker before digging");
-            }
-            else if (!targetCell.has_value())
-            {
-                m_worldInteraction.SetActionNotice("Point at a solid cell to dig");
-            }
-            else
-            {
-                switch (m_workSystem.AssignDigOrder(
-                    *selectedWorker,
-                    *targetCell,
-                    m_world,
-                    m_grid))
-                {
-                case WorkOrderResult::Accepted:
-                    m_worldInteraction.SetActionNotice("Worker is going to dig");
-                    break;
-                case WorkOrderResult::InvalidWorker:
-                    m_worldInteraction.SetActionNotice("Selected worker is no longer available");
-                    break;
-                case WorkOrderResult::InvalidTarget:
-                    m_worldInteraction.SetActionNotice(
-                        "Select a solid cell on the worker's level");
-                    break;
-                case WorkOrderResult::WorkerBusy:
-                    m_worldInteraction.SetActionNotice("Worker already has an order");
-                    break;
-                case WorkOrderResult::TargetBusy:
-                    m_worldInteraction.SetActionNotice("Cell already has a dig order");
-                    break;
-                case WorkOrderResult::NoReachableWorkCell:
-                    m_worldInteraction.SetActionNotice("No reachable cell next to the target");
-                    break;
-                }
-            }
-        }
     }
 }

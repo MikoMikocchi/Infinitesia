@@ -6,6 +6,7 @@
 #include "ui/WorldContextMenu.h"
 #include "commands/CommandRegistry.h"
 #include "world/Grid.h"
+#include "world/WorkSystem.h"
 
 #include <optional>
 #include <string>
@@ -27,6 +28,7 @@ namespace Infinitesia
             WorldInteractionInput input,
             const Grid& grid,
             World& world,
+            WorkSystem& workSystem,
             const Camera3D& camera,
             const CommandRegistry& commands,
             int screenWidth,
@@ -37,7 +39,6 @@ namespace Infinitesia
         std::optional<WorldObjectId> GetHoveredObject() const;
         std::optional<WorldObjectId> GetSelectedObject() const;
         const std::string& GetActionNotice() const;
-        void SetActionNotice(std::string notice);
         void DrawOverlay() const;
 
     private:

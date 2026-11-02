@@ -46,6 +46,11 @@ namespace Infinitesia
             GridCell target,
             World& world,
             const Grid& grid);
+        WorkOrderResult AssignMoveOrder(
+            WorldObjectId worker,
+            GridCell target,
+            World& world,
+            const Grid& grid);
         void Tick(World& world, const Grid& grid, float fixedDeltaTime);
         WorkerActivity GetActivity(WorldObjectId worker) const;
         float GetWorkProgress(WorldObjectId worker) const;
@@ -63,7 +68,8 @@ namespace Infinitesia
         enum class WorkType
         {
             ChopTree,
-            DigBlock
+            DigBlock,
+            MoveToCell
         };
 
         struct WorkOrder
