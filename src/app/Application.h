@@ -3,6 +3,7 @@
 #include "app/ApplicationConfig.h"
 #include "core/Simulation.h"
 #include "core/Time.h"
+#include "input/CameraController.h"
 #include "input/GridPointer.h"
 #include "rendering/WorldRenderer.h"
 #include "world/Grid.h"
@@ -27,6 +28,7 @@ namespace Infinitesia
         Grid m_grid;
         Simulation m_simulation;
         WorldRenderer m_worldRenderer;
+        CameraController m_cameraController;
         GridPointer m_gridPointer;
         std::optional<GridCell> m_hoveredCell;
         Time m_time;

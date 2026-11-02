@@ -20,6 +20,7 @@ namespace Infinitesia
         explicit WorldRenderer(CameraConfig config);
 
         void Draw(const Grid& grid, std::optional<GridCell> hoveredCell) const;
+        Camera3D& GetCamera();
         const Camera3D& GetCamera() const;
 
     private:

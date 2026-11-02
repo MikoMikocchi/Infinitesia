@@ -42,8 +42,16 @@ namespace Infinitesia
         : m_config(std::move(config)),
           m_grid(m_config.grid),
           m_simulation(m_config.simulationTicksPerSecond),
-          m_worldRenderer(m_config.camera)
+          m_worldRenderer(m_config.camera),
+          m_cameraController(m_config.cameraControls)
     {
+        if (m_config.camera.distance < m_config.cameraControls.minimumDistance ||
+            m_config.camera.distance > m_config.cameraControls.maximumDistance ||
+            m_config.camera.elevationDegrees < m_config.cameraControls.minimumElevationDegrees ||
+            m_config.camera.elevationDegrees > m_config.cameraControls.maximumElevationDegrees)
+        {
+            throw std::invalid_argument("Initial camera settings must fit within camera control limits.");
+        }
     }
 
     void Application::Run()
@@ -62,6 +70,7 @@ namespace Infinitesia
 
     void Application::Update()
     {
+        m_cameraController.Update(m_worldRenderer.GetCamera(), m_time.GetDeltaTime());
         m_hoveredCell = m_gridPointer.PickCell(
             m_grid,
             m_worldRenderer.GetCamera(),

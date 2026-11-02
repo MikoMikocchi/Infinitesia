@@ -118,6 +118,11 @@ namespace Infinitesia
         EndMode3D();
     }
 
+    Camera3D& WorldRenderer::GetCamera()
+    {
+        return m_camera;
+    }
+
     const Camera3D& WorldRenderer::GetCamera() const
     {
         return m_camera;
