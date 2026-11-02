@@ -26,6 +26,8 @@ namespace Infinitesia
         std::vector<Color> m_regionColors;
         std::vector<float> m_regionBrightness;
         std::vector<Vector3> m_sphereVertices;
+        std::vector<Color> m_sphereVertexColors;
+        std::vector<float> m_sphereVertexBrightness;
         int m_selectedLatitude = 0;
         int m_selectedLongitude = 0;
         float m_rotationDegrees = 0.0f;

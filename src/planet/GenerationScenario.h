@@ -25,7 +25,7 @@ namespace Infinitesia
         double maximumSystemAgeYears = 8.0e9;
         double minimumIncidentFluxInEarthUnits = 0.75;
         double maximumIncidentFluxInEarthUnits = 1.25;
-        double maximumPlanetMassEarths = 3.0;
+        double maximumPlanetMassEarths = 1.25;
 
         bool IsValid() const noexcept
         {
@@ -53,7 +53,7 @@ namespace Infinitesia
     struct GenerationScenario
     {
         std::uint64_t seed = 1;
-        std::uint32_t generatorVersion = 1;
+        std::uint32_t generatorVersion = 5;
         GenerationMode mode = GenerationMode::Standard;
         PlanetaryPreset preset = PlanetaryPreset::RockyTemperate;
         GenerationConstraints constraints{};

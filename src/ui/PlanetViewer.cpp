@@ -108,13 +108,32 @@ namespace Infinitesia
             };
         }
 
+        Color AverageColors(const Color* colors, std::size_t count)
+        {
+            std::size_t red = 0;
+            std::size_t green = 0;
+            std::size_t blue = 0;
+            for (std::size_t index = 0; index < count; ++index)
+            {
+                red += colors[index].r;
+                green += colors[index].g;
+                blue += colors[index].b;
+            }
+            return {
+                static_cast<unsigned char>(red / count),
+                static_cast<unsigned char>(green / count),
+                static_cast<unsigned char>(blue / count),
+                255
+            };
+        }
+
         float SmootherStepF(float value)
         {
             const float t = std::clamp(value, 0.0f, 1.0f);
             return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
         }
 
-        Color GetRegionColor(const PlanetRegion& region)
+        Color GetBiomeColor(const PlanetRegion& region)
         {
             const float temp   = static_cast<float>(region.temperatureCelsius);
             const float precip = static_cast<float>(region.precipitationMm);
@@ -280,6 +299,22 @@ namespace Infinitesia
             return { 128, 128, 128, 255 };
         }
 
+        Color GetRegionColor(const PlanetRegion& region)
+        {
+            const Color biomeColor = GetBiomeColor(region);
+            if (region.isOcean)
+                return biomeColor;
+
+            const float elevationKm =
+                static_cast<float>(region.elevationNormalized * 9.0);
+            const float mountainBlend = SmootherStepF(
+                std::clamp((elevationKm - 1.0f) / 4.0f, 0.0f, 1.0f));
+            return LerpColor(
+                biomeColor,
+                { 132, 124, 112, 255 },
+                mountainBlend * 0.55f);
+        }
+
         Color ShadeColor(Color color, float brightness)
         {
             return {
@@ -298,7 +333,12 @@ namespace Infinitesia
                    point.y < rectangle.y + rectangle.height;
         }
 
-        Vector3 GetSphereVertex(int row, int column, int rows, int columns)
+        Vector3 GetSphereVertex(
+            int row,
+            int column,
+            int rows,
+            int columns,
+            float radius)
         {
             const GeographicCoordinates coordinates{
                 90.0 - static_cast<double>(row) / rows * 180.0,
@@ -306,9 +346,9 @@ namespace Infinitesia
             };
             const CartesianPoint3D point = PlanetaryCoordinates::ToCartesian(coordinates);
             return {
-                static_cast<float>(point.x),
-                static_cast<float>(point.y),
-                static_cast<float>(point.z)
+                static_cast<float>(point.x) * radius,
+                static_cast<float>(point.y) * radius,
+                static_cast<float>(point.z) * radius
             };
         }
 
@@ -316,6 +356,22 @@ namespace Infinitesia
         {
             rlVertex3f(first.x, first.y, first.z);
             rlVertex3f(second.x, second.y, second.z);
+            rlVertex3f(third.x, third.y, third.z);
+        }
+
+        void DrawColoredTriangle(
+            Vector3 first,
+            Color firstColor,
+            Vector3 second,
+            Color secondColor,
+            Vector3 third,
+            Color thirdColor)
+        {
+            rlColor4ub(firstColor.r, firstColor.g, firstColor.b, 255);
+            rlVertex3f(first.x, first.y, first.z);
+            rlColor4ub(secondColor.r, secondColor.g, secondColor.b, 255);
+            rlVertex3f(second.x, second.y, second.z);
+            rlColor4ub(thirdColor.r, thirdColor.g, thirdColor.b, 255);
             rlVertex3f(third.x, third.y, third.z);
         }
     }
@@ -348,8 +404,17 @@ namespace Infinitesia
             {
                 const PlanetRegion region = m_planetMap.GetRegion(latitude, longitude);
                 m_regions.push_back(region);
-                m_regionColors.push_back(GetRegionColor(region));
+            }
+        }
 
+        for (int latitude = 0; latitude < rows; ++latitude)
+        {
+            for (int longitude = 0; longitude < columns; ++longitude)
+            {
+                const std::size_t regionIndex =
+                    static_cast<std::size_t>(latitude) * columns + longitude;
+                const PlanetRegion& region = m_regions[regionIndex];
+                m_regionColors.push_back(GetRegionColor(region));
                 const float latitudeRadians =
                     static_cast<float>(region.latitudeDegrees) * kPi / 180.0f;
                 const float longitudeRadians =
@@ -359,18 +424,151 @@ namespace Infinitesia
                     std::sin(latitudeRadians),
                     -std::cos(latitudeRadians) * std::sin(longitudeRadians)
                 };
-                m_regionBrightness.push_back(
-                    0.24f + 0.76f * std::max(0.0f, Vector3DotProduct(normal, lightDirection)));
+                const int northLatitude = std::min(latitude + 1, rows - 1);
+                const int southLatitude = std::max(latitude - 1, 0);
+                const int eastLongitude = (longitude + 1) % columns;
+                const int westLongitude = (longitude + columns - 1) % columns;
+                const double northElevation =
+                    m_regions[static_cast<std::size_t>(northLatitude) * columns + longitude]
+                        .elevationNormalized * 9.0;
+                const double southElevation =
+                    m_regions[static_cast<std::size_t>(southLatitude) * columns + longitude]
+                        .elevationNormalized * 9.0;
+                const double eastElevation =
+                    m_regions[static_cast<std::size_t>(latitude) * columns + eastLongitude]
+                        .elevationNormalized * 9.0;
+                const double westElevation =
+                    m_regions[static_cast<std::size_t>(latitude) * columns + westLongitude]
+                        .elevationNormalized * 9.0;
+                const float reliefShade = std::clamp(
+                    1.0f + static_cast<float>(
+                        (southElevation - northElevation) * 0.12 +
+                        (westElevation - eastElevation) * 0.12),
+                    0.78f,
+                    1.22f);
+                const float sphericalShade =
+                    0.24f + 0.76f * std::max(0.0f, Vector3DotProduct(normal, lightDirection));
+                m_regionBrightness.push_back(sphericalShade * reliefShade);
+            }
+        }
+
+        const std::vector<Color> biomeColors = m_regionColors;
+        constexpr int kColorOffsets[3] = { -1, 0, 1 };
+        constexpr int kColorWeights[3][3] = {
+            { 1, 2, 1 },
+            { 2, 4, 2 },
+            { 1, 2, 1 }
+        };
+        for (int latitude = 0; latitude < rows; ++latitude)
+        {
+            for (int longitude = 0; longitude < columns; ++longitude)
+            {
+                std::size_t red = 0;
+                std::size_t green = 0;
+                std::size_t blue = 0;
+                std::size_t totalWeight = 0;
+                for (int latitudeOffset : kColorOffsets)
+                {
+                    for (int longitudeOffset : kColorOffsets)
+                    {
+                        const int neighborLatitude =
+                            std::clamp(latitude + latitudeOffset, 0, rows - 1);
+                        const int neighborLongitude =
+                            (longitude + longitudeOffset + columns) % columns;
+                        const std::size_t neighborIndex =
+                            static_cast<std::size_t>(neighborLatitude) * columns +
+                            neighborLongitude;
+                        const std::size_t weight = static_cast<std::size_t>(
+                            kColorWeights[latitudeOffset + 1][longitudeOffset + 1]);
+                        const Color color = biomeColors[neighborIndex];
+                        red += color.r * weight;
+                        green += color.g * weight;
+                        blue += color.b * weight;
+                        totalWeight += weight;
+                    }
+                }
+                const std::size_t index =
+                    static_cast<std::size_t>(latitude) * columns + longitude;
+                m_regionColors[index] = {
+                    static_cast<unsigned char>(red / totalWeight),
+                    static_cast<unsigned char>(green / totalWeight),
+                    static_cast<unsigned char>(blue / totalWeight),
+                    255
+                };
+            }
+        }
+
+        const std::vector<float> cellBrightness = m_regionBrightness;
+        for (int latitude = 0; latitude < rows; ++latitude)
+        {
+            for (int longitude = 0; longitude < columns; ++longitude)
+            {
+                float brightnessSum = 0.0f;
+                int weightSum = 0;
+                for (int latitudeOffset : kColorOffsets)
+                {
+                    for (int longitudeOffset : kColorOffsets)
+                    {
+                        const int neighborLatitude =
+                            std::clamp(latitude + latitudeOffset, 0, rows - 1);
+                        const int neighborLongitude =
+                            (longitude + longitudeOffset + columns) % columns;
+                        const int weight =
+                            kColorWeights[latitudeOffset + 1][longitudeOffset + 1];
+                        brightnessSum += cellBrightness[
+                            static_cast<std::size_t>(neighborLatitude) * columns +
+                            neighborLongitude] * weight;
+                        weightSum += weight;
+                    }
+                }
+                m_regionBrightness[
+                    static_cast<std::size_t>(latitude) * columns + longitude] =
+                    brightnessSum / static_cast<float>(weightSum);
             }
         }
 
         m_sphereVertices.reserve(
             static_cast<std::size_t>(rows + 1) * static_cast<std::size_t>(columns + 1));
+        m_sphereVertexColors.reserve(
+            static_cast<std::size_t>(rows + 1) * static_cast<std::size_t>(columns + 1));
+        m_sphereVertexBrightness.reserve(
+            static_cast<std::size_t>(rows + 1) * static_cast<std::size_t>(columns + 1));
         for (int latitude = 0; latitude <= rows; ++latitude)
         {
             for (int longitude = 0; longitude <= columns; ++longitude)
             {
-                m_sphereVertices.push_back(GetSphereVertex(latitude, longitude, rows, columns));
+                const int northCell = std::clamp(rows - 1 - latitude, 0, rows - 1);
+                const int southCell = std::clamp(rows - latitude, 0, rows - 1);
+                const int westCell = (longitude + columns - 1) % columns;
+                const int eastCell = longitude % columns;
+                const double meanElevationKm =
+                    (m_planetMap.GetRegion(northCell, westCell).elevationNormalized +
+                     m_planetMap.GetRegion(northCell, eastCell).elevationNormalized +
+                     m_planetMap.GetRegion(southCell, westCell).elevationNormalized +
+                     m_planetMap.GetRegion(southCell, eastCell).elevationNormalized) *
+                    9.0 / 4.0;
+                const double planetRadiusMeters =
+                    m_planetMap.GetParameters().radiusMeters;
+                const float displayRadius = static_cast<float>(
+                    1.0 + meanElevationKm * 1000.0 / planetRadiusMeters * 8.0);
+                m_sphereVertices.push_back(GetSphereVertex(
+                    latitude, longitude, rows, columns, displayRadius));
+                const Color adjacentColors[4] = {
+                    m_regionColors[static_cast<std::size_t>(northCell) * columns + westCell],
+                    m_regionColors[static_cast<std::size_t>(northCell) * columns + eastCell],
+                    m_regionColors[static_cast<std::size_t>(southCell) * columns + westCell],
+                    m_regionColors[static_cast<std::size_t>(southCell) * columns + eastCell]
+                };
+                m_sphereVertexColors.push_back(AverageColors(adjacentColors, 4));
+                const float adjacentBrightness[4] = {
+                    m_regionBrightness[static_cast<std::size_t>(northCell) * columns + westCell],
+                    m_regionBrightness[static_cast<std::size_t>(northCell) * columns + eastCell],
+                    m_regionBrightness[static_cast<std::size_t>(southCell) * columns + westCell],
+                    m_regionBrightness[static_cast<std::size_t>(southCell) * columns + eastCell]
+                };
+                m_sphereVertexBrightness.push_back(
+                    (adjacentBrightness[0] + adjacentBrightness[1] +
+                     adjacentBrightness[2] + adjacentBrightness[3]) * 0.25f);
             }
         }
     }
@@ -597,20 +795,42 @@ namespace Infinitesia
                 const bool selected =
                     planetLatitude == m_selectedLatitude &&
                     longitude == m_selectedLongitude;
-                const Color baseColor = selected
-                    ? Color{ 255, 202, 87, 255 }
-                    : m_regionColors[regionIndex];
-                const Color shadedColor = ShadeColor(baseColor, m_regionBrightness[regionIndex]);
-                rlColor4ub(shadedColor.r, shadedColor.g, shadedColor.b, 255);
-
                 const std::size_t topLeftIndex =
                     static_cast<std::size_t>(latitude) * (columns + 1) + longitude;
                 const Vector3 topLeft = m_sphereVertices[topLeftIndex];
                 const Vector3 topRight = m_sphereVertices[topLeftIndex + 1];
                 const Vector3 bottomLeft = m_sphereVertices[topLeftIndex + columns + 1];
                 const Vector3 bottomRight = m_sphereVertices[topLeftIndex + columns + 2];
-                DrawTriangle(topLeft, bottomLeft, topRight);
-                DrawTriangle(topRight, bottomLeft, bottomRight);
+                if (selected)
+                {
+                    const Color selectedColor = { 255, 202, 87, 255 };
+                    rlColor4ub(selectedColor.r, selectedColor.g, selectedColor.b, 255);
+                    DrawTriangle(topLeft, bottomLeft, topRight);
+                    DrawTriangle(topRight, bottomLeft, bottomRight);
+                    continue;
+                }
+
+                const std::size_t topRightIndex = topLeftIndex + 1;
+                const std::size_t bottomLeftIndex = topLeftIndex + columns + 1;
+                const std::size_t bottomRightIndex = bottomLeftIndex + 1;
+                const Color topLeftColor = ShadeColor(
+                    m_sphereVertexColors[topLeftIndex],
+                    m_sphereVertexBrightness[topLeftIndex]);
+                const Color topRightColor = ShadeColor(
+                    m_sphereVertexColors[topRightIndex],
+                    m_sphereVertexBrightness[topRightIndex]);
+                const Color bottomLeftColor = ShadeColor(
+                    m_sphereVertexColors[bottomLeftIndex],
+                    m_sphereVertexBrightness[bottomLeftIndex]);
+                const Color bottomRightColor = ShadeColor(
+                    m_sphereVertexColors[bottomRightIndex],
+                    m_sphereVertexBrightness[bottomRightIndex]);
+                DrawColoredTriangle(
+                    topLeft, topLeftColor, bottomLeft, bottomLeftColor,
+                    topRight, topRightColor);
+                DrawColoredTriangle(
+                    topRight, topRightColor, bottomLeft, bottomLeftColor,
+                    bottomRight, bottomRightColor);
             }
         }
 

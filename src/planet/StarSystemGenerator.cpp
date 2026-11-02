@@ -277,9 +277,9 @@ namespace Infinitesia
         planet.seed = static_cast<std::uint32_t>(DeriveSeed(generationSeed, kPlanetStage));
         planet.planetId = StableId(generationSeed, kPlanetStage);
         planet.massKilograms = std::min(
-            disk.solidMassKilograms * Sample(generationSeed, 0x5001ull, 0.06, 0.18),
+            disk.solidMassKilograms * Sample(generationSeed, 0x5001ull, 0.10, 0.22),
             scenario.constraints.maximumPlanetMassEarths * kEarthMassKilograms);
-        planet.bulkIronMassFraction = Sample(generationSeed, 0x5002ull, 0.25, 0.38);
+        planet.bulkIronMassFraction = Sample(generationSeed, 0x5002ull, 0.28, 0.36);
         planet.meanDensityKilogramsPerCubicMeter =
             4400.0 + planet.bulkIronMassFraction * 3500.0;
         planet.radiusMeters = std::cbrt(
@@ -300,12 +300,16 @@ namespace Infinitesia
         planet.volatileMassFraction = volatileAvailability *
             Sample(generationSeed, 0x5005ull, 0.5, 1.5);
         const double volatileRetention =
-            std::clamp(std::sqrt(planet.gravityMetersPerSecondSquared / 9.81) *
-                       (1.0 - 0.2 * context.radiationEnvironment),
-                       0.2,
-                       1.0);
+            std::clamp(
+                0.95 + 0.1 *
+                    (std::sqrt(planet.gravityMetersPerSecondSquared / 9.81) - 1.0) -
+                    0.08 * context.radiationEnvironment,
+                0.8,
+                1.05);
+        const double volatilePressureScale =
+            std::clamp(std::sqrt(planet.volatileMassFraction / 0.015), 1.0, 1.15);
         planet.atmospherePressureKPa = std::clamp(
-            101.325 * (planet.volatileMassFraction / 0.02) * volatileRetention,
+            101.325 * volatilePressureScale * volatileRetention,
             5.0,
             300.0);
 

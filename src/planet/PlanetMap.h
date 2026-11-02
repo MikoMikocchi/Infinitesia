@@ -81,7 +81,10 @@ namespace Infinitesia
         int    tectonicPlateId = 0;
         double tectonicStress = 0.0;      // 0..1, proximity to plate boundary
         bool   isVolcanicZone = false;
-        double crustThickness = 0.0;      // normalized 0..1 (0=thin oceanic, 1=thick craton)
+        double tectonicReliefKm = 0.0;    // broad uplift / basin / ridge relief
+        double continentalCrustFraction = 0.0; // 0=oceanic, 1=continental lithosphere
+        double crustThickness = 0.0;      // km
+        double isostaticCrustThicknessKm = 0.0; // smoothed background thickness for terrain
         double crustAge = 0.0;            // normalized 0..1 (0=brand new, 1=ancient)
         RockType surfaceRock = RockType::BasalticOceanic;
 

@@ -50,6 +50,11 @@ add_executable(Infinitesia
   src/planet/StarSystemGenerator.cpp
   src/planet/PlanetMap.h
   src/planet/PlanetMap.cpp
+  src/planet/PlanetMapTectonics.cpp
+  src/planet/PlanetMapHydrology.cpp
+  src/planet/PlanetMapClassification.cpp
+  src/planet/PlanetMapTerrain.cpp
+  src/planet/PlanetMapClimate.cpp
   src/world/Grid.h
   src/world/Grid.cpp
   src/world/Block.h
@@ -139,6 +144,12 @@ if (BUILD_TESTING)
   add_executable(PlanetGenerationTests
     tests/PlanetGenerationTests.cpp
     src/planet/Planet.cpp
+    src/planet/PlanetMap.cpp
+    src/planet/PlanetMapTectonics.cpp
+    src/planet/PlanetMapHydrology.cpp
+    src/planet/PlanetMapClassification.cpp
+    src/planet/PlanetMapTerrain.cpp
+    src/planet/PlanetMapClimate.cpp
     src/planet/StarSystemGenerator.cpp
   )
   target_include_directories(PlanetGenerationTests PRIVATE
