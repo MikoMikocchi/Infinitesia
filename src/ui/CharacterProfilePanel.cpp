@@ -2,9 +2,6 @@
 
 #include <algorithm>
 #include <cstdio>
-#include <filesystem>
-#include <stdexcept>
-#include <string>
 
 namespace Infinitesia
 {
@@ -28,35 +25,6 @@ namespace Infinitesia
         constexpr Color kMutedTextColor = { 170, 180, 190, 255 };
         constexpr Color kTooltipColor = { 24, 28, 33, 245 };
         constexpr Color kTooltipBorderColor = { 105, 115, 125, 255 };
-    }
-
-    void CharacterProfilePanel::LoadAssets()
-    {
-        if (m_logTexture.id != 0)
-        {
-            throw std::logic_error("Character profile assets are already loaded.");
-        }
-
-        const std::filesystem::path texturePath =
-            std::filesystem::path(GetApplicationDirectory()) /
-            "assets" / "items" / "Log.png";
-        const std::string texturePathString = texturePath.string();
-        m_logTexture = LoadTexture(texturePathString.c_str());
-        if (m_logTexture.id == 0)
-        {
-            m_logTexture = {};
-            throw std::runtime_error(
-                "Failed to load the log icon: " + texturePathString);
-        }
-    }
-
-    void CharacterProfilePanel::UnloadAssets()
-    {
-        if (m_logTexture.id != 0)
-        {
-            UnloadTexture(m_logTexture);
-            m_logTexture = {};
-        }
     }
 
     void CharacterProfilePanel::Open(WorldObjectId character)
@@ -106,6 +74,7 @@ namespace Infinitesia
 
     void CharacterProfilePanel::Draw(
         const WorldObject& character,
+        const TextureAssetManager& assets,
         int screenWidth,
         int screenHeight) const
     {
@@ -167,16 +136,17 @@ namespace Infinitesia
             }
 
             const Item& item = *slots[index];
-            if (item.GetType() == ItemType::Logs && m_logTexture.id != 0)
+            if (item.GetType() == ItemType::Logs)
             {
+                const Texture2D& texture = assets.GetTexture("items/Log");
                 const float scale = std::min(
-                    kItemIconSize / static_cast<float>(m_logTexture.width),
-                    kItemIconSize / static_cast<float>(m_logTexture.height));
-                const float iconWidth = static_cast<float>(m_logTexture.width) * scale;
-                const float iconHeight = static_cast<float>(m_logTexture.height) * scale;
+                    kItemIconSize / static_cast<float>(texture.width),
+                    kItemIconSize / static_cast<float>(texture.height));
+                const float iconWidth = static_cast<float>(texture.width) * scale;
+                const float iconHeight = static_cast<float>(texture.height) * scale;
                 DrawTexturePro(
-                    m_logTexture,
-                    { 0.0f, 0.0f, static_cast<float>(m_logTexture.width), static_cast<float>(m_logTexture.height) },
+                    texture,
+                    { 0.0f, 0.0f, static_cast<float>(texture.width), static_cast<float>(texture.height) },
                     {
                         slotBounds.x + (slotBounds.width - iconWidth) * 0.5f,
                         slotBounds.y + (slotBounds.height - iconHeight) * 0.5f,

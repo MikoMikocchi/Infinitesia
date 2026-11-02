@@ -38,7 +38,7 @@ namespace Infinitesia
             m_chunkRenderRadius,
             m_selectedLevel);
         DrawDebugOverlay();
-        m_worldInteraction.DrawOverlay(m_world);
+        m_worldInteraction.DrawOverlay(m_world, m_textureAssets);
 
         EndDrawing();
     }

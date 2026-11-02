@@ -26,6 +26,8 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(Infinitesia
   src/main.cpp
+  src/assets/TextureAssetManager.h
+  src/assets/TextureAssetManager.cpp
   src/app/Application.h
   src/app/ApplicationConfig.h
   src/app/internal/AppHelpers.h
@@ -98,39 +100,16 @@ add_executable(Infinitesia
   src/rendering/WorldOverlayRenderer.cpp
 )
 
-set(INFINITESIA_SHADER_FILES
-  assets/shaders/world_lighting.vs
-  assets/shaders/world_lighting.fs
-  assets/shaders/blob_shadow.fs
+file(GLOB_RECURSE INFINITESIA_ASSET_FILES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/assets/*"
 )
-set(INFINITESIA_ITEM_ASSET_FILES
-  assets/items/Log.png
-)
-set_source_files_properties(
-  ${INFINITESIA_SHADER_FILES}
-  ${INFINITESIA_ITEM_ASSET_FILES}
-  PROPERTIES HEADER_FILE_ONLY TRUE
-)
-target_sources(Infinitesia PRIVATE
-  ${INFINITESIA_SHADER_FILES}
-  ${INFINITESIA_ITEM_ASSET_FILES}
-)
+set_source_files_properties(${INFINITESIA_ASSET_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
+target_sources(Infinitesia PRIVATE ${INFINITESIA_ASSET_FILES})
 
 add_custom_command(TARGET Infinitesia POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/world_lighting.vs"
-    "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders/world_lighting.vs"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/world_lighting.fs"
-    "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders/world_lighting.fs"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/blob_shadow.fs"
-    "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders/blob_shadow.fs"
-  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Infinitesia>/assets/items"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_CURRENT_SOURCE_DIR}/assets/items/Log.png"
-    "$<TARGET_FILE_DIR:Infinitesia>/assets/items/Log.png"
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+    "$<TARGET_FILE_DIR:Infinitesia>/assets"
 )
 
 target_include_directories(Infinitesia PRIVATE

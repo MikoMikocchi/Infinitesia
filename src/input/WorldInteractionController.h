@@ -1,5 +1,6 @@
 #pragma once
 
+#include "assets/TextureAssetManager.h"
 #include "input/GridPointer.h"
 #include "input/WorldObjectPicker.h"
 #include "raylib.h"
@@ -25,8 +26,6 @@ namespace Infinitesia
     class WorldInteractionController
     {
     public:
-        void LoadAssets();
-        void UnloadAssets();
         void Update(
             WorldInteractionInput input,
             const Grid& grid,
@@ -42,7 +41,7 @@ namespace Infinitesia
         std::optional<WorldObjectId> GetHoveredObject() const;
         std::optional<WorldObjectId> GetSelectedObject() const;
         const std::string& GetActionNotice() const;
-        void DrawOverlay(const World& world) const;
+        void DrawOverlay(const World& world, const TextureAssetManager& assets) const;
 
     private:
         GridPointer m_gridPointer;

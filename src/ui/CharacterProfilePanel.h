@@ -1,5 +1,6 @@
 #pragma once
 
+#include "assets/TextureAssetManager.h"
 #include "raylib.h"
 #include "world/World.h"
 
@@ -11,8 +12,6 @@ namespace Infinitesia
     class CharacterProfilePanel
     {
     public:
-        void LoadAssets();
-        void UnloadAssets();
         void Open(WorldObjectId character);
         void Close();
         bool IsOpen() const;
@@ -24,7 +23,11 @@ namespace Infinitesia
             int screenWidth,
             int screenHeight,
             std::size_t slotCount);
-        void Draw(const WorldObject& character, int screenWidth, int screenHeight) const;
+        void Draw(
+            const WorldObject& character,
+            const TextureAssetManager& assets,
+            int screenWidth,
+            int screenHeight) const;
 
     private:
         Rectangle GetBounds(int screenWidth, int screenHeight, std::size_t slotCount) const;
@@ -33,7 +36,6 @@ namespace Infinitesia
             int screenHeight,
             std::size_t slotCount) const;
 
-        Texture2D m_logTexture{};
         std::optional<WorldObjectId> m_character;
     };
 }

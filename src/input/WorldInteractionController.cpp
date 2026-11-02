@@ -4,16 +4,6 @@
 
 namespace Infinitesia
 {
-    void WorldInteractionController::LoadAssets()
-    {
-        m_characterProfilePanel.LoadAssets();
-    }
-
-    void WorldInteractionController::UnloadAssets()
-    {
-        m_characterProfilePanel.UnloadAssets();
-    }
-
     void WorldInteractionController::Update(
         WorldInteractionInput input,
         const Grid& grid,
@@ -271,7 +261,9 @@ namespace Infinitesia
         return m_actionNotice;
     }
 
-    void WorldInteractionController::DrawOverlay(const World& world) const
+    void WorldInteractionController::DrawOverlay(
+        const World& world,
+        const TextureAssetManager& assets) const
     {
         m_contextMenu.Draw();
         if (m_characterProfilePanel.IsOpen())
@@ -279,7 +271,11 @@ namespace Infinitesia
             const WorldObject* character = world.FindObject(m_characterProfilePanel.GetCharacter());
             if (character != nullptr && character->type == WorldObjectType::Worker)
             {
-                m_characterProfilePanel.Draw(*character, GetScreenWidth(), GetScreenHeight());
+                m_characterProfilePanel.Draw(
+                    *character,
+                    assets,
+                    GetScreenWidth(),
+                    GetScreenHeight());
             }
         }
     }

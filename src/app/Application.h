@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/ApplicationConfig.h"
+#include "assets/TextureAssetManager.h"
 #include "core/Simulation.h"
 #include "core/Time.h"
 #include "input/CameraController.h"
@@ -31,6 +32,7 @@ namespace Infinitesia
         Simulation m_simulation;
         WorkSystem m_workSystem;
         CommandRegistry m_commands;
+        TextureAssetManager m_textureAssets;
         WorldRenderer m_worldRenderer;
         CameraController m_cameraController;
         WorldInteractionController m_worldInteraction;

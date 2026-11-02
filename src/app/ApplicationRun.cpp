@@ -1,6 +1,7 @@
 #include "app/Application.h"
 #include "raylib.h"
 
+#include <filesystem>
 #include <stdexcept>
 
 namespace Infinitesia
@@ -55,25 +56,25 @@ namespace Infinitesia
             WorldRenderer& m_renderer;
         };
 
-        class CharacterProfileAssetsGuard
+        class TextureAssetsGuard
         {
         public:
-            explicit CharacterProfileAssetsGuard(WorldInteractionController& controller)
-                : m_controller(controller)
+            TextureAssetsGuard(TextureAssetManager& assets, const std::filesystem::path& assetDirectory)
+                : m_assets(assets)
             {
-                m_controller.LoadAssets();
+                m_assets.LoadTextures(assetDirectory);
             }
 
-            ~CharacterProfileAssetsGuard()
+            ~TextureAssetsGuard()
             {
-                m_controller.UnloadAssets();
+                m_assets.UnloadTextures();
             }
 
-            CharacterProfileAssetsGuard(const CharacterProfileAssetsGuard&) = delete;
-            CharacterProfileAssetsGuard& operator=(const CharacterProfileAssetsGuard&) = delete;
+            TextureAssetsGuard(const TextureAssetsGuard&) = delete;
+            TextureAssetsGuard& operator=(const TextureAssetsGuard&) = delete;
 
         private:
-            WorldInteractionController& m_controller;
+            TextureAssetManager& m_assets;
         };
     }
 
@@ -81,7 +82,9 @@ namespace Infinitesia
     {
         WindowGuard window(m_config.window);
         WorldRendererShaderGuard rendererShaders(m_worldRenderer);
-        CharacterProfileAssetsGuard profileAssets(m_worldInteraction);
+        TextureAssetsGuard textureAssets(
+            m_textureAssets,
+            std::filesystem::path(GetApplicationDirectory()) / "assets");
         SetTargetFPS(m_config.window.targetFramesPerSecond);
 
         while (!WindowShouldClose())
