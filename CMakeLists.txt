@@ -43,6 +43,8 @@ add_executable(Infinitesia
   src/input/GridPointer.cpp
   src/input/WorldObjectPicker.h
   src/input/WorldObjectPicker.cpp
+  src/ui/WorldContextMenu.h
+  src/ui/WorldContextMenu.cpp
   src/rendering/WorldRenderer.h
   src/rendering/WorldRenderer.cpp
 )

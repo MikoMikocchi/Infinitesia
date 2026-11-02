@@ -72,19 +72,62 @@ namespace Infinitesia
     void Application::Update()
     {
         m_cameraController.Update(m_worldRenderer.GetCamera(), m_time.GetDeltaTime());
+        const Vector2 mousePosition = GetMousePosition();
         m_hoveredCell = m_gridPointer.PickCell(
             m_grid,
             m_worldRenderer.GetCamera(),
-            GetMousePosition());
-        m_hoveredObject = m_worldObjectPicker.PickObject(
-            m_grid,
-            m_world,
-            m_worldRenderer.GetCamera(),
-            GetMousePosition());
+            mousePosition);
+        if (m_contextMenu.BlocksWorldInput(mousePosition))
+        {
+            m_hoveredObject.reset();
+        }
+        else
+        {
+            m_hoveredObject = m_worldObjectPicker.PickObject(
+                m_grid,
+                m_world,
+                m_worldRenderer.GetCamera(),
+                mousePosition);
+        }
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        std::optional<WorldObjectId> hoveredTree;
+        if (m_hoveredObject.has_value())
+        {
+            const WorldObject* hoveredObject = m_world.FindObject(*m_hoveredObject);
+            if (hoveredObject != nullptr && hoveredObject->type == WorldObjectType::Tree)
+            {
+                hoveredTree = hoveredObject->id;
+            }
+        }
+
+        std::optional<WorldObjectId> selectedWorker;
+        if (m_selectedObject.has_value())
+        {
+            const WorldObject* selectedObject = m_world.FindObject(*m_selectedObject);
+            if (selectedObject != nullptr && selectedObject->type == WorldObjectType::Worker)
+            {
+                selectedWorker = selectedObject->id;
+            }
+        }
+
+        const ContextMenuUpdate menuUpdate = m_contextMenu.Update(
+            mousePosition,
+            IsMouseButtonPressed(MOUSE_BUTTON_RIGHT),
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
+            IsKeyPressed(KEY_ESCAPE),
+            hoveredTree,
+            selectedWorker,
+            m_config.window.width,
+            m_config.window.height);
+
+        if (menuUpdate.actionRequest.has_value())
+        {
+            m_actionNotice = "Chop selected (execution not implemented)";
+        }
+        else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !menuUpdate.consumedMouseClick)
         {
             m_selectedObject = m_hoveredObject;
+            m_actionNotice.clear();
         }
     }
 
@@ -101,6 +144,7 @@ namespace Infinitesia
             24,
             RAYWHITE);
         DrawDebugOverlay();
+        m_contextMenu.Draw();
 
         EndDrawing();
     }
@@ -149,6 +193,16 @@ namespace Infinitesia
                 std::snprintf(buf, sizeof(buf), "Selected: %s", typeName);
                 DrawText(buf, padding, padding + 5 * lineHeight, fontSize, GREEN);
             }
+        }
+
+        if (!m_actionNotice.empty())
+        {
+            DrawText(
+                m_actionNotice.c_str(),
+                padding,
+                m_config.window.height - lineHeight - padding,
+                fontSize,
+                GOLD);
         }
     }
 }

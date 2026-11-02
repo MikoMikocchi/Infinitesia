@@ -7,9 +7,11 @@
 #include "input/GridPointer.h"
 #include "input/WorldObjectPicker.h"
 #include "rendering/WorldRenderer.h"
+#include "ui/WorldContextMenu.h"
 #include "world/Grid.h"
 
 #include <optional>
+#include <string>
 
 namespace Infinitesia
 {
@@ -33,9 +35,11 @@ namespace Infinitesia
         CameraController m_cameraController;
         GridPointer m_gridPointer;
         WorldObjectPicker m_worldObjectPicker;
+        WorldContextMenu m_contextMenu;
         std::optional<GridCell> m_hoveredCell;
         std::optional<WorldObjectId> m_hoveredObject;
         std::optional<WorldObjectId> m_selectedObject;
+        std::string m_actionNotice;
         Time m_time;
     };
 }
