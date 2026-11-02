@@ -77,6 +77,7 @@ namespace Infinitesia
 
             Mesh BuildLevelChunkMesh(
                 const Grid& grid,
+                const World& world,
                 const WorldChunk& chunk,
                 int viewLevel)
             {
@@ -100,7 +101,8 @@ namespace Infinitesia
                 colors.reserve(surfaceCellCount * 16);
                 indices.reserve(surfaceCellCount * 6);
                 const float cellSize = grid.GetCellSize();
-                const float topY = static_cast<float>(viewLevel + 1) * cellSize;
+                const float blockTopY = static_cast<float>(viewLevel + 1) * cellSize;
+                const float floorY = static_cast<float>(viewLevel) * cellSize;
                 const float worldLeft = -grid.GetWorldWidth() * 0.5f;
                 const float worldFront = -grid.GetWorldDepth() * 0.5f;
                 for (int localZ = 0; localZ < chunk.depth; ++localZ)
@@ -114,19 +116,45 @@ namespace Infinitesia
                                 static_cast<std::size_t>(chunk.width) +
                             static_cast<std::size_t>(localX);
                         const Block& block = chunk.blocks[blockIndex];
+                        if (block.type == BlockType::Air)
+                        {
+                            continue;
+                        }
+
+                        const bool isAir = block.type == BlockType::Air;
+                        const GridCell lightingCell = isAir
+                            ? GridCell{ block.cell.x, viewLevel - 1, block.cell.z }
+                            : block.cell;
+                        const Block* floorBlock = isAir
+                            ? world.GetBlock(lightingCell)
+                            : nullptr;
+                        if (isAir &&
+                            (floorBlock == nullptr || floorBlock->type == BlockType::Air))
+                        {
+                            continue;
+                        }
+
                         const float left = worldLeft +
                                            static_cast<float>(block.cell.x) * cellSize;
                         const float front = worldFront +
                                             static_cast<float>(block.cell.z) * cellSize;
                         const float right = left + cellSize;
                         const float back = front + cellSize;
+                        const float topY = isAir ? floorY : blockTopY;
                         const std::array<Vector3, 4> corners{
                             Vector3{ left, topY, front },
                             Vector3{ right, topY, front },
                             Vector3{ right, topY, back },
                             Vector3{ left, topY, back }
                         };
-                        const Color color = GetBlockColor(block.type);
+                        const BlockType visibleBlockType = isAir
+                            ? floorBlock->type
+                            : block.type;
+                        Color color = GetBlockColor(visibleBlockType);
+                        if (!world.HasSkyAccess(lightingCell))
+                        {
+                            color = BLACK;
+                        }
                         const unsigned short firstVertex =
                             static_cast<unsigned short>(vertices.size() / 3);
                         for (const Vector3 corner : corners)
@@ -148,6 +176,10 @@ namespace Infinitesia
                 }
 
                 Mesh mesh{};
+                if (vertices.empty())
+                {
+                    return mesh;
+                }
                 mesh.vertexCount = static_cast<int>(vertices.size() / 3);
                 mesh.triangleCount = static_cast<int>(indices.size() / 3);
                 try
@@ -356,6 +388,7 @@ namespace Infinitesia
                 auto cachedMesh = meshCache.find(coordinate);
                 if (cachedMesh == meshCache.end() ||
                     cachedMesh->second.terrainRevision != chunk.terrainRevision ||
+                    cachedMesh->second.worldTerrainRevision != world.GetTerrainRevision() ||
                     cachedMesh->second.level != viewLevel)
                 {
                     if (cachedMesh != meshCache.end() &&
@@ -365,8 +398,9 @@ namespace Infinitesia
                         UnloadMesh(cachedMesh->second.mesh);
                     }
                     ChunkMeshCacheEntry entry{
-                        BuildLevelChunkMesh(grid, chunk, viewLevel),
+                        BuildLevelChunkMesh(grid, world, chunk, viewLevel),
                         chunk.terrainRevision,
+                        world.GetTerrainRevision(),
                         viewLevel
                     };
                     if (cachedMesh == meshCache.end())

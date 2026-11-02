@@ -74,7 +74,9 @@ namespace Infinitesia
         void RequestChunksAround(GridCell center, int horizontalRadius, int verticalRadius = 0);
         std::size_t GeneratePendingChunks(std::size_t maximumChunks);
         const Block* GetBlock(GridCell cell) const;
+        bool HasSkyAccess(GridCell cell) const;
         void SetBlockType(GridCell cell, BlockType type);
+        std::uint64_t GetTerrainRevision() const;
         const std::map<ChunkCoordinate, WorldChunk>& GetChunks() const;
         std::size_t GetLoadedChunkCount() const;
         std::size_t GetTotalChunkCount() const;
@@ -97,5 +99,6 @@ namespace Infinitesia
         int m_gridDepth;
         std::uint32_t m_seed;
         std::uint64_t m_nextObjectId = 1;
+        std::uint64_t m_terrainRevision = 0;
     };
 }

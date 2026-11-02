@@ -1,5 +1,7 @@
 #include "input/WorldInteractionController.h"
 
+#include <utility>
+
 namespace Infinitesia
 {
     void WorldInteractionController::Update(
@@ -97,6 +99,11 @@ namespace Infinitesia
     const std::string& WorldInteractionController::GetActionNotice() const
     {
         return m_actionNotice;
+    }
+
+    void WorldInteractionController::SetActionNotice(std::string notice)
+    {
+        m_actionNotice = std::move(notice);
     }
 
     void WorldInteractionController::DrawOverlay() const

@@ -37,6 +37,7 @@ namespace Infinitesia
         std::optional<WorldObjectId> GetHoveredObject() const;
         std::optional<WorldObjectId> GetSelectedObject() const;
         const std::string& GetActionNotice() const;
+        void SetActionNotice(std::string notice);
         void DrawOverlay() const;
 
     private:

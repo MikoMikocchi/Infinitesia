@@ -15,6 +15,7 @@ namespace Infinitesia
         {
             Mesh mesh{};
             std::uint64_t terrainRevision = 0;
+            std::uint64_t worldTerrainRevision = 0;
             int level = -1;
         };
 

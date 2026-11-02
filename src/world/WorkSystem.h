@@ -14,6 +14,7 @@ namespace Infinitesia
     {
         float movementSpeed;
         float choppingDuration;
+        float diggingDuration;
         int logsPerTree;
     };
 
@@ -40,6 +41,11 @@ namespace Infinitesia
         explicit WorkSystem(WorkerConfig config);
 
         WorkOrderResult AssignChopOrder(WorldObjectId worker, WorldObjectId tree, World& world, const Grid& grid);
+        WorkOrderResult AssignDigOrder(
+            WorldObjectId worker,
+            GridCell target,
+            World& world,
+            const Grid& grid);
         void Tick(World& world, const Grid& grid, float fixedDeltaTime);
         WorkerActivity GetActivity(WorldObjectId worker) const;
         float GetWorkProgress(WorldObjectId worker) const;
@@ -49,22 +55,32 @@ namespace Infinitesia
         enum class WorkPhase
         {
             Moving,
-            Chopping
+            Working
+        };
+
+        enum class WorkType
+        {
+            ChopTree,
+            DigBlock
         };
 
         struct WorkOrder
         {
+            WorkType type;
             WorldObjectId worker;
-            WorldObjectId tree;
+            std::optional<WorldObjectId> targetObject;
+            GridCell targetCell;
             GridCell workCell;
             std::vector<GridCell> path;
             std::size_t nextPathCell = 1;
             WorkPhase phase;
-            float choppingProgress = 0.0f;
+            float workProgress = 0.0f;
         };
 
         bool HasOrderForWorker(WorldObjectId worker) const;
         bool HasOrderForTree(WorldObjectId tree) const;
+        bool HasOrderForDigCell(GridCell cell) const;
+        float GetWorkDuration(const WorkOrder& order) const;
         bool IsReserved(GridCell cell) const;
         std::optional<std::vector<GridCell>> FindPath(
             GridCell start,

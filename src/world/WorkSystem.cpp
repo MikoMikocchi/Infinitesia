@@ -24,6 +24,7 @@ namespace Infinitesia
     {
         if (!std::isfinite(config.movementSpeed) || config.movementSpeed <= 0.0f ||
             !std::isfinite(config.choppingDuration) || config.choppingDuration <= 0.0f ||
+            !std::isfinite(config.diggingDuration) || config.diggingDuration <= 0.0f ||
             config.logsPerTree <= 0)
         {
             throw std::invalid_argument("Worker configuration contains invalid values.");
@@ -87,8 +88,91 @@ namespace Infinitesia
             return WorkOrderResult::NoReachableWorkCell;
         }
 
-        const WorkPhase phase = bestPath.size() <= 1 ? WorkPhase::Chopping : WorkPhase::Moving;
-        m_orders.push_back({ workerId, treeId, workCell, std::move(bestPath), 1, phase });
+        const WorkPhase phase = bestPath.size() <= 1 ? WorkPhase::Working : WorkPhase::Moving;
+        m_orders.push_back({
+            WorkType::ChopTree,
+            workerId,
+            treeId,
+            tree->cell,
+            workCell,
+            std::move(bestPath),
+            1,
+            phase
+        });
+        return WorkOrderResult::Accepted;
+    }
+
+    WorkOrderResult WorkSystem::AssignDigOrder(
+        WorldObjectId workerId,
+        GridCell target,
+        World& world,
+        const Grid& grid)
+    {
+        const WorldObject* worker = world.FindObject(workerId);
+        if (worker == nullptr || worker->type != WorldObjectType::Worker)
+        {
+            return WorkOrderResult::InvalidWorker;
+        }
+        if (!grid.Contains(target) || worker->cell.y != target.y)
+        {
+            return WorkOrderResult::InvalidTarget;
+        }
+
+        const Block* block = world.GetBlock(target);
+        if (block == nullptr || block->type == BlockType::Air ||
+            world.FindObjectAt(target).has_value())
+        {
+            return WorkOrderResult::InvalidTarget;
+        }
+        if (HasOrderForWorker(workerId))
+        {
+            return WorkOrderResult::WorkerBusy;
+        }
+        if (HasOrderForDigCell(target))
+        {
+            return WorkOrderResult::TargetBusy;
+        }
+
+        bool foundWorkCell = false;
+        GridCell workCell{};
+        std::vector<GridCell> bestPath;
+        for (const GridCell offset : kAdjacentOffsets)
+        {
+            const GridCell candidate{
+                target.x + offset.x,
+                target.y + offset.y,
+                target.z + offset.z
+            };
+            if (!grid.Contains(candidate) || IsReserved(candidate))
+            {
+                continue;
+            }
+
+            const std::optional<std::vector<GridCell>> path =
+                FindPath(worker->cell, candidate, workerId, world, grid);
+            if (path.has_value() && (!foundWorkCell || path->size() < bestPath.size()))
+            {
+                foundWorkCell = true;
+                workCell = candidate;
+                bestPath = *path;
+            }
+        }
+        if (!foundWorkCell)
+        {
+            return WorkOrderResult::NoReachableWorkCell;
+        }
+
+        const WorkPhase phase = bestPath.size() <= 1 ? WorkPhase::Working : WorkPhase::Moving;
+        m_orders.push_back({
+            WorkType::DigBlock,
+            workerId,
+            std::nullopt,
+            target,
+            workCell,
+            std::move(bestPath),
+            1,
+            phase
+        });
         return WorkOrderResult::Accepted;
     }
 
@@ -103,21 +187,36 @@ namespace Infinitesia
         {
             const bool orderIsValid = AdvanceOrder(m_orders[index], world, grid, fixedDeltaTime);
             const WorldObject* worker = world.FindObject(m_orders[index].worker);
-            const WorldObject* tree = world.FindObject(m_orders[index].tree);
+            const WorldObject* targetObject = m_orders[index].targetObject.has_value()
+                ? world.FindObject(*m_orders[index].targetObject)
+                : nullptr;
+            const Block* targetBlock = m_orders[index].type == WorkType::DigBlock
+                ? world.GetBlock(m_orders[index].targetCell)
+                : nullptr;
             if (!orderIsValid || worker == nullptr || worker->type != WorldObjectType::Worker ||
-                tree == nullptr || tree->type != WorldObjectType::Tree)
+                (m_orders[index].type == WorkType::ChopTree &&
+                 (targetObject == nullptr || targetObject->type != WorldObjectType::Tree)) ||
+                (m_orders[index].type == WorkType::DigBlock &&
+                 (targetBlock == nullptr || targetBlock->type == BlockType::Air)))
             {
                 m_orders.erase(m_orders.begin() + static_cast<std::ptrdiff_t>(index));
                 continue;
             }
 
-            if (m_orders[index].phase == WorkPhase::Chopping &&
-                m_orders[index].choppingProgress >= m_config.choppingDuration)
+            if (m_orders[index].phase == WorkPhase::Working &&
+                m_orders[index].workProgress >= GetWorkDuration(m_orders[index]))
             {
-                world.TransformObject(
-                    m_orders[index].tree,
-                    WorldObjectType::Item,
-                    Item{ ItemType::Logs, m_config.logsPerTree });
+                if (m_orders[index].type == WorkType::ChopTree)
+                {
+                    world.TransformObject(
+                        *m_orders[index].targetObject,
+                        WorldObjectType::Item,
+                        Item{ ItemType::Logs, m_config.logsPerTree });
+                }
+                else
+                {
+                    world.SetBlockType(m_orders[index].targetCell, BlockType::Air);
+                }
                 m_orders.erase(m_orders.begin() + static_cast<std::ptrdiff_t>(index));
                 continue;
             }
@@ -132,7 +231,9 @@ namespace Infinitesia
         {
             if (order.worker == worker)
             {
-                return order.phase == WorkPhase::Moving ? WorkerActivity::Moving : WorkerActivity::Working;
+                return order.phase == WorkPhase::Moving
+                    ? WorkerActivity::Moving
+                    : WorkerActivity::Working;
             }
         }
         return WorkerActivity::Idle;
@@ -142,9 +243,9 @@ namespace Infinitesia
     {
         for (const WorkOrder& order : m_orders)
         {
-            if (order.worker == worker && order.phase == WorkPhase::Chopping)
+            if (order.worker == worker && order.phase == WorkPhase::Working)
             {
-                return order.choppingProgress / m_config.choppingDuration;
+                return order.workProgress / GetWorkDuration(order);
             }
         }
         return 0.0f;
@@ -182,12 +283,34 @@ namespace Infinitesia
     {
         for (const WorkOrder& order : m_orders)
         {
-            if (order.tree == tree)
+            if (order.targetObject == tree)
             {
                 return true;
             }
         }
         return false;
+    }
+
+    bool WorkSystem::HasOrderForDigCell(GridCell cell) const
+    {
+        for (const WorkOrder& order : m_orders)
+        {
+            if (order.type == WorkType::DigBlock &&
+                order.targetCell.x == cell.x &&
+                order.targetCell.y == cell.y &&
+                order.targetCell.z == cell.z)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    float WorkSystem::GetWorkDuration(const WorkOrder& order) const
+    {
+        return order.type == WorkType::ChopTree
+            ? m_config.choppingDuration
+            : m_config.diggingDuration;
     }
 
     bool WorkSystem::IsReserved(GridCell cell) const
@@ -214,19 +337,43 @@ namespace Infinitesia
         {
             const std::optional<WorldObjectId> occupant = world.FindObjectAt(cell);
             const bool occupiedByAnotherObject = occupant.has_value() && *occupant != worker;
+            const Block* block = world.GetBlock(cell);
+            const WorldObject* workerObject = world.FindObject(worker);
+            const bool isWorkersCurrentCell =
+                workerObject != nullptr &&
+                workerObject->cell.x == cell.x &&
+                workerObject->cell.y == cell.y &&
+                workerObject->cell.z == cell.z;
+            const bool isWalkable = block != nullptr &&
+                (block->type != BlockType::Air || isWorkersCurrentCell);
             const bool reservedForAnotherOrder =
                 IsReserved(cell) && (cell.x != goal.x || cell.y != goal.y || cell.z != goal.z);
-            return !occupiedByAnotherObject && !reservedForAnotherOrder;
+            return isWalkable && !occupiedByAnotherObject && !reservedForAnotherOrder;
         });
     }
 
     bool WorkSystem::AdvanceOrder(WorkOrder& order, World& world, const Grid& grid, float fixedDeltaTime)
     {
         const WorldObject* worker = world.FindObject(order.worker);
-        const WorldObject* tree = world.FindObject(order.tree);
-        if (worker == nullptr || tree == nullptr)
+        if (worker == nullptr)
         {
             return false;
+        }
+        if (order.type == WorkType::ChopTree)
+        {
+            const WorldObject* tree = world.FindObject(*order.targetObject);
+            if (tree == nullptr || tree->type != WorldObjectType::Tree)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            const Block* block = world.GetBlock(order.targetCell);
+            if (block == nullptr || block->type == BlockType::Air)
+            {
+                return false;
+            }
         }
 
         if (order.phase == WorkPhase::Moving)
@@ -234,7 +381,7 @@ namespace Infinitesia
             return AdvanceMovement(order, world, grid, fixedDeltaTime);
         }
 
-        order.choppingProgress += fixedDeltaTime;
+        order.workProgress += fixedDeltaTime;
         return true;
     }
 
@@ -297,7 +444,7 @@ namespace Infinitesia
 
         if (order.nextPathCell >= order.path.size())
         {
-            order.phase = WorkPhase::Chopping;
+            order.phase = WorkPhase::Working;
         }
         return true;
     }

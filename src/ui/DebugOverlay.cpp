@@ -13,7 +13,7 @@ namespace Infinitesia
         constexpr int fontSize = 16;
         constexpr int lineHeight = 20;
         constexpr int panelWidth = 250;
-        constexpr int panelHeight = 10 * lineHeight + padding;
+        constexpr int panelHeight = 11 * lineHeight + padding;
 
         char buffer[128];
 
@@ -94,7 +94,7 @@ namespace Infinitesia
                     std::snprintf(
                         buffer,
                         sizeof(buffer),
-                        "Chopping: %.0f%%",
+                        "Working: %.0f%%",
                         data.workProgress * 100.0f);
                     DrawText(buffer, padding, padding + 8 * lineHeight, fontSize, ORANGE);
                     activityName = nullptr;
@@ -124,5 +124,7 @@ namespace Infinitesia
             "Path debug: %s (F3)",
             data.pathDebugEnabled ? "on" : "off");
         DrawText(buffer, padding, padding + 9 * lineHeight, fontSize, SKYBLUE);
+
+        DrawText("Dig hovered cell (G)", padding, padding + 10 * lineHeight, fontSize, GOLD);
     }
 }

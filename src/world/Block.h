@@ -6,6 +6,7 @@ namespace Infinitesia
 {
     enum class BlockType
     {
+        Air,
         Grass,
         Dirt,
         Stone

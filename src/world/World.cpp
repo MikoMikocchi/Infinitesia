@@ -305,9 +305,34 @@ namespace Infinitesia
         return &chunk->second.blocks[GetBlockIndex(chunk->second, cell)];
     }
 
+    bool World::HasSkyAccess(GridCell cell) const
+    {
+        if (cell.x < 0 || cell.x >= m_gridWidth ||
+            cell.y < 0 || cell.y >= m_gridHeight ||
+            cell.z < 0 || cell.z >= m_gridDepth)
+        {
+            return false;
+        }
+
+        for (int y = cell.y + 1; y < m_gridHeight; ++y)
+        {
+            const GridCell above{ cell.x, y, cell.z };
+            const auto chunk = m_chunks.find(GetChunkCoordinate(above));
+            const BlockType type = chunk == m_chunks.end()
+                ? GenerateBlockType(above)
+                : chunk->second.blocks[GetBlockIndex(chunk->second, above)].type;
+            if (type != BlockType::Air)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     void World::SetBlockType(GridCell cell, BlockType type)
     {
-        if (type != BlockType::Grass && type != BlockType::Dirt && type != BlockType::Stone)
+        if (type != BlockType::Air && type != BlockType::Grass &&
+            type != BlockType::Dirt && type != BlockType::Stone)
         {
             throw std::invalid_argument("Block has an unsupported type.");
         }
@@ -321,6 +346,12 @@ namespace Infinitesia
         WorldChunk& chunk = m_chunks.at(GetChunkCoordinate(cell));
         chunk.blocks[GetBlockIndex(chunk, cell)].type = type;
         ++chunk.terrainRevision;
+        ++m_terrainRevision;
+    }
+
+    std::uint64_t World::GetTerrainRevision() const
+    {
+        return m_terrainRevision;
     }
 
     const std::map<ChunkCoordinate, WorldChunk>& World::GetChunks() const

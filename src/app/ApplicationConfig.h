@@ -30,7 +30,7 @@ namespace Infinitesia
             { WorldObjectType::Worker, { 128, 127, 128 } },
             { WorldObjectType::Tree, { 132, 127, 128 } }
         };
-        WorkerConfig worker{ 3.0f, 4.0f, 3 };
+        WorkerConfig worker{ 3.0f, 4.0f, 3.0f, 3 };
         bool showPathDebug = true;
         float simulationTicksPerSecond = 20.0f;
         std::uint32_t worldSeed = 1;
