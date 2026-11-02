@@ -21,6 +21,8 @@ namespace Infinitesia
     public:
         explicit WorldRenderer(CameraConfig config);
 
+        void LoadShaders();
+        void UnloadShaders();
         void Draw(
             const Grid& grid,
             const World& world,
@@ -34,5 +36,10 @@ namespace Infinitesia
 
     private:
         Camera3D m_camera;
+        Shader m_worldShader{};
+        Shader m_shadowShader{};
+        Material m_worldMaterial{};
+        Mesh m_cylinderMesh{};
+        Mesh m_sphereMesh{};
     };
 }

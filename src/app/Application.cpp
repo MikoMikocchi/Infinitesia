@@ -40,6 +40,27 @@ namespace Infinitesia
             WindowGuard(const WindowGuard&) = delete;
             WindowGuard& operator=(const WindowGuard&) = delete;
         };
+
+        class WorldRendererShaderGuard
+        {
+        public:
+            explicit WorldRendererShaderGuard(WorldRenderer& renderer)
+                : m_renderer(renderer)
+            {
+                m_renderer.LoadShaders();
+            }
+
+            ~WorldRendererShaderGuard()
+            {
+                m_renderer.UnloadShaders();
+            }
+
+            WorldRendererShaderGuard(const WorldRendererShaderGuard&) = delete;
+            WorldRendererShaderGuard& operator=(const WorldRendererShaderGuard&) = delete;
+
+        private:
+            WorldRenderer& m_renderer;
+        };
     }
 
     Application::Application(ApplicationConfig config)
@@ -67,6 +88,7 @@ namespace Infinitesia
     void Application::Run()
     {
         WindowGuard window(m_config.window);
+        WorldRendererShaderGuard rendererShaders(m_worldRenderer);
         SetTargetFPS(m_config.window.targetFramesPerSecond);
 
         while (!WindowShouldClose())

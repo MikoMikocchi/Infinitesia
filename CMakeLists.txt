@@ -67,6 +67,27 @@ add_executable(Infinitesia
   src/rendering/WorldRenderer.cpp
 )
 
+set(INFINITESIA_SHADER_FILES
+  assets/shaders/world_lighting.vs
+  assets/shaders/world_lighting.fs
+  assets/shaders/blob_shadow.fs
+)
+set_source_files_properties(${INFINITESIA_SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
+target_sources(Infinitesia PRIVATE ${INFINITESIA_SHADER_FILES})
+
+add_custom_command(TARGET Infinitesia POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/world_lighting.vs"
+    "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders/world_lighting.vs"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/world_lighting.fs"
+    "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders/world_lighting.fs"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/blob_shadow.fs"
+    "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders/blob_shadow.fs"
+)
+
 target_include_directories(Infinitesia PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )

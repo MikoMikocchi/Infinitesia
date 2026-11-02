@@ -1,9 +1,13 @@
 #include "rendering/WorldRenderer.h"
+#include "raymath.h"
+#include "rlgl.h"
 
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <stdexcept>
+#include <string>
 
 namespace Infinitesia
 {
@@ -12,6 +16,7 @@ namespace Infinitesia
         constexpr float kDegreesToRadians = PI / 180.0f;
         constexpr float kGridLineHeight = 0.01f;
         constexpr float kHighlightHeight = 0.005f;
+        constexpr float kShadowHeight = 0.006f;
         constexpr Color kGridLineColor = { 85, 95, 105, 255 };
         constexpr Color kGridBoundaryColor = { 145, 155, 165, 255 };
         constexpr Color kHoveredCellColor = { 245, 190, 55, 100 };
@@ -164,44 +169,92 @@ namespace Infinitesia
             }
         }
 
-        void DrawWorldObject(const Grid& grid, const WorldObject& object)
+        void DrawLitMesh(
+            Mesh mesh,
+            Material material,
+            WorldPosition position,
+            Vector3 scale,
+            Color color)
+        {
+            material.maps[MATERIAL_MAP_DIFFUSE].color = color;
+            const Matrix transform = MatrixMultiply(
+                MatrixScale(scale.x, scale.y, scale.z),
+                MatrixTranslate(position.x, position.y, position.z));
+            DrawMesh(mesh, material, transform);
+        }
+
+        void DrawWorldObject(
+            const Grid& grid,
+            const WorldObject& object,
+            Mesh cylinderMesh,
+            Mesh sphereMesh,
+            Material material)
         {
             const WorldPosition cellCenter = object.position;
             const float cellSize = grid.GetCellSize();
 
             if (object.type == WorldObjectType::Worker)
             {
-                DrawCylinder(
+                DrawLitMesh(
+                    cylinderMesh,
+                    material,
                     { cellCenter.x, cellCenter.y + cellSize * 0.38f, cellCenter.z },
-                    cellSize * 0.24f,
-                    cellSize * 0.24f,
-                    cellSize * 0.76f,
-                    8,
+                    { cellSize * 0.24f, cellSize * 0.76f, cellSize * 0.24f },
                     { 75, 135, 220, 255 });
-                DrawSphere(
+                DrawLitMesh(
+                    sphereMesh,
+                    material,
                     { cellCenter.x, cellCenter.y + cellSize * 0.93f, cellCenter.z },
-                    cellSize * 0.20f,
+                    { cellSize * 0.20f, cellSize * 0.20f, cellSize * 0.20f },
                     { 225, 190, 150, 255 });
                 return;
             }
 
             if (object.type == WorldObjectType::Tree)
             {
-                DrawCylinder(
+                DrawLitMesh(
+                    cylinderMesh,
+                    material,
                     { cellCenter.x, cellCenter.y + cellSize * 0.43f, cellCenter.z },
-                    cellSize * 0.13f,
-                    cellSize * 0.17f,
-                    cellSize * 0.86f,
-                    8,
+                    { cellSize * 0.15f, cellSize * 0.86f, cellSize * 0.15f },
                     { 115, 75, 45, 255 });
-                DrawSphere(
+                DrawLitMesh(
+                    sphereMesh,
+                    material,
                     { cellCenter.x, cellCenter.y + cellSize * 1.38f, cellCenter.z },
-                    cellSize * 0.48f,
+                    { cellSize * 0.48f, cellSize * 0.48f, cellSize * 0.48f },
                     { 65, 145, 75, 255 });
                 return;
             }
 
             DrawItem(grid, object);
+        }
+
+        void DrawObjectShadow(const Grid& grid, const WorldObject& object)
+        {
+            const float cellSize = grid.GetCellSize();
+            const WorldObjectSize size = GetWorldObjectSize(object.type, cellSize);
+            const float shadowScale = 1.0f + size.height * 0.18f;
+            const float shadowOffset = size.height * 0.12f;
+            const float halfWidth = cellSize * shadowScale * 0.5f;
+            const float halfDepth = cellSize * shadowScale * 0.36f;
+            const float centerX = object.position.x + shadowOffset * 0.6f;
+            const float centerY = object.position.y + kShadowHeight;
+            const float centerZ = object.position.z - shadowOffset * 0.45f;
+            const unsigned char opacity = object.type == WorldObjectType::Tree ? 150 : 110;
+
+            rlBegin(RL_QUADS);
+                rlColor4ub(255, 255, 255, opacity);
+                rlNormal3f(0.0f, 1.0f, 0.0f);
+                rlTexCoord2f(0.0f, 0.0f);
+                rlVertex3f(centerX - halfWidth, centerY, centerZ - halfDepth);
+                rlTexCoord2f(0.0f, 1.0f);
+                rlVertex3f(centerX - halfWidth, centerY, centerZ + halfDepth);
+                rlTexCoord2f(1.0f, 1.0f);
+                rlVertex3f(centerX + halfWidth, centerY, centerZ + halfDepth);
+                rlTexCoord2f(1.0f, 0.0f);
+                rlVertex3f(centerX + halfWidth, centerY, centerZ - halfDepth);
+            rlEnd();
         }
 
         void DrawObjectOutline(const Grid& grid, const WorldObject& object, Color color)
@@ -268,6 +321,68 @@ namespace Infinitesia
     {
     }
 
+    void WorldRenderer::LoadShaders()
+    {
+        if (m_worldShader.id != 0 || m_shadowShader.id != 0)
+        {
+            throw std::logic_error("World renderer shaders are already loaded.");
+        }
+
+        const std::filesystem::path shaderDirectory =
+            std::filesystem::path(GetApplicationDirectory()) / "assets" / "shaders";
+        const std::string worldShaderPath = (shaderDirectory / "world_lighting.fs").string();
+        const std::string worldVertexShaderPath = (shaderDirectory / "world_lighting.vs").string();
+        m_worldShader = LoadShader(worldVertexShaderPath.c_str(), worldShaderPath.c_str());
+        if (m_worldShader.id == 0)
+        {
+            throw std::runtime_error("Failed to load the world lighting shader.");
+        }
+
+        const std::string shadowShaderPath = (shaderDirectory / "blob_shadow.fs").string();
+        m_shadowShader = LoadShader(nullptr, shadowShaderPath.c_str());
+        if (m_shadowShader.id == 0)
+        {
+            UnloadShader(m_worldShader);
+            m_worldShader = {};
+            throw std::runtime_error("Failed to load the blob shadow shader.");
+        }
+
+        m_worldMaterial = LoadMaterialDefault();
+        m_worldMaterial.shader = m_worldShader;
+        m_cylinderMesh = GenMeshCylinder(1.0f, 1.0f, 8);
+        m_sphereMesh = GenMeshSphere(1.0f, 8, 8);
+    }
+
+    void WorldRenderer::UnloadShaders()
+    {
+        if (m_cylinderMesh.vaoId != 0 || m_cylinderMesh.vboId != nullptr)
+        {
+            UnloadMesh(m_cylinderMesh);
+            m_cylinderMesh = {};
+        }
+        if (m_sphereMesh.vaoId != 0 || m_sphereMesh.vboId != nullptr)
+        {
+            UnloadMesh(m_sphereMesh);
+            m_sphereMesh = {};
+        }
+        if (m_worldMaterial.maps != nullptr)
+        {
+            m_worldMaterial.shader = { rlGetShaderIdDefault(), rlGetShaderLocsDefault() };
+            UnloadMaterial(m_worldMaterial);
+            m_worldMaterial = {};
+        }
+        if (m_shadowShader.id != 0)
+        {
+            UnloadShader(m_shadowShader);
+            m_shadowShader = {};
+        }
+        if (m_worldShader.id != 0)
+        {
+            UnloadShader(m_worldShader);
+            m_worldShader = {};
+        }
+    }
+
     void WorldRenderer::Draw(
         const Grid& grid,
         const World& world,
@@ -278,17 +393,30 @@ namespace Infinitesia
         const std::vector<GridCell>& debugPath) const
     {
         BeginMode3D(m_camera);
+        BeginShaderMode(m_worldShader);
         for (const Block& block : world.GetBlocks())
         {
             DrawBlock(grid, block);
         }
+        EndShaderMode();
+
+        BeginShaderMode(m_shadowShader);
+        for (const WorldObject& object : world.GetObjects())
+        {
+            DrawObjectShadow(grid, object);
+        }
+        EndShaderMode();
+
+        BeginShaderMode(m_worldShader);
+        for (const WorldObject& object : world.GetObjects())
+        {
+            DrawWorldObject(grid, object, m_cylinderMesh, m_sphereMesh, m_worldMaterial);
+        }
+        EndShaderMode();
+
         if (hoveredCell.has_value())
         {
             DrawHoveredCell(grid, *hoveredCell);
-        }
-        for (const WorldObject& object : world.GetObjects())
-        {
-            DrawWorldObject(grid, object);
         }
         DrawGridLines(grid);
         DrawDebugPath(grid, pathOrigin, debugPath);
