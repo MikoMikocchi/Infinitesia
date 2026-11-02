@@ -31,6 +31,7 @@ add_executable(Infinitesia
   src/app/internal/AppHelpers.h
   src/app/internal/AppHelpers.cpp
   src/app/Application.cpp
+  src/app/ApplicationRun.cpp
   src/app/ApplicationUpdate.cpp
   src/app/ApplicationRender.cpp
   src/core/Time.h
@@ -58,6 +59,7 @@ add_executable(Infinitesia
   src/world/work/WorkPathfinding.cpp
   src/world/work/WorkMovement.h
   src/world/work/WorkMovement.cpp
+  src/world/work/WorkOrders.cpp
   src/world/WorkSystem.cpp
   src/world/WorkExecution.cpp
   src/commands/Command.h
