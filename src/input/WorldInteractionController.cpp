@@ -2,34 +2,12 @@
 
 namespace Infinitesia
 {
-    namespace
-    {
-        std::optional<WorldObjectId> GetObjectOfType(
-            const World& world,
-            std::optional<WorldObjectId> objectId,
-            WorldObjectType type)
-        {
-            if (!objectId.has_value())
-            {
-                return std::nullopt;
-            }
-
-            const WorldObject* object = world.FindObject(*objectId);
-            if (object == nullptr || object->type != type)
-            {
-                return std::nullopt;
-            }
-            return object->id;
-        }
-    }
-
     void WorldInteractionController::Update(
         WorldInteractionInput input,
         const Grid& grid,
         World& world,
         const Camera3D& camera,
-        const WorkerCommandRegistry& commands,
-        WorkSystem& workSystem,
+        const CommandRegistry& commands,
         int screenWidth,
         int screenHeight)
     {
@@ -44,17 +22,19 @@ namespace Infinitesia
                 grid, world, camera, input.mousePosition);
         }
 
-        const std::optional<WorldObjectId> selectedWorker =
-            GetObjectOfType(world, m_selectedObject, WorldObjectType::Worker);
-        std::vector<WorkerCommandOption> targetCommands;
+        std::optional<WorldObjectId> actor = m_selectedObject;
+        if (actor.has_value() && world.FindObject(*actor) == nullptr)
+        {
+            actor.reset();
+        }
+
+        std::vector<CommandOption> targetCommands;
         if (m_hoveredObject.has_value())
         {
             targetCommands = commands.GetOptions(
                 *m_hoveredObject,
-                selectedWorker,
-                world,
-                grid,
-                workSystem);
+                actor,
+                world);
         }
 
         const ContextMenuUpdate menuUpdate = m_contextMenu.Update(
@@ -63,21 +43,19 @@ namespace Infinitesia
             input.leftClickPressed,
             input.escapePressed,
             m_hoveredObject,
-            selectedWorker,
+            actor,
             targetCommands,
             screenWidth,
             screenHeight);
 
         if (menuUpdate.commandRequest.has_value())
         {
-            const WorkerCommandRequest& request = *menuUpdate.commandRequest;
-            const WorkerCommandResult result = commands.Execute(
+            const CommandRequest& request = *menuUpdate.commandRequest;
+            const CommandResult result = commands.Execute(
                 request.commandId,
                 request.actor,
                 request.target,
-                world,
-                grid,
-                workSystem);
+                world);
             m_actionNotice = result.message;
         }
         else if (input.leftClickPressed && !menuUpdate.consumedMouseClick)

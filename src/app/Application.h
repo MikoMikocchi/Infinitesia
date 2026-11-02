@@ -7,7 +7,7 @@
 #include "input/WorldInteractionController.h"
 #include "rendering/WorldRenderer.h"
 #include "ui/DebugOverlay.h"
-#include "world/WorkerCommandRegistry.h"
+#include "world/CommandRegistry.h"
 #include "world/Grid.h"
 #include "world/WorkSystem.h"
 
@@ -30,7 +30,7 @@ namespace Infinitesia
         World m_world;
         Simulation m_simulation;
         WorkSystem m_workSystem;
-        WorkerCommandRegistry m_workerCommands;
+        CommandRegistry m_commands;
         WorldRenderer m_worldRenderer;
         CameraController m_cameraController;
         WorldInteractionController m_worldInteraction;

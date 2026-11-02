@@ -23,8 +23,8 @@ namespace Infinitesia
         bool leftClickPressed,
         bool escapePressed,
         std::optional<WorldObjectId> hoveredTarget,
-        std::optional<WorldObjectId> selectedWorker,
-        const std::vector<WorkerCommandOption>& targetCommands,
+        std::optional<WorldObjectId> actor,
+        const std::vector<CommandOption>& targetCommands,
         int screenWidth,
         int screenHeight)
     {
@@ -44,7 +44,7 @@ namespace Infinitesia
                 Open(
                     mousePosition,
                     *hoveredTarget,
-                    selectedWorker,
+                    actor,
                     targetCommands,
                     screenWidth,
                     screenHeight);
@@ -70,12 +70,12 @@ namespace Infinitesia
                 continue;
             }
 
-            const WorkerCommandOption& command = m_commands[index];
-            if (command.enabled && m_actor.has_value())
+            const CommandOption& command = m_commands[index];
+            if (command.enabled)
             {
-                result.commandRequest = WorkerCommandRequest{
+                result.commandRequest = CommandRequest{
                     command.id,
-                    *m_actor,
+                    m_actor,
                     m_target
                 };
                 Close();
@@ -100,7 +100,7 @@ namespace Infinitesia
 
         for (std::size_t index = 0; index < m_commands.size(); ++index)
         {
-            const WorkerCommandOption& command = m_commands[index];
+            const CommandOption& command = m_commands[index];
             const Rectangle actionBounds = GetActionBounds(index);
             if (command.enabled && CheckCollisionPointRec(GetMousePosition(), actionBounds))
             {
@@ -151,12 +151,7 @@ namespace Infinitesia
 
     const char* WorldContextMenu::GetDisabledHint() const
     {
-        if (!m_actor.has_value())
-        {
-            return "Select a worker first";
-        }
-
-        for (const WorkerCommandOption& command : m_commands)
+        for (const CommandOption& command : m_commands)
         {
             if (!command.enabled && !command.disabledReason.empty())
             {
@@ -168,12 +163,7 @@ namespace Infinitesia
 
     bool WorldContextMenu::HasDisabledCommands() const
     {
-        if (!m_actor.has_value())
-        {
-            return true;
-        }
-
-        for (const WorkerCommandOption& command : m_commands)
+        for (const CommandOption& command : m_commands)
         {
             if (!command.enabled)
             {
@@ -187,7 +177,7 @@ namespace Infinitesia
         Vector2 position,
         WorldObjectId target,
         std::optional<WorldObjectId> actor,
-        const std::vector<WorkerCommandOption>& commands,
+        const std::vector<CommandOption>& commands,
         int screenWidth,
         int screenHeight)
     {

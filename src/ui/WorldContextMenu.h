@@ -1,7 +1,7 @@
 #pragma once
 
 #include "raylib.h"
-#include "world/WorkerCommand.h"
+#include "world/Command.h"
 
 #include <optional>
 #include <vector>
@@ -11,7 +11,7 @@ namespace Infinitesia
     struct ContextMenuUpdate
     {
         bool consumedMouseClick = false;
-        std::optional<WorkerCommandRequest> commandRequest;
+        std::optional<CommandRequest> commandRequest;
     };
 
     class WorldContextMenu
@@ -23,8 +23,8 @@ namespace Infinitesia
             bool leftClickPressed,
             bool escapePressed,
             std::optional<WorldObjectId> hoveredTarget,
-            std::optional<WorldObjectId> selectedWorker,
-            const std::vector<WorkerCommandOption>& targetCommands,
+            std::optional<WorldObjectId> actor,
+            const std::vector<CommandOption>& targetCommands,
             int screenWidth,
             int screenHeight);
 
@@ -46,7 +46,7 @@ namespace Infinitesia
             Vector2 position,
             WorldObjectId target,
             std::optional<WorldObjectId> actor,
-            const std::vector<WorkerCommandOption>& commands,
+            const std::vector<CommandOption>& commands,
             int screenWidth,
             int screenHeight);
         void Close();
@@ -55,6 +55,6 @@ namespace Infinitesia
         Vector2 m_position{ 0.0f, 0.0f };
         WorldObjectId m_target{ 0 };
         std::optional<WorldObjectId> m_actor;
-        std::vector<WorkerCommandOption> m_commands;
+        std::vector<CommandOption> m_commands;
     };
 }

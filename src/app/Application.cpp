@@ -51,7 +51,7 @@ namespace Infinitesia
           m_cameraController(m_config.cameraControls),
           m_showPathDebug(m_config.showPathDebug)
     {
-        m_workerCommands.Register(std::make_unique<ChopTreeCommand>());
+        m_commands.Register(std::make_unique<ChopTreeCommand>(m_workSystem, m_grid));
 
         if (m_config.camera.distance < m_config.cameraControls.minimumDistance ||
             m_config.camera.distance > m_config.cameraControls.maximumDistance ||
@@ -98,8 +98,7 @@ namespace Infinitesia
             m_grid,
             m_world,
             m_worldRenderer.GetCamera(),
-            m_workerCommands,
-            m_workSystem,
+            m_commands,
             m_config.window.width,
             m_config.window.height);
     }

@@ -4,9 +4,8 @@
 #include "input/WorldObjectPicker.h"
 #include "raylib.h"
 #include "ui/WorldContextMenu.h"
+#include "world/CommandRegistry.h"
 #include "world/Grid.h"
-#include "world/WorkerCommandRegistry.h"
-#include "world/WorkSystem.h"
 
 #include <optional>
 #include <string>
@@ -29,8 +28,7 @@ namespace Infinitesia
             const Grid& grid,
             World& world,
             const Camera3D& camera,
-            const WorkerCommandRegistry& commands,
-            WorkSystem& workSystem,
+            const CommandRegistry& commands,
             int screenWidth,
             int screenHeight);
 

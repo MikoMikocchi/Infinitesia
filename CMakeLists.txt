@@ -41,9 +41,9 @@ add_executable(Infinitesia
   src/world/World.cpp
   src/world/WorkSystem.h
   src/world/WorkSystem.cpp
-  src/world/WorkerCommand.h
-  src/world/WorkerCommandRegistry.h
-  src/world/WorkerCommandRegistry.cpp
+  src/world/Command.h
+  src/world/CommandRegistry.h
+  src/world/CommandRegistry.cpp
   src/world/ChopTreeCommand.h
   src/world/ChopTreeCommand.cpp
   src/input/CameraController.h

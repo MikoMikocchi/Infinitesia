@@ -9,9 +9,7 @@
 
 namespace Infinitesia
 {
-    class WorkSystem;
-
-    struct WorkerCommandOption
+    struct CommandOption
     {
         std::string id;
         std::string label;
@@ -19,23 +17,23 @@ namespace Infinitesia
         std::string disabledReason;
     };
 
-    struct WorkerCommandResult
+    struct CommandResult
     {
         bool accepted;
         std::string message;
     };
 
-    struct WorkerCommandRequest
+    struct CommandRequest
     {
         std::string commandId;
-        WorldObjectId actor;
+        std::optional<WorldObjectId> actor;
         WorldObjectId target;
     };
 
-    class WorkerCommand
+    class Command
     {
     public:
-        virtual ~WorkerCommand() = default;
+        virtual ~Command() = default;
 
         virtual std::string_view GetId() const = 0;
         virtual std::string_view GetLabel() const = 0;
@@ -43,14 +41,10 @@ namespace Infinitesia
         virtual std::string GetDisabledReason(
             std::optional<WorldObjectId> actor,
             const WorldObject& target,
-            const World& world,
-            const Grid& grid,
-            const WorkSystem& workSystem) const = 0;
-        virtual WorkerCommandResult Execute(
-            WorldObjectId actor,
+            const World& world) const = 0;
+        virtual CommandResult Execute(
+            std::optional<WorldObjectId> actor,
             WorldObjectId target,
-            World& world,
-            const Grid& grid,
-            WorkSystem& workSystem) const = 0;
+            World& world) const = 0;
     };
 }

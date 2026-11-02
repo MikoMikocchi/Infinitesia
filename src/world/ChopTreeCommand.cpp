@@ -4,6 +4,12 @@
 
 namespace Infinitesia
 {
+    ChopTreeCommand::ChopTreeCommand(WorkSystem& workSystem, const Grid& grid)
+        : m_workSystem(workSystem),
+          m_grid(grid)
+    {
+    }
+
     std::string_view ChopTreeCommand::GetId() const
     {
         return "chop_tree";
@@ -21,11 +27,13 @@ namespace Infinitesia
 
     std::string ChopTreeCommand::GetDisabledReason(
         std::optional<WorldObjectId> actor,
-        const WorldObject&,
-        const World& world,
-        const Grid&,
-        const WorkSystem& workSystem) const
+        const WorldObject& target,
+        const World& world) const
     {
+        if (!IsApplicable(target))
+        {
+            return "This command requires a tree";
+        }
         if (!actor.has_value())
         {
             return "Select a worker first";
@@ -36,21 +44,24 @@ namespace Infinitesia
         {
             return "Selected worker is no longer available";
         }
-        if (workSystem.GetActivity(*actor) != WorkerActivity::Idle)
+        if (m_workSystem.GetActivity(*actor) != WorkerActivity::Idle)
         {
             return "Worker already has an order";
         }
         return {};
     }
 
-    WorkerCommandResult ChopTreeCommand::Execute(
-        WorldObjectId actor,
+    CommandResult ChopTreeCommand::Execute(
+        std::optional<WorldObjectId> actor,
         WorldObjectId target,
-        World& world,
-        const Grid& grid,
-        WorkSystem& workSystem) const
+        World& world) const
     {
-        switch (workSystem.AssignChopOrder(actor, target, world, grid))
+        if (!actor.has_value())
+        {
+            return { false, "Select a worker first" };
+        }
+
+        switch (m_workSystem.AssignChopOrder(*actor, target, world, m_grid))
         {
         case WorkOrderResult::Accepted:
             return { true, "Worker is moving to the tree" };

@@ -1,6 +1,4 @@
-#include "world/WorkerCommandRegistry.h"
-
-#include "world/WorkSystem.h"
+#include "world/CommandRegistry.h"
 
 #include <stdexcept>
 #include <string>
@@ -8,25 +6,23 @@
 
 namespace Infinitesia
 {
-    void WorkerCommandRegistry::Register(std::unique_ptr<WorkerCommand> command)
+    void CommandRegistry::Register(std::unique_ptr<Command> command)
     {
         if (command == nullptr || command->GetId().empty() || command->GetLabel().empty())
         {
-            throw std::invalid_argument("Worker command must have an ID and label.");
+            throw std::invalid_argument("Command must have an ID and label.");
         }
         if (FindCommand(command->GetId()) != nullptr)
         {
-            throw std::invalid_argument("Worker command IDs must be unique.");
+            throw std::invalid_argument("Command IDs must be unique.");
         }
         m_commands.push_back(std::move(command));
     }
 
-    std::vector<WorkerCommandOption> WorkerCommandRegistry::GetOptions(
+    std::vector<CommandOption> CommandRegistry::GetOptions(
         WorldObjectId targetId,
         std::optional<WorldObjectId> actor,
-        const World& world,
-        const Grid& grid,
-        const WorkSystem& workSystem) const
+        const World& world) const
     {
         const WorldObject* target = world.FindObject(targetId);
         if (target == nullptr)
@@ -34,8 +30,8 @@ namespace Infinitesia
             return {};
         }
 
-        std::vector<WorkerCommandOption> options;
-        for (const std::unique_ptr<WorkerCommand>& command : m_commands)
+        std::vector<CommandOption> options;
+        for (const std::unique_ptr<Command>& command : m_commands)
         {
             if (!command->IsApplicable(*target))
             {
@@ -43,7 +39,7 @@ namespace Infinitesia
             }
 
             std::string disabledReason =
-                command->GetDisabledReason(actor, *target, world, grid, workSystem);
+                command->GetDisabledReason(actor, *target, world);
             options.push_back({
                 std::string(command->GetId()),
                 std::string(command->GetLabel()),
@@ -54,15 +50,13 @@ namespace Infinitesia
         return options;
     }
 
-    WorkerCommandResult WorkerCommandRegistry::Execute(
+    CommandResult CommandRegistry::Execute(
         std::string_view commandId,
-        WorldObjectId actor,
+        std::optional<WorldObjectId> actor,
         WorldObjectId targetId,
-        World& world,
-        const Grid& grid,
-        WorkSystem& workSystem) const
+        World& world) const
     {
-        const WorkerCommand* command = FindCommand(commandId);
+        const Command* command = FindCommand(commandId);
         if (command == nullptr)
         {
             return { false, "Command is no longer available" };
@@ -75,17 +69,17 @@ namespace Infinitesia
         }
 
         const std::string disabledReason =
-            command->GetDisabledReason(actor, *target, world, grid, workSystem);
+            command->GetDisabledReason(actor, *target, world);
         if (!disabledReason.empty())
         {
             return { false, disabledReason };
         }
-        return command->Execute(actor, targetId, world, grid, workSystem);
+        return command->Execute(actor, targetId, world);
     }
 
-    const WorkerCommand* WorkerCommandRegistry::FindCommand(std::string_view commandId) const
+    const Command* CommandRegistry::FindCommand(std::string_view commandId) const
     {
-        for (const std::unique_ptr<WorkerCommand>& command : m_commands)
+        for (const std::unique_ptr<Command>& command : m_commands)
         {
             if (command->GetId() == commandId)
             {

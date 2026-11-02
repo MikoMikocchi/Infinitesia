@@ -1,26 +1,30 @@
 #pragma once
 
-#include "world/WorkerCommand.h"
+#include "world/Command.h"
 
 namespace Infinitesia
 {
-    class ChopTreeCommand final : public WorkerCommand
+    class WorkSystem;
+
+    class ChopTreeCommand final : public Command
     {
     public:
+        ChopTreeCommand(WorkSystem& workSystem, const Grid& grid);
+
         std::string_view GetId() const override;
         std::string_view GetLabel() const override;
         bool IsApplicable(const WorldObject& target) const override;
         std::string GetDisabledReason(
             std::optional<WorldObjectId> actor,
             const WorldObject& target,
-            const World& world,
-            const Grid& grid,
-            const WorkSystem& workSystem) const override;
-        WorkerCommandResult Execute(
-            WorldObjectId actor,
+            const World& world) const override;
+        CommandResult Execute(
+            std::optional<WorldObjectId> actor,
             WorldObjectId target,
-            World& world,
-            const Grid& grid,
-            WorkSystem& workSystem) const override;
+            World& world) const override;
+
+    private:
+        WorkSystem& m_workSystem;
+        const Grid& m_grid;
     };
 }
