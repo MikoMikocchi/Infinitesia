@@ -81,6 +81,22 @@ namespace Infinitesia
             return layout;
         }
 
+        float GetMinimumZoom(const ViewerLayout& layout, int screenHeight)
+        {
+            const float fieldOfViewRadians = kCameraFieldOfView * kPi / 180.0f;
+            const float focalLength = static_cast<float>(screenHeight) /
+                                      (2.0f * std::tan(fieldOfViewRadians * 0.5f));
+            const float baseCameraDistance = std::max(
+                2.4f,
+                focalLength / layout.globeRadius * 1.08f);
+            const float availableRadius =
+                std::max(1.0f, std::min(layout.globePanel.width, layout.globePanel.height) * 0.5f - 12.0f);
+            const float distanceScale =
+                std::sqrt(1.0f + std::pow(focalLength / availableRadius, 2.0f)) /
+                baseCameraDistance;
+            return std::clamp(distanceScale, 0.55f, 2.0f);
+        }
+
         Color LerpColor(Color first, Color second, float amount)
         {
             const float t = std::clamp(amount, 0.0f, 1.0f);
@@ -144,7 +160,7 @@ namespace Infinitesia
         {
             const GeographicCoordinates coordinates{
                 90.0 - static_cast<double>(row) / rows * 180.0,
-                static_cast<double>(column) / columns * 360.0
+                -static_cast<double>(column) / columns * 360.0
             };
             const CartesianPoint3D point = PlanetaryCoordinates::ToCartesian(coordinates);
             return {
@@ -173,7 +189,7 @@ namespace Infinitesia
         m_regions.reserve(static_cast<std::size_t>(rows) * static_cast<std::size_t>(columns));
         m_regionColors.reserve(m_regions.capacity());
         m_regionBrightness.reserve(m_regions.capacity());
-        const Vector3 lightDirection = Vector3Normalize(Vector3{ -0.45f, 0.62f, 0.85f });
+        const Vector3 lightDirection = Vector3Normalize(Vector3{ -0.45f, 0.62f, -0.85f });
         for (int latitude = 0; latitude < rows; ++latitude)
         {
             for (int longitude = 0; longitude < columns; ++longitude)
@@ -189,7 +205,7 @@ namespace Infinitesia
                 const Vector3 normal{
                     std::cos(latitudeRadians) * std::cos(longitudeRadians),
                     std::sin(latitudeRadians),
-                    std::cos(latitudeRadians) * std::sin(longitudeRadians)
+                    -std::cos(latitudeRadians) * std::sin(longitudeRadians)
                 };
                 m_regionBrightness.push_back(
                     0.24f + 0.76f * std::max(0.0f, Vector3DotProduct(normal, lightDirection)));
@@ -225,7 +241,7 @@ namespace Infinitesia
         const float cameraDistance = std::max(
             2.4f,
             focalLength / layout.globeRadius * 1.08f) * m_zoom;
-        const float targetX =
+        const float targetZ =
             (static_cast<float>(GetScreenWidth()) * 0.5f - layout.globeCenter.x) *
             cameraDistance / focalLength;
         const float targetY =
@@ -233,8 +249,8 @@ namespace Infinitesia
             cameraDistance / focalLength;
 
         Camera3D camera{};
-        camera.position = { targetX, targetY, cameraDistance };
-        camera.target = { targetX, targetY, 0.0f };
+        camera.position = { -cameraDistance, targetY, targetZ };
+        camera.target = { 0.0f, targetY, targetZ };
         camera.up = { 0.0f, 1.0f, 0.0f };
         camera.fovy = kCameraFieldOfView;
         camera.projection = CAMERA_PERSPECTIVE;
@@ -287,7 +303,7 @@ namespace Infinitesia
                     const GeographicCoordinates coordinates = PlanetaryCoordinates::ToGeographic({
                         xAfterYaw,
                         localY,
-                        localZ
+                        -localZ
                     });
                     m_selectedLatitude = std::clamp(
                         static_cast<int>((coordinates.latitudeDegrees + 90.0) / 180.0 * rows),
@@ -316,7 +332,10 @@ namespace Infinitesia
             m_draggingGlobe = false;
         }
 
-        m_zoom = std::clamp(m_zoom - GetMouseWheelMove() * 0.1f, 0.55f, 2.0f);
+        m_zoom = std::clamp(
+            m_zoom - GetMouseWheelMove() * 0.1f,
+            GetMinimumZoom(layout, GetScreenHeight()),
+            2.0f);
     }
 
     void PlanetViewer::Draw() const
@@ -403,6 +422,11 @@ namespace Infinitesia
         DrawRectangleLinesEx(layout.mapBounds, 1.0f, { 129, 158, 180, 255 });
 
         const Camera3D camera = MakeCamera();
+        BeginScissorMode(
+            static_cast<int>(layout.globePanel.x),
+            static_cast<int>(layout.globePanel.y),
+            static_cast<int>(layout.globePanel.width),
+            static_cast<int>(layout.globePanel.height));
         BeginMode3D(camera);
         rlPushMatrix();
         rlRotatef(m_rotationDegrees, 0.0f, 1.0f, 0.0f);
@@ -433,8 +457,8 @@ namespace Infinitesia
                 const Vector3 topRight = m_sphereVertices[topLeftIndex + 1];
                 const Vector3 bottomLeft = m_sphereVertices[topLeftIndex + columns + 1];
                 const Vector3 bottomRight = m_sphereVertices[topLeftIndex + columns + 2];
-                DrawTriangle(topLeft, topRight, bottomLeft);
-                DrawTriangle(topRight, bottomRight, bottomLeft);
+                DrawTriangle(topLeft, bottomLeft, topRight);
+                DrawTriangle(topRight, bottomLeft, bottomRight);
             }
         }
 
@@ -442,6 +466,7 @@ namespace Infinitesia
         rlSetTexture(1);
         rlPopMatrix();
         EndMode3D();
+        EndScissorMode();
 
         char selectionText[160];
         const PlanetRegion& selectedRegion =
