@@ -1,4 +1,5 @@
-#include "app/Application.h"
+﻿#include "app/Application.h"
+#include "app/internal/AppHelpers.h"
 #include "raylib.h"
 #include "commands/ChopTreeCommand.h"
 #include "commands/PickUpItemCommand.h"
@@ -159,25 +160,7 @@ namespace Infinitesia
             m_showPathDebug = !m_showPathDebug;
         }
 
-        int nextLevel = m_selectedLevel;
-        if (IsKeyPressed(KEY_PAGE_DOWN))
-        {
-            nextLevel = std::max(0, m_selectedLevel - 1);
-        }
-        else if (IsKeyPressed(KEY_PAGE_UP))
-        {
-            nextLevel = std::min(m_grid.GetHeight() - 1, m_selectedLevel + 1);
-        }
-        if (nextLevel != m_selectedLevel)
-        {
-            Camera3D& camera = m_worldRenderer.GetCamera();
-            const float levelHeight =
-                static_cast<float>(nextLevel + 1) * m_grid.GetCellSize();
-            const float verticalOffset = levelHeight - camera.target.y;
-            camera.target.y = levelHeight;
-            camera.position.y += verticalOffset;
-            m_selectedLevel = nextLevel;
-        }
+        AppInternal::UpdateLevelSelection(m_worldRenderer, m_grid, m_selectedLevel);
 
         m_cameraController.Update(m_worldRenderer.GetCamera(), m_time.GetDeltaTime());
         m_chunkViewCenter = GetCameraGridCell(
@@ -247,9 +230,7 @@ namespace Infinitesia
                 }
             }
         }
-    }
-
-    void Application::Render()
+    }    void Application::Render()
     {
         WorldPosition pathOrigin{};
         std::vector<GridCell> debugPath;

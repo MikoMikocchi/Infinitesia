@@ -1,4 +1,6 @@
-#include "world/WorkSystem.h"
+﻿#include "world/WorkSystem.h"
+#include "world/work/WorkPathfinding.h"
+#include "world/work/WorkUtils.h"
 
 #include <array>
 #include <cmath>
@@ -174,58 +176,24 @@ namespace Infinitesia
         return WorkOrderResult::Accepted;
     }
 
-
     bool WorkSystem::HasOrderForWorker(WorldObjectId worker) const
     {
-        for (const WorkOrder& order : m_orders)
-        {
-            if (order.worker == worker)
-            {
-                return true;
-            }
-        }
-        return false;
+        return WorkInternal::HasOrderForWorker(m_orders, worker);
     }
 
     bool WorkSystem::HasOrderForTree(WorldObjectId tree) const
     {
-        for (const WorkOrder& order : m_orders)
-        {
-            if (order.targetObject == tree)
-            {
-                return true;
-            }
-        }
-        return false;
+        return WorkInternal::HasOrderForTree(m_orders, tree);
     }
 
     bool WorkSystem::HasOrderForDigCell(GridCell cell) const
     {
-        for (const WorkOrder& order : m_orders)
-        {
-            if (order.type == WorkType::DigBlock &&
-                order.targetCell.x == cell.x &&
-                order.targetCell.y == cell.y &&
-                order.targetCell.z == cell.z)
-            {
-                return true;
-            }
-        }
-        return false;
+        return WorkInternal::HasOrderForDigCell(m_orders, cell);
     }
-
 
     bool WorkSystem::IsReserved(GridCell cell) const
     {
-        for (const WorkOrder& order : m_orders)
-        {
-            if (order.workCell.x == cell.x && order.workCell.y == cell.y &&
-                order.workCell.z == cell.z)
-            {
-                return true;
-            }
-        }
-        return false;
+        return WorkInternal::IsReserved(m_orders, cell);
     }
 
     std::optional<std::vector<GridCell>> WorkSystem::FindPath(
@@ -235,24 +203,11 @@ namespace Infinitesia
         const World& world,
         const Grid& grid) const
     {
-        return m_pathfinder.FindPath(start, goal, grid, [&](GridCell cell)
-        {
-            const std::optional<WorldObjectId> occupant = world.FindObjectAt(cell);
-            const bool occupiedByAnotherObject = occupant.has_value() && *occupant != worker;
-            const Block* block = world.GetBlock(cell);
-            const WorldObject* workerObject = world.FindObject(worker);
-            const bool isWorkersCurrentCell =
-                workerObject != nullptr &&
-                workerObject->cell.x == cell.x &&
-                workerObject->cell.y == cell.y &&
-                workerObject->cell.z == cell.z;
-            const bool isWalkable = block != nullptr &&
-                (block->type != BlockType::Air || isWorkersCurrentCell);
-            const bool reservedForAnotherOrder =
-                IsReserved(cell) && (cell.x != goal.x || cell.y != goal.y || cell.z != goal.z);
-            return isWalkable && !occupiedByAnotherObject && !reservedForAnotherOrder;
-        });
+        return WorkInternal::FindPath(const_cast<GridPathfinder&>(m_pathfinder), start, goal, worker, world, grid, m_orders);
     }
 
-
+    float WorkSystem::GetWorkDuration(const WorkOrder& order) const
+    {
+        return WorkInternal::GetWorkDuration(m_config, order);
+    }
 }

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "world/Grid.h"
 #include "world/GridPathfinder.h"
@@ -51,7 +51,9 @@ namespace Infinitesia
         float GetWorkProgress(WorldObjectId worker) const;
         std::vector<GridCell> GetRemainingPath(WorldObjectId worker) const;
 
-    private:
+        friend class WorkSystemHelper;
+
+    public:
         enum class WorkPhase
         {
             Moving,
@@ -77,6 +79,13 @@ namespace Infinitesia
             float workProgress = 0.0f;
         };
 
+        float GetMovementSpeed() const { return m_config.movementSpeed; }
+        const WorkerConfig& GetConfig() const { return m_config; }
+        GridPathfinder& GetPathfinder() { return m_pathfinder; }
+        std::vector<WorkOrder>& GetOrders() { return m_orders; }
+        const std::vector<WorkOrder>& GetOrders() const { return m_orders; }
+
+    private:
         bool HasOrderForWorker(WorldObjectId worker) const;
         bool HasOrderForTree(WorldObjectId tree) const;
         bool HasOrderForDigCell(GridCell cell) const;

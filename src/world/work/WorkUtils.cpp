@@ -1,0 +1,66 @@
+﻿#include "world/work/WorkUtils.h"
+
+namespace Infinitesia
+{
+    namespace WorkInternal
+    {
+        bool HasOrderForWorker(const std::vector<WorkSystem::WorkOrder>& orders, WorldObjectId worker)
+        {
+            for (const WorkSystem::WorkOrder& order : orders)
+            {
+                if (order.worker == worker)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool HasOrderForTree(const std::vector<WorkSystem::WorkOrder>& orders, WorldObjectId tree)
+        {
+            for (const WorkSystem::WorkOrder& order : orders)
+            {
+                if (order.targetObject == tree)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool HasOrderForDigCell(const std::vector<WorkSystem::WorkOrder>& orders, GridCell cell)
+        {
+            for (const WorkSystem::WorkOrder& order : orders)
+            {
+                if (order.type == WorkSystem::WorkType::DigBlock &&
+                    order.targetCell.x == cell.x &&
+                    order.targetCell.y == cell.y &&
+                    order.targetCell.z == cell.z)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool IsReserved(const std::vector<WorkSystem::WorkOrder>& orders, GridCell cell)
+        {
+            for (const WorkSystem::WorkOrder& order : orders)
+            {
+                if (order.workCell.x == cell.x && order.workCell.y == cell.y &&
+                    order.workCell.z == cell.z)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        float GetWorkDuration(const WorkerConfig& config, const WorkSystem::WorkOrder& order)
+        {
+            return order.type == WorkSystem::WorkType::ChopTree
+                ? config.choppingDuration
+                : config.diggingDuration;
+        }
+    }
+}
