@@ -2,27 +2,61 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
+#include <stdexcept>
+#include <string>
 
 namespace Infinitesia
 {
     namespace
     {
-        constexpr float kPanelWidth = 460.0f;
-        constexpr float kMinimumPanelHeight = 230.0f;
-        constexpr float kSlotSize = 90.0f;
-        constexpr float kSlotGap = 12.0f;
-        constexpr float kSlotStartX = 24.0f;
-        constexpr float kSlotStartY = 116.0f;
-        constexpr float kSlotRowGap = 12.0f;
-        constexpr float kPanelBottomPadding = 24.0f;
+        constexpr float kPanelWidth = 360.0f;
+        constexpr float kMinimumPanelHeight = 184.0f;
+        constexpr float kSlotSize = 68.0f;
+        constexpr float kSlotGap = 8.0f;
+        constexpr float kSlotStartX = 16.0f;
+        constexpr float kSlotStartY = 90.0f;
+        constexpr float kSlotRowGap = 8.0f;
+        constexpr float kPanelBottomPadding = 14.0f;
         constexpr std::size_t kSlotColumnCount = 4;
+        constexpr float kItemIconSize = 46.0f;
         constexpr Color kPanelColor = { 34, 39, 45, 250 };
         constexpr Color kPanelBorderColor = { 115, 125, 135, 255 };
         constexpr Color kSlotColor = { 53, 60, 67, 255 };
         constexpr Color kSlotBorderColor = { 125, 135, 145, 255 };
         constexpr Color kTextColor = { 240, 240, 240, 255 };
         constexpr Color kMutedTextColor = { 170, 180, 190, 255 };
-        constexpr Color kLogColor = { 145, 95, 55, 255 };
+        constexpr Color kTooltipColor = { 24, 28, 33, 245 };
+        constexpr Color kTooltipBorderColor = { 105, 115, 125, 255 };
+    }
+
+    void CharacterProfilePanel::LoadAssets()
+    {
+        if (m_logTexture.id != 0)
+        {
+            throw std::logic_error("Character profile assets are already loaded.");
+        }
+
+        const std::filesystem::path texturePath =
+            std::filesystem::path(GetApplicationDirectory()) /
+            "assets" / "items" / "Log.png";
+        const std::string texturePathString = texturePath.string();
+        m_logTexture = LoadTexture(texturePathString.c_str());
+        if (m_logTexture.id == 0)
+        {
+            m_logTexture = {};
+            throw std::runtime_error(
+                "Failed to load the log icon: " + texturePathString);
+        }
+    }
+
+    void CharacterProfilePanel::UnloadAssets()
+    {
+        if (m_logTexture.id != 0)
+        {
+            UnloadTexture(m_logTexture);
+            m_logTexture = {};
+        }
     }
 
     void CharacterProfilePanel::Open(WorldObjectId character)
@@ -82,7 +116,6 @@ namespace Infinitesia
 
         const std::size_t slotCount = character.inventory.GetSlots().size();
         const Rectangle bounds = GetBounds(screenWidth, screenHeight, slotCount);
-        DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, 0.48f));
         DrawRectangleRec(bounds, kPanelColor);
         DrawRectangleLinesEx(bounds, 2.0f, kPanelBorderColor);
 
@@ -92,27 +125,29 @@ namespace Infinitesia
             sizeof(title),
             "Worker #%llu",
             static_cast<unsigned long long>(character.id.value));
-        DrawText(title, static_cast<int>(bounds.x + 24.0f), static_cast<int>(bounds.y + 20.0f), 24, kTextColor);
+        DrawText(title, static_cast<int>(bounds.x + 16.0f), static_cast<int>(bounds.y + 12.0f), 20, kTextColor);
         DrawText(
             "Character profile",
-            static_cast<int>(bounds.x + 24.0f),
-            static_cast<int>(bounds.y + 52.0f),
-            18,
+            static_cast<int>(bounds.x + 16.0f),
+            static_cast<int>(bounds.y + 38.0f),
+            14,
             kMutedTextColor);
         DrawText(
             "X",
-            static_cast<int>(GetCloseButtonBounds(screenWidth, screenHeight, slotCount).x + 11.0f),
-            static_cast<int>(bounds.y + 17.0f),
-            22,
+            static_cast<int>(GetCloseButtonBounds(screenWidth, screenHeight, slotCount).x + 10.0f),
+            static_cast<int>(bounds.y + 8.0f),
+            18,
             kTextColor);
         DrawText(
             "Inventory",
-            static_cast<int>(bounds.x + 24.0f),
-            static_cast<int>(bounds.y + 84.0f),
-            18,
+            static_cast<int>(bounds.x + 16.0f),
+            static_cast<int>(bounds.y + 64.0f),
+            16,
             kTextColor);
 
         const auto& slots = character.inventory.GetSlots();
+        const Vector2 mousePosition = GetMousePosition();
+        const char* hoveredItemName = nullptr;
         for (std::size_t index = 0; index < slots.size(); ++index)
         {
             const std::size_t column = index % kSlotColumnCount;
@@ -132,25 +167,83 @@ namespace Infinitesia
             }
 
             const Item& item = *slots[index];
-            DrawRectangle(
-                static_cast<int>(slotBounds.x + 28.0f),
-                static_cast<int>(slotBounds.y + 12.0f),
-                34,
-                20,
-                item.GetType() == ItemType::Logs ? kLogColor : GOLD);
-            DrawText(
-                item.GetType() == ItemType::Logs ? "Logs" : "Item",
-                static_cast<int>(slotBounds.x + 8.0f),
-                static_cast<int>(slotBounds.y + 42.0f),
-                16,
-                kTextColor);
+            if (item.GetType() == ItemType::Logs && m_logTexture.id != 0)
+            {
+                const float scale = std::min(
+                    kItemIconSize / static_cast<float>(m_logTexture.width),
+                    kItemIconSize / static_cast<float>(m_logTexture.height));
+                const float iconWidth = static_cast<float>(m_logTexture.width) * scale;
+                const float iconHeight = static_cast<float>(m_logTexture.height) * scale;
+                DrawTexturePro(
+                    m_logTexture,
+                    { 0.0f, 0.0f, static_cast<float>(m_logTexture.width), static_cast<float>(m_logTexture.height) },
+                    {
+                        slotBounds.x + (slotBounds.width - iconWidth) * 0.5f,
+                        slotBounds.y + (slotBounds.height - iconHeight) * 0.5f,
+                        iconWidth,
+                        iconHeight
+                    },
+                    { 0.0f, 0.0f },
+                    0.0f,
+                    WHITE);
+            }
+
             char quantity[16];
             std::snprintf(quantity, sizeof(quantity), "%d", item.GetQuantity());
+            const int quantityWidth = MeasureText(quantity, 14);
+            const int quantityX = static_cast<int>(
+                slotBounds.x + slotBounds.width - static_cast<float>(quantityWidth) - 5.0f);
+            const int quantityY = static_cast<int>(slotBounds.y + slotBounds.height - 19.0f);
             DrawText(
                 quantity,
-                static_cast<int>(slotBounds.x + 64.0f),
-                static_cast<int>(slotBounds.y + 42.0f),
-                16,
+                quantityX + 1,
+                quantityY + 1,
+                14,
+                { 0, 0, 0, 220 });
+            DrawText(
+                quantity,
+                quantityX,
+                quantityY,
+                14,
+                kTextColor);
+
+            if (CheckCollisionPointRec(mousePosition, slotBounds))
+            {
+                hoveredItemName = item.GetType() == ItemType::Logs ? "Logs" : "Item";
+            }
+        }
+
+        if (hoveredItemName != nullptr)
+        {
+            constexpr int kTooltipFontSize = 16;
+            constexpr float kTooltipPaddingX = 8.0f;
+            constexpr float kTooltipPaddingY = 6.0f;
+            const float tooltipWidth =
+                static_cast<float>(MeasureText(hoveredItemName, kTooltipFontSize)) +
+                kTooltipPaddingX * 2.0f;
+            const float tooltipHeight =
+                static_cast<float>(kTooltipFontSize) + kTooltipPaddingY * 2.0f;
+            const float tooltipX = std::clamp(
+                mousePosition.x + 14.0f,
+                4.0f,
+                std::max(4.0f, static_cast<float>(screenWidth) - tooltipWidth - 4.0f));
+            const float tooltipY = std::clamp(
+                mousePosition.y + 14.0f,
+                4.0f,
+                std::max(4.0f, static_cast<float>(screenHeight) - tooltipHeight - 4.0f));
+            const Rectangle tooltipBounds{
+                tooltipX,
+                tooltipY,
+                tooltipWidth,
+                tooltipHeight
+            };
+            DrawRectangleRec(tooltipBounds, kTooltipColor);
+            DrawRectangleLinesEx(tooltipBounds, 1.0f, kTooltipBorderColor);
+            DrawText(
+                hoveredItemName,
+                static_cast<int>(tooltipX + kTooltipPaddingX),
+                static_cast<int>(tooltipY + kTooltipPaddingY),
+                kTooltipFontSize,
                 kTextColor);
         }
     }
@@ -183,10 +276,10 @@ namespace Infinitesia
     {
         const Rectangle panelBounds = GetBounds(screenWidth, screenHeight, slotCount);
         return {
-            panelBounds.x + panelBounds.width - 40.0f,
-            panelBounds.y + 8.0f,
-            32.0f,
-            32.0f
+            panelBounds.x + panelBounds.width - 32.0f,
+            panelBounds.y + 4.0f,
+            24.0f,
+            24.0f
         };
     }
 }

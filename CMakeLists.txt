@@ -103,8 +103,18 @@ set(INFINITESIA_SHADER_FILES
   assets/shaders/world_lighting.fs
   assets/shaders/blob_shadow.fs
 )
-set_source_files_properties(${INFINITESIA_SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
-target_sources(Infinitesia PRIVATE ${INFINITESIA_SHADER_FILES})
+set(INFINITESIA_ITEM_ASSET_FILES
+  assets/items/Log.png
+)
+set_source_files_properties(
+  ${INFINITESIA_SHADER_FILES}
+  ${INFINITESIA_ITEM_ASSET_FILES}
+  PROPERTIES HEADER_FILE_ONLY TRUE
+)
+target_sources(Infinitesia PRIVATE
+  ${INFINITESIA_SHADER_FILES}
+  ${INFINITESIA_ITEM_ASSET_FILES}
+)
 
 add_custom_command(TARGET Infinitesia POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders"
@@ -117,6 +127,10 @@ add_custom_command(TARGET Infinitesia POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/blob_shadow.fs"
     "$<TARGET_FILE_DIR:Infinitesia>/assets/shaders/blob_shadow.fs"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Infinitesia>/assets/items"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/items/Log.png"
+    "$<TARGET_FILE_DIR:Infinitesia>/assets/items/Log.png"
 )
 
 target_include_directories(Infinitesia PRIVATE

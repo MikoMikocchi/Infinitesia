@@ -4,6 +4,16 @@
 
 namespace Infinitesia
 {
+    void WorldInteractionController::LoadAssets()
+    {
+        m_characterProfilePanel.LoadAssets();
+    }
+
+    void WorldInteractionController::UnloadAssets()
+    {
+        m_characterProfilePanel.UnloadAssets();
+    }
+
     void WorldInteractionController::Update(
         WorldInteractionInput input,
         const Grid& grid,

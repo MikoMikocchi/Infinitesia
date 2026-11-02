@@ -11,6 +11,8 @@ namespace Infinitesia
     class CharacterProfilePanel
     {
     public:
+        void LoadAssets();
+        void UnloadAssets();
         void Open(WorldObjectId character);
         void Close();
         bool IsOpen() const;
@@ -31,6 +33,7 @@ namespace Infinitesia
             int screenHeight,
             std::size_t slotCount) const;
 
+        Texture2D m_logTexture{};
         std::optional<WorldObjectId> m_character;
     };
 }

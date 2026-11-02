@@ -25,6 +25,8 @@ namespace Infinitesia
     class WorldInteractionController
     {
     public:
+        void LoadAssets();
+        void UnloadAssets();
         void Update(
             WorldInteractionInput input,
             const Grid& grid,

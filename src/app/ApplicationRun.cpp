@@ -54,12 +54,34 @@ namespace Infinitesia
         private:
             WorldRenderer& m_renderer;
         };
+
+        class CharacterProfileAssetsGuard
+        {
+        public:
+            explicit CharacterProfileAssetsGuard(WorldInteractionController& controller)
+                : m_controller(controller)
+            {
+                m_controller.LoadAssets();
+            }
+
+            ~CharacterProfileAssetsGuard()
+            {
+                m_controller.UnloadAssets();
+            }
+
+            CharacterProfileAssetsGuard(const CharacterProfileAssetsGuard&) = delete;
+            CharacterProfileAssetsGuard& operator=(const CharacterProfileAssetsGuard&) = delete;
+
+        private:
+            WorldInteractionController& m_controller;
+        };
     }
 
     void Application::Run()
     {
         WindowGuard window(m_config.window);
         WorldRendererShaderGuard rendererShaders(m_worldRenderer);
+        CharacterProfileAssetsGuard profileAssets(m_worldInteraction);
         SetTargetFPS(m_config.window.targetFramesPerSecond);
 
         while (!WindowShouldClose())
