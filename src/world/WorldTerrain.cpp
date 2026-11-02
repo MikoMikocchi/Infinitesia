@@ -156,10 +156,48 @@ namespace Infinitesia
             throw std::out_of_range("Block cell is outside the grid.");
         }
         EnsureChunkGenerated(GetChunkCoordinate(cell));
-        WorldChunk& chunk = m_chunks.at(GetChunkCoordinate(cell));
+        const ChunkCoordinate changedChunk = GetChunkCoordinate(cell);
+        WorldChunk& chunk = m_chunks.at(changedChunk);
         chunk.blocks[GetBlockIndexHelper(chunk, cell)].type = type;
-        ++chunk.terrainRevision;
         ++m_terrainRevision;
+
+        const int localX = cell.x % kChunkSize;
+        const int localY = cell.y % kChunkSize;
+        const int localZ = cell.z % kChunkSize;
+        const int lowerMeshChunkY = cell.y > 0
+            ? (cell.y - 1) / kChunkSize
+            : changedChunk.y;
+        const int upperMeshChunkY = cell.y + 1 < m_gridHeight
+            ? (cell.y + 1) / kChunkSize
+            : changedChunk.y;
+
+        for (auto& [coordinate, affectedChunk] : m_chunks)
+        {
+            const bool affectedByLighting =
+                coordinate.x == changedChunk.x &&
+                coordinate.z == changedChunk.z &&
+                coordinate.y <= changedChunk.y;
+            const bool affectedByUpperSurface =
+                coordinate.x == changedChunk.x &&
+                coordinate.z == changedChunk.z &&
+                coordinate.y == upperMeshChunkY;
+            const bool affectedByNeighborGeometry =
+                ((localX == 0 && coordinate.x == changedChunk.x - 1 &&
+                  coordinate.z == changedChunk.z) ||
+                 (localX == kChunkSize - 1 && coordinate.x == changedChunk.x + 1 &&
+                  coordinate.z == changedChunk.z) ||
+                 (localZ == 0 && coordinate.x == changedChunk.x &&
+                  coordinate.z == changedChunk.z - 1) ||
+                 (localZ == kChunkSize - 1 && coordinate.x == changedChunk.x &&
+                  coordinate.z == changedChunk.z + 1)) &&
+                (coordinate.y == changedChunk.y ||
+                 (cell.y > 0 && coordinate.y == lowerMeshChunkY));
+
+            if (affectedByLighting || affectedByUpperSurface || affectedByNeighborGeometry)
+            {
+                ++affectedChunk.terrainRevision;
+            }
+        }
     }
 
     std::uint64_t World::GetTerrainRevision() const

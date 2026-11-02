@@ -36,7 +36,6 @@ namespace Infinitesia
                 auto cachedMesh = meshCache.find(coordinate);
                 if (cachedMesh == meshCache.end() ||
                     cachedMesh->second.terrainRevision != chunk.terrainRevision ||
-                    cachedMesh->second.worldTerrainRevision != world.GetTerrainRevision() ||
                     cachedMesh->second.level != viewLevel)
                 {
                     if (cachedMesh != meshCache.end() &&
@@ -48,7 +47,6 @@ namespace Infinitesia
                     ChunkMeshCacheEntry entry{
                         TerrainMeshBuilder::BuildLevelChunkMesh(grid, world, chunk, viewLevel),
                         chunk.terrainRevision,
-                        world.GetTerrainRevision(),
                         viewLevel
                     };
                     if (cachedMesh == meshCache.end())
