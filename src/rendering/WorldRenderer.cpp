@@ -101,7 +101,7 @@ namespace Infinitesia
 
         void DrawWorldObject(const Grid& grid, const WorldObject& object)
         {
-            const WorldPosition cellCenter = grid.CellToWorld(object.cell);
+            const WorldPosition cellCenter = object.position;
             const float cellSize = grid.GetCellSize();
 
             if (object.type == WorldObjectType::Worker)
@@ -120,22 +120,40 @@ namespace Infinitesia
                 return;
             }
 
-            DrawCylinder(
-                { cellCenter.x, cellSize * 0.43f, cellCenter.z },
-                cellSize * 0.13f,
-                cellSize * 0.17f,
-                cellSize * 0.86f,
-                8,
-                { 115, 75, 45, 255 });
-            DrawSphere(
-                { cellCenter.x, cellSize * 1.38f, cellCenter.z },
-                cellSize * 0.48f,
-                { 65, 145, 75, 255 });
+            if (object.type == WorldObjectType::Tree)
+            {
+                DrawCylinder(
+                    { cellCenter.x, cellSize * 0.43f, cellCenter.z },
+                    cellSize * 0.13f,
+                    cellSize * 0.17f,
+                    cellSize * 0.86f,
+                    8,
+                    { 115, 75, 45, 255 });
+                DrawSphere(
+                    { cellCenter.x, cellSize * 1.38f, cellCenter.z },
+                    cellSize * 0.48f,
+                    { 65, 145, 75, 255 });
+                return;
+            }
+
+            const float logLength = cellSize * 0.62f;
+            for (int log = 0; log < object.quantity; ++log)
+            {
+                const float offset = (static_cast<float>(log) - static_cast<float>(object.quantity - 1) * 0.5f) *
+                    cellSize * 0.14f;
+                DrawCylinderEx(
+                    { cellCenter.x - logLength * 0.5f, cellSize * 0.12f + offset, cellCenter.z },
+                    { cellCenter.x + logLength * 0.5f, cellSize * 0.12f + offset, cellCenter.z },
+                    cellSize * 0.09f,
+                    cellSize * 0.09f,
+                    8,
+                    { 145, 95, 55, 255 });
+            }
         }
 
         void DrawObjectOutline(const Grid& grid, const WorldObject& object, Color color)
         {
-            const WorldPosition center = grid.CellToWorld(object.cell);
+            const WorldPosition center = object.position;
             const WorldObjectSize size = GetWorldObjectSize(object.type, grid.GetCellSize());
 
             DrawBoundingBox(

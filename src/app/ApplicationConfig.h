@@ -4,6 +4,7 @@
 #include "rendering/WorldRenderer.h"
 #include "world/Grid.h"
 #include "world/World.h"
+#include "world/WorkSystem.h"
 
 #include <string>
 #include <vector>
@@ -28,6 +29,7 @@ namespace Infinitesia
             { WorldObjectType::Worker, { 8, 12 } },
             { WorldObjectType::Tree, { 12, 12 } }
         };
+        WorkerConfig worker{ 3.0f, 4.0f, 3 };
         float simulationTicksPerSecond = 20.0f;
     };
 }

@@ -37,6 +37,8 @@ add_executable(Infinitesia
   src/world/Grid.cpp
   src/world/World.h
   src/world/World.cpp
+  src/world/WorkSystem.h
+  src/world/WorkSystem.cpp
   src/input/CameraController.h
   src/input/CameraController.cpp
   src/input/GridPointer.h

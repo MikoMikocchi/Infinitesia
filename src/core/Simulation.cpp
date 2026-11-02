@@ -21,20 +21,24 @@ namespace Infinitesia
         }
     }
 
-    void Simulation::AdvanceFrame(float frameDelta)
+    std::uint64_t Simulation::AdvanceFrame(float frameDelta)
     {
         if (!std::isfinite(frameDelta) || frameDelta < 0.0f)
         {
             throw std::invalid_argument("Frame delta time must be finite and non-negative.");
         }
 
+        std::uint64_t advancedTicks = 0;
         m_accumulator += frameDelta;
 
         while (m_accumulator >= m_fixedDeltaTime)
         {
             Tick();
             m_accumulator -= m_fixedDeltaTime;
+            ++advancedTicks;
         }
+
+        return advancedTicks;
     }
 
     void Simulation::Tick()

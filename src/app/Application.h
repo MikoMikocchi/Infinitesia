@@ -9,6 +9,7 @@
 #include "rendering/WorldRenderer.h"
 #include "ui/WorldContextMenu.h"
 #include "world/Grid.h"
+#include "world/WorkSystem.h"
 
 #include <optional>
 #include <string>
@@ -31,6 +32,7 @@ namespace Infinitesia
         Grid m_grid;
         World m_world;
         Simulation m_simulation;
+        WorkSystem m_workSystem;
         WorldRenderer m_worldRenderer;
         CameraController m_cameraController;
         GridPointer m_gridPointer;

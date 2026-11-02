@@ -9,7 +9,7 @@ namespace Infinitesia
     public:
         explicit Simulation(float ticksPerSecond = 20.0f);
 
-        void AdvanceFrame(float frameDelta);
+        std::uint64_t AdvanceFrame(float frameDelta);
 
         std::uint64_t GetTickCount() const;
         float GetFixedDeltaTime() const;

@@ -9,6 +9,27 @@ namespace Infinitesia
 {
     namespace
     {
+        const char* GetWorkOrderMessage(WorkOrderResult result)
+        {
+            switch (result)
+            {
+            case WorkOrderResult::Accepted:
+                return "Worker is moving to the tree";
+            case WorkOrderResult::InvalidWorker:
+                return "Selected worker is no longer available";
+            case WorkOrderResult::InvalidTarget:
+                return "Tree is no longer available";
+            case WorkOrderResult::WorkerBusy:
+                return "Worker already has an order";
+            case WorkOrderResult::TargetBusy:
+                return "Tree is already being chopped";
+            case WorkOrderResult::NoReachableWorkCell:
+                return "No free adjacent cell for the worker";
+            }
+
+            return "Could not assign work order";
+        }
+
         class WindowGuard
         {
         public:
@@ -43,6 +64,7 @@ namespace Infinitesia
           m_grid(m_config.grid),
           m_world(m_grid, m_config.initialWorldObjects),
           m_simulation(m_config.simulationTicksPerSecond),
+          m_workSystem(m_config.worker),
           m_worldRenderer(m_config.camera),
           m_cameraController(m_config.cameraControls)
     {
@@ -63,7 +85,11 @@ namespace Infinitesia
         while (!WindowShouldClose())
         {
             m_time.Advance(GetFrameTime());
-            m_simulation.AdvanceFrame(m_time.GetDeltaTime());
+            const std::uint64_t advancedTicks = m_simulation.AdvanceFrame(m_time.GetDeltaTime());
+            for (std::uint64_t tick = 0; tick < advancedTicks; ++tick)
+            {
+                m_workSystem.Tick(m_world, m_grid, m_simulation.GetFixedDeltaTime());
+            }
             Update();
             Render();
         }
@@ -122,7 +148,12 @@ namespace Infinitesia
 
         if (menuUpdate.actionRequest.has_value())
         {
-            m_actionNotice = "Chop selected (execution not implemented)";
+            const WorldActionRequest& request = *menuUpdate.actionRequest;
+            if (request.action == WorldAction::Chop)
+            {
+                m_actionNotice = GetWorkOrderMessage(
+                    m_workSystem.AssignChopOrder(request.actor, request.target, m_world, m_grid));
+            }
         }
         else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !menuUpdate.consumedMouseClick)
         {
@@ -155,7 +186,7 @@ namespace Infinitesia
         const int fontSize = 16;
         const int lineHeight = 20;
         const int panelWidth = 250;
-        const int panelHeight = 5 * lineHeight + padding;
+        const int panelHeight = 7 * lineHeight + padding;
 
         char buf[128];
 
@@ -189,9 +220,43 @@ namespace Infinitesia
             const WorldObject* selectedObject = m_world.FindObject(*m_selectedObject);
             if (selectedObject != nullptr)
             {
-                const char* typeName = selectedObject->type == WorldObjectType::Worker ? "Worker" : "Tree";
+                const char* typeName = "Logs";
+                if (selectedObject->type == WorldObjectType::Worker)
+                {
+                    typeName = "Worker";
+                }
+                else if (selectedObject->type == WorldObjectType::Tree)
+                {
+                    typeName = "Tree";
+                }
                 std::snprintf(buf, sizeof(buf), "Selected: %s", typeName);
                 DrawText(buf, padding, padding + 5 * lineHeight, fontSize, GREEN);
+
+                if (selectedObject->type == WorldObjectType::Worker)
+                {
+                    const WorkerActivity activity = m_workSystem.GetActivity(selectedObject->id);
+                    const char* activityName = "Idle";
+                    if (activity == WorkerActivity::Moving)
+                    {
+                        activityName = "Moving";
+                    }
+                    else if (activity == WorkerActivity::Working)
+                    {
+                        std::snprintf(
+                            buf,
+                            sizeof(buf),
+                            "Chopping: %.0f%%",
+                            m_workSystem.GetWorkProgress(selectedObject->id) * 100.0f);
+                        DrawText(buf, padding, padding + 6 * lineHeight, fontSize, ORANGE);
+                        activityName = nullptr;
+                    }
+
+                    if (activityName != nullptr)
+                    {
+                        std::snprintf(buf, sizeof(buf), "Activity: %s", activityName);
+                        DrawText(buf, padding, padding + 6 * lineHeight, fontSize, ORANGE);
+                    }
+                }
             }
         }
 

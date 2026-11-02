@@ -1,5 +1,6 @@
 #include "world/World.h"
 
+#include <cmath>
 #include <limits>
 #include <stdexcept>
 
@@ -13,6 +14,8 @@ namespace Infinitesia
             return { cellSize * 0.62f, cellSize * 1.2f };
         case WorldObjectType::Tree:
             return { cellSize * 0.98f, cellSize * 1.95f };
+        case WorldObjectType::Logs:
+            return { cellSize * 0.78f, cellSize * 0.36f };
         }
 
         throw std::invalid_argument("World object has an unsupported type.");
@@ -27,11 +30,16 @@ namespace Infinitesia
         }
     }
 
-    WorldObjectId World::AddObject(WorldObjectType type, GridCell cell, const Grid& grid)
+    WorldObjectId World::AddObject(WorldObjectType type, GridCell cell, const Grid& grid, int quantity)
     {
-        if (type != WorldObjectType::Worker && type != WorldObjectType::Tree)
+        if (type != WorldObjectType::Worker && type != WorldObjectType::Tree && type != WorldObjectType::Logs)
         {
             throw std::invalid_argument("World object has an unsupported type.");
+        }
+        if ((type == WorldObjectType::Logs && quantity <= 0) ||
+            (type != WorldObjectType::Logs && quantity != 0))
+        {
+            throw std::invalid_argument("World object quantity is invalid for its type.");
         }
         if (!grid.Contains(cell))
         {
@@ -47,8 +55,89 @@ namespace Infinitesia
         }
 
         const WorldObjectId id{ m_nextObjectId++ };
-        m_objects.push_back({ id, type, cell });
+        m_objects.push_back({ id, type, cell, grid.CellToWorld(cell), quantity });
         return id;
+    }
+
+    WorldObjectId World::TransformObject(WorldObjectId id, WorldObjectType type, int quantity)
+    {
+        if (type != WorldObjectType::Worker && type != WorldObjectType::Tree && type != WorldObjectType::Logs)
+        {
+            throw std::invalid_argument("World object has an unsupported type.");
+        }
+        if ((type == WorldObjectType::Logs && quantity <= 0) ||
+            (type != WorldObjectType::Logs && quantity != 0))
+        {
+            throw std::invalid_argument("World object quantity is invalid for its type.");
+        }
+
+        WorldObject* object = FindMutableObject(id);
+        if (object == nullptr)
+        {
+            throw std::out_of_range("World object does not exist.");
+        }
+        if (m_nextObjectId == std::numeric_limits<std::uint64_t>::max())
+        {
+            throw std::overflow_error("World object ID space is exhausted.");
+        }
+
+        object->id = { m_nextObjectId++ };
+        object->type = type;
+        object->quantity = quantity;
+        return object->id;
+    }
+
+    bool World::RemoveObject(WorldObjectId id)
+    {
+        for (auto object = m_objects.begin(); object != m_objects.end(); ++object)
+        {
+            if (object->id == id)
+            {
+                m_objects.erase(object);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool World::SetObjectPosition(WorldObjectId id, WorldPosition position)
+    {
+        if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z))
+        {
+            throw std::invalid_argument("World object position must be finite.");
+        }
+
+        WorldObject* object = FindMutableObject(id);
+        if (object == nullptr)
+        {
+            return false;
+        }
+        object->position = position;
+        return true;
+    }
+
+    bool World::SetObjectCell(WorldObjectId id, GridCell cell, const Grid& grid)
+    {
+        if (!grid.Contains(cell))
+        {
+            throw std::out_of_range("World object cell is outside the grid.");
+        }
+        for (const WorldObject& object : m_objects)
+        {
+            if (object.id != id && object.cell.column == cell.column && object.cell.row == cell.row)
+            {
+                return false;
+            }
+        }
+
+        WorldObject* object = FindMutableObject(id);
+        if (object == nullptr)
+        {
+            return false;
+        }
+        object->cell = cell;
+        object->position = grid.CellToWorld(cell);
+        return true;
     }
 
     std::optional<WorldObjectId> World::FindObjectAt(GridCell cell) const
@@ -74,6 +163,18 @@ namespace Infinitesia
             }
         }
 
+        return nullptr;
+    }
+
+    WorldObject* World::FindMutableObject(WorldObjectId id)
+    {
+        for (WorldObject& object : m_objects)
+        {
+            if (object.id == id)
+            {
+                return &object;
+            }
+        }
         return nullptr;
     }
 
