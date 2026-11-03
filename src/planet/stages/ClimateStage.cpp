@@ -1,7 +1,8 @@
 #include "planet/PlanetMap.h"
 #include "planet/stages/PlanetStages.h"
 #include "planet/PlanetLoadSteps.h"
-#include "planet/internal/PlanetMapGenerationHelpers.h"
+#include "planet/internal/GenerationMath.h"
+#include "planet/internal/ClimateModel.h"
 
 #include <algorithm>
 #include <cmath>

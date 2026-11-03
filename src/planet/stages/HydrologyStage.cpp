@@ -1,6 +1,6 @@
 #include "planet/PlanetMap.h"
 #include "planet/stages/PlanetStages.h"
-#include "planet/internal/PlanetMapGenerationHelpers.h"
+#include "planet/internal/ClimateModel.h"
 #include "planet/internal/PlanetMapHydrologyHelpers.h"
 
 #include <algorithm>

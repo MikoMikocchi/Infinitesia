@@ -3,7 +3,7 @@
 
 #include "planet/StarSystemGenerator.h"
 #include "planet/PlanetMap.h"
-#include "planet/internal/PlanetMapGenerationHelpers.h"
+#include "planet/internal/PlateKinematics.h"
 #include "planet/internal/PlanetMapHydrologyHelpers.h"
 
 #include <algorithm>
