@@ -45,6 +45,18 @@ add_library(InfinitesiaPlanet STATIC ${INFINITESIA_PLANET_SOURCES} ${INFINITESIA
 target_include_directories(InfinitesiaPlanet PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 infinitesia_enable_warnings(InfinitesiaPlanet)
 
+# Chemistry (elements, compositions, reactions) is the shared base of geology,
+# processing and industry. It depends on nothing else in the project.
+file(GLOB_RECURSE INFINITESIA_CHEMISTRY_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/chemistry/*.cpp"
+)
+file(GLOB_RECURSE INFINITESIA_CHEMISTRY_HEADERS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/chemistry/*.h"
+)
+add_library(InfinitesiaChemistry STATIC ${INFINITESIA_CHEMISTRY_SOURCES} ${INFINITESIA_CHEMISTRY_HEADERS})
+target_include_directories(InfinitesiaChemistry PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+infinitesia_enable_warnings(InfinitesiaChemistry)
+
 # The block world has no raylib dependency either (rendering lives outside it), so
 # it is its own library, shared by the game and the tests.
 file(GLOB_RECURSE INFINITESIA_WORLD_SOURCES CONFIGURE_DEPENDS
@@ -62,6 +74,7 @@ file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
+list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/chemistry/")
 list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/planet/")
 list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/world/")
 add_executable(Infinitesia ${INFINITESIA_SOURCES})
@@ -128,4 +141,9 @@ if (BUILD_TESTING)
   target_link_libraries(WorldTests PRIVATE InfinitesiaWorld InfinitesiaPlanet doctest::doctest)
   infinitesia_enable_warnings(WorldTests)
   doctest_discover_tests(WorldTests)
+
+  add_executable(ChemistryTests tests/ChemistryTests.cpp)
+  target_link_libraries(ChemistryTests PRIVATE InfinitesiaChemistry doctest::doctest)
+  infinitesia_enable_warnings(ChemistryTests)
+  doctest_discover_tests(ChemistryTests)
 endif()
