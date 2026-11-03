@@ -1,7 +1,7 @@
 #pragma once
 
-#include "geology/catalog/GeologyCatalog.h"
-#include "planet/PlanetMap.h"
+#include "domains/natural/geology/catalog/GeologyCatalog.h"
+#include "domains/natural/planetary/PlanetMap.h"
 #include "support/MaterialFixtures.h"
 
 // Shared by the geology test files: the catalog and planet every test reads.

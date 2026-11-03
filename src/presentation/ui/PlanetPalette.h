@@ -1,6 +1,6 @@
 #pragma once
 
-#include "planet/PlanetRegion.h"
+#include "domains/natural/planetary/PlanetRegion.h"
 #include "raylib.h"
 
 #include <cstddef>

@@ -1,11 +1,11 @@
 #pragma once
 
 #include "blocks/BlockRegistry.h"
-#include "geology/catalog/GeologyCatalog.h"
-#include "geology/model/GeologyModel.h"
-#include "planet/PlanetMap.h"
-#include "planet/region/RegionGenerator.h"
-#include "planet/region/SettlementTerrain.h"
+#include "domains/natural/geology/catalog/GeologyCatalog.h"
+#include "domains/natural/geology/model/GeologyModel.h"
+#include "domains/natural/planetary/PlanetMap.h"
+#include "domains/natural/planetary/region/RegionGenerator.h"
+#include "domains/natural/planetary/region/SettlementTerrain.h"
 #include "terrain_snapshot/Options.h"
 
 #include <memory>

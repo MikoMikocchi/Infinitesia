@@ -1,6 +1,6 @@
 #pragma once
 
-#include "chemistry/Element.h"
+#include "domains/natural/chemistry/Element.h"
 #include "materials/MaterialCatalog.h"
 
 #include <doctest/doctest.h>

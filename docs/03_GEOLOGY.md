@@ -30,24 +30,24 @@
 
 | Что | Где | Замечание |
 |---|---|---|
-| Планета 360 × 720 (ячейка ~55 км), `PlanetRegion` | `src/planet/PlanetMap.h` | есть: `tectonicPlateId`, `tectonicStress` (0..1, близость к границе плит), `isVolcanicZone`, `tectonicReliefKm`, `continentalCrustFraction`, `crustThickness`, `crustAge` (нормирован 0..1), `surfaceRock` (`RockType`, 6 значений), температура и осадки по месяцам, `biome`, почвы, гидрология |
-| Подвиды границ плит (`BoundarySubtype`) | `src/planet/PlanetMapTectonics.cpp`, `internal/PlanetMapGenerationHelpers.h` | считаются, но **не сохраняются** в ячейках: сохранить в G0 |
-| Рельеф как функция направления | `src/planet/region/RegionTerrain.*` | `ElevationMeters(direction, minWavelength)`; планетарное поле плюс шум; чисто детерминирован |
-| Колонки поверхности | `src/planet/region/SettlementTerrain.*` | `Column(east, north)` даёт высоту, `SurfaceKind` (трава/земля/песок/камень), признак моря |
-| Сетка | `src/planet/region/LocalGrid.*` | один якорь, шахматные регионы 4096 м; `Direction(east, north)` переводит метры в точку на сфере |
+| Планета 360 × 720 (ячейка ~55 км), `PlanetRegion` | `src/domains/natural/planetary/PlanetMap.h` | есть: `tectonicPlateId`, `tectonicStress` (0..1, близость к границе плит), `isVolcanicZone`, `tectonicReliefKm`, `continentalCrustFraction`, `crustThickness`, `crustAge` (нормирован 0..1), `surfaceRock` (`RockType`, 6 значений), температура и осадки по месяцам, `biome`, почвы, гидрология |
+| Подвиды границ плит (`BoundarySubtype`) | `src/domains/natural/planetary/PlanetMapTectonics.cpp`, `internal/PlanetMapGenerationHelpers.h` | считаются, но **не сохраняются** в ячейках: сохранить в G0 |
+| Рельеф как функция направления | `src/domains/natural/planetary/region/RegionTerrain.*` | `ElevationMeters(direction, minWavelength)`; планетарное поле плюс шум; чисто детерминирован |
+| Колонки поверхности | `src/domains/natural/planetary/region/SettlementTerrain.*` | `Column(east, north)` даёт высоту, `SurfaceKind` (трава/земля/песок/камень), признак моря |
+| Сетка | `src/domains/natural/planetary/region/LocalGrid.*` | один якорь, шахматные регионы 4096 м; `Direction(east, north)` переводит метры в точку на сфере |
 | Блоки мира из планеты | `src/world/PlanetTerrainSource.*`, `TerrainSource.h` | `LayerAt(kind, depth)`: поверхность, 3 блока почвы, ниже камень. **Это то, что заменяет геология.** |
 | Блоки и чанки | `src/world/Block.h`, `Chunk.h`, `World.*` | `BlockType` сейчас `Air, Grass, Dirt, Stone, Sand, Water`; чанк 16³, `Block {cell, type}` |
 | Цвета блоков | `src/rendering/terrain/internal/TerrainMeshGeometry.cpp` (`GetBlockColor`) | сейчас `switch` по `BlockType` |
 | Снимок рельефа | `tools/TerrainSnapshot.cpp` | изометрия с разрезом; слои берёт из `PlanetTerrainSource::LayerAt` |
 | Тесты | `tests/RegionTests.cpp`, `tests/WorldTests.cpp`, `tests/PlanetGenerationTests.cpp` | doctest, макрос `Require` |
 | Сборка | `CMakeLists.txt` | библиотеки `InfinitesiaChemistry`, `InfinitesiaPlanet` и `InfinitesiaWorld` без raylib; игра и утилиты линкуются с ними |
-| Химия | `src/chemistry/` | элементы, `Composition`, `Mix`, `Reaction`, тесты `ChemistryTests` (см. [04_CHEMISTRY.md](./04_CHEMISTRY.md)) |
+| Химия | `src/domains/natural/chemistry/` | элементы, `Composition`, `Mix`, `Reaction`, тесты `ChemistryTests` (см. [04_CHEMISTRY.md](./04_CHEMISTRY.md)) |
 
 Масштабы игры: блок 1 м, чанк 16 м, регион 4096 м, окно мира сейчас 256 × 256 м и 192 м по вертикали, земля центральной колонки на уровне 112, ниже 112 блоков. Окно станет бесконечным позже, геология не должна зависеть от размера окна.
 
 ## 3. Архитектура
 
-Новая библиотека `InfinitesiaGeology` (без raylib) в `src/geology/`, зависит от `InfinitesiaPlanet` и от готовой `InfinitesiaChemistry` (элементы, формулы, составы, [04_CHEMISTRY.md](./04_CHEMISTRY.md)); `InfinitesiaWorld` зависит от неё. Таблица элементов и разбор формул лежат в химии, а не в геологии.
+Новая библиотека `InfinitesiaGeology` (без raylib) в `src/domains/natural/geology/`, зависит от `InfinitesiaPlanet` и от готовой `InfinitesiaChemistry` (элементы, формулы, составы, [04_CHEMISTRY.md](./04_CHEMISTRY.md)); `InfinitesiaWorld` зависит от неё. Таблица элементов и разбор формул лежат в химии, а не в геологии.
 
 ```
 Планета (PlanetMap + новые поля, G0)
@@ -74,7 +74,7 @@ World (PlanetTerrainSource → GeologyTerrainSource)    TerrainSnapshot / Geolog
 
 Потоки данных односторонние: планета → провинции → история → структуры → блоки. Рельеф (`RegionTerrain`) геологию не зависит; геология читает рельеф, чтобы знать, какие слои выходят на поверхность.
 
-Раскладка каталогов `src/geology/`:
+Раскладка каталогов `src/domains/natural/geology/`:
 
 ```
 catalog/      реестры: Mineral, Rock, Material, DepositModel, ProvinceTemplate, SurveyMethod (элементы и Composition в chemistry/)
@@ -129,7 +129,7 @@ util/         детерминированные потоки, распреде�
 
 ### 5.1. Element (все 118)
 
-Базовая таблица (Z, символ, имя, масса, группа, период, блок, категория) уже есть в `src/chemistry/Element.h`; номер Z служит постоянным числовым ID. Остальные поля ниже это содержимое реестра, которое накладывается на элемент по Z. Поля: `Z`, `symbol`, `atomicMass` (IUPAC), `group`, `period`, `block`, `category`, `density`, `meltingPoint`, `boilingPoint`, `heatCapacity`, `thermalConductivity`, `oxidationStates`, `crustalAbundancePpm` (Rudnick & Gao 2014), `affinity` (литофил / сидерофил / халькофил / атмофил по Гольдшмидту), `isotopes` (ссылки). Физические значения брать только из справочников. Для первой версии допустимо заполнить полностью ~60 элементов, нужных в геологии, остальные оставить с `"filled": false`, но запись должна существовать (чтобы ID не менялись).
+Базовая таблица (Z, символ, имя, масса, группа, период, блок, категория) уже есть в `src/domains/natural/chemistry/Element.h`; номер Z служит постоянным числовым ID. Остальные поля ниже это содержимое реестра, которое накладывается на элемент по Z. Поля: `Z`, `symbol`, `atomicMass` (IUPAC), `group`, `period`, `block`, `category`, `density`, `meltingPoint`, `boilingPoint`, `heatCapacity`, `thermalConductivity`, `oxidationStates`, `crustalAbundancePpm` (Rudnick & Gao 2014), `affinity` (литофил / сидерофил / халькофил / атмофил по Гольдшмидту), `isotopes` (ссылки). Физические значения брать только из справочников. Для первой версии допустимо заполнить полностью ~60 элементов, нужных в геологии, остальные оставить с `"filled": false`, но запись должна существовать (чтобы ID не менялись).
 
 ### 5.2. Mineral
 
@@ -475,7 +475,7 @@ grade(p) = g_core · Z(p) · H(p)
 - **Эпохи.** `PlanetEpochTable`: деления МСШ, растянутые на возраст планеты, и пять флагов биосферы. Известковый планктон включён с позднего триаса (~220 млн лет), а не с позднего палеозоя, как было в таблице 6.3: кокколитофориды появляются в триасе.
 - **Калибровка на 6 планетах (360×720):** кратоны 10–23 % суши, платформы 47–63 %, осадочные бассейны 3,5–9 %, коллизионные орогены 2,5–6,5 %.
 - **Скорость.** Этап «geology» добавляет около 0,2 с к ~0,66 с прежней генерации (Release); бюджет 2 с соблюдён.
-- **Код.** `src/planet/PlanetMapGeology.cpp` (поля), `PlanetMapProvinces.cpp` (провинции), `geology/Province.*`, `geology/PlanetEpochs.*`, `internal/GridDistance.*` (расстояния по сетке). Тесты: `tests/PlanetGeologyTests.cpp` (цель `PlanetGeologyTests`). `TerrainSnapshot` печатает провинцию, эпоху события, возраст коры, осадки, тепловой поток и ближайшую границу.
+- **Код.** `src/domains/natural/planetary/PlanetMapGeology.cpp` (поля), `PlanetMapProvinces.cpp` (провинции), `geology/Province.*`, `geology/PlanetEpochs.*`, `internal/GridDistance.*` (расстояния по сетке). Тесты: `tests/PlanetGeologyTests.cpp` (цель `PlanetGeologyTests`). `TerrainSnapshot` печатает провинцию, эпоху события, возраст коры, осадки, тепловой поток и ближайшую границу.
 
 ### G1. Каталоги и материалы в мире (L)
 
@@ -488,11 +488,11 @@ grade(p) = g_core · Z(p) · H(p)
 **Статус: сделано в объёме «породы видны на снимке».** Что вошло и чем отличается от плана:
 
 - **Данные.** Каталог материалов теперь один файл `assets/materials/materials.json` (см. [06_BLOCKS](./06_BLOCKS.md)): 167 минералов (формулы разбираются `Composition`, вариативные записаны типичным дробным составом с пометкой `solidSolution`; плотность в кг/м³, id с 2048), породы (у большинства заполнен модальный состав по объёму), воздух, жидкости, грунты, лёд и строительные материалы. В `assets/geology/` остался `province_columns.json` (типовой разрез каждого из 14 типов провинций). Все числа, цвета и составы с пометкой `gameplay`: плотности и твёрдости из `03a` не сверены с первоисточниками. `rock.peat` не заведён, торф это `soil.peat`. Скрипт, из которого сгенерированы JSON, в репозитории не лежит: теперь источник истины сами JSON, `03a` остаётся описанием замысла.
-- **Библиотеки.** `InfinitesiaMaterials` (`src/materials/`, зависит от `Chemistry` и `nlohmann_json`, FetchContent v3.11.3): `MaterialCatalog` читает и жёстко проверяет `materials.json` (уникальность `id` и `numericId`, диапазоны id по классам, формулы, ссылки минералов в составе пород, суммы долей); ошибка называет файл и запись. Запись материала названа `MaterialDef` (`Material` совпадает с типом raylib), цвет `RgbColor`. `InfinitesiaGeology` (`src/geology/`) держит `GeologyCatalog`: типовой разрез каждого типа провинции из `province_columns.json`, слои которого ссылаются на породы каталога материалов.
+- **Библиотеки.** `InfinitesiaMaterials` (`src/materials/`, зависит от `Chemistry` и `nlohmann_json`, FetchContent v3.11.3): `MaterialCatalog` читает и жёстко проверяет `materials.json` (уникальность `id` и `numericId`, диапазоны id по классам, формулы, ссылки минералов в составе пород, суммы долей); ошибка называет файл и запись. Запись материала названа `MaterialDef` (`Material` совпадает с типом raylib), цвет `RgbColor`. `InfinitesiaGeology` (`src/domains/natural/geology/`) держит `GeologyCatalog`: типовой разрез каждого типа провинции из `province_columns.json`, слои которого ссылаются на породы каталога материалов.
 - **Состав породы** считается из минералов с весом «доля по объёму × плотность минерала»: `MaterialCatalog::ElementMassFractionsOf`. Тест сверяет плотность кристаллических пород с плотностью их минералов (в пределах 12 %) и поймал три неудачных состава (андезит, фонолит, графитовый сланец): они исправлены.
 - **`GeologyModel`** (временная модель до G2): у каждой провинции плоская пачка формаций из типового разреза её типа. Слои с условием биосферы (`requires`: красноцветы, уголь, мел) отбираются по возрасту главного события провинции, верхние слои срезаны по классу эрозии, мощности умножены на `strataThicknessScale = 0.2` и получают разброс 0,8–1,25 из детерминированного потока. Слои лежат на фиксированных абсолютных высотах относительно грубой планетарной поверхности, поэтому холмы вскрывают верхние слои, а долины нижние. G2 заменяет пачку структурами (падение, складки, разломы).
 - **Мир.** `BlockType` удалён: клетка мира это `BlockState{material, shape}`, `PlanetTerrainSource` с моделью геологии отдаёт материал каждого каменного блока через `StateAt`, а все правила (пусто, проходимость, копание, свет) решает `BlockRegistry` ([06_BLOCKS](./06_BLOCKS.md)). Блок, который выкопали, становится воздухом. Рендер и `TerrainSnapshot` красят блок цветом его материала. Игра читает материалы, колонки и формы из `assets/` рядом с исполняемым файлом.
-- **Не сделано из задач G1:** таблица элементов осталась в `src/chemistry` без расширенных свойств (кларки, аффинность появятся с G8); режимы карты и разреза и `--legend` для снимка (G2). Вместо `--legend` снимок печатает список пород в кадре с цветами и долей.
+- **Не сделано из задач G1:** таблица элементов осталась в `src/domains/natural/chemistry` без расширенных свойств (кларки, аффинность появятся с G8); режимы карты и разреза и `--legend` для снимка (G2). Вместо `--legend` снимок печатает список пород в кадре с цветами и долей.
 - **Тесты:** `MaterialsTests` (каталог, молярные массы 27 минералов по справочнику, состав и плотности пород, ошибки загрузчика), `GeologyTests` (колонки провинций, пачки формаций, биосфера, детерминизм), `BlocksTests` (реестр, формы, правила клетки) и тесты `WorldTests` (клетка мира это пара материал и форма, материал каждого каменного блока, чанки несут состояние клетки).
 
 ### G2. Стратиграфия, складки, падение, разломы (L)

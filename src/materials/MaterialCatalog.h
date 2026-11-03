@@ -1,6 +1,6 @@
 #pragma once
 
-#include "chemistry/Composition.h"
+#include "domains/natural/chemistry/Composition.h"
 #include "materials/CatalogError.h"
 #include "materials/MaterialDef.h"
 

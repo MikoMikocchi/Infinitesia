@@ -1,6 +1,6 @@
 #pragma once
 
-#include "planet/PlanetMap.h"
+#include "domains/natural/planetary/PlanetMap.h"
 #include "raylib.h"
 
 // Where the parts of the planet viewer are on the screen.

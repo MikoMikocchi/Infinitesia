@@ -4,7 +4,7 @@ A `PlanetMap` is built by a `PlanetPipeline`: a list of stages, each saying what
 what it provides. Adding a domain (biology, resources, population, ...) means adding stages;
 `PlanetMap` does not change.
 
-## Parts (`src/planet/pipeline/`, `src/planet/stages/`)
+## Parts (`src/domains/natural/planetary/pipeline/`, `src/domains/natural/planetary/stages/`)
 
 | Part | What it is |
 |---|---|

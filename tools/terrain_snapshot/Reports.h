@@ -1,7 +1,7 @@
 #pragma once
 
 #include "materials/MaterialCatalog.h"
-#include "planet/PlanetMap.h"
+#include "domains/natural/planetary/PlanetMap.h"
 #include "terrain_snapshot/Options.h"
 
 #include <map>

@@ -10,11 +10,11 @@
 // It builds the planet and the geology exactly as the game does, so what it prints is what the
 // game's blocks are made of.
 
-#include "geology/model/GeologyModel.h"
-#include "planet/PlanetMap.h"
-#include "planet/StarSystemGenerator.h"
-#include "planet/region/RegionGenerator.h"
-#include "planet/region/SettlementTerrain.h"
+#include "domains/natural/geology/model/GeologyModel.h"
+#include "domains/natural/planetary/PlanetMap.h"
+#include "domains/natural/planetary/StarSystemGenerator.h"
+#include "domains/natural/planetary/region/RegionGenerator.h"
+#include "domains/natural/planetary/region/SettlementTerrain.h"
 
 #include <algorithm>
 #include <cmath>

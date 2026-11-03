@@ -1,5 +1,5 @@
 #include "terrain_snapshot/SnapshotWorld.h"
-#include "planet/StarSystemGenerator.h"
+#include "domains/natural/planetary/StarSystemGenerator.h"
 
 #include <algorithm>
 #include <cmath>

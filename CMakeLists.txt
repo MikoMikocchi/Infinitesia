@@ -46,12 +46,14 @@ function(infinitesia_enable_warnings target)
 endfunction()
 
 # Declares one module (a layer or domain of the project) as a static library built from
-# every .cpp/.h under the given src/ directories. Dependencies between modules are declared
+# every .cpp/.h under the given src/ directories (nested ones such as domains/natural/geology are fine). Dependencies between modules are declared
 # explicitly here; tools/check_dependencies.py enforces the same layering on the #include
 # graph, so a module cannot quietly reach into one that is not below it.
 #   infinitesia_add_module(<target> DIRS <src subdirs>... [PUBLIC <libs>...] [PRIVATE <libs>...])
 function(infinitesia_add_module target)
   cmake_parse_arguments(MODULE "" "" "DIRS;PUBLIC;PRIVATE" ${ARGN})
+  # Every module directory is left out of the executable's own sources (see below).
+  set_property(GLOBAL APPEND PROPERTY INFINITESIA_MODULE_DIRS ${MODULE_DIRS})
   set(module_globs "")
   foreach(dir IN LISTS MODULE_DIRS)
     list(APPEND module_globs
@@ -72,20 +74,20 @@ endfunction()
 
 # Layers, bottom to top:
 #   foundation                      ids, time, load progress, coordinates; no domain knowledge
-#   chemistry                       elements, compositions, reactions
-#   planet                          planet generation pipeline (no raylib)
+#   domains/natural/chemistry       elements, compositions, reactions
+#   domains/natural/planetary       planet generation pipeline (no raylib)
 #   materials                       every material of the game (rocks, minerals, fluids, built); assets/materials/materials.json
-#   geology                         what the ground is made of: province columns of rocks; assets/geology/*.json
+#   domains/natural/geology         what the ground is made of: province columns of rocks; assets/geology/*.json
 #   blocks                          shapes of a world cell and the dense tables over materials; assets/blocks/*.json
 #   world                           the block terrain: grid, chunks, terrain sources (no raylib)
 #   gameplay                        entities, items, work, commands, pathfinding (no raylib)
 #   (executable)                    presentation (rendering, ui, input, assets) and app
 infinitesia_add_module(InfinitesiaFoundation DIRS foundation)
-infinitesia_add_module(InfinitesiaChemistry DIRS chemistry PUBLIC InfinitesiaFoundation)
-infinitesia_add_module(InfinitesiaPlanet DIRS planet PUBLIC InfinitesiaFoundation)
+infinitesia_add_module(InfinitesiaChemistry DIRS domains/natural/chemistry PUBLIC InfinitesiaFoundation)
+infinitesia_add_module(InfinitesiaPlanet DIRS domains/natural/planetary PUBLIC InfinitesiaFoundation)
 infinitesia_add_module(InfinitesiaMaterials DIRS materials
   PUBLIC InfinitesiaChemistry PRIVATE nlohmann_json::nlohmann_json)
-infinitesia_add_module(InfinitesiaGeology DIRS geology
+infinitesia_add_module(InfinitesiaGeology DIRS domains/natural/geology
   PUBLIC InfinitesiaPlanet InfinitesiaChemistry InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
 
 # Where the source tree keeps the catalogs; tools and tests that run from a build
@@ -104,7 +106,8 @@ file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
-foreach(module_dir IN ITEMS foundation chemistry materials geology planet blocks world gameplay)
+get_property(INFINITESIA_MODULE_DIRS GLOBAL PROPERTY INFINITESIA_MODULE_DIRS)
+foreach(module_dir IN LISTS INFINITESIA_MODULE_DIRS)
   list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/${module_dir}/")
 endforeach()
 add_executable(Infinitesia ${INFINITESIA_SOURCES})
@@ -176,11 +179,11 @@ if (BUILD_TESTING)
 
   add_executable(PlanetGenerationTests
     tests/support/DoctestMain.cpp
-    tests/planet/StarSystemTests.cpp
-    tests/planet/PlanetMapTests.cpp
-    tests/planet/PlateKinematicsTests.cpp
-    tests/planet/HydrologyTests.cpp
-    tests/planet/EdgeCaseTests.cpp)
+    tests/domains/natural/planetary/StarSystemTests.cpp
+    tests/domains/natural/planetary/PlanetMapTests.cpp
+    tests/domains/natural/planetary/PlateKinematicsTests.cpp
+    tests/domains/natural/planetary/HydrologyTests.cpp
+    tests/domains/natural/planetary/EdgeCaseTests.cpp)
   target_link_libraries(PlanetGenerationTests PRIVATE InfinitesiaPlanet TestSupport)
   infinitesia_enable_warnings(PlanetGenerationTests)
 
@@ -188,17 +191,17 @@ if (BUILD_TESTING)
   include("${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake")
   doctest_discover_tests(PlanetGenerationTests)
 
-  add_executable(PlanetPipelineTests tests/PlanetPipelineTests.cpp)
+  add_executable(PlanetPipelineTests tests/domains/natural/planetary/PlanetPipelineTests.cpp)
   target_link_libraries(PlanetPipelineTests PRIVATE InfinitesiaPlanet doctest::doctest)
   infinitesia_enable_warnings(PlanetPipelineTests)
   doctest_discover_tests(PlanetPipelineTests)
 
-  add_executable(PlanetGoldenTests tests/PlanetGoldenTests.cpp)
+  add_executable(PlanetGoldenTests tests/domains/natural/planetary/PlanetGoldenTests.cpp)
   target_link_libraries(PlanetGoldenTests PRIVATE InfinitesiaPlanet doctest::doctest)
   infinitesia_enable_warnings(PlanetGoldenTests)
   doctest_discover_tests(PlanetGoldenTests)
 
-  add_executable(RegionTests tests/RegionTests.cpp)
+  add_executable(RegionTests tests/domains/natural/planetary/RegionTests.cpp)
   target_link_libraries(RegionTests PRIVATE InfinitesiaPlanet doctest::doctest)
   infinitesia_enable_warnings(RegionTests)
   doctest_discover_tests(RegionTests)
@@ -219,9 +222,9 @@ if (BUILD_TESTING)
 
   add_executable(PlanetGeologyTests
     tests/support/DoctestMain.cpp
-    tests/planet/GeologyFieldsTests.cpp
-    tests/planet/ProvinceTests.cpp
-    tests/planet/EpochTests.cpp)
+    tests/domains/natural/planetary/GeologyFieldsTests.cpp
+    tests/domains/natural/planetary/ProvinceTests.cpp
+    tests/domains/natural/planetary/EpochTests.cpp)
   target_link_libraries(PlanetGeologyTests PRIVATE InfinitesiaPlanet TestSupport)
   infinitesia_enable_warnings(PlanetGeologyTests)
   doctest_discover_tests(PlanetGeologyTests)
@@ -236,10 +239,10 @@ if (BUILD_TESTING)
 
   add_executable(GeologyTests
     tests/support/DoctestMain.cpp
-    tests/geology/ColumnTests.cpp
-    tests/geology/PileTests.cpp
-    tests/geology/FaultTests.cpp
-    tests/geology/HistoryTests.cpp)
+    tests/domains/natural/geology/ColumnTests.cpp
+    tests/domains/natural/geology/PileTests.cpp
+    tests/domains/natural/geology/FaultTests.cpp
+    tests/domains/natural/geology/HistoryTests.cpp)
   target_link_libraries(GeologyTests PRIVATE InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet InfinitesiaChemistry nlohmann_json::nlohmann_json TestSupport)
   target_compile_definitions(GeologyTests PRIVATE INFINITESIA_ASSET_DIR="${INFINITESIA_ASSET_DIR}")
   infinitesia_enable_warnings(GeologyTests)
@@ -259,7 +262,7 @@ if (BUILD_TESTING)
   infinitesia_enable_warnings(ContentTests)
   doctest_discover_tests(ContentTests)
 
-  add_executable(ChemistryTests tests/ChemistryTests.cpp)
+  add_executable(ChemistryTests tests/domains/natural/chemistry/ChemistryTests.cpp)
   target_link_libraries(ChemistryTests PRIVATE InfinitesiaChemistry doctest::doctest)
   infinitesia_enable_warnings(ChemistryTests)
   doctest_discover_tests(ChemistryTests)

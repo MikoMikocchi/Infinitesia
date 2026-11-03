@@ -1,9 +1,9 @@
 #pragma once
 
 #include "foundation/LoadProgress.h"
-#include "planet/StarSystem.h"
-#include "planet/PlanetMap.h"
-#include "planet/region/SettlementTerrain.h"
+#include "domains/natural/planetary/StarSystem.h"
+#include "domains/natural/planetary/PlanetMap.h"
+#include "domains/natural/planetary/region/SettlementTerrain.h"
 #include "raylib.h"
 #include "presentation/ui/RegionMapView.h"
 #include "presentation/ui/UniqueTexture.h"

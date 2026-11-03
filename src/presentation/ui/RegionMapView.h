@@ -1,7 +1,7 @@
 #pragma once
 
-#include "planet/PlanetMap.h"
-#include "planet/region/RegionGenerator.h"
+#include "domains/natural/planetary/PlanetMap.h"
+#include "domains/natural/planetary/region/RegionGenerator.h"
 #include "raylib.h"
 #include "presentation/ui/UniqueTexture.h"
 

@@ -1,5 +1,5 @@
 #include "terrain_snapshot/Options.h"
-#include "planet/region/LocalGrid.h"
+#include "domains/natural/planetary/region/LocalGrid.h"
 
 #include <algorithm>
 #include <cmath>

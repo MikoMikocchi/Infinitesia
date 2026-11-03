@@ -1,7 +1,7 @@
 #pragma once
 
-#include "geology/model/GeologyModel.h"
-#include "planet/region/SettlementTerrain.h"
+#include "domains/natural/geology/model/GeologyModel.h"
+#include "domains/natural/planetary/region/SettlementTerrain.h"
 #include "world/TerrainSource.h"
 
 #include <cstdint>

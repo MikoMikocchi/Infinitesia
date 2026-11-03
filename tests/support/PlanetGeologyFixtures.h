@@ -1,7 +1,7 @@
 #pragma once
 
-#include "planet/PlanetMap.h"
-#include "planet/geology/Province.h"
+#include "domains/natural/planetary/PlanetMap.h"
+#include "domains/natural/planetary/geology/Province.h"
 
 #include <cmath>
 #include <cstdint>

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Checks the layering of src/ against the #include graph.
 
-Every directory under src/ belongs to a module (presentation and app are compiled into
+Every directory under src/ (possibly nested, like domains/natural/geology) belongs to a module (presentation and app are compiled into
 the executable, the rest are static libraries), and a module may include only the
 modules listed for it below (plus itself and the standard/third-party headers).
 Run from anywhere:  python tools/check_dependencies.py
 Exit code 1 lists every include that breaks the rules.
 
-To add a domain: give it a line in ALLOWED, and a matching infinitesia_add_module(...)
+To add a domain: give it a line in MODULE_OF and ALLOWED, and a matching infinitesia_add_module(...)
 in CMakeLists.txt. Dependencies go downwards only; never sideways between domains.
 """
 
@@ -17,13 +17,13 @@ from pathlib import Path
 
 SRC = Path(__file__).resolve().parent.parent / "src"
 
-# directory under src/ -> module
+# path under src/ -> module (the longest matching prefix wins)
 MODULE_OF = {
     "foundation": "foundation",
-    "chemistry": "chemistry",
-    "planet": "planet",
+    "domains/natural/chemistry": "chemistry",
+    "domains/natural/planetary": "planet",
     "materials": "materials",
-    "geology": "geology",
+    "domains/natural/geology": "geology",
     "blocks": "blocks",
     "world": "world",
     "gameplay": "gameplay",
@@ -55,10 +55,13 @@ THIRD_PARTY = {"nlohmann", "doctest"}
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"')
 
 
-def module_of_dir(directory: str) -> str:
-    if directory not in MODULE_OF:
-        raise SystemExit(f"src/{directory}/ belongs to no module: add it to MODULE_OF and ALLOWED")
-    return MODULE_OF[directory]
+def module_of(parts: tuple[str, ...]) -> str:
+    """Module of a path under src/, given as its components (the file name included)."""
+    for length in range(len(parts) - 1, 0, -1):
+        prefix = "/".join(parts[:length])
+        if prefix in MODULE_OF:
+            return MODULE_OF[prefix]
+    raise SystemExit(f"src/{'/'.join(parts[:-1])}/ belongs to no module: add it to MODULE_OF and ALLOWED")
 
 
 def main() -> int:
@@ -69,7 +72,7 @@ def main() -> int:
         relative = path.relative_to(SRC)
         if len(relative.parts) < 2:
             continue  # src/main.cpp: the executable's entry point
-        owner = module_of_dir(relative.parts[0])
+        owner = module_of(relative.parts)
         for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
             match = INCLUDE.match(line)
             if not match:
@@ -82,7 +85,7 @@ def main() -> int:
                 if not (path.parent / target).exists():
                     violations.append(f"{relative.as_posix()}:{number}: cannot resolve include {target}")
                 continue  # same-directory include
-            dependency = module_of_dir(parts[0])
+            dependency = module_of(tuple(parts))
             if dependency != owner and dependency not in ALLOWED[owner]:
                 violations.append(f"{relative.as_posix()}:{number}: {owner} must not include {target} ({dependency})")
 

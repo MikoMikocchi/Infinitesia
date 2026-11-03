@@ -1,6 +1,6 @@
 #include "presentation/ui/PlanetViewer.h"
 
-#include "planet/PlanetLoadSteps.h"
+#include "domains/natural/planetary/PlanetLoadSteps.h"
 #include "presentation/ui/PlanetGlobeGeometry.h"
 #include "presentation/ui/PlanetPalette.h"
 #include "presentation/ui/PlanetViewerLayout.h"

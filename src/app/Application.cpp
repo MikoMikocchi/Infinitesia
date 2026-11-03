@@ -1,8 +1,8 @@
 #include "app/Application.h"
 #include "raylib.h"
-#include "geology/model/GeologyModel.h"
-#include "planet/PlanetLoadSteps.h"
-#include "planet/StarSystemGenerator.h"
+#include "domains/natural/geology/model/GeologyModel.h"
+#include "domains/natural/planetary/PlanetLoadSteps.h"
+#include "domains/natural/planetary/StarSystemGenerator.h"
 #include "world/PlanetTerrainSource.h"
 
 #include <algorithm>

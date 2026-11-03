@@ -12,7 +12,7 @@
 #include "presentation/ui/DebugOverlay.h"
 #include "presentation/ui/PlanetViewer.h"
 #include "gameplay/LocalGame.h"
-#include "planet/region/SettlementTerrain.h"
+#include "domains/natural/planetary/region/SettlementTerrain.h"
 
 #include <future>
 #include <memory>

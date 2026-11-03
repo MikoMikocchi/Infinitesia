@@ -1,6 +1,6 @@
 #include "terrain_snapshot/Reports.h"
-#include "planet/geology/PlanetEpochs.h"
-#include "planet/geology/Province.h"
+#include "domains/natural/planetary/geology/PlanetEpochs.h"
+#include "domains/natural/planetary/geology/Province.h"
 
 #include <algorithm>
 #include <cmath>
