@@ -29,7 +29,8 @@ namespace Infinitesia
           m_start(FindStartingCells(m_grid, *terrain)),
           m_world(m_grid, StartingObjects(*m_content, m_start), terrain),
           m_workSystem(config.worker),
-          m_simulation(config.simulationTicksPerSecond)
+          m_simulation(config.simulationTicksPerSecond),
+          m_runtime(m_simulation)
     {
         m_commands.Register(std::make_unique<ChopTreeCommand>(m_workSystem, m_grid));
         m_commands.Register(std::make_unique<PickUpItemCommand>());

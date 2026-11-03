@@ -7,6 +7,7 @@ The game is one executable built from layers. A layer may include only layers be
 app            main loop, screens, wiring                      (exe)
 presentation   rendering, ui, input, assets - raylib           (exe)
 gameplay       GameWorld, entities, items, work, commands      (lib, no raylib)
+simulation     system scheduler on the fixed tick              (lib, no raylib)
 world          grid, chunks, VoxelWorld, terrain sources       (lib, no raylib)
 blocks         shapes of a cell, dense tables over materials   (lib)
 geology        what the ground is made of: province columns    (lib)
@@ -44,6 +45,20 @@ in step.
 3. A test executable in `tests/`, registered with `doctest_discover_tests`.
 4. A section in `docs/`.
 
+## Simulation runtime
+
+`Simulation` (foundation) owns the one clock: a fixed timestep that counts ticks. `SimulationRuntime`
+(`src/simulation/`) listens to it and, on every tick, runs the registered `SimulationSystem`s. It
+adds no clock of its own: `GameCalendar` turns the tick number into game seconds, days and months
+with integer arithmetic.
+
+- `api/` is what a system sees: `SystemId`, `SystemPhase` (PreUpdate, Update, PostUpdate),
+  `Cadence` (every tick, N ticks, game seconds, days, months), `SystemDescriptor`, `SystemContext`.
+- `runtime/`: `SystemRegistry` (unique ids), `SystemScheduler` (phase, then `order`, then
+  registration order; skips disabled and not-due systems), `SystemExecutor` (context, error
+  policy `Disable`/`Continue`/`Rethrow`, tick and phase sequence checks).
+- Register through `LocalGame::GetRuntime().Registry()`.
+
 ## Planet generation
 
 `PlanetMap` is built by a pipeline of stages that declare what they need and provide; new
@@ -51,4 +66,4 @@ domains add stages and layers instead of editing it. See `docs/05_PLANET_PIPELIN
 
 ## Planned (not done yet)
 
-- A system scheduler with per-system cadence, once a second ticking system exists.
+- Moving `WorkSystem` (and later systems) onto the scheduler; today it is still ticked by `LocalGame`.

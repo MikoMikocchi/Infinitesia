@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <utility>
 
 namespace Infinitesia
 {
@@ -41,9 +42,17 @@ namespace Infinitesia
         return advancedTicks;
     }
 
+    void Simulation::SetTickListener(TickListener listener)
+    {
+        m_tickListener = std::move(listener);
+    }
+
     void Simulation::Tick()
     {
-        // Simulation logic will go here
+        if (m_tickListener)
+        {
+            m_tickListener(m_tickCount);
+        }
         ++m_tickCount;
     }
 

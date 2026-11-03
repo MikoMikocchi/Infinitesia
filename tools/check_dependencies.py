@@ -26,6 +26,7 @@ MODULE_OF = {
     "domains/natural/geology": "geology",
     "blocks": "blocks",
     "world": "world",
+    "simulation": "simulation",
     "gameplay": "gameplay",
     "presentation": "presentation",  # compiled into the executable, but a layer of its own
     "app": "app",
@@ -44,9 +45,10 @@ ALLOWED = {
     "geology": {"foundation", "chemistry", "planet", "materials"},
     "blocks": {"foundation", "chemistry", "materials"},
     "world": {"foundation", "planet", "materials", "geology", "blocks"},
-    "gameplay": {"foundation", "planet", "materials", "geology", "blocks", "world"},
-    "presentation": {"foundation", "chemistry", "planet", "materials", "geology", "blocks", "world", "gameplay"},
-    "app": {"foundation", "chemistry", "planet", "materials", "geology", "blocks", "world", "gameplay", "presentation"},
+    "simulation": {"foundation"},
+    "gameplay": {"foundation", "planet", "materials", "geology", "blocks", "world", "simulation"},
+    "presentation": {"foundation", "chemistry", "planet", "materials", "geology", "blocks", "world", "simulation", "gameplay"},
+    "app": {"foundation", "chemistry", "planet", "materials", "geology", "blocks", "world", "simulation", "gameplay", "presentation"},
 }
 
 # Include prefixes that are not part of src/.

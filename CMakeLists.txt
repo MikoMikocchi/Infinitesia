@@ -80,6 +80,7 @@ endfunction()
 #   domains/natural/geology         what the ground is made of: province columns of rocks; assets/geology/*.json
 #   blocks                          shapes of a world cell and the dense tables over materials; assets/blocks/*.json
 #   world                           the block terrain: grid, chunks, terrain sources (no raylib)
+#   simulation                      system scheduler running on the fixed tick of foundation/Simulation (no raylib)
 #   gameplay                        entities, items, work, commands, pathfinding (no raylib)
 #   (executable)                    presentation (rendering, ui, input, assets) and app
 infinitesia_add_module(InfinitesiaFoundation DIRS foundation)
@@ -99,8 +100,9 @@ set(INFINITESIA_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
 set(INFINITESIA_GAMEPLAY_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/gameplay")
 
 infinitesia_add_module(InfinitesiaWorld DIRS world PUBLIC InfinitesiaPlanet InfinitesiaGeology InfinitesiaBlocks)
+infinitesia_add_module(InfinitesiaSimulation DIRS simulation PUBLIC InfinitesiaFoundation)
 infinitesia_add_module(InfinitesiaGameplay DIRS gameplay
-  PUBLIC InfinitesiaWorld PRIVATE nlohmann_json::nlohmann_json)
+  PUBLIC InfinitesiaWorld InfinitesiaSimulation PRIVATE nlohmann_json::nlohmann_json)
 
 file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
@@ -129,7 +131,7 @@ target_include_directories(Infinitesia PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaGameplay InfinitesiaWorld InfinitesiaBlocks InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet InfinitesiaFoundation)
+target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaGameplay InfinitesiaSimulation InfinitesiaWorld InfinitesiaBlocks InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet InfinitesiaFoundation)
 
 # Treat raylib headers as system headers so their warnings do not drown ours.
 get_target_property(RAYLIB_INCLUDE_DIRS raylib INTERFACE_INCLUDE_DIRECTORIES)
@@ -261,6 +263,16 @@ if (BUILD_TESTING)
   target_compile_definitions(ContentTests PRIVATE INFINITESIA_GAMEPLAY_ASSET_DIR="${INFINITESIA_GAMEPLAY_ASSET_DIR}")
   infinitesia_enable_warnings(ContentTests)
   doctest_discover_tests(ContentTests)
+
+  add_executable(SimulationTests
+    tests/support/DoctestMain.cpp
+    tests/simulation/RegistryTests.cpp
+    tests/simulation/SchedulerTests.cpp
+    tests/simulation/ExecutorTests.cpp
+    tests/simulation/RuntimeTests.cpp)
+  target_link_libraries(SimulationTests PRIVATE InfinitesiaSimulation InfinitesiaFoundation TestSupport)
+  infinitesia_enable_warnings(SimulationTests)
+  doctest_discover_tests(SimulationTests)
 
   add_executable(ChemistryTests tests/domains/natural/chemistry/ChemistryTests.cpp)
   target_link_libraries(ChemistryTests PRIVATE InfinitesiaChemistry doctest::doctest)

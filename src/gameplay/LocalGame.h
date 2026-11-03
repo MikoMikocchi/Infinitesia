@@ -6,6 +6,7 @@
 #include "gameplay/commands/CommandRegistry.h"
 #include "gameplay/content/GameContent.h"
 #include "gameplay/work/WorkSystem.h"
+#include "simulation/runtime/SimulationRuntime.h"
 #include "world/Grid.h"
 #include "world/TerrainSource.h"
 
@@ -50,6 +51,9 @@ namespace Infinitesia
         WorkSystem& GetWorkSystem() { return m_workSystem; }
         const CommandRegistry& GetCommands() const { return m_commands; }
         const Simulation& GetSimulation() const { return m_simulation; }
+        // Systems registered here run on every fixed tick the simulation produces.
+        SimulationRuntime& GetRuntime() { return m_runtime; }
+        const SimulationRuntime& GetRuntime() const { return m_runtime; }
         // Where the first worker stands (and the first tree, if one was placed).
         const StartingCells& GetStartingCells() const { return m_start; }
 
@@ -62,5 +66,7 @@ namespace Infinitesia
         WorkSystem m_workSystem;
         CommandRegistry m_commands;
         Simulation m_simulation;
+        // After the simulation, which it listens to.
+        SimulationRuntime m_runtime;
     };
 }
