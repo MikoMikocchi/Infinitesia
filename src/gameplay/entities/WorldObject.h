@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gameplay/content/ContentTypes.h"
 #include "gameplay/items/Inventory.h"
 #include "gameplay/items/Item.h"
 #include "world/Grid.h"
@@ -9,13 +10,6 @@
 
 namespace Infinitesia
 {
-    enum class WorldObjectType
-    {
-        Worker,
-        Tree,
-        Item
-    };
-
     struct WorldObjectId
     {
         std::uint64_t value;
@@ -25,19 +19,23 @@ namespace Infinitesia
 
     struct WorldObjectPlacement
     {
-        WorldObjectType type;
+        const ObjectKindDef* kind;
         GridCell cell;
         std::optional<Item> item = std::nullopt;
     };
 
+    // An object of the world. Its kind (from the GameContent, which must outlive it) says
+    // what it is and what can be done with it.
     struct WorldObject
     {
         WorldObjectId id;
-        WorldObjectType type;
+        const ObjectKindDef* kind;
         GridCell cell;
         WorldPosition position;
         std::optional<Item> item;
         Inventory inventory;
+
+        bool Is(ObjectAbility ability) const { return kind->Has(ability); }
     };
 
     struct WorldObjectSize
@@ -46,5 +44,5 @@ namespace Infinitesia
         float height;
     };
 
-    WorldObjectSize GetWorldObjectSize(WorldObjectType type, float cellSize);
+    WorldObjectSize GetWorldObjectSize(const ObjectKindDef& kind, float cellSize);
 }

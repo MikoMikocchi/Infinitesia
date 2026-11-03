@@ -9,50 +9,31 @@ namespace Infinitesia
 {
     namespace
     {
-        void ValidateObjectState(WorldObjectType type, const std::optional<Item>& item)
+        void ValidateObjectState(const ObjectKindDef& kind, const std::optional<Item>& item)
         {
-            switch (type)
+            if (kind.carriesItem && !item.has_value())
             {
-            case WorldObjectType::Worker:
-            case WorldObjectType::Tree:
-                if (item.has_value())
-                {
-                    throw std::invalid_argument("Non-item world objects cannot contain an item.");
-                }
-                return;
-            case WorldObjectType::Item:
-                if (!item.has_value())
-                {
-                    throw std::invalid_argument("World item is invalid.");
-                }
-                return;
+                throw std::invalid_argument("World item is invalid.");
             }
-            throw std::invalid_argument("World object has an unsupported type.");
+            if (!kind.carriesItem && item.has_value())
+            {
+                throw std::invalid_argument("Non-item world objects cannot contain an item.");
+            }
         }
     }
 
-    WorldObjectSize GetWorldObjectSize(WorldObjectType type, float cellSize)
+    WorldObjectSize GetWorldObjectSize(const ObjectKindDef& kind, float cellSize)
     {
-        switch (type)
-        {
-        case WorldObjectType::Worker:
-            return { cellSize * 0.62f, cellSize * 1.2f };
-        case WorldObjectType::Tree:
-            return { cellSize * 0.98f, cellSize * 1.95f };
-        case WorldObjectType::Item:
-            return { cellSize * 0.78f, cellSize * 0.36f };
-        }
-
-        throw std::invalid_argument("World object has an unsupported type.");
+        return { cellSize * kind.widthInCells, cellSize * kind.heightInCells };
     }
 
     WorldObjectId EntityStore::AddObject(
-        WorldObjectType type,
+        const ObjectKindDef& kind,
         GridCell cell,
         const Grid& grid,
         std::optional<Item> item)
     {
-        ValidateObjectState(type, item);
+        ValidateObjectState(kind, item);
         if (!grid.Contains(cell))
         {
             throw std::out_of_range("World object cell is outside the grid.");
@@ -69,7 +50,7 @@ namespace Infinitesia
         const WorldObjectId id{ m_nextObjectId++ };
         m_objects.push_back({
             id,
-            type,
+            &kind,
             cell,
             grid.CellToSurface(cell),
             std::move(item),
@@ -80,10 +61,10 @@ namespace Infinitesia
 
     WorldObjectId EntityStore::TransformObject(
         WorldObjectId id,
-        WorldObjectType type,
+        const ObjectKindDef& kind,
         std::optional<Item> item)
     {
-        ValidateObjectState(type, item);
+        ValidateObjectState(kind, item);
 
         WorldObject* object = FindMutableObject(id);
         if (object == nullptr)
@@ -96,7 +77,7 @@ namespace Infinitesia
         }
 
         object->id = { m_nextObjectId++ };
-        object->type = type;
+        object->kind = &kind;
         object->item = std::move(item);
         return object->id;
     }
@@ -118,7 +99,7 @@ namespace Infinitesia
     {
         WorldObject* worker = FindMutableObject(workerId);
         return worker != nullptr &&
-               worker->type == WorldObjectType::Worker &&
+               worker->Is(ObjectAbility::Worker) &&
                worker->inventory.TryAdd(item);
     }
 

@@ -136,7 +136,7 @@ namespace Infinitesia
             }
 
             const Item& item = *slots[index];
-            if (item.GetType() == ItemType::Logs)
+            if (item.GetDef().visual == ItemVisual::Logs)
             {
                 const Texture2D& texture = assets.GetTexture("items/Log");
                 const float scale = std::min(
@@ -179,7 +179,7 @@ namespace Infinitesia
 
             if (CheckCollisionPointRec(mousePosition, slotBounds))
             {
-                hoveredItemName = item.GetType() == ItemType::Logs ? "Logs" : "Item";
+                hoveredItemName = item.GetDef().name.c_str();
             }
         }
 

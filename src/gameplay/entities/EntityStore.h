@@ -16,13 +16,13 @@ namespace Infinitesia
     {
     public:
         WorldObjectId AddObject(
-            WorldObjectType type,
+            const ObjectKindDef& kind,
             GridCell cell,
             const Grid& grid,
             std::optional<Item> item = std::nullopt);
         WorldObjectId TransformObject(
             WorldObjectId id,
-            WorldObjectType type,
+            const ObjectKindDef& kind,
             std::optional<Item> item = std::nullopt);
         bool RemoveObject(WorldObjectId id);
         bool TryAddToInventory(WorldObjectId worker, const Item& item);

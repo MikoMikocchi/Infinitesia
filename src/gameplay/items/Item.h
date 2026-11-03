@@ -1,22 +1,21 @@
 #pragma once
 
+#include "gameplay/content/ContentTypes.h"
+
 namespace Infinitesia
 {
-    enum class ItemType
-    {
-        Logs
-    };
-
+    // A stack of one kind of item. The definition belongs to the GameContent, which must
+    // outlive every item.
     class Item
     {
     public:
-        Item(ItemType type, int quantity);
+        Item(const ItemDef& def, int quantity);
 
-        ItemType GetType() const;
+        const ItemDef& GetDef() const;
         int GetQuantity() const;
 
     private:
-        ItemType m_type;
+        const ItemDef* m_def;
         int m_quantity;
     };
 }

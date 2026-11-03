@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/ApplicationConfig.h"
+#include "gameplay/content/GameContent.h"
 #include "presentation/assets/TextureAssetManager.h"
 #include "foundation/LoadProgress.h"
 #include "foundation/Simulation.h"
@@ -46,6 +47,8 @@ namespace Infinitesia
         void DrawLoadingScreen() const;
 
         ApplicationConfig m_config;
+        // Declared before the world: objects and items point into it.
+        std::shared_ptr<const GameContent> m_content;
         Grid m_grid;
         GameWorld m_world;
         Simulation m_simulation;

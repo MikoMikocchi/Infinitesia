@@ -30,7 +30,7 @@ namespace Infinitesia
         {
             const WorldObject* selectedObject = m_world.entities.FindObject(*selectedObjectId);
             if (selectedObject != nullptr &&
-                selectedObject->type == WorldObjectType::Worker &&
+                selectedObject->Is(ObjectAbility::Worker) &&
                 selectedObject->cell.y == m_selectedLevel)
             {
                 pathOrigin = selectedObject->position;
@@ -63,7 +63,7 @@ namespace Infinitesia
 
     void Application::DrawDebugOverlay()
     {
-        std::optional<WorldObjectType> selectedObjectType;
+        const ObjectKindDef* selectedObjectKind = nullptr;
         std::optional<WorkerActivity> workerActivity;
         float workProgress = 0.0f;
         const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
@@ -72,8 +72,8 @@ namespace Infinitesia
             const WorldObject* selectedObject = m_world.entities.FindObject(*selectedObjectId);
             if (selectedObject != nullptr)
             {
-                selectedObjectType = selectedObject->type;
-                if (selectedObject->type == WorldObjectType::Worker)
+                selectedObjectKind = selectedObject->kind;
+                if (selectedObject->Is(ObjectAbility::Worker))
                 {
                     const WorkerActivity activity = m_workSystem.GetActivity(selectedObject->id);
                     workerActivity = activity;
@@ -93,7 +93,7 @@ namespace Infinitesia
             m_grid.GetHeight(),
             m_grid.GetDepth(),
             m_worldInteraction.GetHoveredCell(),
-            selectedObjectType,
+            selectedObjectKind,
             workerActivity,
             workProgress,
             m_showPathDebug,

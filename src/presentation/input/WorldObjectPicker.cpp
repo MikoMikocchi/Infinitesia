@@ -23,7 +23,7 @@ namespace Infinitesia
             }
 
             const WorldPosition center = object.position;
-            const WorldObjectSize size = GetWorldObjectSize(object.type, grid.GetCellSize());
+            const WorldObjectSize size = GetWorldObjectSize(*object.kind, grid.GetCellSize());
             const BoundingBox bounds{
                 { center.x - size.width * 0.5f, center.y, center.z - size.width * 0.5f },
                 { center.x + size.width * 0.5f, center.y + size.height, center.z + size.width * 0.5f }

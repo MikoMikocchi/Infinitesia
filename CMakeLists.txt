@@ -87,9 +87,11 @@ infinitesia_add_module(InfinitesiaGeology DIRS geology
 # Where the source tree keeps the catalogs; tools and tests that run from a build
 # directory read them from here (the game reads the copy next to its executable).
 set(INFINITESIA_GEOLOGY_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/geology")
+set(INFINITESIA_GAMEPLAY_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/gameplay")
 
 infinitesia_add_module(InfinitesiaWorld DIRS world PUBLIC InfinitesiaPlanet InfinitesiaGeology)
-infinitesia_add_module(InfinitesiaGameplay DIRS gameplay PUBLIC InfinitesiaWorld)
+infinitesia_add_module(InfinitesiaGameplay DIRS gameplay
+  PUBLIC InfinitesiaWorld PRIVATE nlohmann_json::nlohmann_json)
 
 file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
@@ -167,7 +169,9 @@ if (BUILD_TESTING)
 
   add_executable(WorldTests tests/WorldTests.cpp)
   target_link_libraries(WorldTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet doctest::doctest)
-  target_compile_definitions(WorldTests PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
+  target_compile_definitions(WorldTests PRIVATE
+    INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}"
+    INFINITESIA_GAMEPLAY_ASSET_DIR="${INFINITESIA_GAMEPLAY_ASSET_DIR}")
   infinitesia_enable_warnings(WorldTests)
   doctest_discover_tests(WorldTests)
 
@@ -181,6 +185,12 @@ if (BUILD_TESTING)
   target_compile_definitions(GeologyTests PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
   infinitesia_enable_warnings(GeologyTests)
   doctest_discover_tests(GeologyTests)
+
+  add_executable(ContentTests tests/ContentTests.cpp)
+  target_link_libraries(ContentTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet doctest::doctest)
+  target_compile_definitions(ContentTests PRIVATE INFINITESIA_GAMEPLAY_ASSET_DIR="${INFINITESIA_GAMEPLAY_ASSET_DIR}")
+  infinitesia_enable_warnings(ContentTests)
+  doctest_discover_tests(ContentTests)
 
   add_executable(ChemistryTests tests/ChemistryTests.cpp)
   target_link_libraries(ChemistryTests PRIVATE InfinitesiaChemistry doctest::doctest)

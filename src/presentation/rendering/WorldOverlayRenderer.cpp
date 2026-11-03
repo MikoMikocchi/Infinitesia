@@ -26,7 +26,7 @@ namespace Infinitesia
             void DrawObjectOutline(const Grid& grid, const WorldObject& object, Color color)
             {
                 const WorldPosition center = object.position;
-                const WorldObjectSize size = GetWorldObjectSize(object.type, grid.GetCellSize());
+                const WorldObjectSize size = GetWorldObjectSize(*object.kind, grid.GetCellSize());
 
                 DrawBoundingBox(
                     {

@@ -68,7 +68,7 @@ namespace Infinitesia
 
                 const WorldPosition center = object.position;
                 const float cellSize = grid.GetCellSize();
-                if (object.item->GetType() != ItemType::Logs)
+                if (object.item->GetDef().visual != ItemVisual::Logs)
                 {
                     DrawCube(
                         { center.x, center.y + cellSize * 0.16f, center.z },
@@ -126,7 +126,7 @@ namespace Infinitesia
                 const WorldPosition cellCenter = object.position;
                 const float cellSize = grid.GetCellSize();
 
-                if (object.type == WorldObjectType::Worker)
+                if (object.kind->visual == ObjectVisual::Worker)
                 {
                     DrawLitMesh(
                         cylinderMesh,
@@ -143,7 +143,7 @@ namespace Infinitesia
                     return;
                 }
 
-                if (object.type == WorldObjectType::Tree)
+                if (object.kind->visual == ObjectVisual::Tree)
                 {
                     DrawLitMesh(
                         cylinderMesh,
@@ -166,7 +166,7 @@ namespace Infinitesia
             void DrawObjectShadow(const Grid& grid, const WorldObject& object)
             {
                 const float cellSize = grid.GetCellSize();
-                const WorldObjectSize size = GetWorldObjectSize(object.type, cellSize);
+                const WorldObjectSize size = GetWorldObjectSize(*object.kind, cellSize);
                 const float shadowScale = 1.0f + size.height * 0.18f;
                 const float shadowOffset = size.height * 0.12f;
                 const float halfWidth = cellSize * shadowScale * 0.5f;
@@ -174,7 +174,7 @@ namespace Infinitesia
                 const float centerX = object.position.x + shadowOffset * 0.6f;
                 const float centerY = object.position.y + kShadowHeight;
                 const float centerZ = object.position.z - shadowOffset * 0.45f;
-                const unsigned char opacity = object.type == WorldObjectType::Tree ? 150 : 110;
+                const unsigned char opacity = static_cast<unsigned char>(object.kind->shadowOpacity);
 
                 rlBegin(RL_QUADS);
                     rlColor4ub(255, 255, 255, opacity);

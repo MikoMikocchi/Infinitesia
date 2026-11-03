@@ -22,7 +22,7 @@ namespace Infinitesia
 
     bool ChopTreeCommand::IsApplicable(const WorldObject& target) const
     {
-        return target.type == WorldObjectType::Tree;
+        return target.Is(ObjectAbility::Choppable);
     }
 
     std::string ChopTreeCommand::GetDisabledReason(
@@ -40,7 +40,7 @@ namespace Infinitesia
         }
 
         const WorldObject* worker = world.FindObject(*actor);
-        if (worker == nullptr || worker->type != WorldObjectType::Worker)
+        if (worker == nullptr || !worker->Is(ObjectAbility::Worker))
         {
             return "Selected worker is no longer available";
         }

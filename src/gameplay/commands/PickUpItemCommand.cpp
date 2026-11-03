@@ -14,7 +14,7 @@ namespace Infinitesia
 
     bool PickUpItemCommand::IsApplicable(const WorldObject& target) const
     {
-        return target.type == WorldObjectType::Item;
+        return target.Is(ObjectAbility::Pickable);
     }
 
     std::string PickUpItemCommand::GetDisabledReason(
@@ -32,7 +32,7 @@ namespace Infinitesia
         }
 
         const WorldObject* worker = world.FindObject(*actor);
-        if (worker == nullptr || worker->type != WorldObjectType::Worker)
+        if (worker == nullptr || !worker->Is(ObjectAbility::Worker))
         {
             return "Selected worker is no longer available";
         }
@@ -54,7 +54,7 @@ namespace Infinitesia
         }
 
         const WorldObject* worker = world.entities.FindObject(*actor);
-        if (worker == nullptr || worker->type != WorldObjectType::Worker)
+        if (worker == nullptr || !worker->Is(ObjectAbility::Worker))
         {
             return { false, "Selected worker is no longer available" };
         }

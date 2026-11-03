@@ -8,6 +8,7 @@
 #include "world/Grid.h"
 #include "world/PlanetTerrainSource.h"
 #include "gameplay/GameWorld.h"
+#include "gameplay/content/GameContent.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -24,6 +25,13 @@ namespace
     constexpr int kHeight = 192;
     constexpr int kDepth = 256;
     constexpr int kAnchorLevel = 112;
+
+    const ObjectKindDef& WorkerKind()
+    {
+        static const std::shared_ptr<const GameContent> content =
+            GameContent::LoadFromDirectory(INFINITESIA_GAMEPLAY_ASSET_DIR);
+        return content->GetObjectKind("object.worker");
+    }
 
     // A coarse planet keeps these tests fast in unoptimized builds.
     const PlanetMap& SharedMap()
@@ -197,7 +205,7 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain")
     const Grid grid(GridConfig{ kWidth, kHeight, kDepth, 1.0f });
 
     const GridCell center{ kWidth / 2, kAnchorLevel, kDepth / 2 };
-    GameWorld world(grid, { { WorldObjectType::Worker, center } }, settlement.source);
+    GameWorld world(grid, { { &WorkerKind(), center } }, settlement.source);
 
     world.terrain.RequestChunksAround(center, 2, 1);
     Require(world.terrain.GeneratePendingChunks(1000) > 0, "No chunks were generated.");
@@ -227,7 +235,7 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain")
 TEST_CASE("TheOriginalNoiseWorldStillWorks")
 {
     const Grid grid(GridConfig{ 64, 32, 64, 1.0f });
-    GameWorld world(grid, { { WorldObjectType::Worker, { 32, 31, 32 } } }, 7u);
+    GameWorld world(grid, { { &WorkerKind(), { 32, 31, 32 } } }, 7u);
     world.terrain.RequestChunksAround({ 32, 31, 32 }, 1, 1);
     world.terrain.GeneratePendingChunks(100);
 
@@ -236,7 +244,7 @@ TEST_CASE("TheOriginalNoiseWorldStillWorks")
     const Block* deep = world.terrain.GetBlock({ 32, 5, 32 });
     Require(deep != nullptr && deep->type == BlockType::Stone, "The noise world is not stone below the topsoil.");
 
-    GameWorld again(grid, { { WorldObjectType::Worker, { 32, 31, 32 } } }, 7u);
+    GameWorld again(grid, { { &WorkerKind(), { 32, 31, 32 } } }, 7u);
     again.terrain.RequestChunksAround({ 32, 31, 32 }, 1, 1);
     again.terrain.GeneratePendingChunks(100);
     Require(again.terrain.GetBlock({ 33, 31, 33 })->type == world.terrain.GetBlock({ 33, 31, 33 })->type,
@@ -336,7 +344,7 @@ TEST_CASE("WorldChunksCarryTheRockOfEachBlock")
     const auto source = MakeGeologicalSource(LandAnchor());
     const Grid grid(GridConfig{ kWidth, kHeight, kDepth, 1.0f });
     const GridCell center{ kWidth / 2, kAnchorLevel, kDepth / 2 };
-    GameWorld world(grid, { { WorldObjectType::Worker, center } }, source);
+    GameWorld world(grid, { { &WorkerKind(), center } }, source);
     Require(world.terrain.GetCatalog() == source->Catalog() && world.terrain.GetCatalog() != nullptr, "The world does not expose the catalog.");
 
     world.terrain.RequestChunksAround(center, 1, 1);

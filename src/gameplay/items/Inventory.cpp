@@ -24,9 +24,9 @@ namespace Infinitesia
         int remaining = item.GetQuantity();
         for (const std::optional<Item>& slot : m_slots)
         {
-            if (slot.has_value() && slot->GetType() == item.GetType())
+            if (slot.has_value() && &slot->GetDef() == &item.GetDef())
             {
-                remaining -= kMaxStackSize - slot->GetQuantity();
+                remaining -= item.GetDef().maxStack - slot->GetQuantity();
                 if (remaining <= 0)
                 {
                     return true;
@@ -38,7 +38,7 @@ namespace Infinitesia
         {
             if (!slot.has_value())
             {
-                remaining -= kMaxStackSize;
+                remaining -= item.GetDef().maxStack;
                 if (remaining <= 0)
                 {
                     return true;
@@ -58,13 +58,13 @@ namespace Infinitesia
         int remaining = item.GetQuantity();
         for (std::optional<Item>& slot : m_slots)
         {
-            if (slot.has_value() && slot->GetType() == item.GetType() &&
-                slot->GetQuantity() < kMaxStackSize)
+            if (slot.has_value() && &slot->GetDef() == &item.GetDef() &&
+                slot->GetQuantity() < item.GetDef().maxStack)
             {
                 const int added = std::min(
                     remaining,
-                    kMaxStackSize - slot->GetQuantity());
-                slot = Item(item.GetType(), slot->GetQuantity() + added);
+                    item.GetDef().maxStack - slot->GetQuantity());
+                slot = Item(item.GetDef(), slot->GetQuantity() + added);
                 remaining -= added;
                 if (remaining == 0)
                 {
@@ -77,8 +77,8 @@ namespace Infinitesia
         {
             if (!slot.has_value())
             {
-                const int added = std::min(remaining, kMaxStackSize);
-                slot = Item(item.GetType(), added);
+                const int added = std::min(remaining, item.GetDef().maxStack);
+                slot = Item(item.GetDef(), added);
                 remaining -= added;
                 if (remaining == 0)
                 {

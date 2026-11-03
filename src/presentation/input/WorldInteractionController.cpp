@@ -18,7 +18,7 @@ namespace Infinitesia
         if (m_characterProfilePanel.IsOpen())
         {
             const WorldObject* character = world.entities.FindObject(m_characterProfilePanel.GetCharacter());
-            if (character == nullptr || character->type != WorldObjectType::Worker)
+            if (character == nullptr || !character->Is(ObjectAbility::Worker))
             {
                 m_characterProfilePanel.Close();
             }
@@ -62,7 +62,7 @@ namespace Infinitesia
                 actor.reset();
                 m_selectedObject.reset();
             }
-            else if (selectedObject->type != WorldObjectType::Worker)
+            else if (!selectedObject->Is(ObjectAbility::Worker))
             {
                 actor.reset();
             }
@@ -93,7 +93,7 @@ namespace Infinitesia
                     return std::string("Select a worker first");
                 }
                 const WorldObject* worker = world.entities.FindObject(*actor);
-                if (worker == nullptr || worker->type != WorldObjectType::Worker)
+                if (worker == nullptr || !worker->Is(ObjectAbility::Worker))
                 {
                     return std::string("Selected worker is no longer available");
                 }
@@ -137,7 +137,7 @@ namespace Infinitesia
         if (m_hoveredObject.has_value())
         {
             const WorldObject* hoveredObject = world.entities.FindObject(*m_hoveredObject);
-            if (hoveredObject != nullptr && hoveredObject->type == WorldObjectType::Worker)
+            if (hoveredObject != nullptr && hoveredObject->Is(ObjectAbility::Worker))
             {
                 profileTarget = hoveredObject->id;
             }
@@ -222,7 +222,7 @@ namespace Infinitesia
             const WorldObject* clickedObject = m_hoveredObject.has_value()
                 ? world.entities.FindObject(*m_hoveredObject)
                 : nullptr;
-            if (clickedObject != nullptr && clickedObject->type == WorldObjectType::Worker)
+            if (clickedObject != nullptr && clickedObject->Is(ObjectAbility::Worker))
             {
                 const double clickTime = GetTime();
                 constexpr double kDoubleClickInterval = 0.35;
@@ -274,7 +274,7 @@ namespace Infinitesia
         if (m_characterProfilePanel.IsOpen())
         {
             const WorldObject* character = world.FindObject(m_characterProfilePanel.GetCharacter());
-            if (character != nullptr && character->type == WorldObjectType::Worker)
+            if (character != nullptr && character->Is(ObjectAbility::Worker))
             {
                 m_characterProfilePanel.Draw(
                     *character,

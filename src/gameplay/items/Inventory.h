@@ -12,7 +12,6 @@ namespace Infinitesia
     {
     public:
         static constexpr std::size_t kInitialSlotCount = 4;
-        static constexpr int kMaxStackSize = 64;
 
         const std::vector<std::optional<Item>>& GetSlots() const;
         void AddSlots(std::size_t count);

@@ -1,0 +1,5 @@
+{
+  "items": [
+    { "id": "item.logs", "name": "Logs", "maxStack": 64, "visual": "logs" }
+  ]
+}

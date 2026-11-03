@@ -12,7 +12,7 @@ namespace Infinitesia
     {
         for (const WorldObjectPlacement& placement : initialObjects)
         {
-            AddObject(placement.type, placement.cell, grid, placement.item);
+            AddObject(*placement.kind, placement.cell, grid, placement.item);
         }
     }
 
@@ -24,12 +24,12 @@ namespace Infinitesia
     {
         for (const WorldObjectPlacement& placement : initialObjects)
         {
-            AddObject(placement.type, placement.cell, grid, placement.item);
+            AddObject(*placement.kind, placement.cell, grid, placement.item);
         }
     }
 
     WorldObjectId GameWorld::AddObject(
-        WorldObjectType type,
+        const ObjectKindDef& kind,
         GridCell cell,
         const Grid& grid,
         std::optional<Item> item)
@@ -38,6 +38,6 @@ namespace Infinitesia
         {
             terrain.EnsureChunkContaining(cell);
         }
-        return entities.AddObject(type, cell, grid, std::move(item));
+        return entities.AddObject(kind, cell, grid, std::move(item));
     }
 }

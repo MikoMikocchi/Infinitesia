@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gameplay/content/ContentTypes.h"
 #include "world/Grid.h"
 #include "gameplay/work/WorkSystem.h"
 
@@ -18,7 +19,7 @@ namespace Infinitesia
         int gridHeight;
         int gridDepth;
         std::optional<GridCell> hoveredCell;
-        std::optional<WorldObjectType> selectedObjectType;
+        const ObjectKindDef* selectedObjectKind; // null when nothing is selected
         std::optional<WorkerActivity> workerActivity;
         float workProgress;
         bool pathDebugEnabled;

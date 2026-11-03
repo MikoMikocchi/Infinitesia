@@ -4,8 +4,8 @@
 
 namespace Infinitesia
 {
-    Item::Item(ItemType type, int quantity)
-        : m_type(type),
+    Item::Item(const ItemDef& def, int quantity)
+        : m_def(&def),
           m_quantity(quantity)
     {
         if (quantity <= 0)
@@ -14,9 +14,9 @@ namespace Infinitesia
         }
     }
 
-    ItemType Item::GetType() const
+    const ItemDef& Item::GetDef() const
     {
-        return m_type;
+        return *m_def;
     }
 
     int Item::GetQuantity() const

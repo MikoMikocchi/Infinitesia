@@ -68,17 +68,9 @@ namespace Infinitesia
             DrawText(buffer, padding, padding + 6 * lineHeight, fontSize, GOLD);
         }
 
-        if (data.selectedObjectType.has_value())
+        if (data.selectedObjectKind != nullptr)
         {
-            const char* typeName = "Item";
-            if (*data.selectedObjectType == WorldObjectType::Worker)
-            {
-                typeName = "Worker";
-            }
-            else if (*data.selectedObjectType == WorldObjectType::Tree)
-            {
-                typeName = "Tree";
-            }
+            const char* typeName = data.selectedObjectKind->name.c_str();
             std::snprintf(buffer, sizeof(buffer), "Selected: %s", typeName);
             DrawText(buffer, padding, padding + 7 * lineHeight, fontSize, GREEN);
 

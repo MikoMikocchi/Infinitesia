@@ -23,12 +23,32 @@ namespace Infinitesia
     {
         // Per-step durations of the last load, in the working directory.
         constexpr const char* kLoadProfilePath = "loading_profile.txt";
+
+        // The items and object kinds ship next to the executable.
+        std::shared_ptr<const GameContent> LoadGameContent()
+        {
+            return GameContent::LoadFromDirectory(
+                std::filesystem::path(GetApplicationDirectory()) / "assets" / "gameplay");
+        }
+
+        std::vector<WorldObjectPlacement> ToPlacements(const GameContent& content,
+                                                       const std::vector<ObjectSpawn>& spawns)
+        {
+            std::vector<WorldObjectPlacement> placements;
+            placements.reserve(spawns.size());
+            for (const ObjectSpawn& spawn : spawns)
+            {
+                placements.push_back({ &content.GetObjectKind(spawn.kind), spawn.cell });
+            }
+            return placements;
+        }
     }
 
     Application::Application(ApplicationConfig config)
         : m_config(std::move(config)),
+          m_content(LoadGameContent()),
           m_grid(m_config.grid),
-          m_world(m_grid, m_config.initialWorldObjects, m_config.worldSeed),
+          m_world(m_grid, ToPlacements(*m_content, m_config.initialWorldObjects), m_config.worldSeed),
           m_simulation(m_config.simulationTicksPerSecond),
           m_workSystem(m_config.worker),
           m_worldRenderer(m_config.camera),
@@ -101,7 +121,7 @@ namespace Infinitesia
             return true;
         };
         std::vector<WorldObjectPlacement> objects{
-            { WorldObjectType::Worker, { centerX, level, centerZ } }
+            { &m_content->GetObjectKind("object.worker"), { centerX, level, centerZ } }
         };
         for (int radius = 3; radius <= 16 && objects.size() < 2; ++radius)
         {
@@ -112,7 +132,7 @@ namespace Infinitesia
                     if (std::max(std::abs(dx), std::abs(dz)) == radius &&
                         source->SurfaceLevelAt(centerX + dx, centerZ + dz) == level && reachable(dx, dz))
                     {
-                        objects.push_back({ WorldObjectType::Tree, { centerX + dx, level, centerZ + dz } });
+                        objects.push_back({ &m_content->GetObjectKind("object.tree"), { centerX + dx, level, centerZ + dz } });
                     }
                 }
             }

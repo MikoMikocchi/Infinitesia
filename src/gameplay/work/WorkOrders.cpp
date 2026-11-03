@@ -22,13 +22,13 @@ namespace Infinitesia
         const Grid& grid)
     {
         const WorldObject* worker = world.entities.FindObject(workerId);
-        if (worker == nullptr || worker->type != WorldObjectType::Worker)
+        if (worker == nullptr || !worker->Is(ObjectAbility::Worker))
         {
             return WorkOrderResult::InvalidWorker;
         }
 
         const WorldObject* tree = world.entities.FindObject(treeId);
-        if (tree == nullptr || tree->type != WorldObjectType::Tree)
+        if (tree == nullptr || !tree->Is(ObjectAbility::Choppable))
         {
             return WorkOrderResult::InvalidTarget;
         }
@@ -93,7 +93,7 @@ namespace Infinitesia
         const Grid& grid)
     {
         const WorldObject* worker = world.entities.FindObject(workerId);
-        if (worker == nullptr || worker->type != WorldObjectType::Worker)
+        if (worker == nullptr || !worker->Is(ObjectAbility::Worker))
         {
             return WorkOrderResult::InvalidWorker;
         }
@@ -167,7 +167,7 @@ namespace Infinitesia
         const Grid& grid)
     {
         const WorldObject* worker = world.entities.FindObject(workerId);
-        if (worker == nullptr || worker->type != WorldObjectType::Worker)
+        if (worker == nullptr || !worker->Is(ObjectAbility::Worker))
         {
             return WorkOrderResult::InvalidWorker;
         }

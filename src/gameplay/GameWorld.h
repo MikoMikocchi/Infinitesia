@@ -25,7 +25,7 @@ namespace Infinitesia
 
         // Adds an object and makes sure the terrain under it exists.
         WorldObjectId AddObject(
-            WorldObjectType type,
+            const ObjectKindDef& kind,
             GridCell cell,
             const Grid& grid,
             std::optional<Item> item = std::nullopt);

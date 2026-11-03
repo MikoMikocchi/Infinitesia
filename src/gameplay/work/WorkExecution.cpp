@@ -1,4 +1,4 @@
-﻿#include "gameplay/work/WorkSystem.h"
+#include "gameplay/work/WorkSystem.h"
 #include "gameplay/work/WorkMovement.h"
 #include "gameplay/work/WorkUtils.h"
 
@@ -24,9 +24,9 @@ namespace Infinitesia
             const Block* targetBlock = m_orders[index].type == WorkType::DigBlock
                 ? world.terrain.GetBlock(m_orders[index].targetCell)
                 : nullptr;
-            if (!orderIsValid || worker == nullptr || worker->type != WorldObjectType::Worker ||
+            if (!orderIsValid || worker == nullptr || !worker->Is(ObjectAbility::Worker) ||
                 (m_orders[index].type == WorkType::ChopTree &&
-                 (targetObject == nullptr || targetObject->type != WorldObjectType::Tree)) ||
+                 (targetObject == nullptr || !targetObject->Is(ObjectAbility::Choppable))) ||
                 (m_orders[index].type == WorkType::DigBlock &&
                  (targetBlock == nullptr || targetBlock->type == BlockType::Air)))
             {
@@ -46,10 +46,11 @@ namespace Infinitesia
             {
                 if (m_orders[index].type == WorkType::ChopTree)
                 {
+                    const ChoppedResult& chopped = *targetObject->kind->chopped;
                     world.entities.TransformObject(
                         *m_orders[index].targetObject,
-                        WorldObjectType::Item,
-                        Item{ ItemType::Logs, m_config.logsPerTree });
+                        *chopped.becomes,
+                        Item{ *chopped.item, m_config.logsPerTree });
                 }
                 else
                 {
