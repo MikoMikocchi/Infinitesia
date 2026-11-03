@@ -11,13 +11,12 @@
 #include "presentation/rendering/WorldRenderer.h"
 #include "presentation/ui/DebugOverlay.h"
 #include "presentation/ui/PlanetViewer.h"
-#include "gameplay/commands/CommandRegistry.h"
+#include "gameplay/LocalGame.h"
 #include "planet/region/SettlementTerrain.h"
-#include "world/Grid.h"
-#include "gameplay/work/WorkSystem.h"
 
 #include <future>
 #include <memory>
+#include <optional>
 
 namespace Infinitesia
 {
@@ -47,13 +46,9 @@ namespace Infinitesia
         void DrawLoadingScreen() const;
 
         ApplicationConfig m_config;
-        // Declared before the world: objects and items point into it.
         std::shared_ptr<const GameContent> m_content;
-        Grid m_grid;
-        GameWorld m_world;
-        Simulation m_simulation;
-        WorkSystem m_workSystem;
-        CommandRegistry m_commands;
+        // The founded settlement; empty until the player founds one.
+        std::optional<LocalGame> m_game;
         TextureAssetManager m_textureAssets;
         WorldRenderer m_worldRenderer;
         CameraController m_cameraController;
@@ -66,7 +61,6 @@ namespace Infinitesia
         LoadProgress m_loadProgress;
         std::future<std::unique_ptr<PlanetViewer>> m_planetLoad;
         Screen m_screen = Screen::Planet;
-        bool m_settlementFounded = false;
         bool m_exitRequested = false;
         int m_devFramesInLocalScreen = 0;
         GridCell m_chunkViewCenter{};

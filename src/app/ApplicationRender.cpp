@@ -23,25 +23,26 @@ namespace Infinitesia
 
     void Application::RenderLocal()
     {
+        LocalGame& game = *m_game;
         WorldPosition pathOrigin{};
         std::vector<GridCell> debugPath;
         const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
         if (m_showPathDebug && selectedObjectId.has_value())
         {
-            const WorldObject* selectedObject = m_world.entities.FindObject(*selectedObjectId);
+            const WorldObject* selectedObject = game.GetWorld().entities.FindObject(*selectedObjectId);
             if (selectedObject != nullptr &&
                 selectedObject->Is(ObjectAbility::Worker) &&
                 selectedObject->cell.y == m_selectedLevel)
             {
                 pathOrigin = selectedObject->position;
-                debugPath = m_workSystem.GetRemainingPath(selectedObject->id);
+                debugPath = game.GetWorkSystem().GetRemainingPath(selectedObject->id);
             }
         }
 
         ClearBackground({ 30, 34, 39, 255 });
         m_worldRenderer.Draw(
-            m_grid,
-            m_world,
+            game.GetGrid(),
+            game.GetWorld(),
             m_worldInteraction.GetHoveredCell(),
             m_worldInteraction.GetHoveredObject(),
             selectedObjectId,
@@ -58,28 +59,29 @@ namespace Infinitesia
             RAYWHITE);
         DrawText("M: planet map", m_config.window.width - 150, 56, 16, { 139, 158, 177, 255 });
         DrawDebugOverlay();
-        m_worldInteraction.DrawOverlay(m_world.entities, m_textureAssets);
+        m_worldInteraction.DrawOverlay(game.GetWorld().entities, m_textureAssets);
     }
 
     void Application::DrawDebugOverlay()
     {
+        const LocalGame& game = *m_game;
         const ObjectKindDef* selectedObjectKind = nullptr;
         std::optional<WorkerActivity> workerActivity;
         float workProgress = 0.0f;
         const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
         if (selectedObjectId.has_value())
         {
-            const WorldObject* selectedObject = m_world.entities.FindObject(*selectedObjectId);
+            const WorldObject* selectedObject = game.GetWorld().entities.FindObject(*selectedObjectId);
             if (selectedObject != nullptr)
             {
                 selectedObjectKind = selectedObject->kind;
                 if (selectedObject->Is(ObjectAbility::Worker))
                 {
-                    const WorkerActivity activity = m_workSystem.GetActivity(selectedObject->id);
+                    const WorkerActivity activity = game.GetWorkSystem().GetActivity(selectedObject->id);
                     workerActivity = activity;
                     if (activity == WorkerActivity::Working)
                     {
-                        workProgress = m_workSystem.GetWorkProgress(selectedObject->id);
+                        workProgress = game.GetWorkSystem().GetWorkProgress(selectedObject->id);
                     }
                 }
             }
@@ -88,10 +90,10 @@ namespace Infinitesia
         m_debugOverlay.Draw({
             GetFPS(),
             m_time.GetTotalTime(),
-            m_simulation.GetTickCount(),
-            m_grid.GetWidth(),
-            m_grid.GetHeight(),
-            m_grid.GetDepth(),
+            game.GetSimulation().GetTickCount(),
+            game.GetGrid().GetWidth(),
+            game.GetGrid().GetHeight(),
+            game.GetGrid().GetDepth(),
             m_worldInteraction.GetHoveredCell(),
             selectedObjectKind,
             workerActivity,
@@ -99,8 +101,8 @@ namespace Infinitesia
             m_showPathDebug,
             m_config.window.height,
             m_worldInteraction.GetActionNotice(),
-            m_world.terrain.GetLoadedChunkCount(),
-            m_world.terrain.GetTotalChunkCount(),
+            game.GetWorld().terrain.GetLoadedChunkCount(),
+            game.GetWorld().terrain.GetTotalChunkCount(),
             m_selectedLevel
         });
     }

@@ -61,7 +61,7 @@ namespace Infinitesia
 
         double latitude = 0.0;
         double longitude = 0.0;
-        if (found != nullptr && m_planetViewer && !m_settlementFounded &&
+        if (found != nullptr && m_planetViewer && !m_game.has_value() &&
             std::sscanf(found, "%lf,%lf", &latitude, &longitude) == 2)
         {
             const RegionTerrain& terrain = m_planetViewer->GetRegionTerrain();
@@ -96,7 +96,7 @@ namespace Infinitesia
         {
             return;
         }
-        if (m_settlementFounded && IsKeyPressed(KEY_M))
+        if (m_game.has_value() && IsKeyPressed(KEY_M))
         {
             m_screen = Screen::Local;
             return;
@@ -115,22 +115,23 @@ namespace Infinitesia
             m_showPathDebug = !m_showPathDebug;
         }
 
-        AppInternal::UpdateLevelSelection(m_worldRenderer, m_grid, m_selectedLevel);
+        LocalGame& game = *m_game;
+        AppInternal::UpdateLevelSelection(m_worldRenderer, game.GetGrid(), m_selectedLevel);
 
         m_cameraController.Update(m_worldRenderer.GetCamera(), m_time.GetDeltaTime());
         m_chunkViewCenter = GetCameraGridCell(
-            m_grid,
+            game.GetGrid(),
             m_worldRenderer.GetCamera().target,
             m_selectedLevel);
         m_chunkViewCenter.y = m_selectedLevel;
-        m_chunkRenderRadius = GetChunkRenderRadius(m_worldRenderer.GetCamera(), m_grid);
+        m_chunkRenderRadius = GetChunkRenderRadius(m_worldRenderer.GetCamera(), game.GetGrid());
         // Empty cells look up to 16 levels down for ground, which can lie in the chunk below.
         const int verticalChunkRadius = 1;
-        m_world.terrain.RequestChunksAround(
+        game.GetWorld().terrain.RequestChunksAround(
             m_chunkViewCenter,
             m_chunkRenderRadius,
             verticalChunkRadius);
-        m_world.terrain.GeneratePendingChunks(kChunksGeneratedPerFrame);
+        game.GetWorld().terrain.GeneratePendingChunks(kChunksGeneratedPerFrame);
         m_worldInteraction.Update(
             {
                 GetMousePosition(),
@@ -138,11 +139,11 @@ namespace Infinitesia
                 IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
                 IsKeyPressed(KEY_ESCAPE)
             },
-            m_grid,
-            m_world,
-            m_workSystem,
+            game.GetGrid(),
+            game.GetWorld(),
+            game.GetWorkSystem(),
             m_worldRenderer.GetCamera(),
-            m_commands,
+            game.GetCommands(),
             m_config.window.width,
             m_config.window.height,
             m_selectedLevel);

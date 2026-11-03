@@ -185,6 +185,12 @@ if (BUILD_TESTING)
   infinitesia_enable_warnings(WorldTests)
   doctest_discover_tests(WorldTests)
 
+  add_executable(LocalGameTests tests/LocalGameTests.cpp)
+  target_link_libraries(LocalGameTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet doctest::doctest)
+  target_compile_definitions(LocalGameTests PRIVATE INFINITESIA_GAMEPLAY_ASSET_DIR="${INFINITESIA_GAMEPLAY_ASSET_DIR}")
+  infinitesia_enable_warnings(LocalGameTests)
+  doctest_discover_tests(LocalGameTests)
+
   add_executable(PlanetGeologyTests tests/PlanetGeologyTests.cpp)
   target_link_libraries(PlanetGeologyTests PRIVATE InfinitesiaPlanet doctest::doctest)
   infinitesia_enable_warnings(PlanetGeologyTests)

@@ -1,7 +1,5 @@
 #include "app/Application.h"
 #include "raylib.h"
-#include "gameplay/commands/ChopTreeCommand.h"
-#include "gameplay/commands/PickUpItemCommand.h"
 #include "geology/model/GeologyModel.h"
 #include "planet/PlanetLoadSteps.h"
 #include "planet/StarSystemGenerator.h"
@@ -30,44 +28,15 @@ namespace Infinitesia
             return GameContent::LoadFromDirectory(
                 std::filesystem::path(GetApplicationDirectory()) / "assets" / "gameplay");
         }
-
-        std::vector<WorldObjectPlacement> ToPlacements(const GameContent& content,
-                                                       const std::vector<ObjectSpawn>& spawns)
-        {
-            std::vector<WorldObjectPlacement> placements;
-            placements.reserve(spawns.size());
-            for (const ObjectSpawn& spawn : spawns)
-            {
-                placements.push_back({ &content.GetObjectKind(spawn.kind), spawn.cell });
-            }
-            return placements;
-        }
     }
 
     Application::Application(ApplicationConfig config)
         : m_config(std::move(config)),
           m_content(LoadGameContent()),
-          m_grid(m_config.grid),
-          m_world(m_grid, ToPlacements(*m_content, m_config.initialWorldObjects), m_config.worldSeed),
-          m_simulation(m_config.simulationTicksPerSecond),
-          m_workSystem(m_config.worker),
           m_worldRenderer(m_config.camera),
           m_cameraController(m_config.cameraControls),
-          m_chunkViewCenter{
-              m_config.grid.width / 2,
-              m_config.grid.height - 1,
-              m_config.grid.depth / 2
-          },
-          m_selectedLevel(m_config.grid.height - 1),
           m_showPathDebug(m_config.showPathDebug)
     {
-        Camera3D& camera = m_worldRenderer.GetCamera();
-        camera.position.y += m_grid.GetWorldHeight();
-        camera.target.y = m_grid.GetWorldHeight();
-
-        m_commands.Register(std::make_unique<ChopTreeCommand>(m_workSystem, m_grid));
-        m_commands.Register(std::make_unique<PickUpItemCommand>());
-
         if (m_config.camera.distance < m_config.cameraControls.minimumDistance ||
             m_config.camera.distance > m_config.cameraControls.maximumDistance ||
             m_config.camera.elevationDegrees < m_config.cameraControls.minimumElevationDegrees ||
@@ -95,60 +64,20 @@ namespace Infinitesia
             settlement, gridConfig.width, gridConfig.height, gridConfig.depth, m_config.settlementAnchorLevel,
             geology);
 
-        // The worker starts on the ground of the middle column, and a tree on the same
-        // level close by. Movement is still by level (a cell is walkable where there is
-        // a block on the worker's level), so the tree has to be reachable: every cell of
-        // the way there, east first and then south, must have ground at that level or higher.
-        const int centerX = gridConfig.width / 2;
-        const int centerZ = gridConfig.depth / 2;
-        const int level = source->SurfaceLevelAt(centerX, centerZ);
-        const auto reachable = [&](int dx, int dz)
-        {
-            for (int step = 0; step <= std::abs(dx); ++step)
-            {
-                if (source->SurfaceLevelAt(centerX + (dx < 0 ? -step : step), centerZ) < level)
-                {
-                    return false;
-                }
-            }
-            for (int step = 0; step <= std::abs(dz); ++step)
-            {
-                if (source->SurfaceLevelAt(centerX + dx, centerZ + (dz < 0 ? -step : step)) < level)
-                {
-                    return false;
-                }
-            }
-            return true;
-        };
-        std::vector<WorldObjectPlacement> objects{
-            { &m_content->GetObjectKind("object.worker"), { centerX, level, centerZ } }
-        };
-        for (int radius = 3; radius <= 16 && objects.size() < 2; ++radius)
-        {
-            for (int dz = -radius; dz <= radius && objects.size() < 2; ++dz)
-            {
-                for (int dx = -radius; dx <= radius && objects.size() < 2; ++dx)
-                {
-                    if (std::max(std::abs(dx), std::abs(dz)) == radius &&
-                        source->SurfaceLevelAt(centerX + dx, centerZ + dz) == level && reachable(dx, dz))
-                    {
-                        objects.push_back({ &m_content->GetObjectKind("object.tree"), { centerX + dx, level, centerZ + dz } });
-                    }
-                }
-            }
-        }
+        m_game.reset();
+        m_game.emplace(m_content,
+                       LocalGameConfig{ gridConfig, m_config.worker, m_config.simulationTicksPerSecond },
+                       source);
 
-        m_grid = Grid(gridConfig);
-        m_world = GameWorld(m_grid, objects, source);
-        m_workSystem = WorkSystem(m_config.worker);
-
+        const GridCell start = m_game->GetStartingCells().worker;
+        const int level = start.y;
         m_selectedLevel = level;
-        m_chunkViewCenter = { centerX, level, centerZ };
+        m_chunkViewCenter = start;
 
         // Look at the middle of the world from the usual distance and angle.
         Camera3D& camera = m_worldRenderer.GetCamera();
         const float elevation = m_config.camera.elevationDegrees * PI / 180.0f;
-        const float targetY = static_cast<float>(level + 1) * m_grid.GetCellSize();
+        const float targetY = static_cast<float>(level + 1) * m_game->GetGrid().GetCellSize();
         camera.target = { 0.0f, targetY, 0.0f };
         camera.position = {
             0.0f,
@@ -156,7 +85,6 @@ namespace Infinitesia
             m_config.camera.distance * std::cos(elevation)
         };
 
-        m_settlementFounded = true;
         m_planetViewer->SetFoundingEnabled(false);
         m_screen = Screen::Local;
     }

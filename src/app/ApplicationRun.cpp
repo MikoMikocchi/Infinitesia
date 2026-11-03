@@ -103,13 +103,9 @@ namespace Infinitesia
             while (!WindowShouldClose() && !m_exitRequested)
             {
                 m_time.Advance(GetFrameTime());
-                const std::uint64_t advancedTicks = m_simulation.AdvanceFrame(m_time.GetDeltaTime());
-                if (m_screen == Screen::Local)
+                if (m_screen == Screen::Local && m_game.has_value())
                 {
-                    for (std::uint64_t tick = 0; tick < advancedTicks; ++tick)
-                    {
-                        m_workSystem.Tick(m_world, m_grid, m_simulation.GetFixedDeltaTime());
-                    }
+                    m_game->AdvanceFrame(m_time.GetDeltaTime());
                 }
                 Update();
                 Render();
