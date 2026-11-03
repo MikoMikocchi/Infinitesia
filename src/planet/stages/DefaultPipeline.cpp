@@ -6,7 +6,8 @@ namespace Infinitesia
     // The data products of the default stages, by what they hold:
     //   tectonics  plates, crust, boundary context, surface rock
     //   terrain    elevation, slope, ocean
-    //   geology    heat flow, sediment, hotspots, provinces, epochs
+    //   geology    heat flow, sediment, hotspots, epochs, distance to ocean (layer)
+    //   provinces  province table and per-cell province ids
     //   climate    temperature, precipitation, seasons, continentality
     //   hydrology  rivers, lakes, drainage, the water balance
     //   soils      fertility and depth
@@ -19,10 +20,17 @@ namespace Infinitesia
         pipeline.Add({ "terrain", 1, { "tectonics" }, { "terrain" },
                        LoadStep::kTerrain, "Shaping terrain", RunTerrain });
         pipeline.Add({ "geology", 1, { "terrain" }, { "geology" },
-                       LoadStep::kGeology, "Mapping geological provinces", RunGeology });
+                       LoadStep::kGeology, "Mapping geology", RunGeology });
+        // Shares the geology load step: it has no bar of its own.
+        pipeline.Add({ "provinces", 1, { "geology" }, { "provinces" },
+                       nullptr, "Mapping geological provinces", RunProvinces });
         // Climate precedes hydrology so river generation can use precipitation.
-        pipeline.Add({ "climate", 1, { "terrain" }, { "climate" },
-                       LoadStep::kClimateContinentality, "Simulating climate", RunClimate });
+        pipeline.Add({ "climate.continentality", 1, { "terrain" }, { "climate.continentality" },
+                       LoadStep::kClimateContinentality, "Simulating climate", RunClimateContinentality });
+        pipeline.Add({ "climate.temperature", 1, { "terrain", "climate.continentality" }, { "climate.temperature" },
+                       LoadStep::kClimateTemperature, "Simulating climate: temperature", RunClimateTemperature });
+        pipeline.Add({ "climate.precipitation", 1, { "terrain", "climate.continentality", "climate.temperature" }, { "climate" },
+                       LoadStep::kClimatePrecipitation, "Simulating climate: precipitation", RunClimatePrecipitation });
         pipeline.Add({ "hydrology", 1, { "terrain", "climate" }, { "hydrology" },
                        LoadStep::kHydrology, "Carving rivers and lakes", RunHydrology });
         pipeline.Add({ "soils", 1, { "tectonics", "terrain", "climate", "hydrology" }, { "soils" },

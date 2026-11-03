@@ -135,6 +135,16 @@ namespace Infinitesia
             DistanceToSourcesKm(isContinentalCrust, latB, lonS, radiusKm);
         const std::vector<double> distanceToOceanKm =
             DistanceToSourcesKm(isOceanicCrust, latB, lonS, radiusKm);
+        // Handed to the provinces stage through the layer, not by a call.
+        Field<double>& distanceToOceanLayer =
+            build.data.layers.Create<double>(kDistanceToOceanLayer, latB, lonS);
+        for (int la = 0; la < latB; ++la)
+        {
+            for (int lo = 0; lo < lonS; ++lo)
+            {
+                distanceToOceanLayer.At(la, lo) = distanceToOceanKm[static_cast<std::size_t>(la) * lonS + lo];
+            }
+        }
 
         // ---- sediment cover and heat flow
         for (int la = 0; la < latB; ++la)
@@ -227,8 +237,6 @@ namespace Infinitesia
                 c.heatFlowMwPerM2 = std::clamp(heatFlow * thermalScale, 5.0, 400.0);
             }
         }
-
-        GenerateProvinces(build, distanceToOceanKm);
     }
 
 }

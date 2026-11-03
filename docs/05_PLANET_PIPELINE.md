@@ -19,12 +19,16 @@ what it provides. Adding a domain (biology, resources, population, ...) means ad
 `needs` and `provides` are names of data products, not of stages. The default ones:
 
 ```
-tectonics -> terrain -> geology
+tectonics -> terrain -> geology -> provinces
                      -> climate -> hydrology -> soils -> biomes
 ```
 
 Exact declarations are in `stages/DefaultPipeline.cpp`. A new stage names the products it reads
 ("climate", "soils") and the product it makes ("biology.vegetation").
+
+Between stages, data moves in two ways: products, which order the stages, and layers, which carry
+the data itself. `geology` writes the layer `"geology.distance_to_ocean"` (`Field<double>`) and
+`provinces` reads it, so `provinces` is the worked example of a layer handoff.
 
 ## Rules
 
@@ -65,5 +69,4 @@ domains it wants. `tests/PlanetPipelineTests.cpp` has a working example.
 - The default stages still read and write `PlanetRegion` fields directly; their reads and writes
   are declared only as coarse products. Moving individual fields into layers can happen stage by
   stage, whenever a stage is rewritten.
-- `GenerateProvinces` is part of the geology stage rather than a stage of its own.
 - No caching of stage results between runs (the fingerprint is the key to build it on).

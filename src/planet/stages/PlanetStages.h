@@ -12,11 +12,15 @@ namespace Infinitesia
     void RunTectonics(PlanetBuild& build);
     void RunTerrain(PlanetBuild& build);
     void RunGeology(PlanetBuild& build);
-    void RunClimate(PlanetBuild& build);
+    void RunProvinces(PlanetBuild& build);
+    // The climate is three stages: continentality, then temperature, then precipitation.
+    void RunClimateContinentality(PlanetBuild& build);
+    void RunClimateTemperature(PlanetBuild& build);
+    void RunClimatePrecipitation(PlanetBuild& build);
     void RunHydrology(PlanetBuild& build);
     void RunSoils(PlanetBuild& build);
     void RunBiomes(PlanetBuild& build);
 
-    // Part of the geology stage: groups the cells into provinces.
-    void GenerateProvinces(PlanetBuild& build, const std::vector<double>& distanceToOceanKm);
+    // Layer written by the geology stage: distance to the nearest oceanic crust, km per cell.
+    inline constexpr const char* kDistanceToOceanLayer = "geology.distance_to_ocean";
 }

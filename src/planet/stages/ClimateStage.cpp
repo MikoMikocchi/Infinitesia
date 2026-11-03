@@ -69,46 +69,10 @@ namespace Infinitesia
 
     using namespace GenerationDetail;
 
-    void RunClimate(PlanetBuild& build)
+    void RunClimateContinentality(PlanetBuild& build)
     {
         const int latB = build.LatBands();
         const int lonS = build.LonSegs();
-        const std::uint32_t seed = build.data.planet.GetSeed();
-        const double tilt = build.data.climate.axialTiltDegrees;
-        const double rot = build.data.climate.rotationPeriodHours;
-        const double pressKPa = build.data.climate.atmospherePressureKPa;
-        const double pressureScale =
-            std::sqrt(std::clamp(pressKPa / 101.325, 0.1, 4.0));
-        const double globalEquilK =
-            EquilibriumTempK(build.data.climate.meanIncidentFluxInEarthUnits);
-        const double greenhouse = GreenhouseK(pressKPa);
-        std::vector<std::array<double, kMonthsPerYear>> monthlyInsolation(
-            static_cast<std::size_t>(latB));
-        std::array<double, kMonthsPerYear> meanMonthlyInsolation{};
-        std::vector<double> areaWeights(static_cast<std::size_t>(latB));
-        double areaWeightSum = 0.0;
-
-        for (int latitude = 0; latitude < latB; ++latitude)
-        {
-            const double latitudeDegrees =
-                (static_cast<double>(latitude) + 0.5) / latB * 180.0 - 90.0;
-            const double areaWeight = std::max(
-                0.0,
-                std::cos(latitudeDegrees * std::numbers::pi / 180.0));
-            areaWeights[static_cast<std::size_t>(latitude)] = areaWeight;
-            areaWeightSum += areaWeight;
-            for (int month = 0; month < kMonthsPerYear; ++month)
-            {
-                const double insolation =
-                    MonthlyInsolation(latitudeDegrees, tilt, month);
-                monthlyInsolation[static_cast<std::size_t>(latitude)]
-                                 [static_cast<std::size_t>(month)] = insolation;
-                meanMonthlyInsolation[static_cast<std::size_t>(month)] +=
-                    areaWeight * insolation;
-            }
-        }
-        for (double& mean : meanMonthlyInsolation)
-            mean /= areaWeightSum;
 
         const int windowLat = std::max(1, latB / 18);
         const int windowLon = std::max(1, lonS / 36);
@@ -171,7 +135,45 @@ namespace Infinitesia
             build.ReportRow(latitude, latB);
         }
 
-        BeginLoadStep(build.progress, LoadStep::kClimateTemperature, "Simulating climate: temperature");
+    }
+
+    void RunClimateTemperature(PlanetBuild& build)
+    {
+        const int latB = build.LatBands();
+        const int lonS = build.LonSegs();
+        const std::uint32_t seed = build.data.planet.GetSeed();
+        const double tilt = build.data.climate.axialTiltDegrees;
+        const double pressKPa = build.data.climate.atmospherePressureKPa;
+        const double globalEquilK =
+            EquilibriumTempK(build.data.climate.meanIncidentFluxInEarthUnits);
+        const double greenhouse = GreenhouseK(pressKPa);
+        std::vector<std::array<double, kMonthsPerYear>> monthlyInsolation(
+            static_cast<std::size_t>(latB));
+        std::array<double, kMonthsPerYear> meanMonthlyInsolation{};
+        double areaWeightSum = 0.0;
+        std::vector<double> areaWeights(static_cast<std::size_t>(latB));
+        for (int latitude = 0; latitude < latB; ++latitude)
+        {
+            const double latitudeDegrees =
+                (static_cast<double>(latitude) + 0.5) / latB * 180.0 - 90.0;
+            const double areaWeight = std::max(
+                0.0,
+                std::cos(latitudeDegrees * std::numbers::pi / 180.0));
+            areaWeights[static_cast<std::size_t>(latitude)] = areaWeight;
+            areaWeightSum += areaWeight;
+            for (int month = 0; month < kMonthsPerYear; ++month)
+            {
+                const double insolation =
+                    MonthlyInsolation(latitudeDegrees, tilt, month);
+                monthlyInsolation[static_cast<std::size_t>(latitude)]
+                                 [static_cast<std::size_t>(month)] = insolation;
+                meanMonthlyInsolation[static_cast<std::size_t>(month)] +=
+                    areaWeight * insolation;
+            }
+        }
+        for (double& mean : meanMonthlyInsolation)
+            mean /= areaWeightSum;
+
         std::vector<double> annualInsolation(static_cast<std::size_t>(latB));
         double meanAnnualInsolation = 0.0;
         for (int latitude = 0; latitude < latB; ++latitude)
@@ -249,7 +251,17 @@ namespace Infinitesia
             build.ReportRow(latitude, latB);
         }
 
-        BeginLoadStep(build.progress, LoadStep::kClimatePrecipitation, "Simulating climate: precipitation");
+    }
+
+    void RunClimatePrecipitation(PlanetBuild& build)
+    {
+        const int latB = build.LatBands();
+        const int lonS = build.LonSegs();
+        const std::uint32_t seed = build.data.planet.GetSeed();
+        const double tilt = build.data.climate.axialTiltDegrees;
+        const double rot = build.data.climate.rotationPeriodHours;
+        const double pressureScale = std::sqrt(std::clamp(
+            build.data.climate.atmospherePressureKPa / 101.325, 0.1, 4.0));
         const double rotationScale = std::clamp(24.0 / rot, 0.4, 2.0);
         // Everything below that depends only on (row, month) is hoisted out of
         // the per-cell loop: it was recomputed for every one of the lonS cells.
@@ -461,6 +473,5 @@ namespace Infinitesia
             }
             build.ReportRow(latitude, latB);
         }
-
     }
 }

@@ -41,10 +41,12 @@ TEST_CASE("DefaultPipelineKeepsTheEstablishedOrder")
 {
     const PlanetPipeline pipeline = MakeDefaultPlanetPipeline();
     const std::vector<std::string> expected{
-        "tectonics", "terrain", "geology", "climate", "hydrology", "soils", "biomes" };
+        "tectonics", "terrain", "geology", "provinces", "climate.continentality", "climate.temperature",
+        "climate.precipitation", "hydrology", "soils", "biomes" };
     CHECK(PlanNames(pipeline) == expected);
     CHECK(pipeline.Fingerprint() ==
-          "tectonics:1,terrain:1,geology:1,climate:1,hydrology:1,soils:1,biomes:1");
+          "tectonics:1,terrain:1,geology:1,provinces:1,climate.continentality:1,climate.temperature:1,"
+          "climate.precipitation:1,hydrology:1,soils:1,biomes:1");
 }
 
 TEST_CASE("StagesRunAfterWhatTheyNeedWhateverTheAddOrder")

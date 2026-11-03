@@ -177,8 +177,9 @@ namespace Infinitesia
         }
     }
 
-    void GenerateProvinces(PlanetBuild& build, const std::vector<double>& distanceToOceanKm)
+    void RunProvinces(PlanetBuild& build)
     {
+        const Field<double>& distanceToOcean = build.data.layers.Require<double>(kDistanceToOceanLayer);
         const int latB = build.LatBands();
         const int lonS = build.LonSegs();
         const std::size_t cellCount = static_cast<std::size_t>(latB) * lonS;
@@ -193,7 +194,7 @@ namespace Infinitesia
             for (int lo = 0; lo < lonS; ++lo)
             {
                 const std::size_t index = static_cast<std::size_t>(la) * lonS + lo;
-                type[index] = BestType(Score(build.Cell(la, lo), planetAgeMyr, distanceToOceanKm[index], seed));
+                type[index] = BestType(Score(build.Cell(la, lo), planetAgeMyr, distanceToOcean.At(la, lo), seed));
             }
         }
 
