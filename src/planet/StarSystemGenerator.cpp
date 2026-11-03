@@ -56,7 +56,7 @@ namespace Infinitesia
         {
             if (!scenario.IsValid())
             {
-                throw std::invalid_argument("Generation scenario contains an unsupported mode, preset, or version.");
+                throw std::invalid_argument("Generation scenario contains an unsupported preset or version.");
             }
         }
 
@@ -168,11 +168,6 @@ namespace Infinitesia
     StarSystem StarSystemGenerator::Generate(const GenerationScenario& scenario)
     {
         ValidateScenario(scenario);
-        if (scenario.mode == GenerationMode::Detailed)
-        {
-            throw std::invalid_argument(
-                "Detailed generation is not implemented; use Standard mode for this generator version.");
-        }
 
         constexpr std::uint64_t kContextStage = 0x434f4e5445585401ull;
         constexpr std::uint64_t kSystemStage = 0x53595354454d0001ull;

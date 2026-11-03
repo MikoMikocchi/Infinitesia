@@ -171,21 +171,6 @@ namespace
             invalidVersionRejected = true;
         }
         Require(invalidVersionRejected, "Invalid generator version was not rejected.");
-
-        bool detailedModeRejected = false;
-        try
-        {
-            Infinitesia::StarSystemGenerator::Generate({
-                .seed = 1,
-                .generatorVersion = 1,
-                .mode = Infinitesia::GenerationMode::Detailed
-            });
-        }
-        catch (const std::invalid_argument&)
-        {
-            detailedModeRejected = true;
-        }
-        Require(detailedModeRejected, "Unsupported detailed mode was not rejected.");
     }
 
     void TestSeedSweepPreservesGenerationInvariants()

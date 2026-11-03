@@ -5,13 +5,6 @@
 
 namespace Infinitesia
 {
-    enum class GenerationMode
-    {
-        Preset,
-        Standard,
-        Detailed
-    };
-
     enum class PlanetaryPreset
     {
         RockyTemperate
@@ -54,17 +47,13 @@ namespace Infinitesia
     {
         std::uint64_t seed = 1;
         std::uint32_t generatorVersion = 6;
-        GenerationMode mode = GenerationMode::Standard;
         PlanetaryPreset preset = PlanetaryPreset::RockyTemperate;
         GenerationConstraints constraints{};
 
         bool IsValid() const noexcept
         {
-            return generatorVersion > 0 &&
-                   (mode == GenerationMode::Preset ||
-                    mode == GenerationMode::Standard ||
-                    mode == GenerationMode::Detailed) &&
-                   preset == PlanetaryPreset::RockyTemperate &&
+return generatorVersion > 0 &&
+                    preset == PlanetaryPreset::RockyTemperate &&
                    constraints.IsValid();
         }
     };
