@@ -2,7 +2,7 @@
 
 #include "geology/catalog/GeologyCatalog.h"
 #include "geology/history/ProvinceHistory.h"
-#include "planet/PlanetMap.h"
+#include "geology/model/GeologyPlanetView.h"
 
 #include <array>
 #include <memory>
@@ -122,7 +122,9 @@ namespace Infinitesia
             std::vector<LayerShape> layers;      // one per formation of the pile
         };
 
-        GeologyModel(std::shared_ptr<const GeologyCatalog> catalog, const PlanetMap& map, GeologyConfig config = {});
+        // `planet` converts implicitly from a PlanetMap; it is only read during construction.
+        GeologyModel(std::shared_ptr<const GeologyCatalog> catalog, const GeologyPlanetView& planet,
+                     GeologyConfig config = {});
 
         const GeologyCatalog& Catalog() const noexcept { return *m_catalog; }
         std::shared_ptr<const GeologyCatalog> CatalogPointer() const noexcept { return m_catalog; }

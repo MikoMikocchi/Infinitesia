@@ -34,6 +34,8 @@ ALLOWED = {
     "foundation": set(),
     "chemistry": {"foundation"},
     "planet": {"foundation"},
+    # geology takes from planet only the data types (planet/geology/Province.h, PlanetEpochs.h);
+    # GeologyModel reads the planet through GeologyPlanetView, never planet/PlanetMap.h.
     "geology": {"foundation", "chemistry", "planet"},
     "world": {"foundation", "planet", "geology"},
     "gameplay": {"foundation", "planet", "geology", "world"},

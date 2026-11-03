@@ -67,7 +67,8 @@ namespace Infinitesia
         }
     }
 
-    GeologyModel::GeologyModel(std::shared_ptr<const GeologyCatalog> catalog, const PlanetMap& map, GeologyConfig config)
+    GeologyModel::GeologyModel(std::shared_ptr<const GeologyCatalog> catalog, const GeologyPlanetView& map,
+                               GeologyConfig config)
         : m_catalog(std::move(catalog))
         , m_config(config)
     {
@@ -79,7 +80,7 @@ namespace Infinitesia
         m_fallbackPile = { { granite != nullptr ? granite->material : kFirstRockMaterial, 0 } };
         m_fallbackStructure.layers = { LayerShape{} };
 
-        const std::uint64_t seed = map.GetPlanet().GetSeed();
+        const std::uint64_t seed = map.GetSeed();
         m_piles.reserve(map.GetProvinces().size());
         m_structures.reserve(map.GetProvinces().size());
         for (const Province& province : map.GetProvinces())
