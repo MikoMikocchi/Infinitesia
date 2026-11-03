@@ -450,15 +450,7 @@ namespace Infinitesia
         : m_system(std::move(system)),
           m_planetMap(
               m_system.planet,
-              ClimateInputs{
-                  m_system.planetOrbit.meanIncidentFluxInEarthUnits,
-                  m_system.planet.axialTiltDegrees,
-                  m_system.planet.atmospherePressureKPa,
-                  m_system.planet.volatileMassFraction,
-                  m_system.planet.gravityMetersPerSecondSquared,
-                  m_system.planet.rotationHours,
-                  m_system.planet.ageYears,
-              },
+              ClimateInputsFor(m_system),
               progress),
           m_regionMap(
               m_planetMap,

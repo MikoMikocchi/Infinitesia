@@ -2,6 +2,7 @@
 
 #include "core/LoadProgress.h"
 #include "planet/Planet.h"
+#include "planet/StarSystem.h"
 
 #include <array>
 #include <cstdint>
@@ -152,6 +153,9 @@ namespace Infinitesia
         double rotationPeriodHours = 24.0;      // affects Coriolis / circulation
         double planetAgeYears = 4.5e9;          // affects erosion, soil development
     };
+
+    // The climate inputs of a generated system (what the game builds its planet map from).
+    ClimateInputs ClimateInputsFor(const StarSystem& system);
 
     // -----------------------------------------------------------------------
     // Planet-wide annual freshwater ledger produced by hydrology (km^3/yr).

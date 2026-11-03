@@ -25,6 +25,10 @@ namespace Infinitesia
 
         BlockType BlockAt(GridCell cell) const override;
 
+        // What lies `depthBelowSurface` blocks under the surface block of a column of the
+        // given kind (0 is the surface block itself): topsoil, then stone.
+        static BlockType LayerAt(SurfaceKind kind, int depthBelowSurface);
+
         // Level of the topmost solid block of a column (clamped inside the grid).
         int SurfaceLevelAt(int x, int z) const;
 

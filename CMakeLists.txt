@@ -95,6 +95,11 @@ if (WIN32)
   target_link_libraries(Infinitesia PRIVATE winmm)
 endif()
 
+# Command-line tool: an isometric block diagram of the generated terrain (no window).
+add_executable(TerrainSnapshot tools/TerrainSnapshot.cpp)
+target_link_libraries(TerrainSnapshot PRIVATE InfinitesiaWorld InfinitesiaPlanet)
+infinitesia_enable_warnings(TerrainSnapshot)
+
 include(CTest)
 if (BUILD_TESTING)
   FetchContent_Declare(

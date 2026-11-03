@@ -63,6 +63,14 @@ namespace Infinitesia
         // takes the share that makes the whole series add up to the detail amplitude.
         constexpr double kOctaveDecay = 0.5;
 
+        // Micro-relief: even a plain undulates a metre or two over a hundred metres, which
+        // the series above would flatten to nothing where the planet cell is smooth. This
+        // second series fades much more slowly with wavelength (amplitude ~ wavelength^0.5),
+        // starts at kMicroLargestWavelengthMeters, and applies on land only.
+        constexpr double kMicroLargestWavelengthMeters = 512.0;
+        constexpr double kMicroAmplitudeMeters = 4.0;
+        constexpr double kMicroDecay = 0.7;
+
         int WrapIndex(int index, int count) noexcept
         {
             return ((index % count) + count) % count;
@@ -211,6 +219,24 @@ namespace Infinitesia
             wavelength *= 0.5;
         }
 
-        return planet.elevationMeters + detail;
+        // Micro-relief, a little stronger on rougher ground (a plain keeps half of it).
+        const double microScale = land * (0.5 + 0.5 * roughness);
+        double micro = 0.0;
+        if (microScale > 0.0)
+        {
+            double microAmplitude = kMicroAmplitudeMeters * microScale;
+            double microWavelength = kMicroLargestWavelengthMeters;
+            for (int octave = 0; microWavelength >= minWavelengthMeters; ++octave)
+            {
+                const double offset = 104729.0 + octave * 6007.0;
+                micro += microAmplitude * ValueNoise(
+                    px / microWavelength + offset, py / microWavelength + offset * 0.53, pz / microWavelength + offset * 0.29,
+                    m_seed ^ (0xA5A5A5A5u + static_cast<std::uint32_t>(octave) * 0x7F4A7C15u));
+                microAmplitude *= kMicroDecay;
+                microWavelength *= 0.5;
+            }
+        }
+
+        return planet.elevationMeters + detail + micro;
     }
 }

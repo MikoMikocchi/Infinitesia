@@ -96,14 +96,15 @@ namespace Infinitesia
         {
             return cell.y <= WaterTopLevel() ? BlockType::Water : BlockType::Air;
         }
-        if (cell.y == column.surface)
+        return LayerAt(column.kind, column.surface - cell.y);
+    }
+
+    BlockType PlanetTerrainSource::LayerAt(SurfaceKind kind, int depthBelowSurface)
+    {
+        if (depthBelowSurface <= 0)
         {
-            return SurfaceBlock(column.kind);
+            return SurfaceBlock(kind);
         }
-        if (cell.y >= column.surface - kTopsoilBlocks)
-        {
-            return TopsoilBlock(column.kind);
-        }
-        return BlockType::Stone;
+        return depthBelowSurface <= kTopsoilBlocks ? TopsoilBlock(kind) : BlockType::Stone;
     }
 }

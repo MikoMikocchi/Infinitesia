@@ -649,6 +649,19 @@ using namespace GenerationDetail;
 // PlanetMap — construction (runs all stages)
 // ==========================================================================
 
+ClimateInputs ClimateInputsFor(const StarSystem& system)
+{
+    return {
+        system.planetOrbit.meanIncidentFluxInEarthUnits,
+        system.planet.axialTiltDegrees,
+        system.planet.atmospherePressureKPa,
+        system.planet.volatileMassFraction,
+        system.planet.gravityMetersPerSecondSquared,
+        system.planet.rotationHours,
+        system.planet.ageYears,
+    };
+}
+
 PlanetMap::PlanetMap(PlanetParameters parameters, ClimateInputs climate, LoadProgress* progress)
     : m_planet(std::move(parameters))
     , m_climate(climate)
