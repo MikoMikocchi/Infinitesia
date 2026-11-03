@@ -167,6 +167,11 @@ if (BUILD_TESTING)
   infinitesia_enable_warnings(PlanetPipelineTests)
   doctest_discover_tests(PlanetPipelineTests)
 
+  add_executable(PlanetGoldenTests tests/PlanetGoldenTests.cpp)
+  target_link_libraries(PlanetGoldenTests PRIVATE InfinitesiaPlanet doctest::doctest)
+  infinitesia_enable_warnings(PlanetGoldenTests)
+  doctest_discover_tests(PlanetGoldenTests)
+
   add_executable(RegionTests tests/RegionTests.cpp)
   target_link_libraries(RegionTests PRIVATE InfinitesiaPlanet doctest::doctest)
   infinitesia_enable_warnings(RegionTests)
