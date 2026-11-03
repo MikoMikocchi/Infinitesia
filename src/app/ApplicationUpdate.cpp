@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <string_view>
 #include <optional>
 #include <stdexcept>
 
@@ -55,10 +56,12 @@ namespace Infinitesia
     // checked without clicking through the planet viewer:
     //   INFINITESIA_DEV_FOUND="lat,lon"      found the settlement at that place on startup
     //   INFINITESIA_DEV_SCREENSHOT=name.png  save a screenshot of the local world, then quit
+    //   INFINITESIA_DEV_VIEW=all             show the whole world, not only the part below the selected level
     void Application::UpdateDevHooks()
     {
         static const char* const found = std::getenv("INFINITESIA_DEV_FOUND");
         static const char* const screenshot = std::getenv("INFINITESIA_DEV_SCREENSHOT");
+        static const char* const view = std::getenv("INFINITESIA_DEV_VIEW");
 
         double latitude = 0.0;
         double longitude = 0.0;
@@ -68,6 +71,11 @@ namespace Infinitesia
             const RegionTerrain& terrain = m_planetViewer->GetRegionTerrain();
             const double radius = terrain.GetPlanetMap().GetPlanet().GetRadius();
             StartSettlement({ LocalGrid(radius, PlanetaryCoordinates::ToCartesian({ latitude, longitude })), RegionId{} });
+        }
+
+        if (view != nullptr && std::string_view(view) == "all" && m_screen == Screen::Local && m_devFramesInLocalScreen == 0)
+        {
+            m_viewMode = ViewMode::ShowAll;
         }
 
         if (screenshot != nullptr && m_screen == Screen::Local && ++m_devFramesInLocalScreen == 150)

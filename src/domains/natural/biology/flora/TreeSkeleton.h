@@ -10,6 +10,20 @@ namespace Infinitesia
     // What a cell of a plant is (docs/07_BIOLOGY.md, section 6).
     enum class TreePart : std::uint8_t { Trunk, Branch, Twig, Leaves, Root };
 
+    // Where two parts want one cell, the stronger keeps it: Trunk > Branch > Root > Twig > Leaves.
+    constexpr int PartStrength(TreePart part) noexcept
+    {
+        switch (part)
+        {
+        case TreePart::Trunk:  return 5;
+        case TreePart::Branch: return 4;
+        case TreePart::Root:   return 3;
+        case TreePart::Twig:   return 2;
+        case TreePart::Leaves: return 1;
+        }
+        return 0;
+    }
+
     struct Vec3
     {
         double x = 0.0;

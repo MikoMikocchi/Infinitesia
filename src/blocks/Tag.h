@@ -19,9 +19,10 @@ namespace Infinitesia
         Built,
         Glass,
         LightSource,
+        Plant,
     };
 
-    inline constexpr int kEngineTagCount = 9;
+    inline constexpr int kEngineTagCount = 10;
 
     std::string_view TagName(Tag tag) noexcept;
     std::optional<Tag> TagFromName(std::string_view name) noexcept;

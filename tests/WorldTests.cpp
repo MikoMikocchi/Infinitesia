@@ -2,6 +2,7 @@
 #include <doctest/doctest.h>
 
 #include "blocks/BlockRegistry.h"
+#include "domains/natural/biology/catalog/SpeciesCatalog.h"
 #include "domains/natural/geology/catalog/GeologyCatalog.h"
 #include "domains/natural/geology/model/GeologyModel.h"
 #include "materials/MaterialCatalog.h"
@@ -446,4 +447,140 @@ TEST_CASE("WorldChunksCarryTheStateOfEachBlock")
     Require(world.terrain.Registry().Occupied(world.terrain.GetBlock(below)->state), "The block under the ground is empty.");
     world.terrain.SetBlock(below, { kAirMaterial, kShapeFull });
     Require(world.terrain.GetBlock(below)->state == BlockState(), "A dug-out block kept its rock.");
+}
+
+namespace
+{
+    std::shared_ptr<const SpeciesCatalog> SharedSpecies()
+    {
+        static const auto species = std::make_shared<const SpeciesCatalog>(
+            SpeciesCatalog::Load(kAssets / "biology" / "species.json", *SharedMaterials()));
+        return species;
+    }
+
+    std::shared_ptr<PlanetTerrainSource> MakeForestedSource(CartesianPoint3D anchor, std::uint64_t seed)
+    {
+        const RegionGenerator& generator = SharedGenerator();
+        const LocalGrid grid = generator.MakeGrid(anchor);
+        auto terrain = std::make_shared<const SettlementTerrain>(generator.GetTerrain(), grid, 0.0, 0.0);
+        return std::make_shared<PlanetTerrainSource>(terrain, kWidth, kHeight, kDepth, kAnchorLevel, SharedRegistry(),
+                                                     nullptr, SharedSpecies(), seed);
+    }
+
+    // Warm and wet enough for trees, on low land.
+    CartesianPoint3D ForestAnchor()
+    {
+        return FindCell([](const PlanetRegion& cell)
+        {
+            return cell.elevationNormalized > 0.02 && cell.elevationNormalized < 0.3 &&
+                   cell.temperatureCelsius > 5.0 && cell.temperatureCelsius < 20.0 && cell.precipitationMm > 800.0;
+        });
+    }
+
+    bool IsPlant(const TerrainSource& source, GridCell cell)
+    {
+        return source.Registry().Has(source.StateAt(cell).material, Tag::Plant);
+    }
+}
+
+TEST_CASE("ForestsGrowOnWetTemperateLand")
+{
+    const auto source = MakeForestedSource(ForestAnchor(), 11);
+    int plants = 0;
+    for (int z = 0; z < kDepth; z += 2)
+    {
+        for (int x = 0; x < kWidth; x += 2)
+        {
+            const int surface = source->SurfaceLevelAt(x, z);
+            for (int y = surface + 1; y < surface + 40 && y < kHeight; ++y)
+                plants += IsPlant(*source, { x, y, z }) ? 1 : 0;
+        }
+    }
+    CHECK(plants > 2000);
+}
+
+TEST_CASE("TreesStandInTheAirAndRootInSoilNeverInRock")
+{
+    const auto source = MakeForestedSource(ForestAnchor(), 11);
+    const BlockRegistry& registry = source->Registry();
+    int roots = 0;
+    for (int z = 0; z < kDepth; z += 3)
+    {
+        for (int x = 0; x < kWidth; x += 3)
+        {
+            const int surface = source->SurfaceLevelAt(x, z);
+            for (int y = 0; y <= surface; ++y)
+            {
+                const BlockState state = source->StateAt({ x, y, z });
+                if (!registry.Has(state.material, Tag::Plant))
+                    continue;
+                Require(y >= surface - 3, "a root goes deeper than the topsoil");
+                Require(!IsRock(*source, { x, y, z }), "a root is in rock");
+                ++roots;
+            }
+        }
+    }
+    CHECK(roots > 0);
+}
+
+TEST_CASE("TheSettlersArriveInAClearing")
+{
+    const auto source = MakeForestedSource(ForestAnchor(), 11);
+    for (int dz = -5; dz <= 5; ++dz)
+    {
+        for (int dx = -5; dx <= 5; ++dx)
+        {
+            const int x = kWidth / 2 + dx;
+            const int z = kDepth / 2 + dz;
+            const int surface = source->SurfaceLevelAt(x, z);
+            for (int up = 1; up <= 2; ++up)
+            {
+                const BlockState state = source->StateAt({ x, surface + up, z });
+                Require(!source->Registry().Occupied(state),
+                        "a trunk stands in the clearing of the settlers: dx " << dx << " dz " << dz << " up " << up
+                        << " material " << source->Registry().GetMaterial(state.material)->key);
+            }
+        }
+    }
+}
+
+TEST_CASE("TheForestIsTheSameForTheSameSeedAndDifferentForAnother")
+{
+    const CartesianPoint3D anchor = ForestAnchor();
+    const auto first = MakeForestedSource(anchor, 11);
+    const auto second = MakeForestedSource(anchor, 11);
+    const auto other = MakeForestedSource(anchor, 12);
+    int differing = 0;
+    for (int z = 0; z < kDepth; z += 3)
+    {
+        for (int x = 0; x < kWidth; x += 3)
+        {
+            const int y = first->SurfaceLevelAt(x, z) + 3;
+            Require(first->StateAt({ x, y, z }) == second->StateAt({ x, y, z }), "one seed grows two forests");
+            differing += first->StateAt({ x, y, z }) != other->StateAt({ x, y, z }) ? 1 : 0;
+        }
+    }
+    CHECK(differing > 0);
+}
+
+TEST_CASE("NoTreesGrowInTheSea")
+{
+    const auto source = MakeForestedSource(OceanAnchor(), 11);
+    for (int z = 0; z < kDepth; z += 4)
+    {
+        for (int x = 0; x < kWidth; x += 4)
+        {
+            for (int y = 0; y < kHeight; y += 2)
+                Require(!IsPlant(*source, { x, y, z }), "a tree grows in the sea");
+        }
+    }
+}
+
+TEST_CASE("TheRegistryMustKnowThePlantsOfTheCatalog")
+{
+    const RegionGenerator& generator = SharedGenerator();
+    auto terrain = std::make_shared<const SettlementTerrain>(generator.GetTerrain(), generator.MakeGrid(LandAnchor()), 0.0, 0.0);
+    CHECK_THROWS_AS(PlanetTerrainSource(terrain, kWidth, kHeight, kDepth, kAnchorLevel, std::make_shared<const BlockRegistry>(BlockRegistry::BuiltIn()),
+                                        nullptr, SharedSpecies(), 1),
+                    std::invalid_argument);
 }

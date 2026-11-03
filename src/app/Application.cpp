@@ -1,5 +1,6 @@
 #include "app/Application.h"
 #include "raylib.h"
+#include "domains/natural/biology/catalog/SpeciesCatalog.h"
 #include "domains/natural/geology/model/GeologyModel.h"
 #include "domains/natural/planetary/PlanetLoadSteps.h"
 #include "domains/natural/planetary/StarSystemGenerator.h"
@@ -63,11 +64,13 @@ namespace Infinitesia
         auto registry = std::make_shared<const BlockRegistry>(
             BlockRegistry::Build(materials, assets / "blocks" / "shapes.json"));
         auto geology = std::make_shared<const GeologyModel>(catalog, terrain.GetPlanetMap());
+        auto flora = std::make_shared<const SpeciesCatalog>(
+            SpeciesCatalog::Load(assets / "biology" / "species.json", *materials));
 
         const GridConfig gridConfig = m_config.settlementGrid;
         auto source = std::make_shared<PlanetTerrainSource>(
             settlement, gridConfig.width, gridConfig.height, gridConfig.depth, m_config.settlementAnchorLevel,
-            registry, geology);
+            registry, geology, flora, m_config.worldSeed);
 
         m_game.reset();
         m_game.emplace(m_content,

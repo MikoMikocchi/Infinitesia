@@ -1,5 +1,6 @@
 #pragma once
 
+#include "domains/natural/biology/flora/FloraModel.h"
 #include "domains/natural/geology/model/GeologyModel.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
 #include "world/TerrainSource.h"
@@ -21,6 +22,10 @@ namespace Infinitesia
     //
     // With a geology model the rock is real: StateAt gives the rock of every rock block from the
     // layers of the column's province. Without one every rock block is bedrock.
+    //
+    // With a species catalog the ground grows trees (docs/07_BIOLOGY.md): they stand in the air above
+    // the surface, their roots replace soil (never rock), and a clearing around the middle of the grid,
+    // where the settlers arrive, stays free of trunks.
     class PlanetTerrainSource final : public TerrainSource
     {
     public:
@@ -28,7 +33,9 @@ namespace Infinitesia
         PlanetTerrainSource(std::shared_ptr<const SettlementTerrain> terrain,
                             int gridWidth, int gridHeight, int gridDepth, int anchorLevel,
                             std::shared_ptr<const BlockRegistry> registry,
-                            std::shared_ptr<const GeologyModel> geology = nullptr);
+                            std::shared_ptr<const GeologyModel> geology = nullptr,
+                            std::shared_ptr<const SpeciesCatalog> flora = nullptr,
+                            std::uint64_t floraSeed = 0);
 
         BlockState StateAt(GridCell cell) const override;
         const BlockRegistry& Registry() const override { return *m_registry; }
@@ -53,9 +60,28 @@ namespace Infinitesia
             SurfaceKind kind = SurfaceKind::Grass;
             ProvinceId province = kNoProvince;
             int pileTopMeters = 0;
+            Conditions climate; // slope is filled in when the flora asks
+            bool underSea = false;
         };
 
+        // The ground of a column as the flora sees it.
+        class Ground final : public GroundView
+        {
+        public:
+            explicit Ground(const PlanetTerrainSource& owner) : m_owner(owner) {}
+            GroundColumn ColumnAt(int x, int z) const override;
+
+        private:
+            const PlanetTerrainSource& m_owner;
+        };
+
+        // Trunks start no nearer the middle of the grid than this many metres (a trunk is up to 2 m thick, so the
+        // middle 5 m around it are free of trunks).
+        static constexpr int kStartClearingMeters = 7;
+
         const Column& ColumnAt(int x, int z) const;
+        // The plant occupying the cell, if any.
+        const FloraCell* FloraAt(GridCell cell) const;
         const GeologyModel::ColumnProfile& ProfileAt(int x, int z) const;
 
         std::shared_ptr<const SettlementTerrain> m_terrain;
@@ -72,5 +98,7 @@ namespace Infinitesia
         // The rocks under a column, worked out the first time one of its blocks is asked for.
         mutable std::vector<GeologyModel::ColumnProfile> m_profiles;
         mutable std::vector<std::uint8_t> m_profileKnown;
+        std::unique_ptr<Ground> m_ground;
+        std::unique_ptr<FloraModel> m_flora;
     };
 }

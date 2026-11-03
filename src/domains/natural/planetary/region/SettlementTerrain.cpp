@@ -67,6 +67,13 @@ namespace Infinitesia
         column.underSea = elevation < 0.0;
         column.province = cell.provinceId;
         column.pileTopMeters = static_cast<int>(std::floor(planet.elevationMeters));
+        constexpr double kLapseRateCelsiusPerMeter = 0.0065;
+        column.temperatureCelsius = cell.temperatureCelsius - kLapseRateCelsiusPerMeter * (elevation - planet.elevationMeters);
+        column.precipitationMm = cell.precipitationMm;
+        column.drySeasonMonths = cell.drySeasonMonths;
+        column.soilFertility = cell.soilFertility;
+        column.soilDepth = cell.soilDepthNorm;
+        column.elevationMeters = elevation;
         return column;
     }
 }

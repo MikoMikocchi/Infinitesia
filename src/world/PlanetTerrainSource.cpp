@@ -1,7 +1,9 @@
 #include "world/PlanetTerrainSource.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <stdexcept>
+#include <utility>
 
 namespace Infinitesia
 {
@@ -39,7 +41,9 @@ namespace Infinitesia
         std::shared_ptr<const SettlementTerrain> terrain,
         int gridWidth, int gridHeight, int gridDepth, int anchorLevel,
         std::shared_ptr<const BlockRegistry> registry,
-        std::shared_ptr<const GeologyModel> geology)
+        std::shared_ptr<const GeologyModel> geology,
+        std::shared_ptr<const SpeciesCatalog> flora,
+        std::uint64_t floraSeed)
         : m_terrain(std::move(terrain))
         , m_registry(std::move(registry))
         , m_geology(std::move(geology))
@@ -64,6 +68,19 @@ namespace Infinitesia
                         throw std::invalid_argument("The registry does not know a rock of the geology.");
                 }
             }
+        }
+        if (flora != nullptr)
+        {
+            for (const Species& species : flora->All())
+            {
+                for (const TreePart part : { TreePart::Trunk, TreePart::Branch, TreePart::Twig, TreePart::Leaves, TreePart::Root })
+                {
+                    if (m_registry->GetMaterial(PartMaterial(species.materials, part)) == nullptr)
+                        throw std::invalid_argument("The registry does not know a material of " + species.key + ".");
+                }
+            }
+            m_ground = std::make_unique<Ground>(*this);
+            m_flora = std::make_unique<FloraModel>(std::move(flora), floraSeed, gridWidth, gridDepth, *m_ground);
         }
         const std::size_t columns = static_cast<std::size_t>(gridWidth) * static_cast<std::size_t>(gridDepth);
         m_columns.resize(columns);
@@ -102,9 +119,35 @@ namespace Infinitesia
             m_columns[index].kind = column.underSea ? SurfaceKind::Sand : column.kind;
             m_columns[index].province = column.province;
             m_columns[index].pileTopMeters = column.pileTopMeters;
+            m_columns[index].underSea = column.underSea;
+            Conditions& climate = m_columns[index].climate;
+            climate.temperatureCelsius = column.temperatureCelsius;
+            climate.precipitationMm = column.precipitationMm;
+            climate.elevationMeters = column.elevationMeters;
+            climate.drySeasonMonths = column.drySeasonMonths;
+            climate.soilFertility = column.soilFertility;
+            climate.soilDepth = column.soilDepth;
             m_known[index] = 1;
         }
         return m_columns[index];
+    }
+
+    GroundColumn PlanetTerrainSource::Ground::ColumnAt(int x, int z) const
+    {
+        const Column& column = m_owner.ColumnAt(x, z);
+        GroundColumn ground;
+        ground.surfaceLevel = column.surface;
+        const bool soil = column.kind == SurfaceKind::Grass || column.kind == SurfaceKind::Dirt;
+        const bool clearing = std::abs(x - m_owner.m_width / 2) < kStartClearingMeters &&
+                              std::abs(z - m_owner.m_depth / 2) < kStartClearingMeters;
+        ground.growable = soil && !column.underSea && column.surface > m_owner.WaterTopLevel() && !clearing;
+        ground.conditions = column.climate;
+        // The steepest rise over two metres in the four directions.
+        int steepest = 0;
+        for (const auto [dx, dz] : { std::pair{ 2, 0 }, std::pair{ -2, 0 }, std::pair{ 0, 2 }, std::pair{ 0, -2 } })
+            steepest = std::max(steepest, std::abs(m_owner.SurfaceLevelAt(x + dx, z + dz) - column.surface));
+        ground.conditions.slope = steepest / 2.0;
+        return ground;
     }
 
     int PlanetTerrainSource::SurfaceLevelAt(int x, int z) const
@@ -131,11 +174,18 @@ namespace Infinitesia
         }
 
         const Column& column = ColumnAt(cell.x, cell.z);
+        const FloraCell* plant = FloraAt(cell);
         if (cell.y > column.surface)
         {
-            return { cell.y <= WaterTopLevel() ? m_materials.seawater : kAirMaterial, kShapeFull };
+            if (cell.y <= WaterTopLevel())
+                return { m_materials.seawater, kShapeFull };
+            return { plant != nullptr ? plant->material : kAirMaterial, kShapeFull };
         }
-        switch (LayerAt(column.kind, column.surface - cell.y))
+        const Layer layer = LayerAt(column.kind, column.surface - cell.y);
+        // Roots grow into the soil; rock stops them.
+        if (plant != nullptr && plant->part == TreePart::Root && layer != Layer::Rock)
+            return { plant->material, kShapeFull };
+        switch (layer)
         {
         case Layer::Turf:    return { m_materials.turf, kShapeFull };
         case Layer::Subsoil: return { m_materials.subsoil, kShapeFull };
@@ -150,6 +200,16 @@ namespace Infinitesia
         // and OriginElevationMeters above sea level.
         const int elevation = m_terrain->OriginElevationMeters() + (cell.y - m_anchorLevel);
         return { GeologyModel::RockAt(ProfileAt(cell.x, cell.z), elevation), kShapeFull };
+    }
+
+    const FloraCell* PlanetTerrainSource::FloraAt(GridCell cell) const
+    {
+        if (m_flora == nullptr)
+            return nullptr;
+        const std::vector<FloraCell>& cells = m_flora->Column(cell.x, cell.z);
+        const auto found = std::lower_bound(cells.begin(), cells.end(), cell.y,
+                                            [](const FloraCell& flora, int level) { return flora.level < level; });
+        return found != cells.end() && found->level == cell.y ? &*found : nullptr;
     }
 
     PlanetTerrainSource::Layer PlanetTerrainSource::LayerAt(SurfaceKind kind, int depthBelowSurface)

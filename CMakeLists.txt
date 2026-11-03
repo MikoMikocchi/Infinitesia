@@ -71,7 +71,7 @@ infinitesia_add_module(InfinitesiaGeology DIRS domains/natural/geology
   PUBLIC InfinitesiaPlanet InfinitesiaChemistry InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
 infinitesia_add_module(InfinitesiaBlocks DIRS blocks
   PUBLIC InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
-infinitesia_add_module(InfinitesiaWorld DIRS world PUBLIC InfinitesiaPlanet InfinitesiaGeology InfinitesiaBlocks)
+infinitesia_add_module(InfinitesiaWorld DIRS world PUBLIC InfinitesiaPlanet InfinitesiaGeology InfinitesiaBiology InfinitesiaBlocks)
 infinitesia_add_module(InfinitesiaSimulation DIRS simulation PUBLIC InfinitesiaFoundation)
 infinitesia_add_module(InfinitesiaGameplay DIRS gameplay
   PUBLIC InfinitesiaWorld InfinitesiaSimulation PRIVATE nlohmann_json::nlohmann_json)

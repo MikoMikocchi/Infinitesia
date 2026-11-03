@@ -47,11 +47,11 @@ ALLOWED = {
     # biology takes from planet only the data types it reads (climate and soil fields), like geology.
     "biology": {"foundation", "planet", "materials"},
     "blocks": {"foundation", "chemistry", "materials"},
-    "world": {"foundation", "planet", "materials", "geology", "blocks"},
+    "world": {"foundation", "planet", "materials", "geology", "biology", "blocks"},
     "simulation": {"foundation"},
     "gameplay": {"foundation", "planet", "materials", "geology", "blocks", "world", "simulation"},
     "presentation": {"foundation", "chemistry", "planet", "materials", "geology", "blocks", "world", "simulation", "gameplay"},
-    "app": {"foundation", "chemistry", "planet", "materials", "geology", "blocks", "world", "simulation", "gameplay", "presentation"},
+    "app": {"foundation", "chemistry", "planet", "materials", "geology", "biology", "blocks", "world", "simulation", "gameplay", "presentation"},
 }
 
 # Include prefixes that are not part of src/.

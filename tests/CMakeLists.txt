@@ -46,6 +46,7 @@ infinitesia_add_test(BiologyTests MAIN ASSET_DIR
     domains/natural/biology/SpeciesCatalogTests.cpp
     domains/natural/biology/SuitabilityTests.cpp
     domains/natural/biology/TreeTests.cpp
+    domains/natural/biology/FloraModelTests.cpp
   LINK InfinitesiaBiology nlohmann_json::nlohmann_json)
 
 infinitesia_add_test(GeologyTests MAIN ASSET_DIR

@@ -24,8 +24,9 @@ namespace Infinitesia
         for (int y = grid.GetHeight() - 1; y >= 0; --y)
         {
             const BlockState state = terrain.StateAt({ x, y, z });
-            // Ground to stand on: something is there and it is not water.
-            if (registry.Occupied(state) && !registry.Has(state.material, Tag::Water))
+            // Ground to stand on: something is there and it is neither water nor a plant.
+            if (registry.Occupied(state) && !registry.Has(state.material, Tag::Water) &&
+                !registry.Has(state.material, Tag::Plant))
             {
                 return y;
             }
@@ -80,7 +81,8 @@ namespace Infinitesia
                 for (int dx = -radius; dx <= radius; ++dx)
                 {
                     if (std::max(std::abs(dx), std::abs(dz)) == radius &&
-                        surface[indexOf(dx, dz)] == level && reachable(dx, dz))
+                        surface[indexOf(dx, dz)] == level && reachable(dx, dz) &&
+                        !terrain.Registry().Occupied(terrain.StateAt({ centerX + dx, level + 1, centerZ + dz })))
                     {
                         cells.tree = GridCell{ centerX + dx, level, centerZ + dz };
                         return cells;

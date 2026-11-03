@@ -20,20 +20,6 @@ namespace Infinitesia
                    static_cast<std::uint64_t>(z + kCoordinateBias) << 32;
         }
 
-        // Where wood meets foliage, the stronger part keeps the cell.
-        int Strength(TreePart part) noexcept
-        {
-            switch (part)
-            {
-            case TreePart::Trunk:  return 5;
-            case TreePart::Branch: return 4;
-            case TreePart::Root:   return 3;
-            case TreePart::Twig:   return 2;
-            case TreePart::Leaves: return 1;
-            }
-            return 0;
-        }
-
         class Grid
         {
         public:
@@ -42,7 +28,7 @@ namespace Infinitesia
                 if (part == TreePart::Root ? y >= 0 : y < 0)
                     return;
                 const auto [entry, inserted] = m_parts.emplace(Pack(x, y, z), part);
-                if (!inserted && Strength(part) > Strength(entry->second))
+                if (!inserted && PartStrength(part) > PartStrength(entry->second))
                     entry->second = part;
             }
 

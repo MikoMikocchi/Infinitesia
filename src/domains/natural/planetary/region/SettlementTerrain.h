@@ -37,6 +37,14 @@ namespace Infinitesia
         // the province's rock layers are laid out from.
         ProvinceId province = kNoProvince;
         int pileTopMeters = 0;
+        // The climate and soil of the column, from its planet cell; the temperature is brought to the
+        // local elevation with the standard lapse rate.
+        double temperatureCelsius = 0.0;
+        double precipitationMm = 0.0;
+        double drySeasonMonths = 0.0;
+        double soilFertility = 0.0; // 0..1
+        double soilDepth = 0.0;     // 0..1
+        double elevationMeters = 0.0; // above sea level
     };
 
     // Turns the continuous planet terrain into block columns around an origin point of
