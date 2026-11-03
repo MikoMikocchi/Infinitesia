@@ -556,8 +556,39 @@ namespace Infinitesia
 
     }
 
+    void PlanetViewer::EnsureSurfaceTexture()
+    {
+        if (m_surfaceTexture.IsValid())
+            return;
+
+        const int rows = m_planetMap.GetLatitudeBandCount();
+        const int columns = m_planetMap.GetLongitudeSegmentCount();
+        Image surfaceImage = GenImageColor(columns, rows, BLACK);
+        if (surfaceImage.data == nullptr)
+            throw std::runtime_error("Failed to allocate the planet surface map image.");
+        auto* surfacePixels = static_cast<Color*>(surfaceImage.data);
+        for (int latitude = 0; latitude < rows; ++latitude)
+        {
+            for (int longitude = 0; longitude < columns; ++longitude)
+            {
+                const std::size_t regionIndex =
+                    static_cast<std::size_t>(latitude) * columns + longitude;
+                surfacePixels[
+                    static_cast<std::size_t>(rows - 1 - latitude) * columns +
+                    longitude] = m_regionColors[regionIndex];
+            }
+        }
+        UniqueTexture texture(LoadTextureFromImage(surfaceImage));
+        UnloadImage(surfaceImage);
+        if (!texture.IsValid())
+            throw std::runtime_error("Failed to create the planet surface map texture.");
+        SetTextureFilter(texture.Get(), TEXTURE_FILTER_BILINEAR);
+        m_surfaceTexture = std::move(texture);
+    }
+
     void PlanetViewer::Update()
     {
+        EnsureSurfaceTexture();
         HandleInput();
         if (!m_draggingGlobe)
         {
@@ -684,11 +715,7 @@ namespace Infinitesia
             m_globeMaterial = {};
             m_uploadedSelectedCell = -1;
         }
-        if (m_surfaceTexture.id != 0)
-        {
-            UnloadTexture(m_surfaceTexture);
-            m_surfaceTexture = {};
-        }
+        m_surfaceTexture.Reset();
     }
 
     Camera3D PlanetViewer::MakeCamera() const
@@ -805,31 +832,6 @@ namespace Infinitesia
         const int rows = m_planetMap.GetLatitudeBandCount();
         const int columns = m_planetMap.GetLongitudeSegmentCount();
 
-        if (m_surfaceTexture.id == 0)
-        {
-            Image surfaceImage = GenImageColor(columns, rows, BLACK);
-            if (surfaceImage.data == nullptr)
-                throw std::runtime_error("Failed to allocate the planet surface map image.");
-            auto* surfacePixels = static_cast<Color*>(surfaceImage.data);
-            for (int latitude = 0; latitude < rows; ++latitude)
-            {
-                for (int longitude = 0; longitude < columns; ++longitude)
-                {
-                    const std::size_t regionIndex =
-                        static_cast<std::size_t>(latitude) * columns + longitude;
-                    surfacePixels[
-                        static_cast<std::size_t>(rows - 1 - latitude) * columns +
-                        longitude] = m_regionColors[regionIndex];
-                }
-            }
-            m_surfaceTexture = LoadTextureFromImage(surfaceImage);
-            UnloadImage(surfaceImage);
-            if (m_surfaceTexture.id == 0)
-                throw std::runtime_error(
-                    "Failed to create the planet surface map texture.");
-            SetTextureFilter(m_surfaceTexture, TEXTURE_FILTER_BILINEAR);
-        }
-
         ClearBackground({ 11, 17, 26, 255 });
 
         DrawText("INFINITESIA  /  PLANET VIEWER", 28, 22, 24, RAYWHITE);
@@ -860,7 +862,7 @@ namespace Infinitesia
             static_cast<float>(rows)
         };
         DrawTexturePro(
-            m_surfaceTexture,
+            m_surfaceTexture.Get(),
             textureSource,
             layout.mapBounds,
             { 0.0f, 0.0f },

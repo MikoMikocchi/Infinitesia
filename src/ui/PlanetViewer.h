@@ -4,6 +4,7 @@
 #include "planet/StarSystem.h"
 #include "planet/PlanetMap.h"
 #include "raylib.h"
+#include "ui/UniqueTexture.h"
 
 #include <vector>
 
@@ -20,6 +21,7 @@ namespace Infinitesia
 
     private:
         void HandleInput();
+        void EnsureSurfaceTexture();
         Camera3D MakeCamera() const;
         void SyncGlobeMesh() const;
         void WriteCellColors(Color* out, int row, int column, bool selected) const;
@@ -31,7 +33,7 @@ namespace Infinitesia
         std::vector<Vector3> m_sphereVertices;
         std::vector<Color> m_sphereVertexColors;
         std::vector<float> m_sphereVertexBrightness;
-        mutable Texture2D m_surfaceTexture{};
+        UniqueTexture m_surfaceTexture;
         // Static globe mesh (6 vertices per cell, baked vertex colors), built lazily
         // once a GL context exists. Rotation is applied via a transform matrix.
         mutable Mesh m_globeMesh{};
