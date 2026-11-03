@@ -3,6 +3,7 @@
 #include "support/GeologyFixtures.h"
 #include "support/Require.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <filesystem>
@@ -54,6 +55,72 @@ TEST_CASE("CatalogLoadsWithStableIds")
     CHECK(catalog.GetMaterial(kUnspecifiedMaterial) == nullptr);
     CHECK(catalog.GetMaterial(31) == nullptr);
     CHECK(catalog.ColorOf(kUnspecifiedMaterial) == RgbColor{ 255, 0, 255 });
+}
+
+TEST_CASE("MaterialsCarryTagsAndLightProperties")
+{
+    const GeologyCatalog& catalog = SharedCatalog();
+    const auto hasTag = [](const MaterialDef& material, const char* tag)
+    {
+        return std::find(material.tags.begin(), material.tags.end(), tag) != material.tags.end();
+    };
+    for (const MaterialDef& material : catalog.Materials())
+    {
+        Require(hasTag(material, ClassTag(material.blockClass)), "a material lacks the tag of its class");
+        for (const std::uint8_t level : { material.opacity.r, material.opacity.g, material.opacity.b,
+                                          material.emission.r, material.emission.g, material.emission.b })
+        {
+            Require(level <= kMaxLightLevel, "a light value is above 15");
+        }
+    }
+
+    // Defaults follow the class: air passes light, water and ice dim it a little, ground and rock stop it.
+    CHECK(catalog.FindMaterial("air")->opacity == LightRgb{ 0, 0, 0 });
+    CHECK(catalog.FindMaterial("fluid.water")->opacity == LightRgb{ 2, 2, 2 });
+    CHECK(catalog.FindMaterial("ice.glacier")->opacity == LightRgb{ 3, 3, 3 });
+    CHECK(catalog.FindMaterial("soil.sand")->opacity == LightRgb{ 15, 15, 15 });
+    CHECK(catalog.FindMaterial("rock.granite")->opacity == LightRgb{ 15, 15, 15 });
+
+    // Magma gives off orange light and blocks it like rock; nothing else glows yet.
+    CHECK(catalog.FindMaterial("fluid.magma")->emission == LightRgb{ 14, 6, 1 });
+    CHECK(catalog.FindMaterial("fluid.magma")->opacity == LightRgb{ 15, 15, 15 });
+    CHECK(catalog.FindMaterial("fluid.oil")->emission == LightRgb{});
+
+    // The sea is the same as fresh water for now (docs/06_BLOCKS.md): one tag, equal properties.
+    const MaterialDef& water = *catalog.FindMaterial("fluid.water");
+    const MaterialDef& seawater = *catalog.FindMaterial("fluid.seawater");
+    CHECK(hasTag(water, "water"));
+    CHECK(hasTag(seawater, "water"));
+    CHECK(water.density == seawater.density);
+    CHECK(water.color == seawater.color);
+    CHECK(water.opacity == seawater.opacity);
+}
+
+TEST_CASE("MaterialLightFieldsAreValidated")
+{
+    {
+        const BrokenCatalog broken("infinitesia_catalog_opacity");
+        broken.Replace("materials.json", "\"opacity\": 15", "\"opacity\": 16");
+        const std::string error = broken.LoadError();
+        CHECK(error.find("opacity") != std::string::npos);
+        CHECK(error.find("fluid.magma") != std::string::npos);
+    }
+    {
+        const BrokenCatalog broken("infinitesia_catalog_emission");
+        broken.Replace("materials.json", "\"emission\": [14, 6, 1]", "\"emission\": [14, 6]");
+        CHECK(broken.LoadError().find("emission") != std::string::npos);
+    }
+    {
+        const BrokenCatalog broken("infinitesia_catalog_tags");
+        broken.Replace("materials.json", "\"tags\": [\"water\"]", "\"tags\": [7]");
+        CHECK(broken.LoadError().find("tags") != std::string::npos);
+    }
+    {
+        // A tint is three numbers: red glass dims green and blue more than red.
+        const BrokenCatalog broken("infinitesia_catalog_tint");
+        broken.Replace("materials.json", "\"opacity\": 15", "\"opacity\": [1, 8, 8]");
+        CHECK(broken.LoadError().empty());
+    }
 }
 
 TEST_CASE("MineralMolarMassesMatchTheReference")

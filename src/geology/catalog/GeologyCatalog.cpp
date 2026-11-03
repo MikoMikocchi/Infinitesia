@@ -34,6 +34,7 @@ namespace Infinitesia
             material.digClass = rock.digClass;
             material.color = rock.color;
             material.rockIndex = static_cast<int>(i);
+            material.tags.push_back(ClassTag(BlockClass::Rock));
             catalog.m_materials.push_back(std::move(material));
         }
         std::sort(catalog.m_materials.begin(), catalog.m_materials.end(),

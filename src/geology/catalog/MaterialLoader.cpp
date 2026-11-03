@@ -3,6 +3,7 @@
 #include "geology/catalog/GeologyCatalog.h"
 #include "geology/catalog/internal/CatalogJson.h"
 
+#include <algorithm>
 #include <set>
 namespace Infinitesia
 {
@@ -23,6 +24,54 @@ namespace Infinitesia
                     return value;
             }
             Fail(where, "unknown material class '" + text + "' (rocks are read from rocks.json)");
+        }
+    }
+
+    namespace
+    {
+        std::uint8_t LightLevel(const Json& value, const char* key, const Where& where)
+        {
+            if (!value.is_number_integer())
+                Fail(where, std::string("field '") + key + "' must hold whole numbers");
+            const int level = value.get<int>();
+            if (level < 0 || level > kMaxLightLevel)
+                Fail(where, std::string("field '") + key + "' must be 0-15");
+            return static_cast<std::uint8_t>(level);
+        }
+
+        // A light value is written as one number (all channels) or as [r, g, b]; absent gives the fallback.
+        LightRgb LightField(const Json& object, const char* key, const Where& where, LightRgb fallback, bool allowNumber)
+        {
+            if (!object.contains(key))
+                return fallback;
+            const Json& value = object.at(key);
+            if (allowNumber && value.is_number())
+            {
+                const std::uint8_t level = LightLevel(value, key, where);
+                return { level, level, level };
+            }
+            if (!value.is_array() || value.size() != 3)
+                Fail(where, std::string("field '") + key + "' must be " + (allowNumber ? "a number or " : "") + "[r, g, b]");
+            return { LightLevel(value[0], key, where), LightLevel(value[1], key, where), LightLevel(value[2], key, where) };
+        }
+
+        std::vector<std::string> TagsField(const Json& object, BlockClass blockClass, const Where& where)
+        {
+            std::vector<std::string> tags{ ClassTag(blockClass) };
+            if (!object.contains("tags"))
+                return tags;
+            const Json& list = object.at("tags");
+            if (!list.is_array())
+                Fail(where, "field 'tags' must be an array of strings");
+            for (const Json& tag : list)
+            {
+                if (!tag.is_string() || tag.get<std::string>().empty())
+                    Fail(where, "field 'tags' must be an array of non-empty strings");
+                const std::string text = tag.get<std::string>();
+                if (std::find(tags.begin(), tags.end(), text) == tags.end())
+                    tags.push_back(text);
+            }
+            return tags;
         }
     }
 
@@ -55,6 +104,9 @@ namespace Infinitesia
             if (material.digClass < 0 || material.digClass > 5)
                 Fail(record, "digClass must be 0-5");
             material.color = ColorField(entry, record);
+            material.tags = TagsField(entry, material.blockClass, record);
+            material.opacity = LightField(entry, "opacity", record, DefaultOpacity(material.blockClass), true);
+            material.emission = LightField(entry, "emission", record, LightRgb{}, false);
             ProvenanceField(entry, record);
             materials.push_back(std::move(material));
         }

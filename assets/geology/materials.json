@@ -22,7 +22,8 @@
    "density": 1000,
    "digClass": 0,
    "color": "#346eaa",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["water"]
   },
   {
    "id": "fluid.seawater",
@@ -30,10 +31,11 @@
    "name": "seawater",
    "nameRu": "морская вода",
    "class": "fluid",
-   "density": 1025,
+   "density": 1000,
    "digClass": 0,
-   "color": "#2f69a5",
-   "provenance": "gameplay"
+   "color": "#346eaa",
+   "provenance": "gameplay",
+   "tags": ["water"]
   },
   {
    "id": "fluid.brine",
@@ -66,7 +68,9 @@
    "density": 2700,
    "digClass": 0,
    "color": "#e0501a",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "opacity": 15,
+   "emission": [14, 6, 1]
   },
   {
    "id": "soil.humus",
