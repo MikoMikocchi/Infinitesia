@@ -15,6 +15,12 @@ namespace Infinitesia
         constexpr std::uint64_t kPileStage = 0x7069'6c65'0001ull;      // "pile"
         constexpr std::uint64_t kStructureStage = 0x7374'7275'0002ull; // "stru"
         constexpr std::uint64_t kLayerStage = 0x6c61'7972'0003ull;     // "layr"
+        constexpr std::uint64_t kFaultStage = 0x6661'756c'0004ull;     // "faul"
+
+        // Faults of lattice cells up to this many cells away can reach a column.
+        constexpr int kFaultCellReach = 2;
+        constexpr double kFaultMinDip[3] = { 50.0, 20.0, 80.0 };  // normal, thrust, strike-slip
+        constexpr double kFaultMaxDip[3] = { 70.0, 40.0, 88.0 };
 
         constexpr double kDegrees = std::numbers::pi / 180.0;
 
@@ -158,6 +164,8 @@ namespace Infinitesia
                 structure.folds.push_back(fold);
             }
             structure.warpWavelengthMeters = 400.0 + 600.0 * draw(5);
+            structure.faults = style.faults;
+            structure.compressionAzimuthDegrees = province.compressionAzimuthDegrees;
 
             m_piles.push_back(std::move(pile));
             m_structures.push_back(std::move(structure));
@@ -210,7 +218,7 @@ namespace Infinitesia
         return Displacement(StructureOf(province), eastMeters, northMeters);
     }
 
-    GeologyModel::ColumnProfile GeologyModel::ProfileAt(
+    GeologyModel::ColumnProfile GeologyModel::BaseProfileAt(
         ProvinceId province, double eastMeters, double northMeters, int pileTopMeters) const
     {
         const std::vector<Layer>& pile = PileOf(province);
@@ -238,11 +246,19 @@ namespace Infinitesia
                 bottomHeight = height - thickness;
             }
 
-            const int slot = profile.count++;
-            profile.rock[static_cast<std::size_t>(slot)] = pile[i].rock;
-            profile.bottom[static_cast<std::size_t>(slot)] = basement
-                ? std::numeric_limits<int>::min()
-                : static_cast<int>(std::lround(bottomHeight + lift));
+            const int bottom = basement ? std::numeric_limits<int>::min()
+                                        : static_cast<int>(std::lround(bottomHeight + lift));
+            if (profile.count > 0 && profile.rock[static_cast<std::size_t>(profile.count - 1)] == pile[i].rock)
+            {
+                // The layer between two pieces of one rock has pinched out: they are one layer.
+                profile.bottom[static_cast<std::size_t>(profile.count - 1)] = bottom;
+            }
+            else
+            {
+                const int slot = profile.count++;
+                profile.rock[static_cast<std::size_t>(slot)] = pile[i].rock;
+                profile.bottom[static_cast<std::size_t>(slot)] = bottom;
+            }
             height = bottomHeight;
         }
         if (profile.count == 0)
@@ -252,6 +268,238 @@ namespace Infinitesia
             profile.bottom[0] = std::numeric_limits<int>::min();
         }
         return profile;
+    }
+
+    std::vector<GeologyModel::Fault> GeologyModel::FaultsNear(
+        ProvinceId province, double eastMeters, double northMeters) const
+    {
+        const Structure& structure = StructureOf(province);
+        const FaultStyle& style = structure.faults;
+        std::vector<Fault> faults;
+        if (!(style.probability > 0.0) || province == kNoProvince)
+        {
+            return faults;
+        }
+
+        const double spacing = style.spacingMeters;
+        const auto cellEast = static_cast<std::int64_t>(std::floor(eastMeters / spacing));
+        const auto cellNorth = static_cast<std::int64_t>(std::floor(northMeters / spacing));
+        for (int di = -kFaultCellReach; di <= kFaultCellReach; ++di)
+        {
+            for (int dj = -kFaultCellReach; dj <= kFaultCellReach; ++dj)
+            {
+                const std::int64_t ci = cellEast + di;
+                const std::int64_t cj = cellNorth + dj;
+                const std::uint64_t key = GeologyRandom::Stream(
+                    structure.seed, kFaultStage, static_cast<std::uint64_t>(ci), static_cast<std::uint64_t>(cj));
+                const auto draw = [key](std::uint64_t index)
+                {
+                    return GeologyRandom::Unit(GeologyRandom::Mix(key + index * 0x9e3779b97f4a7c15ull));
+                };
+                if (draw(0) >= style.probability)
+                {
+                    continue;
+                }
+
+                Fault fault;
+                fault.centerEast = (static_cast<double>(ci) + 0.15 + 0.7 * draw(1)) * spacing;
+                fault.centerNorth = (static_cast<double>(cj) + 0.15 + 0.7 * draw(2)) * spacing;
+                const double kindDraw = draw(3);
+                fault.kind = kindDraw < style.normalShare ? FaultKind::Normal
+                    : kindDraw < style.normalShare + style.thrustShare ? FaultKind::Thrust
+                    : FaultKind::StrikeSlip;
+
+                // Normal faults and thrusts strike across the axis of plate motion (which stretches
+                // or compresses the crust along it); strike-slip faults lie at an angle to it.
+                const double axis = structure.compressionAzimuthDegrees;
+                const double jitter = 30.0 * (draw(4) - 0.5);
+                const double side = draw(5) < 0.5 ? 1.0 : -1.0;
+                fault.strikeAzimuthDegrees = fault.kind == FaultKind::StrikeSlip
+                    ? axis + side * (25.0 + 20.0 * draw(6))
+                    : axis + 90.0 + jitter;
+                const auto kindIndex = static_cast<std::size_t>(fault.kind);
+                fault.dipDegrees = Lerp(kFaultMinDip[kindIndex], kFaultMaxDip[kindIndex], draw(7));
+                fault.dipAzimuthDegrees = fault.strikeAzimuthDegrees + (draw(8) < 0.5 ? 90.0 : -90.0);
+                fault.strikeRadiusMeters = spacing * (0.7 + 0.6 * draw(9));
+                fault.dipRadiusMeters = spacing * (0.5 + 0.5 * draw(10));
+                fault.slipMeters = Lerp(style.minSlipMeters, style.maxSlipMeters, draw(11));
+                fault.sense = draw(12) < 0.5 ? 1.0 : -1.0;
+                fault.age = draw(13);
+                fault.centerOffsetMeters = -(10.0 + 90.0 * draw(14));
+
+                // Close enough to matter: the fault itself, or where a displaced block came from.
+                const double reach = std::max(fault.strikeRadiusMeters, fault.dipRadiusMeters) + fault.slipMeters;
+                if (std::hypot(fault.centerEast - eastMeters, fault.centerNorth - northMeters) <= reach)
+                {
+                    faults.push_back(fault);
+                }
+            }
+        }
+
+        if (faults.size() > static_cast<std::size_t>(kMaxFaultsPerColumn))
+        {
+            std::sort(faults.begin(), faults.end(), [](const Fault& a, const Fault& b) { return a.slipMeters > b.slipMeters; });
+            faults.resize(static_cast<std::size_t>(kMaxFaultsPerColumn));
+        }
+        std::sort(faults.begin(), faults.end(), [](const Fault& a, const Fault& b)
+        {
+            return a.age != b.age ? a.age < b.age : a.centerEast < b.centerEast;
+        });
+        return faults;
+    }
+
+    GeologyModel::FaultEffect GeologyModel::EffectOf(
+        const Fault& fault, double eastMeters, double northMeters, int pileTopMeters) noexcept
+    {
+        const double beta = fault.dipDegrees * kDegrees;
+        const double strike = fault.strikeAzimuthDegrees * kDegrees;
+        const double dipAzimuth = fault.dipAzimuthDegrees * kDegrees;
+        const double strikeEast = std::sin(strike);
+        const double strikeNorth = std::cos(strike);
+        const double dipEast = std::sin(dipAzimuth);
+        const double dipNorth = std::cos(dipAzimuth);
+
+        const double dx = eastMeters - fault.centerEast;
+        const double dy = northMeters - fault.centerNorth;
+        const double along = dx * strikeEast + dy * strikeNorth;
+        const double downDip = dx * dipEast + dy * dipNorth; // horizontal distance down the dip
+        const double slant = downDip / std::cos(beta);       // the same, measured along the plane
+        const double ellipse = (along / fault.strikeRadiusMeters) * (along / fault.strikeRadiusMeters) +
+                               (slant / fault.dipRadiusMeters) * (slant / fault.dipRadiusMeters);
+
+        FaultEffect effect;
+        if (ellipse >= 1.0)
+        {
+            return effect;
+        }
+        // Slip dies out smoothly towards the edge of the fault.
+        const double amplitude = fault.slipMeters * (1.0 - ellipse) * (1.0 - ellipse);
+        effect.amplitude = amplitude;
+        effect.cutElevation = static_cast<double>(pileTopMeters) + fault.centerOffsetMeters - std::tan(beta) * downDip;
+
+        // Displacement of the block above the plane.
+        switch (fault.kind)
+        {
+        case FaultKind::Normal: // the hanging wall slides down the plane
+            effect.shiftEast = amplitude * std::cos(beta) * dipEast;
+            effect.shiftNorth = amplitude * std::cos(beta) * dipNorth;
+            effect.lift = -amplitude * std::sin(beta);
+            break;
+        case FaultKind::Thrust: // and is pushed up it
+            effect.shiftEast = -amplitude * std::cos(beta) * dipEast;
+            effect.shiftNorth = -amplitude * std::cos(beta) * dipNorth;
+            effect.lift = amplitude * std::sin(beta);
+            break;
+        case FaultKind::StrikeSlip:
+            effect.shiftEast = fault.sense * amplitude * strikeEast;
+            effect.shiftNorth = fault.sense * amplitude * strikeNorth;
+            break;
+        }
+        return effect;
+    }
+
+    namespace
+    {
+        using Profile = GeologyModel::ColumnProfile;
+
+        constexpr int kBasementBottom = std::numeric_limits<int>::min();
+
+        // Rocks above `cut` from `upper` and rocks below it from `lower`.
+        Profile Compose(const Profile& upper, const Profile& lower, int cut)
+        {
+            std::vector<std::pair<MaterialId, int>> layers;
+            for (int i = 0; i < upper.count; ++i)
+            {
+                const int bottom = upper.bottom[static_cast<std::size_t>(i)];
+                const int top = i == 0 ? std::numeric_limits<int>::max() : upper.bottom[static_cast<std::size_t>(i - 1)];
+                if (top <= cut)
+                {
+                    break;
+                }
+                layers.emplace_back(upper.rock[static_cast<std::size_t>(i)], std::max(bottom, cut));
+                if (bottom <= cut)
+                {
+                    break;
+                }
+            }
+            for (int j = 0; j < lower.count; ++j)
+            {
+                const int bottom = lower.bottom[static_cast<std::size_t>(j)];
+                if (bottom < cut)
+                {
+                    layers.emplace_back(lower.rock[static_cast<std::size_t>(j)], bottom);
+                }
+            }
+
+            // Neighbouring pieces of one rock are one layer.
+            for (std::size_t i = 0; i + 1 < layers.size();)
+            {
+                if (layers[i].first == layers[i + 1].first)
+                    layers.erase(layers.begin() + static_cast<std::ptrdiff_t>(i));
+                else
+                    ++i;
+            }
+            // Too many layers for a profile: drop the thinnest interior ones (never the top or basement).
+            while (layers.size() > static_cast<std::size_t>(GeologyModel::kMaxProfileLayers))
+            {
+                std::size_t thinnest = 1;
+                long long smallest = std::numeric_limits<long long>::max();
+                for (std::size_t i = 1; i + 1 < layers.size(); ++i)
+                {
+                    const long long thickness = static_cast<long long>(layers[i - 1].second) - layers[i].second;
+                    if (thickness < smallest)
+                    {
+                        smallest = thickness;
+                        thinnest = i;
+                    }
+                }
+                layers.erase(layers.begin() + static_cast<std::ptrdiff_t>(thinnest));
+            }
+
+            Profile result;
+            for (const auto& [rock, bottom] : layers)
+            {
+                result.rock[static_cast<std::size_t>(result.count)] = rock;
+                result.bottom[static_cast<std::size_t>(result.count)] = bottom;
+                ++result.count;
+            }
+            result.bottom[static_cast<std::size_t>(result.count - 1)] = kBasementBottom;
+            return result;
+        }
+    }
+
+    GeologyModel::ColumnProfile GeologyModel::FaultedProfile(
+        ProvinceId province, const std::vector<Fault>& faults, std::size_t count,
+        double eastMeters, double northMeters, int pileTopMeters) const
+    {
+        if (count == 0)
+        {
+            return BaseProfileAt(province, eastMeters, northMeters, pileTopMeters);
+        }
+        // The youngest fault of the first `count` cuts everything the older ones made.
+        const Fault& fault = faults[count - 1];
+        const FaultEffect effect = EffectOf(fault, eastMeters, northMeters, pileTopMeters);
+        if (!(effect.amplitude > 0.0))
+        {
+            return FaultedProfile(province, faults, count - 1, eastMeters, northMeters, pileTopMeters);
+        }
+
+        const ColumnProfile lower = FaultedProfile(province, faults, count - 1, eastMeters, northMeters, pileTopMeters);
+        ColumnProfile upper = FaultedProfile(
+            province, faults, count - 1, eastMeters - effect.shiftEast, northMeters - effect.shiftNorth, pileTopMeters);
+        const int lift = static_cast<int>(std::lround(effect.lift));
+        for (int i = 0; i + 1 < upper.count; ++i)
+        {
+            upper.bottom[static_cast<std::size_t>(i)] += lift;
+        }
+        return Compose(upper, lower, static_cast<int>(std::lround(effect.cutElevation)));
+    }
+
+    GeologyModel::ColumnProfile GeologyModel::ProfileAt(
+        ProvinceId province, double eastMeters, double northMeters, int pileTopMeters) const
+    {
+        const std::vector<Fault> faults = FaultsNear(province, eastMeters, northMeters);
+        return FaultedProfile(province, faults, faults.size(), eastMeters, northMeters, pileTopMeters);
     }
 
     MaterialId GeologyModel::RockAt(const ColumnProfile& profile, int elevationMeters) noexcept

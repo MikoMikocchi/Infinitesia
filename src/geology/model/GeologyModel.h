@@ -27,14 +27,20 @@ namespace Infinitesia
     // the settlement anchor and elevations are metres above sea level, so the model does
     // not know about chunks, regions or the window.
     //
-    // Not yet modelled (later steps of G2): faults, intrusions, and events behind the
-    // structures. The deformation is a function of the position only; far from the anchor
+    // Faults cut the deformed pile: planes with a slip that dies out towards the edge of the
+    // fault, placed on a lattice so that any place knows its faults without a global list
+    // (normal faults where the crust is stretched, thrusts where it is compressed, strike-slip
+    // faults beside them). The block above a fault plane moves along it; what lies there is
+    // what the undeformed pile had at the place it came from.
+    //
+    // Not yet modelled (later steps of G2): intrusions, and events behind the structures.
+    // The deformation is a function of the position only; far from the anchor
     // (many kilometres, with a steep dip) the pile slides out of reach and only the top
     // formation or the basement is left.
     class GeologyModel
     {
     public:
-        static constexpr int kMaxProfileLayers = 16;
+        static constexpr int kMaxProfileLayers = 32;
 
         // The rocks under one column, top formation first. Layer i is the rock between its
         // `bottom` elevation and the bottom of layer i - 1 (the first has nothing above it, the
@@ -64,9 +70,41 @@ namespace Infinitesia
             std::uint64_t noiseSeed = 0;
         };
 
+        enum class FaultKind : std::uint8_t { Normal, Thrust, StrikeSlip };
+
+        // A fault plane. Positions are metres east and north of the anchor; the centre elevation
+        // is given relative to the top of the pile of the column asked about.
+        struct Fault
+        {
+            FaultKind kind = FaultKind::Normal;
+            double centerEast = 0.0;
+            double centerNorth = 0.0;
+            double centerOffsetMeters = 0.0; // elevation of the centre minus the pile top
+            double strikeAzimuthDegrees = 0.0;
+            double dipDegrees = 60.0;
+            double dipAzimuthDegrees = 0.0;  // horizontal direction the plane falls towards
+            double strikeRadiusMeters = 0.0;
+            double dipRadiusMeters = 0.0;    // measured along the plane
+            double slipMeters = 0.0;         // displacement along the slip direction at the centre
+            double sense = 1.0;              // +1 or -1: the side a strike-slip fault moves towards
+            double age = 0.0;                // 0..1, a younger fault (larger) cuts older ones
+        };
+
+        // What a fault does to the column at one place: the plane crosses it at `cutElevation`
+        // and the block above came from (east - shiftEast, north - shiftNorth), raised by `lift`.
+        struct FaultEffect
+        {
+            double amplitude = 0.0; // 0 where the fault does not reach the column
+            double cutElevation = 0.0;
+            double shiftEast = 0.0;
+            double shiftNorth = 0.0;
+            double lift = 0.0;
+        };
+
         // The deformation of a province's pile.
         struct Structure
         {
+            FaultStyle faults;
             double dipDegrees = 0.0;
             double dipAzimuthDegrees = 0.0; // direction the layers fall towards, clockwise from north
             double slopeEast = 0.0;         // change of layer elevation per metre east
@@ -74,6 +112,7 @@ namespace Infinitesia
             std::vector<Fold> folds;
             double warpWavelengthMeters = 700.0; // folds are bent by noise of this scale
             double warpRadians = 1.5;
+            double compressionAzimuthDegrees = 0.0; // axis of the plate motion
             std::uint64_t seed = 0;
             std::vector<LayerShape> layers;      // one per formation of the pile
         };
@@ -87,6 +126,17 @@ namespace Infinitesia
         // The rocks under the point (east, north) of a province whose undeformed pile has its
         // top `pileTopMeters` above sea level. kNoProvince gives granite basement.
         ColumnProfile ProfileAt(ProvinceId province, double eastMeters, double northMeters, int pileTopMeters) const;
+
+        // The same column without faults (folds, dip and thickness changes only).
+        ColumnProfile BaseProfileAt(ProvinceId province, double eastMeters, double northMeters, int pileTopMeters) const;
+
+        // The faults whose reach may include the column, oldest first (at most kMaxFaultsPerColumn,
+        // the largest slips when there are more).
+        static constexpr int kMaxFaultsPerColumn = 10;
+        std::vector<Fault> FaultsNear(ProvinceId province, double eastMeters, double northMeters) const;
+
+        // How a fault displaces the column at (east, north); amplitude 0 where it does not.
+        static FaultEffect EffectOf(const Fault& fault, double eastMeters, double northMeters, int pileTopMeters) noexcept;
 
         // The rock at an elevation in a profile: the layer whose bottom lies at or below it.
         static MaterialId RockAt(const ColumnProfile& profile, int elevationMeters) noexcept;
@@ -113,6 +163,8 @@ namespace Infinitesia
 
     private:
         static double Displacement(const Structure& structure, double eastMeters, double northMeters) noexcept;
+        ColumnProfile FaultedProfile(ProvinceId province, const std::vector<Fault>& faults, std::size_t count,
+                                     double eastMeters, double northMeters, int pileTopMeters) const;
 
         std::shared_ptr<const GeologyCatalog> m_catalog;
         GeologyConfig m_config;

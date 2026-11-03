@@ -106,9 +106,22 @@ namespace Infinitesia
         BiosphereRequirement needs = BiosphereRequirement::None;
     };
 
+    // Faults of a province type: a candidate fault per lattice cell of `spacingMeters`, present
+    // with the given probability; the rest of the kinds up to 1 are strike-slip.
+    struct FaultStyle
+    {
+        double spacingMeters = 1000.0;
+        double probability = 0.0;
+        double minSlipMeters = 0.0; // displacement along the fault plane at the centre
+        double maxSlipMeters = 0.0;
+        double normalShare = 0.0;
+        double thrustShare = 0.0;
+    };
+
     // How the rocks of a province type are deformed (docs/03_GEOLOGY.md, section 8.1).
     struct StructureStyle
     {
+        FaultStyle faults;
         double minDipDegrees = 0.0;
         double maxDipDegrees = 0.0;
         // Fold amplitude is foldAmplitude * wavelength^0.8, limited to a 60 degree flank.

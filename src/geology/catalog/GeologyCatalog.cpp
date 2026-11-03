@@ -348,7 +348,7 @@ namespace Infinitesia
         {
             const Json root = ReadJson(path);
             Where where{ path.string(), "" };
-            CheckSchemaVersion(root, where, 2);
+            CheckSchemaVersion(root, where, 3);
             const Json& table = Field(root, "columns", where);
             if (!table.is_object())
                 Fail(where, "field 'columns' must be an object");
@@ -383,6 +383,20 @@ namespace Infinitesia
                 style.foldCount = IntField(structure, "foldCount", record);
                 if (style.foldCount < 0 || style.foldCount > 6)
                     Fail(record, "foldCount must be 0-6");
+
+                const Json& faults = Field(structure, "faults", record);
+                FaultStyle& fault = style.faults;
+                fault.spacingMeters = NumberField(faults, "spacingM", record);
+                if (!(fault.spacingMeters >= 50.0 && fault.spacingMeters <= 20000.0))
+                    Fail(record, "fault spacingM must be 50-20000");
+                fault.probability = NumberField(faults, "probability", record);
+                if (!(fault.probability >= 0.0 && fault.probability <= 1.0))
+                    Fail(record, "fault probability must be 0-1");
+                ReadRange(faults, "throwM", record, 0.0, 500.0, fault.minSlipMeters, fault.maxSlipMeters);
+                fault.normalShare = NumberField(faults, "normalShare", record);
+                fault.thrustShare = NumberField(faults, "thrustShare", record);
+                if (!(fault.normalShare >= 0.0 && fault.thrustShare >= 0.0 && fault.normalShare + fault.thrustShare <= 1.0 + 1e-9))
+                    Fail(record, "fault normalShare and thrustShare must be shares that sum to at most 1");
                 for (const Json& layer : layers)
                 {
                     const std::string rockKey = StringField(layer, "rock", record);

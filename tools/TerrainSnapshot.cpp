@@ -88,7 +88,9 @@ namespace
             "  --vexag <f>            vertical exaggeration (default grows with the window)\n"
             "  --out <file.png>       output (default snapshot.png)\n"
             "  --map                  a geological map from above (rock under the topsoil, contacts as\n"
-            "                         dark lines, hill shading) instead of the block picture\n"
+            "                         dark lines, hill shading) instead of the block picture; faults are drawn\n"
+            "                         where their plane reaches the ground: red normal, blue thrust, yellow\n"
+            "                         strike-slip\n"
             "  --assets <dir>         geology catalogs (default: the source tree's assets/geology)\n"
             "\n"
             "Stone is drawn in the colour of its rock, taken from the geology catalog; the rocks\n"
@@ -495,6 +497,7 @@ namespace
             std::vector<int> ground(static_cast<std::size_t>(columns) * columns);
             std::vector<MaterialId> rockAt(ground.size(), kUnspecifiedMaterial);
             std::vector<char> drowned(ground.size(), 0);
+            std::vector<char> faultTrace(ground.size(), 0); // 1 normal, 2 thrust, 3 strike-slip: the plane meets the ground
             for (int south = 0; south < columns; ++south)
             {
                 for (int east = 0; east < columns; ++east)
@@ -508,7 +511,21 @@ namespace
                     ground[index] = column.heightBlocks;
                     drowned[index] = column.underSea ? 1 : 0;
                     // Under the topsoil (3 m) the rock that outcrops or lies just below the ground.
-                    rockAt[index] = GeologyModel::RockAt(profile, terrain.OriginElevationMeters() + column.heightBlocks - 4);
+                    const int rockLevel = terrain.OriginElevationMeters() + column.heightBlocks - 4;
+                    rockAt[index] = GeologyModel::RockAt(profile, rockLevel);
+
+                    // Where a fault plane reaches the ground the fault shows as a line on the map.
+                    for (const GeologyModel::Fault& fault : geology.FaultsNear(column.province, options.originEast + eastMeters + 0.5,
+                                                                              options.originNorth + northMeters + 0.5))
+                    {
+                        const auto effect = GeologyModel::EffectOf(fault, options.originEast + eastMeters + 0.5,
+                                                                   options.originNorth + northMeters + 0.5, column.pileTopMeters);
+                        const double reach = std::max(1.0, std::tan(fault.dipDegrees * 3.14159265358979 / 180.0) * step * 0.7);
+                        if (effect.amplitude > 0.0 && std::abs(rockLevel - effect.cutElevation) <= reach)
+                        {
+                            faultTrace[index] = static_cast<char>(1 + static_cast<int>(fault.kind));
+                        }
+                    }
                 }
             }
 
@@ -541,6 +558,11 @@ namespace
                     if (drowned[index] != 0)
                     {
                         color = Mix(color, { 52, 110, 170 }, 0.7);
+                    }
+                    if (faultTrace[index] != 0)
+                    {
+                        static const Rgb kFaultColors[] = { { 220, 40, 40 }, { 40, 90, 230 }, { 235, 200, 30 } }; // normal, thrust, strike-slip
+                        color = Mix(color, kFaultColors[faultTrace[index] - 1], 0.9);
                     }
                     const double x0 = static_cast<double>(east) * pixels;
                     const double y0 = static_cast<double>(south) * pixels;
