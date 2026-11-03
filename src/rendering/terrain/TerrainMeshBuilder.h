@@ -4,6 +4,7 @@
 #include "world/Grid.h"
 #include "world/World.h"
 #include "rendering/WorldGeometryRenderer.h"
+#include "rendering/terrain/BlockTextureAtlas.h"
 
 #include <vector>
 
@@ -17,7 +18,8 @@ namespace Infinitesia
                 const Grid& grid,
                 const World& world,
                 const WorldChunk& chunk,
-                int viewLevel);
+                int viewLevel,
+                const BlockTextureAtlas* atlas);
         }
     }
 }

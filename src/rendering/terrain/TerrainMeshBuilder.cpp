@@ -52,7 +52,8 @@ namespace Infinitesia
                 const Grid& grid,
                 const World& world,
                 const WorldChunk& chunk,
-                int viewLevel)
+                int viewLevel,
+                const BlockTextureAtlas* atlas)
             {
                 const int localY = viewLevel - chunk.coordinate.y * kChunkSize;
                 if (localY < 0 || localY >= chunk.height)
@@ -124,21 +125,28 @@ namespace Infinitesia
                         const float back = front + cellSize;
                         const float topY = isAir ? floorY : blockTopY;
                         const Block& visibleBlock = isAir ? *floorBlock : block;
-                        Color color = TerrainMeshGeometry::GetBlockColor(visibleBlock, world.GetCatalog());
+                        TerrainMeshGeometry::FaceLook topLook = TerrainMeshGeometry::GetFaceLook(
+                            visibleBlock, world.GetCatalog(), atlas, TerrainMeshGeometry::FaceKind::Top);
+                        TerrainMeshGeometry::FaceLook sideLook = TerrainMeshGeometry::GetFaceLook(
+                            visibleBlock, world.GetCatalog(), atlas, TerrainMeshGeometry::FaceKind::Side);
                         if (!world.HasSkyAccess(lightingCell))
                         {
-                            color = BLACK;
+                            topLook.tint = BLACK;
+                            sideLook.tint = BLACK;
                         }
                         else if (isAir && floorDepth > 1)
                         {
                             const float shade = std::max(
                                 kDeepestFloorShade, 1.0f - kFloorShadePerLevel * static_cast<float>(floorDepth - 1));
-                            color = {
-                                static_cast<unsigned char>(color.r * shade),
-                                static_cast<unsigned char>(color.g * shade),
-                                static_cast<unsigned char>(color.b * shade),
-                                color.a
-                            };
+                            for (TerrainMeshGeometry::FaceLook* look : { &topLook, &sideLook })
+                            {
+                                look->tint = {
+                                    static_cast<unsigned char>(look->tint.r * shade),
+                                    static_cast<unsigned char>(look->tint.g * shade),
+                                    static_cast<unsigned char>(look->tint.b * shade),
+                                    look->tint.a
+                                };
+                            }
                         }
                         meshData.AppendFace(
                             {
@@ -148,7 +156,7 @@ namespace Infinitesia
                                 Vector3{ left, topY, back }
                             },
                             { 0.0f, 1.0f, 0.0f },
-                            color);
+                            topLook);
 
                         if (!isAir)
                         {
@@ -163,7 +171,7 @@ namespace Infinitesia
                                 back,
                                 floorY,
                                 blockTopY,
-                                color);
+                                sideLook);
                         }
 
                         if (viewLevel + 1 < grid.GetHeight())
@@ -176,11 +184,11 @@ namespace Infinitesia
                             const Block* upperBlock = world.GetBlock(upperCell);
                             if (upperBlock != nullptr && upperBlock->type != BlockType::Air)
                             {
-                                Color upperColor =
-                                    TerrainMeshGeometry::GetBlockColor(*upperBlock, world.GetCatalog());
+                                TerrainMeshGeometry::FaceLook upperLook = TerrainMeshGeometry::GetFaceLook(
+                                    *upperBlock, world.GetCatalog(), atlas, TerrainMeshGeometry::FaceKind::Side);
                                 if (!world.HasSkyAccess(upperCell))
                                 {
-                                    upperColor = BLACK;
+                                    upperLook.tint = BLACK;
                                 }
 
                                 meshData.AppendExposedSideFaces(
@@ -194,7 +202,7 @@ namespace Infinitesia
                                     back,
                                     blockTopY,
                                     blockTopY + cellSize,
-                                    upperColor);
+                                    upperLook);
                             }
                         }
                     }

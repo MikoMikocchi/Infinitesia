@@ -60,6 +60,14 @@ namespace Infinitesia
                  iterator != end;
                  ++iterator)
             {
+                // Block tiles are packed into one atlas by BlockTextureAtlas, not loaded one by one.
+                if (iterator->is_directory() &&
+                    std::filesystem::relative(iterator->path(), assetDirectory).generic_string() ==
+                        "textures/blocks")
+                {
+                    iterator.disable_recursion_pending();
+                    continue;
+                }
                 if (!iterator->is_regular_file() || !IsTextureFile(iterator->path()))
                 {
                     continue;

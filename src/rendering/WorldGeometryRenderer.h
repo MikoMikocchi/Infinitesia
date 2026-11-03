@@ -3,6 +3,7 @@
 #include "raylib.h"
 #include "world/Grid.h"
 #include "world/World.h"
+#include "rendering/terrain/BlockTextureAtlas.h"
 
 #include <cstdint>
 #include <map>
@@ -28,6 +29,7 @@ namespace Infinitesia
             int chunkRadius,
             int viewLevel,
             Material material,
+            const BlockTextureAtlas& atlas,
             ChunkMeshCache& meshCache);
         void DrawObjectShadows(
             const Grid& grid,

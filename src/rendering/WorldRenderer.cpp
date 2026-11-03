@@ -76,9 +76,29 @@ namespace Infinitesia
             throw std::runtime_error("Failed to load the blob shadow shader.");
         }
 
+        try
+        {
+            m_blockAtlas.Load(std::filesystem::path(GetApplicationDirectory()) / "assets" / "textures" / "blocks");
+        }
+        catch (...)
+        {
+            UnloadShader(m_shadowShader);
+            UnloadShader(m_worldShader);
+            m_shadowShader = {};
+            m_worldShader = {};
+            throw;
+        }
+
         m_worldMaterial = LoadMaterialDefault();
+        if (m_blockAtlas.IsLoaded())
+        {
+            m_worldMaterial.maps[MATERIAL_MAP_DIFFUSE].texture = m_blockAtlas.GetTexture();
+        }
         m_worldMaterial.shader = m_worldShader;
         m_worldMaterial.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
+        m_objectMaterial = LoadMaterialDefault();
+        m_objectMaterial.shader = m_worldShader;
+        m_objectMaterial.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
         m_cylinderMesh = GenMeshCylinder(1.0f, 1.0f, 8);
         m_sphereMesh = GenMeshSphere(1.0f, 8, 8);
     }
@@ -109,9 +129,18 @@ namespace Infinitesia
         if (m_worldMaterial.maps != nullptr)
         {
             m_worldMaterial.shader = { rlGetShaderIdDefault(), rlGetShaderLocsDefault() };
+            // The atlas owns its texture; UnloadMaterial must not free it a second time.
+            m_worldMaterial.maps[MATERIAL_MAP_DIFFUSE].texture.id = rlGetTextureIdDefault();
             UnloadMaterial(m_worldMaterial);
             m_worldMaterial = {};
         }
+        if (m_objectMaterial.maps != nullptr)
+        {
+            m_objectMaterial.shader = { rlGetShaderIdDefault(), rlGetShaderLocsDefault() };
+            UnloadMaterial(m_objectMaterial);
+            m_objectMaterial = {};
+        }
+        m_blockAtlas.Unload();
         if (m_shadowShader.id != 0)
         {
             UnloadShader(m_shadowShader);
@@ -145,6 +174,7 @@ namespace Infinitesia
             chunkRenderRadius,
             viewLevel,
             m_worldMaterial,
+            m_blockAtlas,
             m_chunkMeshes);
         EndShaderMode();
 
@@ -165,7 +195,7 @@ namespace Infinitesia
             world,
             m_cylinderMesh,
             m_sphereMesh,
-            m_worldMaterial,
+            m_objectMaterial,
             chunkViewCenter,
             chunkRenderRadius,
             viewLevel);

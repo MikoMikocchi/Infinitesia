@@ -4,6 +4,7 @@
 #include "world/Grid.h"
 #include "world/World.h"
 #include "rendering/WorldGeometryRenderer.h"
+#include "rendering/terrain/BlockTextureAtlas.h"
 
 #include <optional>
 #include <vector>
@@ -44,7 +45,9 @@ namespace Infinitesia
         Camera3D m_camera;
         Shader m_worldShader{};
         Shader m_shadowShader{};
-        Material m_worldMaterial{};
+        Material m_worldMaterial{};   // terrain: carries the block atlas
+        Material m_objectMaterial{};  // objects: plain white texture, their meshes have 0..1 UVs
+        BlockTextureAtlas m_blockAtlas;
         Mesh m_cylinderMesh{};
         Mesh m_sphereMesh{};
         mutable WorldGeometryRenderer::ChunkMeshCache m_chunkMeshes;

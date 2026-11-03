@@ -80,19 +80,71 @@ namespace Infinitesia
                 return GetBlockColor(block.type);
             }
 
+            FaceLook GetFaceLook(
+                const Block& block,
+                const GeologyCatalog* catalog,
+                const BlockTextureAtlas* atlas,
+                FaceKind kind)
+            {
+                if (atlas != nullptr && atlas->IsLoaded())
+                {
+                    const Rectangle* tile = nullptr;
+                    if (catalog != nullptr && block.material != kUnspecifiedMaterial)
+                    {
+                        const MaterialDef* material = catalog->GetMaterial(block.material);
+                        if (material != nullptr)
+                        {
+                            tile = atlas->Find(material->key);
+                        }
+                    }
+                    if (tile == nullptr)
+                    {
+                        switch (block.type)
+                        {
+                        case BlockType::Grass:
+                            tile = atlas->Find(kind == FaceKind::Top ? "block.grass_top" : "block.grass_side");
+                            break;
+                        case BlockType::Dirt:  tile = atlas->Find("block.dirt");  break;
+                        case BlockType::Stone: tile = atlas->Find("block.stone"); break;
+                        case BlockType::Sand:  tile = atlas->Find("block.sand");  break;
+                        case BlockType::Water: tile = atlas->Find("block.water"); break;
+                        case BlockType::Air:   break;
+                        }
+                    }
+                    if (tile != nullptr)
+                    {
+                        return { WHITE, *tile };
+                    }
+                    return { GetBlockColor(block, catalog), atlas->WhiteTile() };
+                }
+                return { GetBlockColor(block, catalog), Rectangle{} };
+            }
+
             void MeshData::AppendFace(
                 const std::array<Vector3, 4>& corners,
                 Vector3 normal,
-                Color color)
+                const FaceLook& look)
             {
                 const unsigned short firstVertex =
                     static_cast<unsigned short>(vertices.size() / 3);
+                const float u0 = look.uv.x;
+                const float u1 = look.uv.x + look.uv.width;
+                const float v0 = look.uv.y;
+                const float v1 = look.uv.y + look.uv.height;
+                // Top faces list their corners front-left, front-right, back-right, back-left;
+                // side faces list the two bottom corners and then the two top ones, so the
+                // picture's top edge lands on the upper corners.
+                const std::array<float, 8> uv = normal.y != 0.0f
+                    ? std::array<float, 8>{ u0, v0, u1, v0, u1, v1, u0, v1 }
+                    : std::array<float, 8>{ u0, v1, u1, v1, u1, v0, u0, v0 };
+                std::size_t cornerIndex = 0;
                 for (const Vector3 corner : corners)
                 {
                     vertices.insert(vertices.end(), { corner.x, corner.y, corner.z });
-                    texcoords.insert(texcoords.end(), { 0.0f, 0.0f });
+                    texcoords.insert(texcoords.end(), { uv[cornerIndex * 2], uv[cornerIndex * 2 + 1] });
                     normals.insert(normals.end(), { normal.x, normal.y, normal.z });
-                    colors.insert(colors.end(), { color.r, color.g, color.b, color.a });
+                    colors.insert(colors.end(), { look.tint.r, look.tint.g, look.tint.b, look.tint.a });
+                    ++cornerIndex;
                 }
 
                 AppendFaceIndices(corners, normal, firstVertex, indices);
@@ -109,7 +161,7 @@ namespace Infinitesia
                 float back,
                 float bottomY,
                 float topY,
-                Color color)
+                const FaceLook& look)
             {
                 const std::array<GridCell, 4> neighbors{
                     GridCell{ cell.x - 1, level, cell.z },
@@ -161,7 +213,7 @@ namespace Infinitesia
                         }
                     }
 
-                    AppendFace(sideCorners[side], sideNormals[side], color);
+                    AppendFace(sideCorners[side], sideNormals[side], look);
                 }
             }
         }

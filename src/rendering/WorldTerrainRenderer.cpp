@@ -19,6 +19,7 @@ namespace Infinitesia
                 const World& world,
                 const WorldChunk& chunk,
                 int viewLevel,
+                const BlockTextureAtlas& atlas,
                 ChunkMeshCache& meshCache)
             {
                 const ChunkMeshKey key{ chunk.coordinate, viewLevel };
@@ -37,7 +38,7 @@ namespace Infinitesia
                 }
 
                 ChunkMeshCacheEntry entry{
-                    TerrainMeshBuilder::BuildLevelChunkMesh(grid, world, chunk, viewLevel),
+                    TerrainMeshBuilder::BuildLevelChunkMesh(grid, world, chunk, viewLevel, &atlas),
                     chunk.terrainRevision
                 };
                 if (cachedMesh == meshCache.end())
@@ -56,6 +57,7 @@ namespace Infinitesia
             int chunkRadius,
             int viewLevel,
             Material material,
+            const BlockTextureAtlas& atlas,
             ChunkMeshCache& meshCache)
         {
             for (auto cachedMesh = meshCache.begin(); cachedMesh != meshCache.end();)
@@ -86,7 +88,7 @@ namespace Infinitesia
                 }
 
                 const ChunkMeshCacheEntry& cachedMesh =
-                    GetOrBuildChunkMesh(grid, world, chunk, viewLevel, meshCache);
+                    GetOrBuildChunkMesh(grid, world, chunk, viewLevel, atlas, meshCache);
 
                 if (cachedMesh.mesh.vertexCount > 0)
                 {
@@ -127,6 +129,7 @@ namespace Infinitesia
                         world,
                         chunk,
                         adjacentLevel,
+                        atlas,
                         meshCache));
                     break;
                 }
