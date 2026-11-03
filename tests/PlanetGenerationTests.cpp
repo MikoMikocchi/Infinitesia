@@ -1,3 +1,6 @@
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <doctest/doctest.h>
+
 #include "planet/StarSystemGenerator.h"
 #include "planet/PlanetMap.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
@@ -16,6 +19,14 @@
 #include <utility>
 #include <vector>
 
+// Non-fatal check: a failure is reported with the call-site line and the
+// remaining checks (and test cases) still run. Cheap when the condition holds,
+// which matters for per-cell loops over a whole planet map.
+#define Require(condition, message)     do { if (!(condition)) { FAIL_CHECK(message); } } while (0)
+
+// Fatal variant for checks that guard a following dereference.
+#define RequireFatal(condition, message)     do { if (!(condition)) { FAIL(message); } } while (0)
+
 namespace
 {
     constexpr double kGravitationalConstant = 6.67430e-11;
@@ -23,21 +34,13 @@ namespace
     constexpr double kSolarMassKilograms = 1.98847e30;
     constexpr double kAstronomicalUnitMeters = 149597870700.0;
 
-    void Require(bool condition, const char* message)
-    {
-        if (!condition)
-        {
-            throw std::runtime_error(message);
-        }
-    }
-
     bool NearlyEqual(double first, double second, double relativeTolerance = 1e-10)
     {
         return std::abs(first - second) <=
                std::max(std::abs(first), std::abs(second)) * relativeTolerance;
     }
 
-    void TestSameScenarioIsDeterministic()
+    TEST_CASE("SameScenarioIsDeterministic")
     {
         const Infinitesia::GenerationScenario scenario{ .seed = 42 };
         const Infinitesia::StarSystem first = Infinitesia::StarSystemGenerator::Generate(scenario);
@@ -61,7 +64,7 @@ namespace
         }
     }
 
-    void TestDifferentScenariosProduceDifferentSystems()
+    TEST_CASE("DifferentScenariosProduceDifferentSystems")
     {
         const Infinitesia::StarSystem first =
             Infinitesia::StarSystemGenerator::Generate({ .seed = 1 });
@@ -75,7 +78,7 @@ namespace
                 "Different seeds produced the same planetary orbit.");
     }
 
-    void TestGeneratedSystemIsInternallyConsistent()
+    TEST_CASE("GeneratedSystemIsInternallyConsistent")
     {
         const Infinitesia::StarSystem system =
             Infinitesia::StarSystemGenerator::Generate({ .seed = 2026 });
@@ -144,7 +147,7 @@ namespace
                     {
                         return candidate.id == event.parentEventId;
                     });
-                Require(parent != system.events.end(), "Generation event parent is missing.");
+                RequireFatal(parent != system.events.end(), "Generation event parent is missing.");
                 Require(parent->timeAfterSystemFormationYears <=
                             event.timeAfterSystemFormationYears,
                         "Generation event predates its parent.");
@@ -158,7 +161,7 @@ namespace
         }
     }
 
-    void TestInvalidAndUnsupportedScenariosFailExplicitly()
+    TEST_CASE("InvalidAndUnsupportedScenariosFailExplicitly")
     {
         bool invalidVersionRejected = false;
         try
@@ -173,7 +176,7 @@ namespace
         Require(invalidVersionRejected, "Invalid generator version was not rejected.");
     }
 
-    void TestSeedSweepPreservesGenerationInvariants()
+    TEST_CASE("SeedSweepPreservesGenerationInvariants")
     {
         for (std::uint64_t seed = 0; seed < 128; ++seed)
         {
@@ -191,7 +194,7 @@ namespace
         }
     }
 
-    void TestScenarioConstraintsAreApplied()
+    TEST_CASE("ScenarioConstraintsAreApplied")
     {
         Infinitesia::GenerationScenario scenario{ .seed = 73 };
         scenario.constraints.minimumStarMassSolar = 0.9;
@@ -235,7 +238,7 @@ namespace
                 "Constraints requiring a star older than its lifetime were accepted.");
     }
 
-    void TestPlanetMapIsDeterministicAndWithinGenerationBudget()
+    TEST_CASE("PlanetMapIsDeterministicAndWithinGenerationBudget")
     {
         const auto start = std::chrono::steady_clock::now();
         const Infinitesia::PlanetMap defaultMap;
@@ -535,7 +538,7 @@ namespace
 // classification function will immediately break a specific, readable
 // assertion rather than silently inverting mountains and trenches planet-wide.
 // --------------------------------------------------------------------------
-void TestBoundaryClassificationSignConvention()
+TEST_CASE("BoundaryClassificationSignConvention")
 {
     using namespace Infinitesia::GenerationDetail;
 
@@ -634,7 +637,7 @@ void TestBoundaryClassificationSignConvention()
 // --------------------------------------------------------------------------
 // Robustness tests: edge-case planet configurations.
 // --------------------------------------------------------------------------
-void TestSyntheticFullyLandDrainageFallback()
+TEST_CASE("SyntheticFullyLandDrainageFallback")
 {
     constexpr int latitudeBands = 5;
     constexpr int longitudeSegments = 8;
@@ -704,7 +707,7 @@ void TestSyntheticFullyLandDrainageFallback()
     }
 }
 
-void TestDrainageAccumulationIsMonotonicAlongFlowGraph()
+TEST_CASE("DrainageAccumulationIsMonotonicAlongFlowGraph")
 {
     constexpr int latitudeBands = 5;
     constexpr int longitudeSegments = 8;
@@ -758,7 +761,7 @@ void TestDrainageAccumulationIsMonotonicAlongFlowGraph()
 // Water must be conserved across the whole drainage network: every unit of
 // land runoff ends up either in the ocean or in a land sink, never lost or
 // duplicated.  Without this the balance is only verified inside lakes.
-void TestDrainageNetworkConservesWaterAtPlanetScale()
+TEST_CASE("DrainageNetworkConservesWaterAtPlanetScale")
 {
     constexpr int latitudeBands = 90;
     constexpr int longitudeSegments = 180;
@@ -848,7 +851,7 @@ void TestDrainageNetworkConservesWaterAtPlanetScale()
 
 // Whole-planet freshwater balance after lakes: runoff produced on land must
 // reach the ocean or be accounted for as a lake loss / dry-basin loss.
-void TestPlanetWaterBalanceIncludingLakes()
+TEST_CASE("PlanetWaterBalanceIncludingLakes")
 {
     Infinitesia::PlanetParameters params;
     params.latitudeBands = 45;
@@ -895,7 +898,7 @@ void TestPlanetWaterBalanceIncludingLakes()
     Require(sawLake, "Water-balance test never encountered a lake.");
 }
 
-void TestEdgeCasePlanetConfigurations()
+TEST_CASE("EdgeCasePlanetConfigurations")
 {
     // --- Hydrology invariants: flow must respect topology ---
     // For any generated planet, drainageAccumulation must be monotonically
@@ -1223,32 +1226,4 @@ void TestEdgeCasePlanetConfigurations()
                 "South-pole band mean slope is more than 2× its neighbour.");
         }
     }
-}
-
-int main()
-{
-    try
-    {
-        TestBoundaryClassificationSignConvention();
-        TestSyntheticFullyLandDrainageFallback();
-        TestDrainageAccumulationIsMonotonicAlongFlowGraph();
-        TestDrainageNetworkConservesWaterAtPlanetScale();
-        TestPlanetWaterBalanceIncludingLakes();
-        TestEdgeCasePlanetConfigurations();
-        TestSameScenarioIsDeterministic();
-        TestDifferentScenariosProduceDifferentSystems();
-        TestGeneratedSystemIsInternallyConsistent();
-        TestInvalidAndUnsupportedScenariosFailExplicitly();
-        TestSeedSweepPreservesGenerationInvariants();
-        TestScenarioConstraintsAreApplied();
-        TestPlanetMapIsDeterministicAndWithinGenerationBudget();
-    }
-    catch (const std::exception& exception)
-    {
-        std::cerr << "Planet generation test failed: " << exception.what() << '\n';
-        return EXIT_FAILURE;
-    }
-
-    std::cout << "Planet generation tests passed.\n";
-    return EXIT_SUCCESS;
 }

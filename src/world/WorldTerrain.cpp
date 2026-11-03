@@ -73,7 +73,6 @@ namespace Infinitesia
         ++m_terrainRevision;
 
         const int localX = cell.x % kChunkSize;
-        const int localY = cell.y % kChunkSize;
         const int localZ = cell.z % kChunkSize;
         const int lowerMeshChunkY = cell.y > 0
             ? (cell.y - 1) / kChunkSize

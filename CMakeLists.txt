@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.10)
+﻿cmake_minimum_required(VERSION 3.21)
 
 if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
@@ -24,99 +24,34 @@ set(BUILD_GAMES    OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(raylib)
 
-add_executable(Infinitesia
-  src/main.cpp
-  src/assets/TextureAssetManager.h
-  src/assets/TextureAssetManager.cpp
-  src/app/Application.h
-  src/app/ApplicationConfig.h
-  src/app/internal/AppHelpers.h
-  src/app/internal/AppHelpers.cpp
-  src/app/Application.cpp
-  src/app/ApplicationRun.cpp
-  src/app/ApplicationUpdate.cpp
-  src/app/ApplicationRender.cpp
-  src/core/Time.h
-  src/core/Time.cpp
-  src/core/Simulation.h
-  src/core/Simulation.cpp
-  src/coordinates/PlanetaryCoordinates.h
-  src/planet/PlanetParameters.h
-  src/planet/Planet.h
-  src/planet/Planet.cpp
-  src/planet/GenerationScenario.h
-  src/planet/StarSystem.h
-  src/planet/StarSystemGenerator.h
-  src/planet/StarSystemGenerator.cpp
-  src/planet/PlanetMap.h
-  src/planet/PlanetMap.cpp
-  src/planet/PlanetMapTectonics.cpp
-  src/planet/PlanetMapHydrology.cpp
-  src/planet/internal/PlanetMapHydrologyHelpers.cpp
-  src/planet/PlanetMapClassification.cpp
-  src/planet/PlanetMapTerrain.cpp
-  src/planet/PlanetMapClimate.cpp
-  src/world/Grid.h
-  src/world/Grid.cpp
-  src/world/Block.h
-  src/world/Chunk.h
-  src/world/GridPathfinder.h
-  src/world/GridPathfinder.cpp
-  src/world/Item.h
-  src/world/Item.cpp
-  src/world/Inventory.h
-  src/world/Inventory.cpp
-  src/world/World.h
-  src/world/World.cpp
-  src/world/WorldChunks.cpp
-  src/world/internal/WorldTerrainGen.h
-  src/world/internal/WorldTerrainGen.cpp
-  src/world/WorldTerrain.cpp
-  src/world/WorkSystem.h
-  src/world/work/WorkUtils.h
-  src/world/work/WorkUtils.cpp
-  src/world/work/WorkPathfinding.h
-  src/world/work/WorkPathfinding.cpp
-  src/world/work/WorkMovement.h
-  src/world/work/WorkMovement.cpp
-  src/world/work/WorkOrders.cpp
-  src/world/WorkSystem.cpp
-  src/world/WorkExecution.cpp
-  src/commands/Command.h
-  src/commands/CommandRegistry.h
-  src/commands/CommandRegistry.cpp
-  src/commands/ChopTreeCommand.h
-  src/commands/ChopTreeCommand.cpp
-  src/commands/PickUpItemCommand.h
-  src/commands/PickUpItemCommand.cpp
-  src/input/CameraController.h
-  src/input/CameraController.cpp
-  src/input/GridPointer.h
-  src/input/GridPointer.cpp
-  src/input/WorldObjectPicker.h
-  src/input/WorldObjectPicker.cpp
-  src/input/WorldInteractionController.h
-  src/input/WorldInteractionController.cpp
-  src/ui/WorldContextMenu.h
-  src/ui/WorldContextMenu.cpp
-  src/ui/CharacterProfilePanel.h
-  src/ui/CharacterProfilePanel.cpp
-  src/ui/DebugOverlay.h
-  src/ui/DebugOverlay.cpp
-  src/ui/PlanetViewer.h
-  src/ui/PlanetViewer.cpp
-  src/rendering/WorldRenderer.h
-  src/rendering/WorldRenderer.cpp
-  src/rendering/WorldGeometryRenderer.h
-  src/rendering/terrain/internal/TerrainMeshGeometry.h
-  src/rendering/terrain/internal/TerrainMeshGeometry.cpp
-  src/rendering/terrain/TerrainMeshBuilder.h
-  src/rendering/terrain/TerrainMeshBuilder.cpp
-  src/rendering/WorldTerrainRenderer.cpp
-  src/rendering/WorldObjectRenderer.cpp
-  src/rendering/WorldOverlayRenderer.h
-  src/rendering/WorldOverlayRenderer.cpp
+# Warnings apply to project targets only (never to fetched dependencies).
+function(infinitesia_enable_warnings target)
+  if (MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra)
+  endif()
+endfunction()
+
+# Planet generation has no raylib dependency, so it is built as its own
+# library and shared by the game and the tests.
+file(GLOB_RECURSE INFINITESIA_PLANET_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/planet/*.cpp"
 )
+file(GLOB_RECURSE INFINITESIA_PLANET_HEADERS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/planet/*.h"
+)
+add_library(InfinitesiaPlanet STATIC ${INFINITESIA_PLANET_SOURCES} ${INFINITESIA_PLANET_HEADERS})
+target_include_directories(InfinitesiaPlanet PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+infinitesia_enable_warnings(InfinitesiaPlanet)
+
+file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+)
+list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/planet/")
+add_executable(Infinitesia ${INFINITESIA_SOURCES})
+infinitesia_enable_warnings(Infinitesia)
 
 file(GLOB_RECURSE INFINITESIA_ASSET_FILES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/assets/*"
@@ -134,7 +69,13 @@ target_include_directories(Infinitesia PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(Infinitesia PRIVATE raylib)
+target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaPlanet)
+
+# Treat raylib headers as system headers so their warnings do not drown ours.
+get_target_property(RAYLIB_INCLUDE_DIRS raylib INTERFACE_INCLUDE_DIRECTORIES)
+if (RAYLIB_INCLUDE_DIRS)
+  target_include_directories(Infinitesia SYSTEM PRIVATE ${RAYLIB_INCLUDE_DIRS})
+endif()
 
 if (WIN32)
   target_link_libraries(Infinitesia PRIVATE winmm)
@@ -142,20 +83,20 @@ endif()
 
 include(CTest)
 if (BUILD_TESTING)
-  add_executable(PlanetGenerationTests
-    tests/PlanetGenerationTests.cpp
-    src/planet/Planet.cpp
-    src/planet/PlanetMap.cpp
-    src/planet/PlanetMapTectonics.cpp
-    src/planet/PlanetMapHydrology.cpp
-    src/planet/internal/PlanetMapHydrologyHelpers.cpp
-    src/planet/PlanetMapClassification.cpp
-    src/planet/PlanetMapTerrain.cpp
-    src/planet/PlanetMapClimate.cpp
-    src/planet/StarSystemGenerator.cpp
+  FetchContent_Declare(
+    doctest
+    GIT_REPOSITORY https://github.com/doctest/doctest.git
+    GIT_TAG v2.4.12
+    GIT_SHALLOW TRUE
   )
-  target_include_directories(PlanetGenerationTests PRIVATE
-    ${CMAKE_SOURCE_DIR}/src
-  )
-  add_test(NAME PlanetGenerationTests COMMAND PlanetGenerationTests)
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+  FetchContent_MakeAvailable(doctest)
+
+  add_executable(PlanetGenerationTests tests/PlanetGenerationTests.cpp)
+  target_link_libraries(PlanetGenerationTests PRIVATE InfinitesiaPlanet doctest::doctest)
+  infinitesia_enable_warnings(PlanetGenerationTests)
+
+  # Registers every TEST_CASE as its own CTest test.
+  include("${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake")
+  doctest_discover_tests(PlanetGenerationTests)
 endif()

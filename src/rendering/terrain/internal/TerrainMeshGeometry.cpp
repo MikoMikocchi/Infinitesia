@@ -56,6 +56,8 @@ namespace Infinitesia
                     return { 139, 94, 60, 255 };
                 case BlockType::Stone:
                     return { 132, 137, 142, 255 };
+                case BlockType::Air:
+                    break;
                 }
 
                 throw std::invalid_argument("Block has an unsupported type.");

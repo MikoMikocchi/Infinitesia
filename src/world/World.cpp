@@ -50,10 +50,10 @@ namespace Infinitesia
         const Grid& grid,
         const std::vector<WorldObjectPlacement>& initialObjects,
         std::uint32_t seed)
-        : m_seed(seed),
-          m_gridWidth(grid.GetWidth()),
+        : m_gridWidth(grid.GetWidth()),
           m_gridHeight(grid.GetHeight()),
-          m_gridDepth(grid.GetDepth())
+          m_gridDepth(grid.GetDepth()),
+          m_seed(seed)
     {
         m_objects.reserve(initialObjects.size());
         for (const WorldObjectPlacement& placement : initialObjects)
