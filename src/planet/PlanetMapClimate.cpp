@@ -1,4 +1,5 @@
 #include "planet/PlanetMap.h"
+#include "planet/PlanetLoadSteps.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
 
 #include <algorithm>
@@ -141,8 +142,10 @@ namespace Infinitesia
                 Cell(latitude, longitude).continentality =
                     totalArea > 0.0 ? landArea / totalArea : 0.0;
             }
+            ReportRow(latitude, latB);
         }
 
+        BeginLoadStep(m_progress, LoadStep::kClimateTemperature, "Simulating climate: temperature");
         std::vector<double> annualInsolation(static_cast<std::size_t>(latB));
         double meanAnnualInsolation = 0.0;
         for (int latitude = 0; latitude < latB; ++latitude)
@@ -217,8 +220,10 @@ namespace Infinitesia
                 cell.temperatureAnnualRangeC =
                     maximumTemperature - minimumTemperature;
             }
+            ReportRow(latitude, latB);
         }
 
+        BeginLoadStep(m_progress, LoadStep::kClimatePrecipitation, "Simulating climate: precipitation");
         const double rotationScale = std::clamp(24.0 / rot, 0.4, 2.0);
         for (int latitude = 0; latitude < latB; ++latitude)
         {
@@ -410,6 +415,7 @@ namespace Infinitesia
                     }
                 }
             }
+            ReportRow(latitude, latB);
         }
 
     }

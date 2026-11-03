@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/LoadProgress.h"
 #include "planet/StarSystem.h"
 #include "planet/PlanetMap.h"
 #include "raylib.h"
@@ -11,7 +12,7 @@ namespace Infinitesia
     class PlanetViewer
     {
     public:
-        explicit PlanetViewer(StarSystem system);
+        explicit PlanetViewer(StarSystem system, LoadProgress* progress = nullptr);
 
         void Update();
         void Draw() const;

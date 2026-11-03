@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/LoadProgress.h"
 #include "planet/Planet.h"
 
 #include <array>
@@ -157,7 +158,8 @@ namespace Infinitesia
     class PlanetMap
     {
     public:
-        explicit PlanetMap(PlanetParameters parameters = {}, ClimateInputs climate = {});
+        explicit PlanetMap(PlanetParameters parameters = {}, ClimateInputs climate = {},
+                           LoadProgress* progress = nullptr);
 
         const Planet&        GetPlanet()        const noexcept;
         const PlanetParameters& GetParameters() const noexcept;
@@ -181,6 +183,10 @@ namespace Infinitesia
         void GenerateClimate();
         void GenerateSoils();
         void ClassifyBiomes();
+
+        // Optional load progress sink; reports how many rows of the current step are done.
+        void ReportRow(int row, int rowCount) const;
+        LoadProgress* m_progress = nullptr;
 
         // Helpers
         PlanetRegion&       Cell(int lat, int lon);

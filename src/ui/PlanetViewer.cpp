@@ -1,5 +1,6 @@
 #include "ui/PlanetViewer.h"
 
+#include "planet/PlanetLoadSteps.h"
 #include "coordinates/PlanetaryCoordinates.h"
 #include "raylib.h"
 #include "raymath.h"
@@ -364,7 +365,7 @@ namespace Infinitesia
         constexpr int kColorBufferIndex = 3; // Mesh::vboId slot for vertex colors
     }
 
-    PlanetViewer::PlanetViewer(StarSystem system)
+    PlanetViewer::PlanetViewer(StarSystem system, LoadProgress* progress)
         : m_system(std::move(system)),
           m_planetMap(
               m_system.planet,
@@ -376,10 +377,12 @@ namespace Infinitesia
                   m_system.planet.gravityMetersPerSecondSquared,
                   m_system.planet.rotationHours,
                   m_system.planet.ageYears,
-              }),
+              },
+              progress),
           m_selectedLatitude(m_planetMap.GetLatitudeBandCount() / 2),
           m_selectedLongitude(m_planetMap.GetLongitudeSegmentCount() / 2)
     {
+        BeginLoadStep(progress, LoadStep::kViewerColors, "Preparing surface colors");
         const int rows = m_planetMap.GetLatitudeBandCount();
         const int columns = m_planetMap.GetLongitudeSegmentCount();
         const std::size_t cellCount = static_cast<std::size_t>(rows) * static_cast<std::size_t>(columns);
@@ -430,6 +433,7 @@ namespace Infinitesia
             }
         }
 
+        BeginLoadStep(progress, LoadStep::kViewerSmoothing, "Smoothing biome colors");
         const std::vector<Color> biomeColors = m_regionColors;
         constexpr int kColorOffsets[3] = { -1, 0, 1 };
         constexpr int kColorWeights[3][3] = {

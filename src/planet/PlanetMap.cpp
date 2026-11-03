@@ -2,6 +2,7 @@
 // PlanetMap construction and shared deterministic generation helpers.
 
 #include "planet/PlanetMap.h"
+#include "planet/PlanetLoadSteps.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
 
 #include <algorithm>
@@ -646,7 +647,7 @@ using namespace GenerationDetail;
 // PlanetMap — construction (runs all stages)
 // ==========================================================================
 
-PlanetMap::PlanetMap(PlanetParameters parameters, ClimateInputs climate)
+PlanetMap::PlanetMap(PlanetParameters parameters, ClimateInputs climate, LoadProgress* progress)
     : m_planet(std::move(parameters))
     , m_climate(climate)
 {
@@ -669,12 +670,28 @@ PlanetMap::PlanetMap(PlanetParameters parameters, ClimateInputs climate)
     }
 
     // Climate precedes hydrology so river generation can use precipitation.
+    m_progress = progress;
+    BeginLoadStep(m_progress, LoadStep::kTectonics, "Simulating tectonic plates");
     GenerateTectonics();
+    BeginLoadStep(m_progress, LoadStep::kTerrain, "Shaping terrain");
     GenerateTerrain();
+    BeginLoadStep(m_progress, LoadStep::kClimateContinentality, "Simulating climate");
     GenerateClimate();
+    BeginLoadStep(m_progress, LoadStep::kHydrology, "Carving rivers and lakes");
     GenerateHydrology();
+    BeginLoadStep(m_progress, LoadStep::kSoils, "Forming soils");
     GenerateSoils();
+    BeginLoadStep(m_progress, LoadStep::kBiomes, "Classifying biomes");
     ClassifyBiomes();
+    m_progress = nullptr;
+}
+
+void PlanetMap::ReportRow(int row, int rowCount) const
+{
+    if (m_progress != nullptr && rowCount > 0)
+    {
+        m_progress->SetStepFraction(static_cast<double>(row + 1) / static_cast<double>(rowCount));
+    }
 }
 
 // --------------------------------------------------------------------------

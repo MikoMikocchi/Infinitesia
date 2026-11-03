@@ -4,6 +4,10 @@ namespace Infinitesia
 {
     void Application::Update()
     {
-        m_planetViewer.Update();
+        PollPlanetLoad();
+        if (m_planetViewer)
+        {
+            m_planetViewer->Update();
+        }
     }
 }

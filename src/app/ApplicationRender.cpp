@@ -6,7 +6,14 @@ namespace Infinitesia
     void Application::Render()
     {
         BeginDrawing();
-        m_planetViewer.Draw();
+        if (m_planetViewer)
+        {
+            m_planetViewer->Draw();
+        }
+        else
+        {
+            DrawLoadingScreen();
+        }
         EndDrawing();
     }
 

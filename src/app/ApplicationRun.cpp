@@ -40,6 +40,8 @@ namespace Infinitesia
         WindowGuard window(m_config.window);
         SetTargetFPS(m_config.window.targetFramesPerSecond);
 
+        StartPlanetLoad();
+
         try
         {
             while (!WindowShouldClose())
@@ -52,9 +54,15 @@ namespace Infinitesia
         }
         catch (...)
         {
-            m_planetViewer.ReleaseRenderResources();
+            if (m_planetViewer)
+            {
+                m_planetViewer->ReleaseRenderResources();
+            }
             throw;
         }
-        m_planetViewer.ReleaseRenderResources();
+        if (m_planetViewer)
+        {
+            m_planetViewer->ReleaseRenderResources();
+        }
     }
 }
