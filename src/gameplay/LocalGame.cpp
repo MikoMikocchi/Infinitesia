@@ -28,26 +28,19 @@ namespace Infinitesia
           m_grid(config.grid),
           m_start(FindStartingCells(m_grid, *terrain)),
           m_world(m_grid, StartingObjects(*m_content, m_start), terrain),
-          m_workSystem(config.worker),
           m_simulation(config.simulationTicksPerSecond),
           m_runtime(m_simulation)
     {
-        m_commands.Register(std::make_unique<ChopTreeCommand>(m_workSystem, m_grid));
+        auto workSystem = std::make_unique<WorkSystem>(config.worker, m_world, m_grid);
+        m_workSystem = workSystem.get();
+        m_runtime.Registry().Register(WorkSystem::Descriptor(), std::move(workSystem));
+        m_commands.Register(std::make_unique<ChopTreeCommand>(*m_workSystem, m_grid));
         m_commands.Register(std::make_unique<PickUpItemCommand>());
-    }
-
-    void LocalGame::Tick()
-    {
-        m_workSystem.Tick(m_world, m_grid, m_simulation.GetFixedDeltaTime());
     }
 
     std::uint64_t LocalGame::AdvanceFrame(float frameDelta)
     {
-        const std::uint64_t ticks = m_simulation.AdvanceFrame(frameDelta);
-        for (std::uint64_t tick = 0; tick < ticks; ++tick)
-        {
-            Tick();
-        }
-        return ticks;
+        // The runtime listens to the simulation and runs the due systems on every tick.
+        return m_simulation.AdvanceFrame(frameDelta);
     }
 }

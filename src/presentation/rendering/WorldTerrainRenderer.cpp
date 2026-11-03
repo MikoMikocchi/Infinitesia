@@ -31,6 +31,13 @@ namespace Infinitesia
                 return IsLevelShown(mode, coordinate.y * kChunkSize, viewLevel);
             }
 
+            // Chunk meshes built in one frame; more would stall the frame, so the rest follow
+            // on the next ones and a chunk without a mesh yet is left out for a moment.
+            constexpr int kMeshBuildsPerFrame = 6;
+            // Meshes of chunks this far past the drawn radius stay cached, so that moving
+            // the view back and forth does not unload and rebuild the same chunks.
+            constexpr int kRetainedChunkMargin = 4;
+
             bool IsMeshLoaded(const Mesh& mesh)
             {
                 return mesh.vaoId != 0 || mesh.vboId != nullptr;
@@ -69,6 +76,15 @@ namespace Infinitesia
             }
         }
 
+        namespace
+        {
+            void DrawChunkMesh(const Mesh& mesh, Material material)
+            {
+                material.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
+                DrawMesh(mesh, material, MatrixIdentity());
+            }
+        }
+
         void DrawBlocks(
             const Grid& grid,
             const VoxelWorld& world,
@@ -88,6 +104,7 @@ namespace Infinitesia
                        std::abs(coordinate.z - centerChunkZ) <= chunkRadius;
             };
 
+            int buildsLeft = kMeshBuildsPerFrame;
             std::set<ChunkMeshKey> wantedMeshes;
             for (const auto& [coordinate, chunk] : world.GetChunks())
             {
@@ -98,16 +115,29 @@ namespace Infinitesia
 
                 const ChunkMeshKey key = GetMeshKey(chunk, viewLevel, mode);
                 wantedMeshes.insert(key);
+                const auto found = meshCache.find(key);
+                const bool isCurrent = found != meshCache.end() &&
+                                       found->second.terrainRevision == chunk.terrainRevision;
+                if (!isCurrent && buildsLeft == 0)
+                {
+                    // A stale mesh is drawn until its turn; a missing one is skipped.
+                    if (found == meshCache.end() || found->second.mesh.vertexCount <= 0)
+                    {
+                        continue;
+                    }
+                    DrawChunkMesh(found->second.mesh, material);
+                    continue;
+                }
+                if (!isCurrent)
+                {
+                    --buildsLeft;
+                }
                 const ChunkMeshCacheEntry& cachedMesh =
                     GetOrBuildChunkMesh(grid, world, chunk, key, atlas, meshCache);
 
                 if (cachedMesh.mesh.vertexCount > 0)
                 {
-                    const Color previousDiffuseColor =
-                        material.maps[MATERIAL_MAP_DIFFUSE].color;
-                    material.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;
-                    DrawMesh(cachedMesh.mesh, material, MatrixIdentity());
-                    material.maps[MATERIAL_MAP_DIFFUSE].color = previousDiffuseColor;
+                    DrawChunkMesh(cachedMesh.mesh, material);
                 }
             }
 
@@ -133,13 +163,14 @@ namespace Infinitesia
                         const ChunkMeshKey key = GetMeshKey(chunk, adjacentLevel, mode);
                         wantedMeshes.insert(key);
                         const auto cachedMesh = meshCache.find(key);
-                        if (!builtAhead &&
+                        if (!builtAhead && buildsLeft > 0 &&
                             (cachedMesh == meshCache.end() ||
                              cachedMesh->second.terrainRevision != chunk.terrainRevision))
                         {
                             static_cast<void>(GetOrBuildChunkMesh(
                                 grid, world, chunk, key, atlas, meshCache));
                             builtAhead = true;
+                            --buildsLeft;
                         }
                     }
                 }
@@ -147,7 +178,12 @@ namespace Infinitesia
 
             for (auto cachedMesh = meshCache.begin(); cachedMesh != meshCache.end();)
             {
-                if (wantedMeshes.count(cachedMesh->first) != 0)
+                const ChunkCoordinate& cachedCoordinate = cachedMesh->first.first;
+                const bool isRetained =
+                    cachedMesh->first.second == TerrainMeshBuilder::kNoCut &&
+                    std::abs(cachedCoordinate.x - centerChunkX) <= chunkRadius + kRetainedChunkMargin &&
+                    std::abs(cachedCoordinate.z - centerChunkZ) <= chunkRadius + kRetainedChunkMargin;
+                if (wantedMeshes.count(cachedMesh->first) != 0 || isRetained)
                 {
                     ++cachedMesh;
                     continue;

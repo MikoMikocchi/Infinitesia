@@ -57,7 +57,7 @@ with integer arithmetic.
 - `runtime/`: `SystemRegistry` (unique ids), `SystemScheduler` (phase, then `order`, then
   registration order; skips disabled and not-due systems), `SystemExecutor` (context, error
   policy `Disable`/`Continue`/`Rethrow`, tick and phase sequence checks).
-- Register through `LocalGame::GetRuntime().Registry()`.
+- Register through `LocalGame::GetRuntime().Registry()`; `LocalGame` registers `WorkSystem` there.
 
 ## Planet generation
 
@@ -66,4 +66,5 @@ domains add stages and layers instead of editing it. See `docs/05_PLANET_PIPELIN
 
 ## Planned (not done yet)
 
-- Moving `WorkSystem` (and later systems) onto the scheduler; today it is still ticked by `LocalGame`.
+- Nothing at the moment. `WorkSystem` runs on the scheduler (`system.work`, Update phase, every
+  tick); later systems register the same way.

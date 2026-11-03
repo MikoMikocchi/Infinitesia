@@ -7,8 +7,10 @@
 
 namespace Infinitesia
 {
-    WorkSystem::WorkSystem(WorkerConfig config)
-        : m_config(config)
+    WorkSystem::WorkSystem(WorkerConfig config, GameWorld& world, const Grid& grid)
+        : m_config(config),
+          m_world(world),
+          m_grid(grid)
     {
         if (!std::isfinite(config.movementSpeed) || config.movementSpeed <= 0.0f ||
             !std::isfinite(config.choppingDuration) || config.choppingDuration <= 0.0f ||
@@ -17,6 +19,11 @@ namespace Infinitesia
         {
             throw std::invalid_argument("Worker configuration contains invalid values.");
         }
+    }
+
+    void WorkSystem::Update(const SystemContext& context)
+    {
+        Tick(m_world, m_grid, context.fixedDeltaTime);
     }
 
     bool WorkSystem::HasOrderForWorker(WorldObjectId worker) const

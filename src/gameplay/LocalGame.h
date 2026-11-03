@@ -38,8 +38,6 @@ namespace Infinitesia
         LocalGame(const LocalGame&) = delete;
         LocalGame& operator=(const LocalGame&) = delete;
 
-        // Runs one fixed simulation step.
-        void Tick();
         // Feeds a frame's time to the simulation and runs the steps that fell due; returns their number.
         std::uint64_t AdvanceFrame(float frameDelta);
 
@@ -47,8 +45,8 @@ namespace Infinitesia
         Grid& GetGrid() { return m_grid; }
         const GameWorld& GetWorld() const { return m_world; }
         GameWorld& GetWorld() { return m_world; }
-        const WorkSystem& GetWorkSystem() const { return m_workSystem; }
-        WorkSystem& GetWorkSystem() { return m_workSystem; }
+        const WorkSystem& GetWorkSystem() const { return *m_workSystem; }
+        WorkSystem& GetWorkSystem() { return *m_workSystem; }
         const CommandRegistry& GetCommands() const { return m_commands; }
         const Simulation& GetSimulation() const { return m_simulation; }
         // Systems registered here run on every fixed tick the simulation produces.
@@ -63,7 +61,8 @@ namespace Infinitesia
         Grid m_grid;
         StartingCells m_start;
         GameWorld m_world;
-        WorkSystem m_workSystem;
+        // Owned by the runtime's registry; declared before it only in that it is created in the constructor.
+        WorkSystem* m_workSystem = nullptr;
         CommandRegistry m_commands;
         Simulation m_simulation;
         // After the simulation, which it listens to.

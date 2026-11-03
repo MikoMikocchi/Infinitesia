@@ -3,6 +3,8 @@
 #include "world/Grid.h"
 #include "gameplay/navigation/GridPathfinder.h"
 #include "gameplay/GameWorld.h"
+#include "simulation/api/SimulationSystem.h"
+#include "simulation/api/SystemDescriptor.h"
 
 #include <cstddef>
 #include <optional>
@@ -35,10 +37,20 @@ namespace Infinitesia
         Working
     };
 
-    class WorkSystem
+    // Moves workers along their orders and carries the orders out. Runs on the scheduler
+    // (see `Descriptor`), once per tick, on the world and grid it was built with, which must
+    // outlive it.
+    class WorkSystem final : public SimulationSystem
     {
     public:
-        explicit WorkSystem(WorkerConfig config);
+        static SystemDescriptor Descriptor()
+        {
+            return { SystemId("system.work"), SystemPhase::Update, Cadence::EveryTick() };
+        }
+
+        WorkSystem(WorkerConfig config, GameWorld& world, const Grid& grid);
+
+        void Update(const SystemContext& context) override;
 
         WorkOrderResult AssignChopOrder(WorldObjectId worker, WorldObjectId tree, GameWorld& world, const Grid& grid);
         WorkOrderResult AssignDigOrder(
@@ -51,7 +63,6 @@ namespace Infinitesia
             GridCell target,
             GameWorld& world,
             const Grid& grid);
-        void Tick(GameWorld& world, const Grid& grid, float fixedDeltaTime);
         WorkerActivity GetActivity(WorldObjectId worker) const;
         float GetWorkProgress(WorldObjectId worker) const;
         std::vector<GridCell> GetRemainingPath(WorldObjectId worker) const;
@@ -106,7 +117,11 @@ namespace Infinitesia
         bool AdvanceOrder(WorkOrder& order, GameWorld& world, const Grid& grid, float fixedDeltaTime);
         bool AdvanceMovement(WorkOrder& order, GameWorld& world, const Grid& grid, float fixedDeltaTime);
 
+        void Tick(GameWorld& world, const Grid& grid, float fixedDeltaTime);
+
         WorkerConfig m_config;
+        GameWorld& m_world;
+        const Grid& m_grid;
         GridPathfinder m_pathfinder;
         std::vector<WorkOrder> m_orders;
     };
