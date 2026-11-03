@@ -9,7 +9,9 @@ namespace Infinitesia
         Air,
         Grass,
         Dirt,
-        Stone
+        Stone,
+        Sand,
+        Water
     };
 
     struct Block

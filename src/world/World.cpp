@@ -50,11 +50,23 @@ namespace Infinitesia
         const Grid& grid,
         const std::vector<WorldObjectPlacement>& initialObjects,
         std::uint32_t seed)
+        : World(grid, initialObjects, std::make_shared<NoiseTerrainSource>(grid.GetHeight(), seed))
+    {
+    }
+
+    World::World(
+        const Grid& grid,
+        const std::vector<WorldObjectPlacement>& initialObjects,
+        std::shared_ptr<const TerrainSource> terrain)
         : m_gridWidth(grid.GetWidth()),
           m_gridHeight(grid.GetHeight()),
           m_gridDepth(grid.GetDepth()),
-          m_seed(seed)
+          m_terrain(std::move(terrain))
     {
+        if (m_terrain == nullptr)
+        {
+            throw std::invalid_argument("World needs a terrain source.");
+        }
         m_objects.reserve(initialObjects.size());
         for (const WorldObjectPlacement& placement : initialObjects)
         {

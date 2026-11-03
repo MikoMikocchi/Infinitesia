@@ -1,6 +1,7 @@
 #include "rendering/terrain/TerrainMeshBuilder.h"
 #include "rendering/terrain/internal/TerrainMeshGeometry.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -16,6 +17,12 @@ namespace Infinitesia
         {
             namespace
             {
+                // How far below the cutting plane an empty cell looks for ground, and how
+                // fast that ground darkens with depth.
+                constexpr int kMaxVisibleDepth = 16;
+                constexpr float kFloorShadePerLevel = 0.04f;
+                constexpr float kDeepestFloorShade = 0.4f;
+
                 template<typename T>
                 T* CopyMeshData(const std::vector<T>& data)
                 {
@@ -80,17 +87,34 @@ namespace Infinitesia
                             static_cast<std::size_t>(localX);
                         const Block& block = chunk.blocks[blockIndex];
                         const bool isAir = block.type == BlockType::Air;
-                        const GridCell lightingCell = isAir
-                            ? GridCell{ block.cell.x, viewLevel - 1, block.cell.z }
-                            : block.cell;
-                        const Block* floorBlock = isAir
-                            ? world.GetBlock(lightingCell)
-                            : nullptr;
-                        if (isAir &&
-                            (floorBlock == nullptr || floorBlock->type == BlockType::Air))
+
+                        // An empty cell shows the first solid block below it, drawn on the
+                        // cutting plane and darkened the deeper it lies.
+                        const Block* floorBlock = nullptr;
+                        int floorDepth = 0;
+                        if (isAir)
                         {
-                            continue;
+                            for (int depth = 1; depth <= kMaxVisibleDepth; ++depth)
+                            {
+                                const Block* below = world.GetBlock(
+                                    GridCell{ block.cell.x, viewLevel - depth, block.cell.z });
+                                if (below == nullptr)
+                                {
+                                    break;
+                                }
+                                if (below->type != BlockType::Air)
+                                {
+                                    floorBlock = below;
+                                    floorDepth = depth;
+                                    break;
+                                }
+                            }
+                            if (floorBlock == nullptr)
+                            {
+                                continue;
+                            }
                         }
+                        const GridCell lightingCell = isAir ? floorBlock->cell : block.cell;
 
                         const float left = worldLeft +
                                            static_cast<float>(block.cell.x) * cellSize;
@@ -106,6 +130,17 @@ namespace Infinitesia
                         if (!world.HasSkyAccess(lightingCell))
                         {
                             color = BLACK;
+                        }
+                        else if (isAir && floorDepth > 1)
+                        {
+                            const float shade = std::max(
+                                kDeepestFloorShade, 1.0f - kFloorShadePerLevel * static_cast<float>(floorDepth - 1));
+                            color = {
+                                static_cast<unsigned char>(color.r * shade),
+                                static_cast<unsigned char>(color.g * shade),
+                                static_cast<unsigned char>(color.b * shade),
+                                color.a
+                            };
                         }
                         meshData.AppendFace(
                             {

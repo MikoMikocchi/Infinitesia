@@ -6,7 +6,11 @@ namespace Infinitesia
     void Application::Render()
     {
         BeginDrawing();
-        if (m_planetViewer)
+        if (m_screen == Screen::Local)
+        {
+            RenderLocal();
+        }
+        else if (m_planetViewer)
         {
             m_planetViewer->Draw();
         }
@@ -15,6 +19,46 @@ namespace Infinitesia
             DrawLoadingScreen();
         }
         EndDrawing();
+    }
+
+    void Application::RenderLocal()
+    {
+        WorldPosition pathOrigin{};
+        std::vector<GridCell> debugPath;
+        const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
+        if (m_showPathDebug && selectedObjectId.has_value())
+        {
+            const WorldObject* selectedObject = m_world.FindObject(*selectedObjectId);
+            if (selectedObject != nullptr &&
+                selectedObject->type == WorldObjectType::Worker &&
+                selectedObject->cell.y == m_selectedLevel)
+            {
+                pathOrigin = selectedObject->position;
+                debugPath = m_workSystem.GetRemainingPath(selectedObject->id);
+            }
+        }
+
+        ClearBackground({ 30, 34, 39, 255 });
+        m_worldRenderer.Draw(
+            m_grid,
+            m_world,
+            m_worldInteraction.GetHoveredCell(),
+            m_worldInteraction.GetHoveredObject(),
+            selectedObjectId,
+            pathOrigin,
+            debugPath,
+            m_chunkViewCenter,
+            m_chunkRenderRadius,
+            m_selectedLevel);
+        DrawText(
+            m_config.window.title.c_str(),
+            (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,
+            12,
+            24,
+            RAYWHITE);
+        DrawText("M: planet map", m_config.window.width - 150, 56, 16, { 139, 158, 177, 255 });
+        DrawDebugOverlay();
+        m_worldInteraction.DrawOverlay(m_world, m_textureAssets);
     }
 
     void Application::DrawDebugOverlay()

@@ -58,6 +58,10 @@ namespace Infinitesia
 
         constexpr double kSoftAbsMean = 0.375;
         constexpr double kCoastBlendMeters = 150.0;
+        // Each octave is this much weaker than the one before (half the wavelength):
+        // amplitude ~ wavelength, a rough natural-looking land. The first octave
+        // takes the share that makes the whole series add up to the detail amplitude.
+        constexpr double kOctaveDecay = 0.5;
 
         int WrapIndex(int index, int count) noexcept
         {
@@ -70,6 +74,21 @@ namespace Infinitesia
         , m_radiusMeters(map.GetPlanet().GetRadius())
         , m_seed(map.GetPlanet().GetSeed() ^ 0x5EED5EEDu)
     {
+        const int latitudeBands = map.GetLatitudeBandCount();
+        const int longitudeSegments = map.GetLongitudeSegmentCount();
+        for (int pole = 0; pole < 2; ++pole)
+        {
+            const int row = pole == 0 ? 0 : latitudeBands - 1;
+            double elevation = 0.0;
+            double roughness = 0.0;
+            for (int longitude = 0; longitude < longitudeSegments; ++longitude)
+            {
+                elevation += map.GetRegion(row, longitude).elevationNormalized;
+                roughness += map.GetRegion(row, longitude).slopeNormalized;
+            }
+            m_poleElevation[pole] = elevation / longitudeSegments;
+            m_poleRoughness[pole] = roughness / longitudeSegments;
+        }
     }
 
     PlanetFieldSample RegionTerrain::SamplePlanet(CartesianPoint3D direction) const noexcept
@@ -121,12 +140,25 @@ namespace Infinitesia
             }
             rows[row] = catmullRom(columns[0], columns[1], columns[2], columns[3], tLongitude);
         }
-        const double elevationNormalized = catmullRom(rows[0], rows[1], rows[2], rows[3], tLatitude);
+        double elevationNormalized = catmullRom(rows[0], rows[1], rows[2], rows[3], tLatitude);
+        double roughness = bilinear([](const PlanetRegion& r) { return r.slopeNormalized; });
+
+        // Between the centre of the polar row and the pole itself, fade the variation
+        // with longitude out: a point at the pole belongs to every longitude at once.
+        const double cellDegrees = 180.0 / latitudeBands;
+        const double poleDistance = 90.0 - std::abs(geo.latitudeDegrees);
+        if (poleDistance < 0.5 * cellDegrees)
+        {
+            const double t = std::clamp(poleDistance / (0.5 * cellDegrees), 0.0, 1.0);
+            const double toward = t * t * (3.0 - 2.0 * t); // 1 away from the pole, 0 at the pole
+            const int pole = geo.latitudeDegrees > 0.0 ? 1 : 0;
+            elevationNormalized = m_poleElevation[pole] + (elevationNormalized - m_poleElevation[pole]) * toward;
+            roughness = m_poleRoughness[pole] + (roughness - m_poleRoughness[pole]) * toward;
+        }
 
         PlanetFieldSample sample;
         sample.elevationMeters = std::clamp(elevationNormalized, -1.0, 1.0) * kMaxElevationKm * 1000.0;
-        sample.roughness = std::clamp(
-            bilinear([](const PlanetRegion& r) { return r.slopeNormalized; }), 0.0, 1.0);
+        sample.roughness = std::clamp(roughness, 0.0, 1.0);
         sample.nearestLatitudeIndex = std::clamp(
             static_cast<int>(std::floor((geo.latitudeDegrees + 90.0) / 180.0 * latitudeBands)),
             0, latitudeBands - 1);
@@ -163,7 +195,7 @@ namespace Infinitesia
         const double pz = direction.z * m_radiusMeters;
 
         double detail = 0.0;
-        double amplitude = detailAmplitude * 0.5;
+        double amplitude = detailAmplitude * (1.0 - kOctaveDecay);
         double wavelength = kLargestDetailWavelengthMeters;
         for (int octave = 0; wavelength >= minWavelengthMeters; ++octave)
         {
@@ -175,7 +207,7 @@ namespace Infinitesia
             // is the measured mean of the softened value so the detail stays zero-mean.
             const double ridged = 2.0 * (kSoftAbsMean - std::sqrt(noise * noise + 0.02));
             detail += amplitude * (noise * (1.0 - ridgeMix) + ridged * ridgeMix);
-            amplitude *= 0.42;
+            amplitude *= kOctaveDecay;
             wavelength *= 0.5;
         }
 

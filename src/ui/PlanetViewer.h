@@ -3,10 +3,13 @@
 #include "core/LoadProgress.h"
 #include "planet/StarSystem.h"
 #include "planet/PlanetMap.h"
+#include "planet/region/SettlementTerrain.h"
 #include "raylib.h"
 #include "ui/RegionMapView.h"
 #include "ui/UniqueTexture.h"
 
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace Infinitesia
@@ -20,6 +23,11 @@ namespace Infinitesia
         void Draw() const;
         void ReleaseRenderResources() noexcept;
 
+        // Set when the player founds the settlement; handed over once.
+        std::optional<SettlementSite> TakeFoundedSite();
+        void SetFoundingEnabled(bool enabled) noexcept { m_foundingEnabled = enabled; }
+        const RegionTerrain& GetRegionTerrain() const noexcept { return m_regionMap.GetTerrain(); }
+
     private:
         void HandleInput();
         void EnsureSurfaceTexture();
@@ -28,6 +36,7 @@ namespace Infinitesia
         void SyncGlobeMesh() const;
         void WriteCellColors(Color* out, int row, int column, bool selected) const;
         void EnterRegionMode();
+        void TryFoundSettlement();
         void FocusRegionOnSelectedCell();
         void SyncSelectionToRegion();
 
@@ -50,6 +59,10 @@ namespace Infinitesia
         float m_rotationDegrees = 0.0f;
         float m_tiltDegrees = -12.0f;
         float m_zoom = 1.0f;
+        bool m_foundingEnabled = true;
+        std::optional<SettlementSite> m_foundedSite;
+        std::string m_notice;
+        float m_noticeSeconds = 0.0f;
         bool m_regionMode = false;
         float m_regionBlend = 0.0f; // 0 = whole globe, 1 = zoomed onto the focused region
         bool m_draggingGlobe = false;

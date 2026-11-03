@@ -5,10 +5,12 @@
 #include "world/Grid.h"
 #include "world/Inventory.h"
 #include "world/Item.h"
+#include "world/TerrainSource.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -60,6 +62,10 @@ namespace Infinitesia
             const Grid& grid,
             const std::vector<WorldObjectPlacement>& initialObjects = {},
             std::uint32_t seed = 1);
+        World(
+            const Grid& grid,
+            const std::vector<WorldObjectPlacement>& initialObjects,
+            std::shared_ptr<const TerrainSource> terrain);
 
         WorldObjectId AddObject(
             WorldObjectType type,
@@ -92,7 +98,6 @@ namespace Infinitesia
         void EnsureChunkGenerated(ChunkCoordinate coordinate);
         ChunkCoordinate GetChunkCoordinate(GridCell cell) const;
         std::size_t GetBlockIndex(const WorldChunk& chunk, GridCell cell) const;
-        BlockType GenerateBlockType(GridCell cell) const;
 
         std::vector<WorldObject> m_objects;
         std::map<ChunkCoordinate, WorldChunk> m_chunks;
@@ -100,7 +105,7 @@ namespace Infinitesia
         int m_gridWidth;
         int m_gridHeight;
         int m_gridDepth;
-        std::uint32_t m_seed;
+        std::shared_ptr<const TerrainSource> m_terrain;
         std::uint64_t m_nextObjectId = 1;
         std::uint64_t m_terrainRevision = 0;
     };

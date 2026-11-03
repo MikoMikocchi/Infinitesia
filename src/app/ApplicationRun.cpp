@@ -1,6 +1,8 @@
 #include "app/Application.h"
 #include "raylib.h"
 
+#include <cstdint>
+#include <filesystem>
 #include <stdexcept>
 
 namespace Infinitesia
@@ -35,19 +37,80 @@ namespace Infinitesia
         };
     }
 
+    namespace
+    {
+        // Loads the world shaders once the window (and so the GL context) exists and
+        // releases them before it goes away.
+        class WorldRendererShaderGuard
+        {
+        public:
+            explicit WorldRendererShaderGuard(WorldRenderer& renderer)
+                : m_renderer(renderer)
+            {
+                m_renderer.LoadShaders();
+            }
+
+            ~WorldRendererShaderGuard()
+            {
+                m_renderer.UnloadShaders();
+            }
+
+            WorldRendererShaderGuard(const WorldRendererShaderGuard&) = delete;
+            WorldRendererShaderGuard& operator=(const WorldRendererShaderGuard&) = delete;
+
+        private:
+            WorldRenderer& m_renderer;
+        };
+    }
+
+    namespace
+    {
+        class TextureAssetsGuard
+        {
+        public:
+            TextureAssetsGuard(TextureAssetManager& assets, const std::filesystem::path& assetDirectory)
+                : m_assets(assets)
+            {
+                m_assets.LoadTextures(assetDirectory);
+            }
+
+            ~TextureAssetsGuard()
+            {
+                m_assets.UnloadTextures();
+            }
+
+            TextureAssetsGuard(const TextureAssetsGuard&) = delete;
+            TextureAssetsGuard& operator=(const TextureAssetsGuard&) = delete;
+
+        private:
+            TextureAssetManager& m_assets;
+        };
+    }
+
     void Application::Run()
     {
         WindowGuard window(m_config.window);
+        WorldRendererShaderGuard rendererShaders(m_worldRenderer);
+        TextureAssetsGuard textureAssets(
+            m_textureAssets,
+            std::filesystem::path(GetApplicationDirectory()) / "assets");
         SetTargetFPS(m_config.window.targetFramesPerSecond);
 
         StartPlanetLoad();
 
         try
         {
-            while (!WindowShouldClose())
+            while (!WindowShouldClose() && !m_exitRequested)
             {
                 m_time.Advance(GetFrameTime());
-                m_simulation.AdvanceFrame(m_time.GetDeltaTime());
+                const std::uint64_t advancedTicks = m_simulation.AdvanceFrame(m_time.GetDeltaTime());
+                if (m_screen == Screen::Local)
+                {
+                    for (std::uint64_t tick = 0; tick < advancedTicks; ++tick)
+                    {
+                        m_workSystem.Tick(m_world, m_grid, m_simulation.GetFixedDeltaTime());
+                    }
+                }
                 Update();
                 Render();
             }

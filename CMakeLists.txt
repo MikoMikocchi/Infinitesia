@@ -45,11 +45,25 @@ add_library(InfinitesiaPlanet STATIC ${INFINITESIA_PLANET_SOURCES} ${INFINITESIA
 target_include_directories(InfinitesiaPlanet PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 infinitesia_enable_warnings(InfinitesiaPlanet)
 
+# The block world has no raylib dependency either (rendering lives outside it), so
+# it is its own library, shared by the game and the tests.
+file(GLOB_RECURSE INFINITESIA_WORLD_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/world/*.cpp"
+)
+file(GLOB_RECURSE INFINITESIA_WORLD_HEADERS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/world/*.h"
+)
+add_library(InfinitesiaWorld STATIC ${INFINITESIA_WORLD_SOURCES} ${INFINITESIA_WORLD_HEADERS})
+target_include_directories(InfinitesiaWorld PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(InfinitesiaWorld PUBLIC InfinitesiaPlanet)
+infinitesia_enable_warnings(InfinitesiaWorld)
+
 file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
 list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/planet/")
+list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/world/")
 add_executable(Infinitesia ${INFINITESIA_SOURCES})
 infinitesia_enable_warnings(Infinitesia)
 
@@ -69,7 +83,7 @@ target_include_directories(Infinitesia PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaPlanet)
+target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaWorld InfinitesiaPlanet)
 
 # Treat raylib headers as system headers so their warnings do not drown ours.
 get_target_property(RAYLIB_INCLUDE_DIRS raylib INTERFACE_INCLUDE_DIRECTORIES)
@@ -104,4 +118,9 @@ if (BUILD_TESTING)
   target_link_libraries(RegionTests PRIVATE InfinitesiaPlanet doctest::doctest)
   infinitesia_enable_warnings(RegionTests)
   doctest_discover_tests(RegionTests)
+
+  add_executable(WorldTests tests/WorldTests.cpp)
+  target_link_libraries(WorldTests PRIVATE InfinitesiaWorld InfinitesiaPlanet doctest::doctest)
+  infinitesia_enable_warnings(WorldTests)
+  doctest_discover_tests(WorldTests)
 endif()

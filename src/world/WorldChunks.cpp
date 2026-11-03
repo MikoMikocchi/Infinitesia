@@ -153,7 +153,7 @@ namespace Infinitesia
                     };
                     chunk.blocks.push_back({
                         cell,
-                        WorldInternal::GenerateBlockType(m_gridHeight, m_seed, cell)
+                        m_terrain->BlockAt(cell)
                     });
                 }
             }
@@ -170,10 +170,5 @@ namespace Infinitesia
     std::size_t World::GetBlockIndex(const WorldChunk& chunk, GridCell cell) const
     {
         return WorldInternal::GetBlockIndex(chunk, cell);
-    }
-
-    BlockType World::GenerateBlockType(GridCell cell) const
-    {
-        return WorldInternal::GenerateBlockType(m_gridHeight, m_seed, cell);
     }
 }

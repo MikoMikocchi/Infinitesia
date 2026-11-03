@@ -4,9 +4,11 @@
 #include "commands/PickUpItemCommand.h"
 #include "planet/PlanetLoadSteps.h"
 #include "planet/StarSystemGenerator.h"
+#include "world/PlanetTerrainSource.h"
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -51,6 +53,84 @@ namespace Infinitesia
         {
             throw std::invalid_argument("Initial camera settings must fit within camera control limits.");
         }
+    }
+
+    void Application::StartSettlement(const SettlementSite& site)
+    {
+        const RegionTerrain& terrain = m_planetViewer->GetRegionTerrain();
+        auto settlement = std::make_shared<const SettlementTerrain>(
+            terrain, site.grid,
+            site.region.i * LocalGrid::kRegionSizeMeters,
+            site.region.j * LocalGrid::kRegionSizeMeters);
+
+        const GridConfig gridConfig = m_config.settlementGrid;
+        auto source = std::make_shared<PlanetTerrainSource>(
+            settlement, gridConfig.width, gridConfig.height, gridConfig.depth, m_config.settlementAnchorLevel);
+
+        // The worker starts on the ground of the middle column, and a tree on the same
+        // level close by. Movement is still by level (a cell is walkable where there is
+        // a block on the worker's level), so the tree has to be reachable: every cell of
+        // the way there, east first and then south, must have ground at that level or higher.
+        const int centerX = gridConfig.width / 2;
+        const int centerZ = gridConfig.depth / 2;
+        const int level = source->SurfaceLevelAt(centerX, centerZ);
+        const auto reachable = [&](int dx, int dz)
+        {
+            for (int step = 0; step <= std::abs(dx); ++step)
+            {
+                if (source->SurfaceLevelAt(centerX + (dx < 0 ? -step : step), centerZ) < level)
+                {
+                    return false;
+                }
+            }
+            for (int step = 0; step <= std::abs(dz); ++step)
+            {
+                if (source->SurfaceLevelAt(centerX + dx, centerZ + (dz < 0 ? -step : step)) < level)
+                {
+                    return false;
+                }
+            }
+            return true;
+        };
+        std::vector<WorldObjectPlacement> objects{
+            { WorldObjectType::Worker, { centerX, level, centerZ } }
+        };
+        for (int radius = 3; radius <= 16 && objects.size() < 2; ++radius)
+        {
+            for (int dz = -radius; dz <= radius && objects.size() < 2; ++dz)
+            {
+                for (int dx = -radius; dx <= radius && objects.size() < 2; ++dx)
+                {
+                    if (std::max(std::abs(dx), std::abs(dz)) == radius &&
+                        source->SurfaceLevelAt(centerX + dx, centerZ + dz) == level && reachable(dx, dz))
+                    {
+                        objects.push_back({ WorldObjectType::Tree, { centerX + dx, level, centerZ + dz } });
+                    }
+                }
+            }
+        }
+
+        m_grid = Grid(gridConfig);
+        m_world = World(m_grid, objects, source);
+        m_workSystem = WorkSystem(m_config.worker);
+
+        m_selectedLevel = level;
+        m_chunkViewCenter = { centerX, level, centerZ };
+
+        // Look at the middle of the world from the usual distance and angle.
+        Camera3D& camera = m_worldRenderer.GetCamera();
+        const float elevation = m_config.camera.elevationDegrees * PI / 180.0f;
+        const float targetY = static_cast<float>(level + 1) * m_grid.GetCellSize();
+        camera.target = { 0.0f, targetY, 0.0f };
+        camera.position = {
+            0.0f,
+            targetY + m_config.camera.distance * std::sin(elevation),
+            m_config.camera.distance * std::cos(elevation)
+        };
+
+        m_settlementFounded = true;
+        m_planetViewer->SetFoundingEnabled(false);
+        m_screen = Screen::Local;
     }
 
     void Application::StartPlanetLoad()

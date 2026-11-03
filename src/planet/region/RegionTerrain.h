@@ -39,5 +39,9 @@ namespace Infinitesia
         const PlanetMap& m_map;
         double m_radiusMeters;
         std::uint32_t m_seed;
+        // Mean of the southernmost (0) and northernmost (1) planet rows. Every
+        // longitude meets at a pole, so the field has to settle to one value there.
+        double m_poleElevation[2]{};
+        double m_poleRoughness[2]{};
     };
 }

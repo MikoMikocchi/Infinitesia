@@ -4,6 +4,7 @@
 #include "planet/PlanetMap.h"
 #include "planet/region/LocalGrid.h"
 #include "planet/region/RegionGenerator.h"
+#include "planet/region/SettlementTerrain.h"
 
 #include <algorithm>
 #include <cmath>
@@ -331,4 +332,78 @@ TEST_CASE("RegionCacheEvictsLeastRecentlyUsed")
     cache.Get(c); // evicts b
     Require(cache.Size() == 2, "Cache exceeded its capacity.");
     Require(cache.Get(a) == first, "Most recently used region was evicted.");
+}
+
+TEST_CASE("SettlementTerrainClassifiesTheSurface")
+{
+    using K = SurfaceKind;
+    Require(SettlementTerrain::ClassifySurface(Biome::HotDesert, 300.0) == K::Sand, "Desert is not sand.");
+    Require(SettlementTerrain::ClassifySurface(Biome::TropicalRainforest, 300.0) == K::Grass, "Rainforest is not grass.");
+    Require(SettlementTerrain::ClassifySurface(Biome::AlpineRock, 3000.0) == K::Stone, "Alpine rock is not stone.");
+    Require(SettlementTerrain::ClassifySurface(Biome::Tundra, 100.0) == K::Dirt, "Tundra is not dirt.");
+    Require(SettlementTerrain::ClassifySurface(Biome::TemperateDeciduous, 1.0) == K::Sand, "A beach is not sand.");
+    Require(SettlementTerrain::ClassifySurface(Biome::DeepOcean, -500.0) == K::Sand, "The sea floor is not sand.");
+}
+
+TEST_CASE("SettlementTerrainColumnsAreStableAndContinuous")
+{
+    const RegionGenerator generator(SharedMap());
+
+    for (const GeographicCoordinates anchor : { GeographicCoordinates{ 35.0, 100.0 }, { -9.8, 126.8 }, { 70.0, 20.0 },
+                                                { 90.0, 0.0 } })
+    {
+        const LocalGrid grid = generator.MakeGrid(Place(anchor.latitudeDegrees, anchor.longitudeDegrees));
+        const SettlementTerrain terrain(generator.GetTerrain(), grid, 0.0, 0.0);
+
+        // The origin column defines ground level.
+        Require(terrain.Column(0, 0).heightBlocks == 0, "The origin column is not at ground level.");
+        Require(terrain.SeaLevelBlocks() == -terrain.OriginElevationMeters(), "Sea level is inconsistent with the origin.");
+
+        // Deterministic, and neighbouring columns differ by little.
+        int largestStep = 0;
+        for (int x = -128; x < 128; x += 5)
+        {
+            for (int z = -128; z < 128; z += 5)
+            {
+                const SurfaceColumn column = terrain.Column(x, z);
+                Require(column.heightBlocks == terrain.Column(x, z).heightBlocks, "Column height is not deterministic.");
+                largestStep = std::max(largestStep, std::abs(column.heightBlocks - terrain.Column(x + 1, z).heightBlocks));
+                largestStep = std::max(largestStep, std::abs(column.heightBlocks - terrain.Column(x, z + 1).heightBlocks));
+            }
+        }
+        Require(largestStep <= 6, "Neighbouring block columns differ too much in height.");
+    }
+}
+
+TEST_CASE("SettlementTerrainFindsTheSea")
+{
+    const RegionGenerator generator(SharedMap());
+    const PlanetMap& map = SharedMap();
+
+    bool foundOcean = false;
+    bool foundHighland = false;
+    for (int latitude = 10; latitude < map.GetLatitudeBandCount() - 10 && !(foundOcean && foundHighland); ++latitude)
+    {
+        for (int longitude = 0; longitude < map.GetLongitudeSegmentCount(); ++longitude)
+        {
+            const PlanetRegion& cell = map.GetRegion(latitude, longitude);
+            const CartesianPoint3D center = map.GetPlanet().GetSurfacePoint(latitude, longitude);
+            const LocalGrid grid = generator.MakeGrid(center);
+            const SettlementTerrain terrain(generator.GetTerrain(), grid, 0.0, 0.0);
+            if (!foundOcean && cell.elevationNormalized < -0.4)
+            {
+                foundOcean = true;
+                const SurfaceColumn column = terrain.Column(0, 0);
+                Require(column.underSea && column.kind == SurfaceKind::Sand, "Ocean anchor is not under the sea.");
+                Require(terrain.SeaLevelBlocks() > 0, "Sea level is not above an ocean anchor.");
+            }
+            if (!foundHighland && cell.elevationNormalized > 0.1)
+            {
+                foundHighland = true;
+                Require(!terrain.Column(0, 0).underSea, "Highland anchor is under the sea.");
+                Require(terrain.SeaLevelBlocks() < 0, "Sea level is not below a highland anchor.");
+            }
+        }
+    }
+    Require(foundOcean && foundHighland, "The test planet has no ocean or highland.");
 }

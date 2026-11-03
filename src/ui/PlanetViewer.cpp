@@ -686,6 +686,7 @@ namespace Infinitesia
         HandleInput();
 
         const float frameTime = GetFrameTime();
+        m_noticeSeconds = std::max(0.0f, m_noticeSeconds - frameTime);
         const float blendTarget = m_regionMode ? 1.0f : 0.0f;
         m_regionBlend += (blendTarget - m_regionBlend) * std::min(1.0f, frameTime * 4.0f);
         if (std::abs(blendTarget - m_regionBlend) < 0.002f)
@@ -704,6 +705,28 @@ namespace Infinitesia
         // A fresh chessboard anchored at the middle of the selected cell.
         m_regionMap.Anchor(PlanetaryCoordinates::ToCartesian(
             m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
+    }
+
+    std::optional<SettlementSite> PlanetViewer::TakeFoundedSite()
+    {
+        std::optional<SettlementSite> site;
+        site.swap(m_foundedSite);
+        return site;
+    }
+
+    void PlanetViewer::TryFoundSettlement()
+    {
+        const LocalGrid& grid = m_regionMap.GetGrid();
+        const RegionId focus = m_regionMap.GetFocus();
+        const double elevation =
+            m_regionMap.GetTerrain().ElevationMeters(grid.CenterDirection(focus), SettlementTerrain::kMinWavelengthMeters);
+        if (elevation < 0.0)
+        {
+            m_notice = "Cannot found a settlement at sea - pick a region on dry land.";
+            m_noticeSeconds = 4.0f;
+            return;
+        }
+        m_foundedSite = SettlementSite{ grid, focus };
     }
 
     void PlanetViewer::EnterRegionMode()
@@ -917,6 +940,10 @@ namespace Infinitesia
             if (IsKeyPressed(KEY_BACKSPACE))
             {
                 m_regionMode = false;
+            }
+            if (m_foundingEnabled && IsKeyPressed(KEY_ENTER))
+            {
+                TryFoundSettlement();
             }
 
             const auto pressed = [](int primary, int secondary)
@@ -1216,8 +1243,15 @@ namespace Infinitesia
             }
             DrawText(regionText, 30, footerY + 40, 13, kSelectedCellColor);
             DrawText(
-                "Click the map to pick a region  |  WASD / arrows: move  |  R or Backspace: back to the planet map",
+                m_foundingEnabled
+                    ? "Click the map to pick a region  |  WASD / arrows: move  |  Enter: found the settlement here  |  R or Backspace: back"
+                    : "Click the map to pick a region  |  WASD / arrows: move  |  M: back to the settlement  |  R or Backspace: back",
                 30, footerY + 57, 12, { 100, 118, 140, 255 });
+            if (m_noticeSeconds > 0.0f)
+            {
+                DrawText(m_notice.c_str(), static_cast<int>(layout.regionBounds.x), static_cast<int>(layout.mapPanel.y + 16.0f),
+                         16, { 255, 120, 90, 255 });
+            }
             return;
         }
 

@@ -43,9 +43,10 @@ namespace Infinitesia
             const GridCell above{ cell.x, y, cell.z };
             const auto chunk = m_chunks.find(GetChunkCoordinate(above));
             const BlockType type = chunk == m_chunks.end()
-                ? WorldInternal::GenerateBlockType(m_gridHeight, m_seed, above)
+                ? m_terrain->BlockAt(above)
                 : chunk->second.blocks[GetBlockIndexHelper(chunk->second, above)].type;
-            if (type != BlockType::Air)
+            // Water lets the light through; anything else shades the cell.
+            if (type != BlockType::Air && type != BlockType::Water)
             {
                 return false;
             }
@@ -56,7 +57,8 @@ namespace Infinitesia
     void World::SetBlockType(GridCell cell, BlockType type)
     {
         if (type != BlockType::Air && type != BlockType::Grass &&
-            type != BlockType::Dirt && type != BlockType::Stone)
+            type != BlockType::Dirt && type != BlockType::Stone &&
+            type != BlockType::Sand && type != BlockType::Water)
         {
             throw std::invalid_argument("Block has an unsupported type.");
         }

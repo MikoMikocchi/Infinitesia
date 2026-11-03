@@ -11,6 +11,7 @@
 #include "ui/DebugOverlay.h"
 #include "ui/PlanetViewer.h"
 #include "commands/CommandRegistry.h"
+#include "planet/region/SettlementTerrain.h"
 #include "world/Grid.h"
 #include "world/WorkSystem.h"
 
@@ -27,8 +28,18 @@ namespace Infinitesia
         void Run();
 
     private:
+        enum class Screen
+        {
+            Planet,
+            Local
+        };
+
         void Update();
+        void UpdateLocal();
         void Render();
+        void RenderLocal();
+        void StartSettlement(const SettlementSite& site);
+        void UpdateDevHooks();
         void DrawDebugOverlay();
         void StartPlanetLoad();
         void PollPlanetLoad();
@@ -51,6 +62,10 @@ namespace Infinitesia
         // which still writes to this, so it must be destroyed after the future.
         LoadProgress m_loadProgress;
         std::future<std::unique_ptr<PlanetViewer>> m_planetLoad;
+        Screen m_screen = Screen::Planet;
+        bool m_settlementFounded = false;
+        bool m_exitRequested = false;
+        int m_devFramesInLocalScreen = 0;
         GridCell m_chunkViewCenter{};
         int m_chunkRenderRadius = 1;
         int m_selectedLevel = 0;

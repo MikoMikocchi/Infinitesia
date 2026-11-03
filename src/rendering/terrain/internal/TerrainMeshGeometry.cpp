@@ -56,6 +56,10 @@ namespace Infinitesia
                     return { 139, 94, 60, 255 };
                 case BlockType::Stone:
                     return { 132, 137, 142, 255 };
+                case BlockType::Sand:
+                    return { 219, 203, 140, 255 };
+                case BlockType::Water:
+                    return { 52, 110, 170, 255 };
                 case BlockType::Air:
                     break;
                 }
