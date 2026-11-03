@@ -943,16 +943,33 @@ namespace Infinitesia
             }
         }(selectedRegion.surfaceRock);
 
-        char detailText[256];
-        std::snprintf(
-            detailText, sizeof(detailText),
-            "%s  |  %s  |  Stress %.2f  |  %s  |  Soil %.0f%%  |  River: %s",
-            rockName,
-            selectedRegion.isVolcanicZone ? "Volcanic" : "Stable",
-            selectedRegion.tectonicStress,
-            selectedRegion.isOcean ? "Ocean" : (selectedRegion.isLake ? "Lake" : "Land"),
-            selectedRegion.soilFertility * 100.0,
-            selectedRegion.hasRiver ? "Yes" : "No");
+        char detailText[384];
+        if (selectedRegion.isLake)
+        {
+            std::snprintf(
+                detailText, sizeof(detailText),
+                "Lake V %.3f km3  |  Annual in/evap/infil/spill %.3f/%.3f/%.3f/%.3f km3/yr"
+                "  |  Level %.2f km  |  Spill height %.3f km",
+                selectedRegion.lakeWaterVolumeKm3,
+                selectedRegion.lakeAnnualInflowKm3,
+                selectedRegion.lakeAnnualEvaporationKm3,
+                selectedRegion.lakeAnnualInfiltrationKm3,
+                selectedRegion.lakeAnnualSpillKm3,
+                selectedRegion.lakeWaterLevelKm,
+                selectedRegion.lakeSpillHeightKm);
+        }
+        else
+        {
+            std::snprintf(
+                detailText, sizeof(detailText),
+                "%s  |  %s  |  Stress %.2f  |  %s  |  Soil %.0f%%  |  River: %s",
+                rockName,
+                selectedRegion.isVolcanicZone ? "Volcanic" : "Stable",
+                selectedRegion.tectonicStress,
+                selectedRegion.isOcean ? "Ocean" : "Land",
+                selectedRegion.soilFertility * 100.0,
+                selectedRegion.hasRiver ? "Yes" : "No");
+        }
         DrawText(detailText, 30, footerY + 20, 14, { 180, 195, 210, 255 });
 
         char seasonalText[256];

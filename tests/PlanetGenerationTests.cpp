@@ -660,6 +660,36 @@ void TestEdgeCasePlanetConfigurations()
         const Infinitesia::PlanetMap map(params);
         const int latB = map.GetLatitudeBandCount();
         const int lonS = map.GetLongitudeSegmentCount();
+        const auto validateLake = [](const Infinitesia::PlanetRegion& r)
+        {
+            Require(!r.isOcean,
+                "Cell is simultaneously ocean and lake.");
+            Require(std::isfinite(r.lakeWaterVolumeKm3) &&
+                    r.lakeWaterVolumeKm3 > 0.0 &&
+                    std::isfinite(r.lakeSurfaceAreaKm2) &&
+                    r.lakeSurfaceAreaKm2 > 0.0 &&
+                    std::isfinite(r.lakeAnnualInflowKm3) &&
+                    std::isfinite(r.lakeAnnualEvaporationKm3) &&
+                    std::isfinite(r.lakeAnnualInfiltrationKm3) &&
+                    std::isfinite(r.lakeAnnualSpillKm3) &&
+                    std::isfinite(r.lakeWaterLevelKm) &&
+                    std::isfinite(r.lakeSpillElevationKm) &&
+                    std::isfinite(r.lakeSpillHeightKm),
+                "Lake water-balance values must be finite and positive.");
+            Require(r.lakeAnnualInflowKm3 >
+                    r.lakeAnnualEvaporationKm3 +
+                    r.lakeAnnualInfiltrationKm3,
+                "Lake must have a positive annual water balance.");
+            Require(r.lakeAnnualSpillKm3 > 0.0 &&
+                    r.lakeSpillHeightKm > 0.0 &&
+                    r.lakeWaterLevelKm == r.lakeSpillElevationKm,
+                "Lake must reach its spill level and overflow.");
+            Require(NearlyEqual(
+                        r.lakeWaterVolumeKm3,
+                        r.lakeSurfaceAreaKm2 * r.lakeSpillHeightKm),
+                "Lake storage must match its area and spill depth.");
+        };
+        bool foundStableLake = false;
 
         for (int la = 0; la < latB; ++la)
         {
@@ -682,10 +712,35 @@ void TestEdgeCasePlanetConfigurations()
                         "Cell marked hasRiver but annualRunoffVolumeKm3 is zero.");
                 // Lakes must sit in genuine depressions, not in the ocean
                 if (r.isLake)
-                    Require(!r.isOcean,
-                        "Cell is simultaneously ocean and lake.");
+                {
+                    validateLake(r);
+                    foundStableLake = true;
+                }
             }
         }
+
+        for (std::uint32_t seed = 0xbeef0000u;
+             seed < 0xbeef0020u && !foundStableLake;
+             ++seed)
+        {
+            params.seed = seed;
+            const Infinitesia::PlanetMap candidateMap(params);
+            for (int la = 0; la < latB && !foundStableLake; ++la)
+            {
+                for (int lo = 0; lo < lonS; ++lo)
+                {
+                    const auto& region = candidateMap.GetRegion(la, lo);
+                    if (region.isLake)
+                    {
+                        validateLake(region);
+                        foundStableLake = true;
+                        break;
+                    }
+                }
+            }
+        }
+        Require(foundStableLake,
+            "Expected a generated lake with a positive annual water balance.");
     }
 
     // --- Priority-Flood fallback: land-heavy planet ---

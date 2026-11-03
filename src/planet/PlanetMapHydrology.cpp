@@ -183,6 +183,8 @@ namespace Infinitesia
         // -----------------------------------------------------------------------
         std::vector<double> waterAccum(cellCount, 0.0);  // dimensionless (norm)
         std::vector<double> volumeAccum(cellCount, 0.0); // km³/yr (physical)
+        std::vector<double> localRunoffVolume(cellCount, 0.0);
+        std::vector<double> etAnnualMmByCell(cellCount, 0.0);
         for (const int idx : order)
         {
             const int la = idx / lonS;
@@ -196,9 +198,13 @@ namespace Infinitesia
             const double areaCellKm2 = cellAreaKm2[static_cast<std::size_t>(la)];
             const double areaRatio =
                 meanCellAreaKm2 > 0.0 ? areaCellKm2 / meanCellAreaKm2 : 1.0;
+            const double localVolumeKm3 =
+                runoffMm * areaCellKm2 * 1e-6;
 
             waterAccum[static_cast<std::size_t>(idx)] += runoffMm * areaRatio;
-            volumeAccum[static_cast<std::size_t>(idx)] += runoffMm * areaCellKm2 * 1e-6;
+            volumeAccum[static_cast<std::size_t>(idx)] += localVolumeKm3;
+            localRunoffVolume[static_cast<std::size_t>(idx)] = localVolumeKm3;
+            etAnnualMmByCell[static_cast<std::size_t>(idx)] = etAnnualMm;
 
             const int target = flowDir[static_cast<std::size_t>(idx)];
             if (target >= 0)
@@ -246,29 +252,58 @@ c.riverDischargeM3PerSecond = c.hasRiver
     : 0.0;
 
                 constexpr double kLakeFillThreshold = 0.001;
-                const double fillDelta = filledElev[idx] - c.elevationNormalized;
+                constexpr double kMaxElevationKm = 9.0;
+                const double fillDeltaKm =
+                    (filledElev[idx] - c.elevationNormalized) * kMaxElevationKm;
+                const bool genuineSink = fillDeltaKm > kLakeFillThreshold * kMaxElevationKm;
+                const bool hasUpstream = c.drainageAccumulation > 0.002;
+                if (c.isOcean || !genuineSink || !hasUpstream)
+                    continue;
 
-                // A cell becomes a lake only when three conditions all hold:
-                //
-                // 1. Geometric sink: the Priority-Flood raised this cell's
-                //    elevation by more than a noise epsilon, meaning it sits in
-                //    a genuine depression that could hold water.
-                //
-                // 2. Upstream drainage: non-trivial catchment area flows into
-                //    this point (filters isolated single-cell pits).
-                //
-                // 3. Positive water balance: the accumulated runoff volume
-                //    (P − ET integrated over the catchment) is positive, meaning
-                //    more water arrives than evaporates.  A geometric depression
-                //    in an extremely arid region receives no net water and would
-                //    not sustain a standing lake.
-                //
-                // This separates dry endorheic basins (geographic depressions
-                // with no net water input) from true lakes.
-                const bool genuineSink   = fillDelta > kLakeFillThreshold;
-                const bool hasUpstream   = c.drainageAccumulation > 0.002;
-                const bool positiveWater = volumeAccum[idx] > 0.0;
-                c.isLake = !c.isOcean && genuineSink && hasUpstream && positiveWater;
+                const double areaKm2 = cellAreaKm2[static_cast<std::size_t>(la)];
+                const double localRunoffKm3 =
+                    localRunoffVolume[idx];
+                const double catchmentRunoffKm3 =
+                    std::max(0.0, volumeAccum[idx] - localRunoffKm3);
+                const double directPrecipitationKm3 =
+                    c.precipitationMm * areaKm2 * 1e-6;
+                const double annualInflowKm3 =
+                    catchmentRunoffKm3 + directPrecipitationKm3;
+
+                double infiltrationMm = 40.0;
+                switch (c.surfaceRock)
+                {
+                case RockType::BasalticOceanic:   infiltrationMm = 45.0; break;
+                case RockType::GraniticShield:    infiltrationMm = 20.0; break;
+                case RockType::SedimentaryBasin:  infiltrationMm = 80.0; break;
+                case RockType::VolcanicIgneous:   infiltrationMm = 55.0; break;
+                case RockType::MetamorphicBelt:   infiltrationMm = 25.0; break;
+                case RockType::FoldedSedimentary: infiltrationMm = 65.0; break;
+                }
+
+                const double annualEvaporationKm3 =
+                    etAnnualMmByCell[idx] * areaKm2 * 1e-6;
+                const double annualInfiltrationKm3 =
+                    infiltrationMm * areaKm2 * 1e-6;
+                const double annualWaterSurplusKm3 =
+                    annualInflowKm3 - annualEvaporationKm3 -
+                    annualInfiltrationKm3;
+                if (annualWaterSurplusKm3 <= 0.0)
+                    continue;
+
+                // Treat the cell depression as a hypsometrically uniform bowl:
+                // its full storage is cell area times depth to the lowest spill.
+                c.isLake = true;
+                c.lakeSurfaceAreaKm2 = areaKm2;
+                c.lakeSpillHeightKm = fillDeltaKm;
+                c.lakeSpillElevationKm =
+                    c.elevationNormalized * kMaxElevationKm + fillDeltaKm;
+                c.lakeWaterLevelKm = c.lakeSpillElevationKm;
+                c.lakeWaterVolumeKm3 = areaKm2 * fillDeltaKm;
+                c.lakeAnnualInflowKm3 = annualInflowKm3;
+                c.lakeAnnualEvaporationKm3 = annualEvaporationKm3;
+                c.lakeAnnualInfiltrationKm3 = annualInfiltrationKm3;
+                c.lakeAnnualSpillKm3 = annualWaterSurplusKm3;
             }
         }
     }
