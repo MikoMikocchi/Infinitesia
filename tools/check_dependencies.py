@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Checks the layering of src/ against the #include graph.
 
-Every directory under src/ belongs to a module, and a module may include only the
+Every directory under src/ belongs to a module (presentation and app are compiled into
+the executable, the rest are static libraries), and a module may include only the
 modules listed for it below (plus itself and the standard/third-party headers).
 Run from anywhere:  python tools/check_dependencies.py
 Exit code 1 lists every include that breaks the rules.
@@ -24,9 +25,9 @@ MODULE_OF = {
     "geology": "geology",
     "world": "world",
     "gameplay": "gameplay",
+    "presentation": "presentation",  # compiled into the executable, but a layer of its own
+    "app": "app",
 }
-# Everything else (app, presentation) is the executable layer.
-EXECUTABLE = "executable"
 
 # module -> modules it may include. Keep in step with CMakeLists.txt.
 ALLOWED = {
@@ -36,7 +37,8 @@ ALLOWED = {
     "geology": {"foundation", "chemistry", "planet"},
     "world": {"foundation", "planet", "geology"},
     "gameplay": {"foundation", "planet", "geology", "world"},
-    EXECUTABLE: {"foundation", "chemistry", "planet", "geology", "world", "gameplay"},
+    "presentation": {"foundation", "chemistry", "planet", "geology", "world", "gameplay"},
+    "app": {"foundation", "chemistry", "planet", "geology", "world", "gameplay", "presentation"},
 }
 
 # Include prefixes that are not part of src/.
@@ -46,7 +48,9 @@ INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"')
 
 
 def module_of_dir(directory: str) -> str:
-    return MODULE_OF.get(directory, EXECUTABLE)
+    if directory not in MODULE_OF:
+        raise SystemExit(f"src/{directory}/ belongs to no module: add it to MODULE_OF and ALLOWED")
+    return MODULE_OF[directory]
 
 
 def main() -> int:
