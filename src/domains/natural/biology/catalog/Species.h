@@ -1,6 +1,7 @@
 #pragma once
 
 #include "domains/natural/biology/niche/Niche.h"
+#include "materials/MaterialId.h"
 
 #include <string>
 
@@ -23,15 +24,14 @@ namespace Infinitesia
         double max = 0.0;
     };
 
-    // Materials of the parts of a plant, as catalog keys. They are resolved against the material
-    // catalog when the plant materials exist (docs/07_BIOLOGY.md, step B1).
-    struct PlantMaterialKeys
+    // Materials of the parts of a plant (class Plant of the material catalog).
+    struct PlantMaterials
     {
-        std::string trunk;
-        std::string branch;
-        std::string twig;
-        std::string leaves;
-        std::string root;
+        MaterialId trunk = kUnspecifiedMaterial;
+        MaterialId branch = kUnspecifiedMaterial;
+        MaterialId twig = kUnspecifiedMaterial;
+        MaterialId leaves = kUnspecifiedMaterial;
+        MaterialId root = kUnspecifiedMaterial;
     };
 
     struct Species
@@ -51,7 +51,7 @@ namespace Infinitesia
         int rootDepthMeters = 1;
         double shadeTolerance = 0.5;     // 0..1: can it grow under a canopy
 
-        PlantMaterialKeys materials;
+        PlantMaterials materials;
         double logsPerCubicMeter = 1.0;
     };
 }

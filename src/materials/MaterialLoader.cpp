@@ -17,7 +17,7 @@ namespace Infinitesia
             static constexpr std::pair<const char*, BlockClass> kNames[] = {
                 { "air", BlockClass::Air }, { "fluid", BlockClass::Fluid }, { "loose", BlockClass::Loose },
                 { "ice", BlockClass::Ice }, { "rock", BlockClass::Rock }, { "built", BlockClass::Built },
-                { "mineral", BlockClass::Mineral },
+                { "mineral", BlockClass::Mineral }, { "plant", BlockClass::Plant },
             };
             const std::string text = StringField(object, "class", where);
             for (const auto& [name, value] : kNames)
@@ -47,7 +47,8 @@ namespace Infinitesia
             case BlockClass::Loose:
             case BlockClass::Ice:     return { kFirstLooseMaterial, kFirstBuiltMaterial - 1, nullptr, "512-1023" };
             case BlockClass::Built:   return { kFirstBuiltMaterial, kFirstMineralMaterial - 1, "built.", "1024-2047" };
-            case BlockClass::Mineral: return { kFirstMineralMaterial, kMaterialCapacity - 1, "mineral.", "2048-4095" };
+            case BlockClass::Mineral: return { kFirstMineralMaterial, kFirstPlantMaterial - 1, "mineral.", "2048-4095" };
+            case BlockClass::Plant:   return { kFirstPlantMaterial, kMaterialCapacity - 1, "plant.", "4096-5119" };
             }
             return { 0, kMaterialCapacity - 1, nullptr, "0-4095" };
         }

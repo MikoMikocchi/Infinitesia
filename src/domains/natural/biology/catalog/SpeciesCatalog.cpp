@@ -82,15 +82,24 @@ namespace Infinitesia
             return niche;
         }
 
-        std::string MaterialKey(const Json& object, const char* key, const Where& where)
+        bool HasTag(const MaterialDef& material, const char* tag)
         {
-            const std::string text = StringField(object, key, where);
-            if (!StartsWith(text, "plant."))
-                Fail(where, std::string("material '") + text + "' of '" + key + "' must start with 'plant.'");
-            return text;
+            return std::find(material.tags.begin(), material.tags.end(), tag) != material.tags.end();
         }
 
-        Species ReadSpecies(const Json& entry, const std::string& file)
+        MaterialId PlantMaterial(const Json& object, const char* key, const Where& where,
+                                 const MaterialCatalog& materials, const char* requiredTag)
+        {
+            const std::string text = StringField(object, key, where);
+            const MaterialDef* material = materials.Find(text);
+            if (material == nullptr || material->blockClass != BlockClass::Plant)
+                Fail(where, std::string("'") + key + "' names '" + text + "', which is not a plant material");
+            if (!HasTag(*material, requiredTag))
+                Fail(where, std::string("material '") + text + "' of '" + key + "' lacks the tag '" + requiredTag + "'");
+            return material->id;
+        }
+
+        Species ReadSpecies(const Json& entry, const std::string& file, const MaterialCatalog& catalog)
         {
             Where where{ file, "" };
             Species species;
@@ -125,9 +134,12 @@ namespace Infinitesia
             species.shadeTolerance = UnitField(entry, "shadeTolerance", where);
 
             const Json& materials = Field(entry, "materials", where);
-            species.materials = { MaterialKey(materials, "trunk", where), MaterialKey(materials, "branch", where),
-                                  MaterialKey(materials, "twig", where), MaterialKey(materials, "leaves", where),
-                                  MaterialKey(materials, "root", where) };
+            species.materials = {
+                PlantMaterial(materials, "trunk", where, catalog, "tree_wood"),
+                PlantMaterial(materials, "branch", where, catalog, "tree_wood"),
+                PlantMaterial(materials, "twig", where, catalog, "tree_wood"),
+                PlantMaterial(materials, "leaves", where, catalog, "tree_leaves"),
+                PlantMaterial(materials, "root", where, catalog, "tree_wood") };
 
             species.logsPerCubicMeter = NumberField(Field(entry, "yield", where), "logsPerCubicM", where);
             if (!(species.logsPerCubicMeter > 0.0))
@@ -136,14 +148,14 @@ namespace Infinitesia
         }
     }
 
-    SpeciesCatalog SpeciesCatalog::Load(const std::filesystem::path& path)
+    SpeciesCatalog SpeciesCatalog::Load(const std::filesystem::path& path, const MaterialCatalog& materials)
     {
         const Json root = ReadJson(path);
         const Where where{ path.string(), "" };
         SpeciesCatalog catalog;
         for (const Json& entry : ArrayField(root, "species", where))
         {
-            Species species = ReadSpecies(entry, path.string());
+            Species species = ReadSpecies(entry, path.string(), materials);
             if (catalog.Find(species.key) != nullptr)
                 Fail({ path.string(), species.key }, "the id is used twice");
             catalog.m_species.push_back(std::move(species));

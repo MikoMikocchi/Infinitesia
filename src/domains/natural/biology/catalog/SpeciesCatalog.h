@@ -1,6 +1,7 @@
 #pragma once
 
 #include "domains/natural/biology/catalog/Species.h"
+#include "materials/MaterialCatalog.h"
 
 #include <filesystem>
 #include <string_view>
@@ -13,8 +14,9 @@ namespace Infinitesia
     class SpeciesCatalog
     {
     public:
-        // Throws CatalogError, naming the file and the record.
-        static SpeciesCatalog Load(const std::filesystem::path& path);
+        // The materials of a species must be plant materials of `materials`. Throws CatalogError,
+        // naming the file and the record.
+        static SpeciesCatalog Load(const std::filesystem::path& path, const MaterialCatalog& materials);
 
         const std::vector<Species>& All() const noexcept { return m_species; }
         const Species* Find(std::string_view key) const noexcept;

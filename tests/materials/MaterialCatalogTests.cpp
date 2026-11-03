@@ -80,7 +80,8 @@ TEST_CASE("CatalogLoadsWithStableIds")
         case BlockClass::Loose:
         case BlockClass::Ice: Require(material.id >= kFirstLooseMaterial && material.id < kFirstBuiltMaterial, "loose ground lives in 512-1023"); break;
         case BlockClass::Built: Require(material.id >= kFirstBuiltMaterial && material.id < kFirstMineralMaterial, "built materials live in 1024-2047"); break;
-        case BlockClass::Mineral: Require(material.id >= kFirstMineralMaterial && material.id < kMaterialCapacity, "minerals live in 2048-4095"); break;
+        case BlockClass::Mineral: Require(material.id >= kFirstMineralMaterial && material.id < kFirstPlantMaterial, "minerals live in 2048-4095"); break;
+        case BlockClass::Plant: Require(material.id >= kFirstPlantMaterial && material.id < kMaterialCapacity, "plants live in 4096-5119"); break;
         }
     }
     CHECK(catalog.Get(kUnspecifiedMaterial) == nullptr);
