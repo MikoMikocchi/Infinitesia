@@ -3,8 +3,7 @@
 #include "world/Block.h"
 #include "world/Chunk.h"
 #include "world/Grid.h"
-#include "world/Item.h"
-#include "world/World.h"
+#include "world/VoxelWorld.h"
 
 #include <cstdint>
 #include <map>

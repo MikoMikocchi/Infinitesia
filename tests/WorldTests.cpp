@@ -7,7 +7,7 @@
 #include "planet/region/SettlementTerrain.h"
 #include "world/Grid.h"
 #include "world/PlanetTerrainSource.h"
-#include "world/World.h"
+#include "gameplay/GameWorld.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -197,13 +197,13 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain")
     const Grid grid(GridConfig{ kWidth, kHeight, kDepth, 1.0f });
 
     const GridCell center{ kWidth / 2, kAnchorLevel, kDepth / 2 };
-    World world(grid, { { WorldObjectType::Worker, center } }, settlement.source);
+    GameWorld world(grid, { { WorldObjectType::Worker, center } }, settlement.source);
 
-    world.RequestChunksAround(center, 2, 1);
-    Require(world.GeneratePendingChunks(1000) > 0, "No chunks were generated.");
-    Require(world.GetLoadedChunkCount() > 0, "No chunks are loaded.");
+    world.terrain.RequestChunksAround(center, 2, 1);
+    Require(world.terrain.GeneratePendingChunks(1000) > 0, "No chunks were generated.");
+    Require(world.terrain.GetLoadedChunkCount() > 0, "No chunks are loaded.");
 
-    for (const auto& [coordinate, chunk] : world.GetChunks())
+    for (const auto& [coordinate, chunk] : world.terrain.GetChunks())
     {
         for (const Block& block : chunk.blocks)
         {
@@ -211,35 +211,35 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain")
         }
     }
 
-    const Block* ground = world.GetBlock(center);
+    const Block* ground = world.terrain.GetBlock(center);
     Require(ground != nullptr && ground->type != BlockType::Air, "The worker has no ground under it.");
-    Require(world.HasSkyAccess(center), "The ground of the middle column is covered.");
-    Require(!world.HasSkyAccess({ center.x, kAnchorLevel - 3, center.z }), "A buried block has sky access.");
+    Require(world.terrain.HasSkyAccess(center), "The ground of the middle column is covered.");
+    Require(!world.terrain.HasSkyAccess({ center.x, kAnchorLevel - 3, center.z }), "A buried block has sky access.");
 
     // The new block types can be placed and removed like the old ones.
     const GridCell target{ center.x + 1, kAnchorLevel, center.z };
-    world.SetBlockType(target, BlockType::Air);
-    world.SetBlockType(target, BlockType::Sand);
-    world.SetBlockType(target, BlockType::Water);
-    Require(world.GetBlock(target)->type == BlockType::Water, "A water block could not be placed.");
+    world.terrain.SetBlockType(target, BlockType::Air);
+    world.terrain.SetBlockType(target, BlockType::Sand);
+    world.terrain.SetBlockType(target, BlockType::Water);
+    Require(world.terrain.GetBlock(target)->type == BlockType::Water, "A water block could not be placed.");
 }
 
 TEST_CASE("TheOriginalNoiseWorldStillWorks")
 {
     const Grid grid(GridConfig{ 64, 32, 64, 1.0f });
-    World world(grid, { { WorldObjectType::Worker, { 32, 31, 32 } } }, 7u);
-    world.RequestChunksAround({ 32, 31, 32 }, 1, 1);
-    world.GeneratePendingChunks(100);
+    GameWorld world(grid, { { WorldObjectType::Worker, { 32, 31, 32 } } }, 7u);
+    world.terrain.RequestChunksAround({ 32, 31, 32 }, 1, 1);
+    world.terrain.GeneratePendingChunks(100);
 
-    const Block* surface = world.GetBlock({ 32, 31, 32 });
+    const Block* surface = world.terrain.GetBlock({ 32, 31, 32 });
     Require(surface != nullptr && surface->type != BlockType::Air, "The noise world has no surface.");
-    const Block* deep = world.GetBlock({ 32, 5, 32 });
+    const Block* deep = world.terrain.GetBlock({ 32, 5, 32 });
     Require(deep != nullptr && deep->type == BlockType::Stone, "The noise world is not stone below the topsoil.");
 
-    World again(grid, { { WorldObjectType::Worker, { 32, 31, 32 } } }, 7u);
-    again.RequestChunksAround({ 32, 31, 32 }, 1, 1);
-    again.GeneratePendingChunks(100);
-    Require(again.GetBlock({ 33, 31, 33 })->type == world.GetBlock({ 33, 31, 33 })->type,
+    GameWorld again(grid, { { WorldObjectType::Worker, { 32, 31, 32 } } }, 7u);
+    again.terrain.RequestChunksAround({ 32, 31, 32 }, 1, 1);
+    again.terrain.GeneratePendingChunks(100);
+    Require(again.terrain.GetBlock({ 33, 31, 33 })->type == world.terrain.GetBlock({ 33, 31, 33 })->type,
             "The noise world is not deterministic.");
 }
 
@@ -336,13 +336,13 @@ TEST_CASE("WorldChunksCarryTheRockOfEachBlock")
     const auto source = MakeGeologicalSource(LandAnchor());
     const Grid grid(GridConfig{ kWidth, kHeight, kDepth, 1.0f });
     const GridCell center{ kWidth / 2, kAnchorLevel, kDepth / 2 };
-    World world(grid, { { WorldObjectType::Worker, center } }, source);
-    Require(world.GetCatalog() == source->Catalog() && world.GetCatalog() != nullptr, "The world does not expose the catalog.");
+    GameWorld world(grid, { { WorldObjectType::Worker, center } }, source);
+    Require(world.terrain.GetCatalog() == source->Catalog() && world.terrain.GetCatalog() != nullptr, "The world does not expose the catalog.");
 
-    world.RequestChunksAround(center, 1, 1);
-    Require(world.GeneratePendingChunks(1000) > 0, "No chunks were generated.");
+    world.terrain.RequestChunksAround(center, 1, 1);
+    Require(world.terrain.GeneratePendingChunks(1000) > 0, "No chunks were generated.");
     int rock = 0;
-    for (const auto& [coordinate, chunk] : world.GetChunks())
+    for (const auto& [coordinate, chunk] : world.terrain.GetChunks())
     {
         for (const Block& block : chunk.blocks)
         {
@@ -354,8 +354,8 @@ TEST_CASE("WorldChunksCarryTheRockOfEachBlock")
 
     // A dug-out block is air again and no longer remembers its rock.
     const GridCell below{ center.x, kAnchorLevel - 8, center.z };
-    Require(world.GetBlock(below)->material != kUnspecifiedMaterial, "The block under the ground has no rock.");
-    world.SetBlockType(below, BlockType::Air);
-    Require(world.GetBlock(below)->type == BlockType::Air && world.GetBlock(below)->material == kUnspecifiedMaterial,
+    Require(world.terrain.GetBlock(below)->material != kUnspecifiedMaterial, "The block under the ground has no rock.");
+    world.terrain.SetBlockType(below, BlockType::Air);
+    Require(world.terrain.GetBlock(below)->type == BlockType::Air && world.terrain.GetBlock(below)->material == kUnspecifiedMaterial,
             "A dug-out block kept its rock.");
 }

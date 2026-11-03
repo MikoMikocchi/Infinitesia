@@ -1,6 +1,6 @@
 #pragma once
 
-#include "coordinates/PlanetaryCoordinates.h"
+#include "foundation/PlanetaryCoordinates.h"
 #include "planet/PlanetMap.h"
 
 namespace Infinitesia

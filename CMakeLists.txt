@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.21)
 
 if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
@@ -71,13 +71,14 @@ function(infinitesia_add_module target)
 endfunction()
 
 # Layers, bottom to top:
-#   foundation (core, coordinates)  ids, time, load progress, coordinates; no domain knowledge
+#   foundation                      ids, time, load progress, coordinates; no domain knowledge
 #   chemistry                       elements, compositions, reactions
 #   planet                          planet generation pipeline (no raylib)
 #   geology                         what the ground is made of; content from assets/geology/*.json
-#   world                           the block world and its objects (no raylib)
-#   (executable)                    app, input, ui, rendering, assets, commands
-infinitesia_add_module(InfinitesiaFoundation DIRS core coordinates)
+#   world                           the block terrain: grid, chunks, terrain sources (no raylib)
+#   gameplay                        entities, items, work, commands, pathfinding (no raylib)
+#   (executable)                    presentation (rendering, ui, input, assets) and app
+infinitesia_add_module(InfinitesiaFoundation DIRS foundation)
 infinitesia_add_module(InfinitesiaChemistry DIRS chemistry PUBLIC InfinitesiaFoundation)
 infinitesia_add_module(InfinitesiaPlanet DIRS planet PUBLIC InfinitesiaFoundation)
 infinitesia_add_module(InfinitesiaGeology DIRS geology
@@ -88,12 +89,13 @@ infinitesia_add_module(InfinitesiaGeology DIRS geology
 set(INFINITESIA_GEOLOGY_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/geology")
 
 infinitesia_add_module(InfinitesiaWorld DIRS world PUBLIC InfinitesiaPlanet InfinitesiaGeology)
+infinitesia_add_module(InfinitesiaGameplay DIRS gameplay PUBLIC InfinitesiaWorld)
 
 file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
-foreach(module_dir IN ITEMS core coordinates chemistry geology planet world)
+foreach(module_dir IN ITEMS foundation chemistry geology planet world gameplay)
   list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/${module_dir}/")
 endforeach()
 add_executable(Infinitesia ${INFINITESIA_SOURCES})
@@ -115,7 +117,7 @@ target_include_directories(Infinitesia PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet InfinitesiaFoundation)
+target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaGameplay InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet InfinitesiaFoundation)
 
 # Treat raylib headers as system headers so their warnings do not drown ours.
 get_target_property(RAYLIB_INCLUDE_DIRS raylib INTERFACE_INCLUDE_DIRECTORIES)
@@ -164,7 +166,7 @@ if (BUILD_TESTING)
   doctest_discover_tests(RegionTests)
 
   add_executable(WorldTests tests/WorldTests.cpp)
-  target_link_libraries(WorldTests PRIVATE InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet doctest::doctest)
+  target_link_libraries(WorldTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet doctest::doctest)
   target_compile_definitions(WorldTests PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
   infinitesia_enable_warnings(WorldTests)
   doctest_discover_tests(WorldTests)

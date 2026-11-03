@@ -1,15 +1,15 @@
 ﻿#pragma once
 
 #include "app/ApplicationConfig.h"
-#include "core/Simulation.h"
-#include "core/Time.h"
-#include "input/CameraController.h"
-#include "input/WorldInteractionController.h"
-#include "rendering/WorldRenderer.h"
-#include "ui/DebugOverlay.h"
-#include "commands/CommandRegistry.h"
+#include "foundation/Simulation.h"
+#include "foundation/Time.h"
+#include "presentation/input/CameraController.h"
+#include "presentation/input/WorldInteractionController.h"
+#include "presentation/rendering/WorldRenderer.h"
+#include "presentation/ui/DebugOverlay.h"
+#include "gameplay/commands/CommandRegistry.h"
 #include "world/Grid.h"
-#include "world/WorkSystem.h"
+#include "gameplay/work/WorkSystem.h"
 
 namespace Infinitesia
 {

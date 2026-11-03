@@ -28,7 +28,7 @@ namespace Infinitesia
         const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
         if (m_showPathDebug && selectedObjectId.has_value())
         {
-            const WorldObject* selectedObject = m_world.FindObject(*selectedObjectId);
+            const WorldObject* selectedObject = m_world.entities.FindObject(*selectedObjectId);
             if (selectedObject != nullptr &&
                 selectedObject->type == WorldObjectType::Worker &&
                 selectedObject->cell.y == m_selectedLevel)
@@ -58,7 +58,7 @@ namespace Infinitesia
             RAYWHITE);
         DrawText("M: planet map", m_config.window.width - 150, 56, 16, { 139, 158, 177, 255 });
         DrawDebugOverlay();
-        m_worldInteraction.DrawOverlay(m_world, m_textureAssets);
+        m_worldInteraction.DrawOverlay(m_world.entities, m_textureAssets);
     }
 
     void Application::DrawDebugOverlay()
@@ -69,7 +69,7 @@ namespace Infinitesia
         const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
         if (selectedObjectId.has_value())
         {
-            const WorldObject* selectedObject = m_world.FindObject(*selectedObjectId);
+            const WorldObject* selectedObject = m_world.entities.FindObject(*selectedObjectId);
             if (selectedObject != nullptr)
             {
                 selectedObjectType = selectedObject->type;
@@ -99,8 +99,8 @@ namespace Infinitesia
             m_showPathDebug,
             m_config.window.height,
             m_worldInteraction.GetActionNotice(),
-            m_world.GetLoadedChunkCount(),
-            m_world.GetTotalChunkCount(),
+            m_world.terrain.GetLoadedChunkCount(),
+            m_world.terrain.GetTotalChunkCount(),
             m_selectedLevel
         });
     }

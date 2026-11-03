@@ -1,7 +1,7 @@
 #include "app/Application.h"
 #include "raylib.h"
-#include "commands/ChopTreeCommand.h"
-#include "commands/PickUpItemCommand.h"
+#include "gameplay/commands/ChopTreeCommand.h"
+#include "gameplay/commands/PickUpItemCommand.h"
 #include "geology/model/GeologyModel.h"
 #include "planet/PlanetLoadSteps.h"
 #include "planet/StarSystemGenerator.h"
@@ -119,7 +119,7 @@ namespace Infinitesia
         }
 
         m_grid = Grid(gridConfig);
-        m_world = World(m_grid, objects, source);
+        m_world = GameWorld(m_grid, objects, source);
         m_workSystem = WorkSystem(m_config.worker);
 
         m_selectedLevel = level;

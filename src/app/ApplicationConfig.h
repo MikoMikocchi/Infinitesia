@@ -1,10 +1,10 @@
 #pragma once
 
-#include "input/CameraController.h"
-#include "rendering/WorldRenderer.h"
+#include "presentation/input/CameraController.h"
+#include "presentation/rendering/WorldRenderer.h"
 #include "world/Grid.h"
-#include "world/World.h"
-#include "world/WorkSystem.h"
+#include "gameplay/GameWorld.h"
+#include "gameplay/work/WorkSystem.h"
 
 #include <cstdint>
 #include <string>

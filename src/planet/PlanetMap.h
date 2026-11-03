@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/LoadProgress.h"
+#include "foundation/LoadProgress.h"
 #include "planet/Planet.h"
 #include "planet/StarSystem.h"
 #include "planet/geology/PlanetEpochs.h"

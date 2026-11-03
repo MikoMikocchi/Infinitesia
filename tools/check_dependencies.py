@@ -18,14 +18,14 @@ SRC = Path(__file__).resolve().parent.parent / "src"
 
 # directory under src/ -> module
 MODULE_OF = {
-    "core": "foundation",
-    "coordinates": "foundation",
+    "foundation": "foundation",
     "chemistry": "chemistry",
     "planet": "planet",
     "geology": "geology",
     "world": "world",
+    "gameplay": "gameplay",
 }
-# Everything else (app, input, ui, rendering, assets, commands) is the executable layer.
+# Everything else (app, presentation) is the executable layer.
 EXECUTABLE = "executable"
 
 # module -> modules it may include. Keep in step with CMakeLists.txt.
@@ -35,8 +35,12 @@ ALLOWED = {
     "planet": {"foundation"},
     "geology": {"foundation", "chemistry", "planet"},
     "world": {"foundation", "planet", "geology"},
-    EXECUTABLE: {"foundation", "chemistry", "planet", "geology", "world"},
+    "gameplay": {"foundation", "planet", "geology", "world"},
+    EXECUTABLE: {"foundation", "chemistry", "planet", "geology", "world", "gameplay"},
 }
+
+# Include prefixes that are not part of src/.
+THIRD_PARTY = {"nlohmann", "doctest"}
 
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"')
 
@@ -60,8 +64,12 @@ def main() -> int:
                 continue
             target = match.group(1)
             parts = target.split("/")
-            if len(parts) < 2 or not (SRC / target).exists():
-                continue  # same-directory include, raylib, or third party
+            if len(parts) < 2 or parts[0] in THIRD_PARTY:
+                continue  # raylib, or third party
+            if not (SRC / target).exists():
+                if not (path.parent / target).exists():
+                    violations.append(f"{relative.as_posix()}:{number}: cannot resolve include {target}")
+                continue  # same-directory include
             dependency = module_of_dir(parts[0])
             if dependency != owner and dependency not in ALLOWED[owner]:
                 violations.append(f"{relative.as_posix()}:{number}: {owner} must not include {target} ({dependency})")

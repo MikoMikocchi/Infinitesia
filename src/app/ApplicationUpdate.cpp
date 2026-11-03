@@ -126,11 +126,11 @@ namespace Infinitesia
         m_chunkRenderRadius = GetChunkRenderRadius(m_worldRenderer.GetCamera(), m_grid);
         // Empty cells look up to 16 levels down for ground, which can lie in the chunk below.
         const int verticalChunkRadius = 1;
-        m_world.RequestChunksAround(
+        m_world.terrain.RequestChunksAround(
             m_chunkViewCenter,
             m_chunkRenderRadius,
             verticalChunkRadius);
-        m_world.GeneratePendingChunks(kChunksGeneratedPerFrame);
+        m_world.terrain.GeneratePendingChunks(kChunksGeneratedPerFrame);
         m_worldInteraction.Update(
             {
                 GetMousePosition(),

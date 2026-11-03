@@ -1,19 +1,19 @@
 #pragma once
 
 #include "app/ApplicationConfig.h"
-#include "assets/TextureAssetManager.h"
-#include "core/LoadProgress.h"
-#include "core/Simulation.h"
-#include "core/Time.h"
-#include "input/CameraController.h"
-#include "input/WorldInteractionController.h"
-#include "rendering/WorldRenderer.h"
-#include "ui/DebugOverlay.h"
-#include "ui/PlanetViewer.h"
-#include "commands/CommandRegistry.h"
+#include "presentation/assets/TextureAssetManager.h"
+#include "foundation/LoadProgress.h"
+#include "foundation/Simulation.h"
+#include "foundation/Time.h"
+#include "presentation/input/CameraController.h"
+#include "presentation/input/WorldInteractionController.h"
+#include "presentation/rendering/WorldRenderer.h"
+#include "presentation/ui/DebugOverlay.h"
+#include "presentation/ui/PlanetViewer.h"
+#include "gameplay/commands/CommandRegistry.h"
 #include "planet/region/SettlementTerrain.h"
 #include "world/Grid.h"
-#include "world/WorkSystem.h"
+#include "gameplay/work/WorkSystem.h"
 
 #include <future>
 #include <memory>
@@ -47,7 +47,7 @@ namespace Infinitesia
 
         ApplicationConfig m_config;
         Grid m_grid;
-        World m_world;
+        GameWorld m_world;
         Simulation m_simulation;
         WorkSystem m_workSystem;
         CommandRegistry m_commands;
