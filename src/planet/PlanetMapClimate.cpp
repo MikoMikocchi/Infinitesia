@@ -110,6 +110,41 @@ namespace Infinitesia
 
         const int windowLat = std::max(1, latB / 18);
         const int windowLon = std::max(1, lonS / 36);
+        // Continentality = area-weighted land share in a (2*windowLat+1) x
+        // (2*windowLon+1) window, longitude wrapped and latitude clamped.
+        // The area weight depends only on the row, so the box sum is
+        // separable: land cells per row window (sliding count over a circular
+        // prefix sum) followed by a short weighted sum over rows.
+        std::vector<double> rowWeight(static_cast<std::size_t>(latB));
+        for (int latitude = 0; latitude < latB; ++latitude)
+        {
+            rowWeight[static_cast<std::size_t>(latitude)] = std::max(
+                0.0,
+                std::cos(Cell(latitude, 0).latitudeDegrees *
+                         std::numbers::pi / 180.0));
+        }
+        const int windowWidth = 2 * windowLon + 1;
+        std::vector<int> rowLandCount(
+            static_cast<std::size_t>(latB) * lonS, 0);
+        std::vector<int> prefix(static_cast<std::size_t>(lonS) + 2 * windowLon + 1);
+        for (int latitude = 0; latitude < latB; ++latitude)
+        {
+            // prefix[k] = land cells among columns -windowLon .. k-windowLon-1
+            prefix[0] = 0;
+            for (int k = 0; k < lonS + 2 * windowLon; ++k)
+            {
+                const int column = ((k - windowLon) % lonS + lonS) % lonS;
+                prefix[static_cast<std::size_t>(k) + 1] =
+                    prefix[static_cast<std::size_t>(k)] +
+                    (Cell(latitude, column).isOcean ? 0 : 1);
+            }
+            for (int longitude = 0; longitude < lonS; ++longitude)
+            {
+                rowLandCount[static_cast<std::size_t>(latitude) * lonS + longitude] =
+                    prefix[static_cast<std::size_t>(longitude + windowWidth)] -
+                    prefix[static_cast<std::size_t>(longitude)];
+            }
+        }
         for (int latitude = 0; latitude < latB; ++latitude)
         {
             for (int longitude = 0; longitude < lonS; ++longitude)
@@ -120,24 +155,13 @@ namespace Infinitesia
                      latitudeOffset <= windowLat;
                      ++latitudeOffset)
                 {
-                    for (int longitudeOffset = -windowLon;
-                         longitudeOffset <= windowLon;
-                         ++longitudeOffset)
-                    {
-                        const int neighborLatitude =
-                            std::clamp(latitude + latitudeOffset, 0, latB - 1);
-                        const int neighborLongitude =
-                            (longitude + longitudeOffset + lonS) % lonS;
-                        const auto& neighbor =
-                            Cell(neighborLatitude, neighborLongitude);
-                        const double areaWeight = std::max(
-                            0.0,
-                            std::cos(neighbor.latitudeDegrees *
-                                     std::numbers::pi / 180.0));
-                        if (!neighbor.isOcean)
-                            landArea += areaWeight;
-                        totalArea += areaWeight;
-                    }
+                    const int neighborLatitude =
+                        std::clamp(latitude + latitudeOffset, 0, latB - 1);
+                    const double weight =
+                        rowWeight[static_cast<std::size_t>(neighborLatitude)];
+                    landArea += weight * rowLandCount[
+                        static_cast<std::size_t>(neighborLatitude) * lonS + longitude];
+                    totalArea += weight * windowWidth;
                 }
                 Cell(latitude, longitude).continentality =
                     totalArea > 0.0 ? landArea / totalArea : 0.0;
@@ -225,13 +249,57 @@ namespace Infinitesia
 
         BeginLoadStep(m_progress, LoadStep::kClimatePrecipitation, "Simulating climate: precipitation");
         const double rotationScale = std::clamp(24.0 / rot, 0.4, 2.0);
+        // Everything below that depends only on (row, month) is hoisted out of
+        // the per-cell loop: it was recomputed for every one of the lonS cells.
+        std::array<double, kMonthsPerYear> declinationDegreesByMonth{};
+        for (int month = 0; month < kMonthsPerYear; ++month)
+        {
+            const double seasonalLongitude =
+                2.0 * std::numbers::pi *
+                (static_cast<double>(month) + 0.5) / kMonthsPerYear -
+                std::numbers::pi / 2.0;
+            declinationDegreesByMonth[static_cast<std::size_t>(month)] =
+                std::asin(std::sin(tilt * std::numbers::pi / 180.0) *
+                          std::sin(seasonalLongitude)) *
+                180.0 / std::numbers::pi;
+        }
         for (int latitude = 0; latitude < latB; ++latitude)
         {
+            const double rowLatitudeDegrees = Cell(latitude, 0).latitudeDegrees;
+            const double circulation =
+                CirculationWetness(std::abs(rowLatitudeDegrees), rot);
+            std::array<double, kMonthsPerYear> seasonalWeights{};
+            std::array<int, kMonthsPerYear> windDirections{};
+            for (int month = 0; month < kMonthsPerYear; ++month)
+            {
+                const double declinationDegrees =
+                    declinationDegreesByMonth[static_cast<std::size_t>(month)];
+                seasonalWeights[static_cast<std::size_t>(month)] =
+                    SeasonalWetness(rowLatitudeDegrees, declinationDegrees, rot);
+                const double relativeLatitude =
+                    std::abs(rowLatitudeDegrees - declinationDegrees);
+                const bool eastwardWind =
+                    relativeLatitude > 30.0 / rotationScale &&
+                    relativeLatitude < 60.0 / rotationScale;
+                windDirections[static_cast<std::size_t>(month)] =
+                    eastwardWind ? 1 : -1;
+            }
+            const double seasonalWeightMean =
+                std::accumulate(
+                    seasonalWeights.begin(), seasonalWeights.end(), 0.0) /
+                kMonthsPerYear;
+            const double latitudeRadians =
+                rowLatitudeDegrees * std::numbers::pi / 180.0;
+            const double cellWidthKm =
+                111.0 * std::max(0.12, std::cos(latitudeRadians));
+            const int fetchSteps = std::clamp(
+                static_cast<int>(std::ceil(1800.0 / cellWidthKm)),
+                1,
+                std::max(1, lonS / 2));
+
             for (int longitude = 0; longitude < lonS; ++longitude)
             {
                 auto& cell = Cell(latitude, longitude);
-                const double circulation =
-                    CirculationWetness(std::abs(cell.latitudeDegrees), rot);
                 const double continentalDryness =
                     1.0 - cell.continentality * 0.6;
                 const double moistureNoise =
@@ -250,7 +318,6 @@ namespace Infinitesia
                 double annualPrecipitation = 0.0;
                 double annualTemperatureSaturation = 0.0;
                 std::array<double, kMonthsPerYear> saturationFactors{};
-                std::array<double, kMonthsPerYear> seasonalWeights{};
                 for (int month = 0; month < kMonthsPerYear; ++month)
                 {
                     const double temperature =
@@ -260,17 +327,6 @@ namespace Infinitesia
                     annualTemperatureSaturation +=
                         saturationFactors[static_cast<std::size_t>(month)] /
                         kMonthsPerYear;
-                    const double seasonalLongitude =
-                        2.0 * std::numbers::pi *
-                        (static_cast<double>(month) + 0.5) / kMonthsPerYear -
-                        std::numbers::pi / 2.0;
-                    const double declinationDegrees =
-                        std::asin(std::sin(tilt * std::numbers::pi / 180.0) *
-                                  std::sin(seasonalLongitude)) *
-                        180.0 / std::numbers::pi;
-                    seasonalWeights[static_cast<std::size_t>(month)] =
-                        SeasonalWetness(
-                            cell.latitudeDegrees, declinationDegrees, rot);
                 }
 
                 const double saturationBaseline =
@@ -281,42 +337,25 @@ namespace Infinitesia
                 annualPrecipitation =
                     moistureBase * 3200.0 * pressureScale * saturationBaseline;
 
-                const double latitudeRadians =
-                    cell.latitudeDegrees * std::numbers::pi / 180.0;
-                const double cellWidthKm =
-                    111.0 * std::max(0.12, std::cos(latitudeRadians));
-                const int fetchSteps = std::clamp(
-                    static_cast<int>(std::ceil(1800.0 / cellWidthKm)),
-                    1,
-                    std::max(1, lonS / 2));
                 double windwardFactorSum = 0.0;
-                const double seasonalWeightMean =
-                    std::accumulate(
-                        seasonalWeights.begin(),
-                        seasonalWeights.end(),
-                        0.0) /
-                    kMonthsPerYear;
 
-                for (int month = 0; month < kMonthsPerYear; ++month)
+                // Orographic factor per wind direction (-1 = west wind, +1 =
+                // east wind). It does not depend on the month, only on which
+                // way the wind blows, so compute each direction at most once.
+                std::array<double, 2> orographicByDirection{};
+                std::array<bool, 2> orographicReady{};
+                const auto orographicFor = [&](int windDirection)
                 {
-                    const double seasonalLongitude =
-                        2.0 * std::numbers::pi *
-                        (static_cast<double>(month) + 0.5) / kMonthsPerYear -
-                        std::numbers::pi / 2.0;
-                    const double declinationDegrees =
-                        std::asin(std::sin(tilt * std::numbers::pi / 180.0) *
-                                  std::sin(seasonalLongitude)) *
-                        180.0 / std::numbers::pi;
-                    const double relativeLatitude =
-                        std::abs(cell.latitudeDegrees - declinationDegrees);
-                    const bool eastwardWind =
-                        relativeLatitude > 30.0 / rotationScale &&
-                        relativeLatitude < 60.0 / rotationScale;
-                    const int windDirection = eastwardWind ? 1 : -1;
+                    const std::size_t slot = windDirection > 0 ? 1 : 0;
+                    if (orographicReady[slot])
+                        return orographicByDirection[slot];
+
                     double oceanFetch = cell.isOcean ? 1.0 : 0.35;
-                    double landFetchKm = 0.0;
+                    double upslopeKm = 0.0;
+                    double upwindHighlandKm = 0.0;
                     if (!cell.isOcean)
                     {
+                        double landFetchKm = 0.0;
                         for (int step = 1; step <= fetchSteps; ++step)
                         {
                             const int upwindLongitude =
@@ -330,12 +369,7 @@ namespace Infinitesia
                             }
                             landFetchKm += cellWidthKm;
                         }
-                    }
 
-                    double upslopeKm = 0.0;
-                    double upwindHighlandKm = 0.0;
-                    if (!cell.isOcean)
-                    {
                         const int immediateUpwind =
                             (longitude - windDirection + lonS * 2) % lonS;
                         upslopeKm = (cell.elevationNormalized -
@@ -356,10 +390,18 @@ namespace Infinitesia
                     const double uplift = std::clamp(upslopeKm / 1.2, 0.0, 0.75);
                     const double leeDrying =
                         std::exp(-std::max(0.0, upwindHighlandKm) * 0.16);
-                    const double orographicFactor = std::clamp(
+                    orographicByDirection[slot] = std::clamp(
                         oceanFetch * (1.0 + uplift) * leeDrying,
                         0.25,
                         1.8);
+                    orographicReady[slot] = true;
+                    return orographicByDirection[slot];
+                };
+
+                for (int month = 0; month < kMonthsPerYear; ++month)
+                {
+                    const double orographicFactor = orographicFor(
+                        windDirections[static_cast<std::size_t>(month)]);
                     windwardFactorSum += orographicFactor / kMonthsPerYear;
 
                     const double seasonalWeight =

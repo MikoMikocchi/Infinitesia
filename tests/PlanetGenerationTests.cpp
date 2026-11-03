@@ -878,6 +878,47 @@ void TestEdgeCasePlanetConfigurations()
             "Expected a generated lake with a positive annual water balance.");
     }
 
+    // --- Continentality must match the brute-force window average ---
+    // The generator uses a separable running-sum box filter; this reference
+    // recomputes the area-weighted land share per cell the slow way.
+    {
+        Infinitesia::PlanetParameters params;
+        params.latitudeBands     = 72;
+        params.longitudeSegments = 144;
+        params.seed              = 0x1234abcd;
+        const Infinitesia::PlanetMap map(params);
+        const int latB = map.GetLatitudeBandCount();
+        const int lonS = map.GetLongitudeSegmentCount();
+        const int windowLat = std::max(1, latB / 18);
+        const int windowLon = std::max(1, lonS / 36);
+        constexpr double kPi = 3.14159265358979323846;
+        for (int la = 0; la < latB; ++la)
+        {
+            for (int lo = 0; lo < lonS; ++lo)
+            {
+                double land = 0.0;
+                double total = 0.0;
+                for (int dy = -windowLat; dy <= windowLat; ++dy)
+                {
+                    for (int dx = -windowLon; dx <= windowLon; ++dx)
+                    {
+                        const auto& n = map.GetRegion(
+                            std::clamp(la + dy, 0, latB - 1),
+                            (lo + dx + lonS) % lonS);
+                        const double w = std::max(
+                            0.0, std::cos(n.latitudeDegrees * kPi / 180.0));
+                        if (!n.isOcean)
+                            land += w;
+                        total += w;
+                    }
+                }
+                const double expected = total > 0.0 ? land / total : 0.0;
+                Require(std::abs(map.GetRegion(la, lo).continentality - expected) < 1e-9,
+                    "Continentality differs from the brute-force window average.");
+            }
+        }
+    }
+
     // --- Priority-Flood fallback: land-heavy planet ---
     // The fully-land-covered fallback (seeding Priority-Flood from the global
     // minimum instead of ocean cells) is exercised by the land-heavy planet
