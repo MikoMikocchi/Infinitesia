@@ -3,7 +3,6 @@
 #include "coordinates/PlanetaryCoordinates.h"
 #include "raylib.h"
 #include "raymath.h"
-#include "rlgl.h"
 
 #include <algorithm>
 #include <cmath>
@@ -361,28 +360,8 @@ namespace Infinitesia
             };
         }
 
-        void DrawTriangle(Vector3 first, Vector3 second, Vector3 third)
-        {
-            rlVertex3f(first.x, first.y, first.z);
-            rlVertex3f(second.x, second.y, second.z);
-            rlVertex3f(third.x, third.y, third.z);
-        }
-
-        void DrawColoredTriangle(
-            Vector3 first,
-            Color firstColor,
-            Vector3 second,
-            Color secondColor,
-            Vector3 third,
-            Color thirdColor)
-        {
-            rlColor4ub(firstColor.r, firstColor.g, firstColor.b, 255);
-            rlVertex3f(first.x, first.y, first.z);
-            rlColor4ub(secondColor.r, secondColor.g, secondColor.b, 255);
-            rlVertex3f(second.x, second.y, second.z);
-            rlColor4ub(thirdColor.r, thirdColor.g, thirdColor.b, 255);
-            rlVertex3f(third.x, third.y, third.z);
-        }
+        constexpr Color kSelectedCellColor = { 255, 202, 87, 255 };
+        constexpr int kColorBufferIndex = 3; // Mesh::vboId slot for vertex colors
     }
 
     PlanetViewer::PlanetViewer(StarSystem system)
@@ -592,8 +571,125 @@ namespace Infinitesia
         }
     }
 
+    void PlanetViewer::WriteCellColors(Color* out, int row, int column, bool selected) const
+    {
+        const int columns = m_planetMap.GetLongitudeSegmentCount();
+        const std::size_t topLeft = static_cast<std::size_t>(row) * (columns + 1) + column;
+        const std::size_t topRight = topLeft + 1;
+        const std::size_t bottomLeft = topLeft + columns + 1;
+        const std::size_t bottomRight = bottomLeft + 1;
+
+        Color tl = kSelectedCellColor;
+        Color tr = kSelectedCellColor;
+        Color bl = kSelectedCellColor;
+        Color br = kSelectedCellColor;
+        if (!selected)
+        {
+            tl = ShadeColor(m_sphereVertexColors[topLeft], m_sphereVertexBrightness[topLeft]);
+            tr = ShadeColor(m_sphereVertexColors[topRight], m_sphereVertexBrightness[topRight]);
+            bl = ShadeColor(m_sphereVertexColors[bottomLeft], m_sphereVertexBrightness[bottomLeft]);
+            br = ShadeColor(m_sphereVertexColors[bottomRight], m_sphereVertexBrightness[bottomRight]);
+        }
+        // Same triangle order as the former immediate-mode path.
+        out[0] = tl; out[1] = bl; out[2] = tr;
+        out[3] = tr; out[4] = bl; out[5] = br;
+    }
+
+    void PlanetViewer::SyncGlobeMesh() const
+    {
+        const int rows = m_planetMap.GetLatitudeBandCount();
+        const int columns = m_planetMap.GetLongitudeSegmentCount();
+        const int selectedCell =
+            (rows - 1 - m_selectedLatitude) * columns + m_selectedLongitude;
+
+        if (m_globeMesh.vaoId == 0)
+        {
+            const int cellCount = rows * columns;
+            Mesh mesh{};
+            mesh.vertexCount = cellCount * 6;
+            mesh.triangleCount = cellCount * 2;
+            mesh.vertices = static_cast<float*>(
+                RL_MALLOC(static_cast<std::size_t>(mesh.vertexCount) * 3 * sizeof(float)));
+            mesh.colors = static_cast<unsigned char*>(
+                RL_MALLOC(static_cast<std::size_t>(mesh.vertexCount) * sizeof(Color)));
+            if (mesh.vertices == nullptr || mesh.colors == nullptr)
+            {
+                RL_FREE(mesh.vertices);
+                RL_FREE(mesh.colors);
+                throw std::runtime_error("Failed to allocate the globe mesh.");
+            }
+
+            auto* colors = reinterpret_cast<Color*>(mesh.colors);
+            float* vertices = mesh.vertices;
+            for (int row = 0; row < rows; ++row)
+            {
+                for (int column = 0; column < columns; ++column)
+                {
+                    const int cell = row * columns + column;
+                    const std::size_t topLeft =
+                        static_cast<std::size_t>(row) * (columns + 1) + column;
+                    const Vector3 tl = m_sphereVertices[topLeft];
+                    const Vector3 tr = m_sphereVertices[topLeft + 1];
+                    const Vector3 bl = m_sphereVertices[topLeft + columns + 1];
+                    const Vector3 br = m_sphereVertices[topLeft + columns + 2];
+                    const Vector3 cellVertices[6] = { tl, bl, tr, tr, bl, br };
+                    float* dst = vertices + static_cast<std::size_t>(cell) * 18;
+                    for (const Vector3& vertex : cellVertices)
+                    {
+                        *dst++ = vertex.x;
+                        *dst++ = vertex.y;
+                        *dst++ = vertex.z;
+                    }
+                    WriteCellColors(
+                        colors + static_cast<std::size_t>(cell) * 6,
+                        row, column, cell == selectedCell);
+                }
+            }
+
+            UploadMesh(&mesh, true);
+            if (mesh.vaoId == 0)
+            {
+                RL_FREE(mesh.vertices);
+                RL_FREE(mesh.colors);
+                throw std::runtime_error("Failed to upload the globe mesh.");
+            }
+            m_globeMesh = mesh;
+            m_globeMaterial = LoadMaterialDefault();
+            m_uploadedSelectedCell = selectedCell;
+            return;
+        }
+
+        if (selectedCell == m_uploadedSelectedCell)
+            return;
+
+        auto* colors = reinterpret_cast<Color*>(m_globeMesh.colors);
+        const auto rewriteCell = [&](int cell, bool selected)
+        {
+            Color* cellColors = colors + static_cast<std::size_t>(cell) * 6;
+            WriteCellColors(cellColors, cell / columns, cell % columns, selected);
+            UpdateMeshBuffer(
+                m_globeMesh,
+                kColorBufferIndex,
+                cellColors,
+                static_cast<int>(6 * sizeof(Color)),
+                static_cast<int>(static_cast<std::size_t>(cell) * 6 * sizeof(Color)));
+        };
+        if (m_uploadedSelectedCell >= 0)
+            rewriteCell(m_uploadedSelectedCell, false);
+        rewriteCell(selectedCell, true);
+        m_uploadedSelectedCell = selectedCell;
+    }
+
     void PlanetViewer::ReleaseRenderResources() noexcept
     {
+        if (m_globeMesh.vaoId != 0)
+        {
+            UnloadMesh(m_globeMesh);
+            UnloadMaterial(m_globeMaterial);
+            m_globeMesh = {};
+            m_globeMaterial = {};
+            m_uploadedSelectedCell = -1;
+        }
         if (m_surfaceTexture.id != 0)
         {
             UnloadTexture(m_surfaceTexture);
@@ -817,65 +913,11 @@ namespace Infinitesia
             static_cast<int>(layout.globePanel.width),
             static_cast<int>(layout.globePanel.height));
         BeginMode3D(camera);
-        rlPushMatrix();
-        rlRotatef(m_rotationDegrees, 0.0f, 1.0f, 0.0f);
-        rlRotatef(m_tiltDegrees, 1.0f, 0.0f, 0.0f);
-        rlSetTexture(0);
-        rlBegin(RL_TRIANGLES);
-        rlColor4ub(255, 255, 255, 255);
-
-        for (int latitude = 0; latitude < rows; ++latitude)
-        {
-            for (int longitude = 0; longitude < columns; ++longitude)
-            {
-                const int planetLatitude = rows - 1 - latitude;
-                const std::size_t regionIndex =
-                    static_cast<std::size_t>(planetLatitude) * columns + longitude;
-                const bool selected =
-                    planetLatitude == m_selectedLatitude &&
-                    longitude == m_selectedLongitude;
-                const std::size_t topLeftIndex =
-                    static_cast<std::size_t>(latitude) * (columns + 1) + longitude;
-                const Vector3 topLeft = m_sphereVertices[topLeftIndex];
-                const Vector3 topRight = m_sphereVertices[topLeftIndex + 1];
-                const Vector3 bottomLeft = m_sphereVertices[topLeftIndex + columns + 1];
-                const Vector3 bottomRight = m_sphereVertices[topLeftIndex + columns + 2];
-                if (selected)
-                {
-                    const Color selectedColor = { 255, 202, 87, 255 };
-                    rlColor4ub(selectedColor.r, selectedColor.g, selectedColor.b, 255);
-                    DrawTriangle(topLeft, bottomLeft, topRight);
-                    DrawTriangle(topRight, bottomLeft, bottomRight);
-                    continue;
-                }
-
-                const std::size_t topRightIndex = topLeftIndex + 1;
-                const std::size_t bottomLeftIndex = topLeftIndex + columns + 1;
-                const std::size_t bottomRightIndex = bottomLeftIndex + 1;
-                const Color topLeftColor = ShadeColor(
-                    m_sphereVertexColors[topLeftIndex],
-                    m_sphereVertexBrightness[topLeftIndex]);
-                const Color topRightColor = ShadeColor(
-                    m_sphereVertexColors[topRightIndex],
-                    m_sphereVertexBrightness[topRightIndex]);
-                const Color bottomLeftColor = ShadeColor(
-                    m_sphereVertexColors[bottomLeftIndex],
-                    m_sphereVertexBrightness[bottomLeftIndex]);
-                const Color bottomRightColor = ShadeColor(
-                    m_sphereVertexColors[bottomRightIndex],
-                    m_sphereVertexBrightness[bottomRightIndex]);
-                DrawColoredTriangle(
-                    topLeft, topLeftColor, bottomLeft, bottomLeftColor,
-                    topRight, topRightColor);
-                DrawColoredTriangle(
-                    topRight, topRightColor, bottomLeft, bottomLeftColor,
-                    bottomRight, bottomRightColor);
-            }
-        }
-
-        rlEnd();
-        rlSetTexture(1);
-        rlPopMatrix();
+        SyncGlobeMesh();
+        const Matrix globeTransform = MatrixMultiply(
+            MatrixRotateX(m_tiltDegrees * DEG2RAD),
+            MatrixRotateY(m_rotationDegrees * DEG2RAD));
+        DrawMesh(m_globeMesh, m_globeMaterial, globeTransform);
         EndMode3D();
         EndScissorMode();
 
