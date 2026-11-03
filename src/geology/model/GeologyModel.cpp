@@ -86,21 +86,35 @@ namespace Infinitesia
         {
             const ProvinceColumn& column = m_catalog->ColumnFor(province.type);
             const StructureStyle& style = column.style;
-            const BiosphereState biosphere = map.GetEpochs().BiosphereAt(province.eventAgeMyr);
 
-            // Top-down list of the layers the province can have at all.
-            std::vector<ColumnLayer> layers;
-            for (auto it = column.bottomUp.rbegin(); it != column.bottomUp.rend(); ++it)
+            // The layers the province can have at all: a layer that needs a condition of the
+            // biosphere (coal needs land plants) is left out if the time it would have been
+            // laid down in comes before the condition. Dropping a layer shifts the times of the
+            // others, so this repeats until nothing more goes.
+            std::vector<ColumnLayer> bottomUp = column.bottomUp;
+            for (int pass = 0; pass < 16; ++pass)
             {
-                if (Satisfied(it->needs, biosphere))
+                const std::vector<TimeSpan> timeline = CoverTimeline(
+                    map.GetEpochs().PlanetAgeMyr(), province.eventAgeMyr, province.meanCrustAgeMyr, province.type,
+                    bottomUp.size() - 1);
+                bool removed = false;
+                for (std::size_t k = 0; k < timeline.size(); ++k)
                 {
-                    layers.push_back(*it);
+                    const BiosphereState state = map.GetEpochs().BiosphereAt(0.5 * (timeline[k].startMyr + timeline[k].endMyr));
+                    if (!Satisfied(bottomUp[k + 1].needs, state))
+                    {
+                        bottomUp.erase(bottomUp.begin() + static_cast<std::ptrdiff_t>(k + 1));
+                        removed = true;
+                        break;
+                    }
+                }
+                if (!removed)
+                {
+                    break;
                 }
             }
-            if (layers.empty())
-            {
-                layers.push_back(column.bottomUp.front());
-            }
+            // Top-down.
+            const std::vector<ColumnLayer> layers(bottomUp.rbegin(), bottomUp.rend());
 
             Structure structure;
             std::vector<Layer> pile;
@@ -166,6 +180,40 @@ namespace Infinitesia
             structure.warpWavelengthMeters = 400.0 + 600.0 * draw(5);
             structure.faults = style.faults;
             structure.compressionAzimuthDegrees = province.compressionAzimuthDegrees;
+
+            // The history behind the pile: the formations of the whole column, bottom first, with
+            // the ones erosion stripped off marked.
+            HistoryInput input;
+            input.seed = seed;
+            input.province = province.id;
+            input.type = province.type;
+            input.planetAgeMyr = map.GetEpochs().PlanetAgeMyr();
+            input.eventAgeMyr = province.eventAgeMyr;
+            input.crustAgeMyr = province.meanCrustAgeMyr;
+            input.dipDegrees = structure.dipDegrees;
+            input.foldCount = style.foldCount;
+            input.maxFaultSlipMeters = style.faults.maxSlipMeters;
+            input.erosionDepthKm = province.erosionDepthKm;
+            for (std::size_t b = 0; b < layers.size(); ++b)
+            {
+                const std::size_t topDown = layers.size() - 1 - b;
+                HistoryFormation formation;
+                formation.rock = layers[topDown].rock;
+                const Rock* info = m_catalog->GetRock(formation.rock);
+                formation.rockClass = info != nullptr ? info->rockClass : RockClass::SedimentaryClastic;
+                formation.thicknessMeters = layers[topDown].thicknessMeters;
+                formation.erased = topDown < stripped;
+                input.formationsBottomUp.push_back(formation);
+            }
+            ProvinceHistory history = BuildProvinceHistory(input);
+            std::vector<int> pileEvents;
+            for (std::size_t p = 0; p < pile.size(); ++p)
+            {
+                const std::size_t bottomUp = layers.size() - 1 - (stripped + p);
+                pileEvents.push_back(history.formationEvents[bottomUp]);
+            }
+            m_histories.push_back(std::move(history));
+            m_pileEvents.push_back(std::move(pileEvents));
 
             m_piles.push_back(std::move(pile));
             m_structures.push_back(std::move(structure));
@@ -258,6 +306,7 @@ namespace Infinitesia
                 const int slot = profile.count++;
                 profile.rock[static_cast<std::size_t>(slot)] = pile[i].rock;
                 profile.bottom[static_cast<std::size_t>(slot)] = bottom;
+                profile.formation[static_cast<std::size_t>(slot)] = static_cast<std::uint8_t>(i);
             }
             height = bottomHeight;
         }
@@ -407,7 +456,13 @@ namespace Infinitesia
         // Rocks above `cut` from `upper` and rocks below it from `lower`.
         Profile Compose(const Profile& upper, const Profile& lower, int cut)
         {
-            std::vector<std::pair<MaterialId, int>> layers;
+            struct Piece
+            {
+                MaterialId rock;
+                int bottom;
+                std::uint8_t formation;
+            };
+            std::vector<Piece> layers;
             for (int i = 0; i < upper.count; ++i)
             {
                 const int bottom = upper.bottom[static_cast<std::size_t>(i)];
@@ -416,7 +471,7 @@ namespace Infinitesia
                 {
                     break;
                 }
-                layers.emplace_back(upper.rock[static_cast<std::size_t>(i)], std::max(bottom, cut));
+                layers.push_back({ upper.rock[static_cast<std::size_t>(i)], std::max(bottom, cut), upper.formation[static_cast<std::size_t>(i)] });
                 if (bottom <= cut)
                 {
                     break;
@@ -427,14 +482,14 @@ namespace Infinitesia
                 const int bottom = lower.bottom[static_cast<std::size_t>(j)];
                 if (bottom < cut)
                 {
-                    layers.emplace_back(lower.rock[static_cast<std::size_t>(j)], bottom);
+                    layers.push_back({ lower.rock[static_cast<std::size_t>(j)], bottom, lower.formation[static_cast<std::size_t>(j)] });
                 }
             }
 
             // Neighbouring pieces of one rock are one layer.
             for (std::size_t i = 0; i + 1 < layers.size();)
             {
-                if (layers[i].first == layers[i + 1].first)
+                if (layers[i].rock == layers[i + 1].rock)
                     layers.erase(layers.begin() + static_cast<std::ptrdiff_t>(i));
                 else
                     ++i;
@@ -446,7 +501,7 @@ namespace Infinitesia
                 long long smallest = std::numeric_limits<long long>::max();
                 for (std::size_t i = 1; i + 1 < layers.size(); ++i)
                 {
-                    const long long thickness = static_cast<long long>(layers[i - 1].second) - layers[i].second;
+                    const long long thickness = static_cast<long long>(layers[i - 1].bottom) - layers[i].bottom;
                     if (thickness < smallest)
                     {
                         smallest = thickness;
@@ -457,10 +512,11 @@ namespace Infinitesia
             }
 
             Profile result;
-            for (const auto& [rock, bottom] : layers)
+            for (const Piece& piece : layers)
             {
-                result.rock[static_cast<std::size_t>(result.count)] = rock;
-                result.bottom[static_cast<std::size_t>(result.count)] = bottom;
+                result.rock[static_cast<std::size_t>(result.count)] = piece.rock;
+                result.bottom[static_cast<std::size_t>(result.count)] = piece.bottom;
+                result.formation[static_cast<std::size_t>(result.count)] = piece.formation;
                 ++result.count;
             }
             result.bottom[static_cast<std::size_t>(result.count - 1)] = kBasementBottom;
@@ -500,6 +556,69 @@ namespace Infinitesia
     {
         const std::vector<Fault> faults = FaultsNear(province, eastMeters, northMeters);
         return FaultedProfile(province, faults, faults.size(), eastMeters, northMeters, pileTopMeters);
+    }
+
+    const ProvinceHistory& GeologyModel::HistoryOf(ProvinceId province) const noexcept
+    {
+        if (province == kNoProvince || province > m_histories.size())
+        {
+            return m_fallbackHistory;
+        }
+        return m_histories[province - 1];
+    }
+
+    EventId GeologyModel::FormationEvent(ProvinceId province, std::size_t pileIndex) const noexcept
+    {
+        if (province == kNoProvince || province > m_histories.size() || pileIndex >= m_pileEvents[province - 1].size())
+        {
+            return 0;
+        }
+        const ProvinceHistory& history = m_histories[province - 1];
+        return history.events[static_cast<std::size_t>(m_pileEvents[province - 1][pileIndex])].id;
+    }
+
+    std::vector<EventId> GeologyModel::ProvenanceAt(
+        ProvinceId province, double eastMeters, double northMeters, int elevationMeters, int pileTopMeters) const
+    {
+        std::vector<EventId> chain;
+        const ProvinceHistory& history = HistoryOf(province);
+        if (history.events.empty())
+        {
+            return chain;
+        }
+
+        const ColumnProfile profile = ProfileAt(province, eastMeters, northMeters, pileTopMeters);
+        chain.push_back(FormationEvent(province, FormationAt(profile, elevationMeters)));
+
+        // Everything in the province was folded after it formed.
+        if (history.foldingEvent >= 0)
+            chain.push_back(history.events[static_cast<std::size_t>(history.foldingEvent)].id);
+
+        // A fault displaced the rock if the point lies in the block above a fault plane.
+        for (const Fault& fault : FaultsNear(province, eastMeters, northMeters))
+        {
+            const FaultEffect effect = EffectOf(fault, eastMeters, northMeters, pileTopMeters);
+            if (effect.amplitude > 0.0 && elevationMeters > effect.cutElevation && history.faultingEvent >= 0)
+            {
+                chain.push_back(history.events[static_cast<std::size_t>(history.faultingEvent)].id);
+                break;
+            }
+        }
+        if (history.erosionEvent >= 0)
+            chain.push_back(history.events[static_cast<std::size_t>(history.erosionEvent)].id);
+        return chain;
+    }
+
+    std::size_t GeologyModel::FormationAt(const ColumnProfile& profile, int elevationMeters) noexcept
+    {
+        for (int i = 0; i < profile.count; ++i)
+        {
+            if (elevationMeters >= profile.bottom[static_cast<std::size_t>(i)])
+            {
+                return profile.formation[static_cast<std::size_t>(i)];
+            }
+        }
+        return profile.formation[static_cast<std::size_t>(profile.count - 1)];
     }
 
     MaterialId GeologyModel::RockAt(const ColumnProfile& profile, int elevationMeters) noexcept

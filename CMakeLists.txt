@@ -144,6 +144,12 @@ target_link_libraries(TerrainSnapshot PRIVATE InfinitesiaWorld InfinitesiaGeolog
 target_compile_definitions(TerrainSnapshot PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
 infinitesia_enable_warnings(TerrainSnapshot)
 
+# Command-line tool: asks the geology what lies at a point of the planet and why (no window).
+add_executable(GeologyInspector tools/GeologyInspector.cpp)
+target_link_libraries(GeologyInspector PRIVATE InfinitesiaGeology InfinitesiaPlanet)
+target_compile_definitions(GeologyInspector PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
+infinitesia_enable_warnings(GeologyInspector)
+
 include(CTest)
 if (BUILD_TESTING)
   FetchContent_Declare(

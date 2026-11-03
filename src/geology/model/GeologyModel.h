@@ -1,6 +1,7 @@
 #pragma once
 
 #include "geology/catalog/GeologyCatalog.h"
+#include "geology/history/ProvinceHistory.h"
 #include "planet/PlanetMap.h"
 
 #include <array>
@@ -50,6 +51,10 @@ namespace Infinitesia
             int count = 0;
             std::array<MaterialId, kMaxProfileLayers> rock{};
             std::array<int, kMaxProfileLayers> bottom{}; // metres above sea level, rounded
+            // The formation each layer belongs to: its place in the province's pile, top first.
+            // A fault can cut one formation into two layers; a formation can also be one layer
+            // for two pieces of one rock whose separating layer pinched out (the upper one counts).
+            std::array<std::uint8_t, kMaxProfileLayers> formation{};
         };
 
         // One fold: a sine wave of the layer surfaces along `direction`.
@@ -127,6 +132,17 @@ namespace Infinitesia
         // top `pileTopMeters` above sea level. kNoProvince gives granite basement.
         ColumnProfile ProfileAt(ProvinceId province, double eastMeters, double northMeters, int pileTopMeters) const;
 
+        // Where the rock at a point came from: the events that made it and changed it, oldest
+        // first (its formation, the folding, the faulting if a fault displaced it there, the
+        // erosion that cut the present surface). Every point has at least its formation.
+        std::vector<EventId> ProvenanceAt(ProvinceId province, double eastMeters, double northMeters,
+                                          int elevationMeters, int pileTopMeters) const;
+
+        // The history of a province: all its events in order, and which belongs to which formation.
+        const ProvinceHistory& HistoryOf(ProvinceId province) const noexcept;
+        // The event that made the formation at a place in the province's pile (top first).
+        EventId FormationEvent(ProvinceId province, std::size_t pileIndex) const noexcept;
+
         // The same column without faults (folds, dip and thickness changes only).
         ColumnProfile BaseProfileAt(ProvinceId province, double eastMeters, double northMeters, int pileTopMeters) const;
 
@@ -140,6 +156,8 @@ namespace Infinitesia
 
         // The rock at an elevation in a profile: the layer whose bottom lies at or below it.
         static MaterialId RockAt(const ColumnProfile& profile, int elevationMeters) noexcept;
+        // The formation (place in the pile, top first) of that layer.
+        static std::size_t FormationAt(const ColumnProfile& profile, int elevationMeters) noexcept;
 
         // Shorthand for building the profile and asking one elevation.
         MaterialId BedrockAt(ProvinceId province, double eastMeters, double northMeters, int elevationMeters,
@@ -170,6 +188,9 @@ namespace Infinitesia
         GeologyConfig m_config;
         std::vector<std::vector<Layer>> m_piles;   // by ProvinceId - 1
         std::vector<Structure> m_structures;       // by ProvinceId - 1
+        std::vector<ProvinceHistory> m_histories;      // by ProvinceId - 1
+        std::vector<std::vector<int>> m_pileEvents;    // per province, per pile index: index in the history
+        ProvinceHistory m_fallbackHistory;
         std::vector<Layer> m_fallbackPile;
         Structure m_fallbackStructure;
     };
