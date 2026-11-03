@@ -4,6 +4,7 @@
 #include "planet/PlanetMap.h"
 
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
 // Golden test: pins the exact output of planet generation.
@@ -32,7 +33,15 @@ namespace
                 m_hash *= 0x100000001b3ULL;
             }
         }
-        void Real(double value) { Bytes(&value, sizeof value); }
+        // Reals are hashed rounded to 7 significant digits: the last bits of a double depend on
+        // the compiler, optimisation level and FMA contraction, so a bit-exact hash would only
+        // match on the machine that produced it.
+        void Real(double value)
+        {
+            char text[32];
+            const int length = std::snprintf(text, sizeof text, "%.6e", value);
+            Bytes(text, static_cast<std::size_t>(length));
+        }
         // Every integral, bool or enum value is hashed as 8 bytes.
         template <typename T>
         void Int(T value)
@@ -115,6 +124,6 @@ namespace
     }
 }
 
-TEST_CASE("GoldenPlanetSeed1")     { CHECK(HashPlanet(1) == 0x014b121a58cf991fULL); }
-TEST_CASE("GoldenPlanetSeed7")     { CHECK(HashPlanet(7, 40.0, 2.0e9) == 0x1e34fdb92585078dULL); }
-TEST_CASE("GoldenPlanetSeed12345") { CHECK(HashPlanet(12345) == 0x0a1ec7ad73d63fbdULL); }
+TEST_CASE("GoldenPlanetSeed1")     { CHECK(HashPlanet(1) == 0x253167e90d169d22ULL); }
+TEST_CASE("GoldenPlanetSeed7")     { CHECK(HashPlanet(7, 40.0, 2.0e9) == 0xd7993c05cc79d666ULL); }
+TEST_CASE("GoldenPlanetSeed12345") { CHECK(HashPlanet(12345) == 0x71074ef71b82cdd0ULL); }

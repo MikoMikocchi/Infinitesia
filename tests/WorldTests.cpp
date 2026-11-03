@@ -316,7 +316,8 @@ TEST_CASE("GeologyAddsRockMaterialsWithoutChangingBlockTypes")
 TEST_CASE("RocksAreLaidOutInTheLayersOfTheProvincePile")
 {
     const auto source = MakeGeologicalSource(LandAnchor());
-    const SettlementTerrain& terrain = *MakeSettlement(LandAnchor()).terrain;
+    const Settlement settlement = MakeSettlement(LandAnchor());
+    const SettlementTerrain& terrain = *settlement.terrain;
     const GeologyModel& model = *SharedGeology();
 
     for (int x = 3; x < kWidth; x += 37)

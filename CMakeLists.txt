@@ -132,7 +132,15 @@ if (WIN32)
 endif()
 
 # Command-line tool: an isometric block diagram of the generated terrain (no window).
-add_executable(TerrainSnapshot tools/TerrainSnapshot.cpp)
+add_executable(TerrainSnapshot
+  tools/TerrainSnapshot.cpp
+  tools/terrain_snapshot/BlockDiagram.cpp
+  tools/terrain_snapshot/GeologicalMap.cpp
+  tools/terrain_snapshot/Image.cpp
+  tools/terrain_snapshot/Options.cpp
+  tools/terrain_snapshot/Reports.cpp
+  tools/terrain_snapshot/SnapshotWorld.cpp)
+target_include_directories(TerrainSnapshot PRIVATE tools)
 target_link_libraries(TerrainSnapshot PRIVATE InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet)
 target_compile_definitions(TerrainSnapshot PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
 infinitesia_enable_warnings(TerrainSnapshot)
@@ -154,8 +162,19 @@ if (BUILD_TESTING)
   set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
   FetchContent_MakeAvailable(doctest)
 
-  add_executable(PlanetGenerationTests tests/PlanetGenerationTests.cpp)
-  target_link_libraries(PlanetGenerationTests PRIVATE InfinitesiaPlanet doctest::doctest)
+  # Shared test helpers (tests/support/) are included as "support/...".
+  add_library(TestSupport INTERFACE)
+  target_include_directories(TestSupport INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+  target_link_libraries(TestSupport INTERFACE doctest::doctest)
+
+  add_executable(PlanetGenerationTests
+    tests/support/DoctestMain.cpp
+    tests/planet/StarSystemTests.cpp
+    tests/planet/PlanetMapTests.cpp
+    tests/planet/PlateKinematicsTests.cpp
+    tests/planet/HydrologyTests.cpp
+    tests/planet/EdgeCaseTests.cpp)
+  target_link_libraries(PlanetGenerationTests PRIVATE InfinitesiaPlanet TestSupport)
   infinitesia_enable_warnings(PlanetGenerationTests)
 
   # Registers every TEST_CASE as its own CTest test.
@@ -191,13 +210,22 @@ if (BUILD_TESTING)
   infinitesia_enable_warnings(LocalGameTests)
   doctest_discover_tests(LocalGameTests)
 
-  add_executable(PlanetGeologyTests tests/PlanetGeologyTests.cpp)
-  target_link_libraries(PlanetGeologyTests PRIVATE InfinitesiaPlanet doctest::doctest)
+  add_executable(PlanetGeologyTests
+    tests/support/DoctestMain.cpp
+    tests/planet/GeologyFieldsTests.cpp
+    tests/planet/ProvinceTests.cpp
+    tests/planet/EpochTests.cpp)
+  target_link_libraries(PlanetGeologyTests PRIVATE InfinitesiaPlanet TestSupport)
   infinitesia_enable_warnings(PlanetGeologyTests)
   doctest_discover_tests(PlanetGeologyTests)
 
-  add_executable(GeologyTests tests/GeologyTests.cpp)
-  target_link_libraries(GeologyTests PRIVATE InfinitesiaGeology InfinitesiaPlanet InfinitesiaChemistry doctest::doctest)
+  add_executable(GeologyTests
+    tests/support/DoctestMain.cpp
+    tests/geology/CatalogTests.cpp
+    tests/geology/PileTests.cpp
+    tests/geology/FaultTests.cpp
+    tests/geology/HistoryTests.cpp)
+  target_link_libraries(GeologyTests PRIVATE InfinitesiaGeology InfinitesiaPlanet InfinitesiaChemistry TestSupport)
   target_compile_definitions(GeologyTests PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
   infinitesia_enable_warnings(GeologyTests)
   doctest_discover_tests(GeologyTests)
