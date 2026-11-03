@@ -1,4 +1,5 @@
 #include "planet/PlanetMap.h"
+#include "planet/stages/PlanetStages.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
 #include "planet/internal/PlanetMapHydrologyHelpers.h"
 
@@ -11,10 +12,10 @@ namespace Infinitesia
 {
     using namespace GenerationDetail;
 
-    void PlanetMap::GenerateHydrology()
+    void RunHydrology(PlanetBuild& build)
     {
-        const int latB = LatBands();
-        const int lonS = LonSegs();
+        const int latB = build.LatBands();
+        const int lonS = build.LonSegs();
 
         // -----------------------------------------------------------------------
         // Precompute per-latitude cell area weights (spherical shell segment).
@@ -30,7 +31,7 @@ namespace Infinitesia
         // ensures that equatorial cells (which are much larger than polar cells
         // on a lat-lon grid) contribute proportionally more runoff volume.
         // -----------------------------------------------------------------------
-        const double radiusKm = m_planet.GetRadius() / 1000.0;
+        const double radiusKm = build.data.planet.GetRadius() / 1000.0;
         const double deltaLonRad = (2.0 * std::numbers::pi) / lonS;
         const double deltaLatRad = std::numbers::pi / latB;
         std::vector<double> cellAreaKm2(static_cast<std::size_t>(latB));
@@ -58,7 +59,7 @@ namespace Infinitesia
             {
                 const std::size_t index =
                     static_cast<std::size_t>(la) * lonS + lo;
-                const auto& cell = Cell(la, lo);
+                const auto& cell = build.Cell(la, lo);
                 elevations[index] = cell.elevationNormalized;
                 oceanCells[index] = cell.isOcean;
                 if (cell.isOcean)
@@ -117,7 +118,7 @@ namespace Infinitesia
         for (const int order : network.processingOrder)
         {
             const std::size_t idx = static_cast<std::size_t>(order);
-            auto& c = Cell(order / lonS, order % lonS);
+            auto& c = build.Cell(order / lonS, order % lonS);
             if (c.isOcean)
                 continue;
 
@@ -233,11 +234,11 @@ namespace Infinitesia
             else if (network.flowDirections[idx] < 0)
                 balance.landSinkKm3 += outflowKm3[idx];
         }
-        m_waterBalance = balance;
+        build.data.waterBalance = balance;
 
         for (std::size_t idx = 0; idx < cellCount; ++idx)
         {
-            auto& c = m_grid[idx];
+            auto& c = build.data.grid[idx];
             if (c.isOcean)
                 continue;
             c.hasRiver = c.drainageAccumulation > kRiverDischargeThreshold &&

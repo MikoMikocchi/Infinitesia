@@ -1,21 +1,22 @@
 #include "planet/PlanetMap.h"
+#include "planet/stages/PlanetStages.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
 
 #include <algorithm>
 
 namespace Infinitesia
 {
-    void PlanetMap::GenerateSoils()
+    void RunSoils(PlanetBuild& build)
     {
-        const int latB = LatBands();
-        const int lonS = LonSegs();
-        const double ageFrac = std::clamp(m_climate.planetAgeYears / 4.5e9, 0.0, 1.0);
+        const int latB = build.LatBands();
+        const int lonS = build.LonSegs();
+        const double ageFrac = std::clamp(build.data.climate.planetAgeYears / 4.5e9, 0.0, 1.0);
 
         for (int la = 0; la < latB; ++la)
         {
             for (int lo = 0; lo < lonS; ++lo)
             {
-                auto& c = Cell(la, lo);
+                auto& c = build.Cell(la, lo);
                 if (c.isOcean)
                 {
                     c.soilFertility = 0.0;
@@ -52,14 +53,14 @@ namespace Infinitesia
         }
     }
 
-    void PlanetMap::ClassifyBiomes()
+    void RunBiomes(PlanetBuild& build)
     {
-        const int latB = LatBands();
-        const int lonS = LonSegs();
+        const int latB = build.LatBands();
+        const int lonS = build.LonSegs();
         for (int la = 0; la < latB; ++la)
         {
             for (int lo = 0; lo < lonS; ++lo)
-                Cell(la, lo).biome = GenerationDetail::ClassifyBiome(Cell(la, lo));
+                build.Cell(la, lo).biome = GenerationDetail::ClassifyBiome(build.Cell(la, lo));
         }
     }
 }

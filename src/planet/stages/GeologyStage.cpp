@@ -1,4 +1,5 @@
 #include "planet/PlanetMap.h"
+#include "planet/stages/PlanetStages.h"
 #include "planet/internal/GridDistance.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
 
@@ -77,19 +78,20 @@ namespace Infinitesia
         }
     }
 
-    void PlanetMap::GenerateGeology()
+    void RunGeology(PlanetBuild& build)
     {
-        const int latB = LatBands();
-        const int lonS = LonSegs();
+        build.data.epochs = PlanetEpochTable(build.data.climate.planetAgeYears / 1.0e6);
+        const int latB = build.LatBands();
+        const int lonS = build.LonSegs();
         const std::size_t cellCount = static_cast<std::size_t>(latB) * lonS;
-        const std::uint32_t seed = m_planet.GetSeed();
-        const double radiusKm = m_planet.GetRadius() / 1000.0;
-        const double planetAgeMyr = std::max(m_climate.planetAgeYears / 1.0e6, 1.0);
+        const std::uint32_t seed = build.data.planet.GetSeed();
+        const double radiusKm = build.data.planet.GetRadius() / 1000.0;
+        const double planetAgeMyr = std::max(build.data.climate.planetAgeYears / 1.0e6, 1.0);
 
         // Same heat budget as the plate count in tectonics, normalized so that an
         // Earth-mass planet of Earth's age is 1.
-        const double massFraction = m_planet.GetParameters().massKilograms / 5.972e24;
-        const double ageFraction = std::clamp(m_climate.planetAgeYears / 4.5e9, 0.0, 1.0);
+        const double massFraction = build.data.planet.GetParameters().massKilograms / 5.972e24;
+        const double ageFraction = std::clamp(build.data.climate.planetAgeYears / 4.5e9, 0.0, 1.0);
         const double thermalScale =
             std::sqrt(massFraction) * (1.0 - 0.4 * ageFraction) / 0.6;
 
@@ -99,7 +101,7 @@ namespace Infinitesia
         {
             for (int lo = 0; lo < lonS; ++lo)
             {
-                auto& c = Cell(la, lo);
+                auto& c = build.Cell(la, lo);
                 const Vec3d point = LatLonToCart(c.latitudeDegrees, c.longitudeDegrees);
                 double influence = 0.0;
                 for (const Hotspot& hotspot : hotspots)
@@ -124,7 +126,7 @@ namespace Infinitesia
             for (int lo = 0; lo < lonS; ++lo)
             {
                 const std::size_t index = static_cast<std::size_t>(la) * lonS + lo;
-                const bool continental = Cell(la, lo).continentalCrustFraction > 0.5;
+                const bool continental = build.Cell(la, lo).continentalCrustFraction > 0.5;
                 isContinentalCrust[index] = continental;
                 isOceanicCrust[index] = !continental;
             }
@@ -139,7 +141,7 @@ namespace Infinitesia
         {
             for (int lo = 0; lo < lonS; ++lo)
             {
-                auto& c = Cell(la, lo);
+                auto& c = build.Cell(la, lo);
                 const std::size_t index = static_cast<std::size_t>(la) * lonS + lo;
                 const double boundaryDistanceKm = c.distanceToBoundaryKm;
                 const bool continental = isContinentalCrust[index];
@@ -183,7 +185,7 @@ namespace Infinitesia
                         {
                             const int nla = std::clamp(la + dla, 0, latB - 1);
                             const int nlo = (lo + dlo + lonS) % lonS;
-                            nearbyRelief += std::max(0.0, Cell(nla, nlo).tectonicReliefKm);
+                            nearbyRelief += std::max(0.0, build.Cell(nla, nlo).tectonicReliefKm);
                             ++neighbours;
                         }
                     }
@@ -226,15 +228,7 @@ namespace Infinitesia
             }
         }
 
-        GenerateProvinces(distanceToOceanKm);
+        GenerateProvinces(build, distanceToOceanKm);
     }
 
-    const Province* PlanetMap::FindProvince(ProvinceId id) const noexcept
-    {
-        if (id == kNoProvince || id > m_provinces.size())
-        {
-            return nullptr;
-        }
-        return &m_provinces[id - 1];
-    }
 }

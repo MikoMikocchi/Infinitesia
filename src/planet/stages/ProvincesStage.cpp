@@ -1,4 +1,5 @@
 #include "planet/PlanetMap.h"
+#include "planet/stages/PlanetStages.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
 
 #include <algorithm>
@@ -176,14 +177,14 @@ namespace Infinitesia
         }
     }
 
-    void PlanetMap::GenerateProvinces(const std::vector<double>& distanceToOceanKm)
+    void GenerateProvinces(PlanetBuild& build, const std::vector<double>& distanceToOceanKm)
     {
-        const int latB = LatBands();
-        const int lonS = LonSegs();
+        const int latB = build.LatBands();
+        const int lonS = build.LonSegs();
         const std::size_t cellCount = static_cast<std::size_t>(latB) * lonS;
-        const std::uint32_t seed = m_planet.GetSeed();
-        const double radiusKm = m_planet.GetRadius() / 1000.0;
-        const double planetAgeMyr = std::max(m_climate.planetAgeYears / 1.0e6, 1.0);
+        const std::uint32_t seed = build.data.planet.GetSeed();
+        const double radiusKm = build.data.planet.GetRadius() / 1000.0;
+        const double planetAgeMyr = std::max(build.data.climate.planetAgeYears / 1.0e6, 1.0);
 
         // ---- 1. best-scoring type per cell
         std::vector<ProvinceType> type(cellCount);
@@ -192,7 +193,7 @@ namespace Infinitesia
             for (int lo = 0; lo < lonS; ++lo)
             {
                 const std::size_t index = static_cast<std::size_t>(la) * lonS + lo;
-                type[index] = BestType(Score(Cell(la, lo), planetAgeMyr, distanceToOceanKm[index], seed));
+                type[index] = BestType(Score(build.Cell(la, lo), planetAgeMyr, distanceToOceanKm[index], seed));
             }
         }
 
@@ -335,7 +336,7 @@ namespace Infinitesia
         labelComponents();
 
         // ---- 4. province table
-        m_provinces.assign(static_cast<std::size_t>(componentCount), Province{});
+        build.data.provinces.assign(static_cast<std::size_t>(componentCount), Province{});
         struct Accumulator
         {
             double x = 0.0, y = 0.0, z = 0.0;
@@ -354,9 +355,9 @@ namespace Infinitesia
             for (int lo = 0; lo < lonS; ++lo)
             {
                 const std::size_t index = static_cast<std::size_t>(la) * lonS + lo;
-                auto& c = Cell(la, lo);
+                auto& c = build.Cell(la, lo);
                 c.provinceId = label[index];
-                Province& province = m_provinces[label[index] - 1];
+                Province& province = build.data.provinces[label[index] - 1];
                 Accumulator& sum = sums[label[index] - 1];
 
                 const double latitude = c.latitudeDegrees * std::numbers::pi / 180.0;
@@ -381,7 +382,7 @@ namespace Infinitesia
             }
         }
 
-        for (Province& province : m_provinces)
+        for (Province& province : build.data.provinces)
         {
             const Accumulator& sum = sums[province.id - 1];
             const double area = std::max(province.areaKm2, 1.0e-9);

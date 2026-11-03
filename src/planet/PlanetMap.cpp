@@ -663,77 +663,64 @@ ClimateInputs ClimateInputsFor(const StarSystem& system)
 }
 
 PlanetMap::PlanetMap(PlanetParameters parameters, ClimateInputs climate, LoadProgress* progress)
-    : m_planet(std::move(parameters))
-    , m_climate(climate)
+    : PlanetMap(std::move(parameters), climate, MakeDefaultPlanetPipeline(), progress)
 {
-    const int latB = LatBands();
-    const int lonS = LonSegs();
-    m_grid.resize(static_cast<std::size_t>(latB) * static_cast<std::size_t>(lonS));
+}
+
+PlanetMap::PlanetMap(PlanetParameters parameters, ClimateInputs climate, const PlanetPipeline& pipeline,
+                     LoadProgress* progress)
+    : m_data{ Planet(std::move(parameters)), climate, {}, {}, {}, {}, {} }
+{
+    PlanetBuild build(m_data, progress);
+    const int latB = build.LatBands();
+    const int lonS = build.LonSegs();
+    m_data.grid.resize(static_cast<std::size_t>(latB) * static_cast<std::size_t>(lonS));
 
     for (int la = 0; la < latB; ++la)
     {
         for (int lo = 0; lo < lonS; ++lo)
         {
-            auto& c = Cell(la, lo);
-            const auto ctr = m_planet.GetRegionCenter(la, lo);
+            auto& c = build.Cell(la, lo);
+            const auto ctr = m_data.planet.GetRegionCenter(la, lo);
             c.latitudeIndex    = la;
             c.longitudeIndex   = lo;
-            c.seed             = m_planet.DeriveRegionSeed(la, lo);
+            c.seed             = m_data.planet.DeriveRegionSeed(la, lo);
             c.latitudeDegrees  = ctr.latitudeDegrees;
             c.longitudeDegrees = ctr.longitudeDegrees;
         }
     }
 
-    // Climate precedes hydrology so river generation can use precipitation.
-    m_progress = progress;
-    BeginLoadStep(m_progress, LoadStep::kTectonics, "Simulating tectonic plates");
-    GenerateTectonics();
-    BeginLoadStep(m_progress, LoadStep::kTerrain, "Shaping terrain");
-    GenerateTerrain();
-    BeginLoadStep(m_progress, LoadStep::kGeology, "Mapping geological provinces");
-    m_epochs = PlanetEpochTable(m_climate.planetAgeYears / 1.0e6);
-    GenerateGeology();
-    BeginLoadStep(m_progress, LoadStep::kClimateContinentality, "Simulating climate");
-    GenerateClimate();
-    BeginLoadStep(m_progress, LoadStep::kHydrology, "Carving rivers and lakes");
-    GenerateHydrology();
-    BeginLoadStep(m_progress, LoadStep::kSoils, "Forming soils");
-    GenerateSoils();
-    BeginLoadStep(m_progress, LoadStep::kBiomes, "Classifying biomes");
-    ClassifyBiomes();
-    m_progress = nullptr;
-}
-
-void PlanetMap::ReportRow(int row, int rowCount) const
-{
-    if (m_progress != nullptr && rowCount > 0)
-    {
-        m_progress->SetStepFraction(static_cast<double>(row + 1) / static_cast<double>(rowCount));
-    }
+    pipeline.Run(build);
 }
 
 // --------------------------------------------------------------------------
 // Accessors
 // --------------------------------------------------------------------------
 
-const Planet&           PlanetMap::GetPlanet()        const noexcept { return m_planet; }
-const PlanetParameters& PlanetMap::GetParameters()    const noexcept { return m_planet.GetParameters(); }
-const ClimateInputs&    PlanetMap::GetClimateInputs() const noexcept { return m_climate; }
-int PlanetMap::GetLatitudeBandCount()     const noexcept { return m_planet.GetParameters().latitudeBands; }
-int PlanetMap::GetLongitudeSegmentCount() const noexcept { return m_planet.GetParameters().longitudeSegments; }
+const Planet&           PlanetMap::GetPlanet()        const noexcept { return m_data.planet; }
+const PlanetParameters& PlanetMap::GetParameters()    const noexcept { return m_data.planet.GetParameters(); }
+const ClimateInputs&    PlanetMap::GetClimateInputs() const noexcept { return m_data.climate; }
+int PlanetMap::GetLatitudeBandCount()     const noexcept { return m_data.planet.GetParameters().latitudeBands; }
+int PlanetMap::GetLongitudeSegmentCount() const noexcept { return m_data.planet.GetParameters().longitudeSegments; }
 
 const PlanetRegion& PlanetMap::GetRegion(int la, int lo) const noexcept
 {
-    return Cell(std::clamp(la, 0, LatBands()-1), std::clamp(lo, 0, LonSegs()-1));
+    const int lonSegs = GetLongitudeSegmentCount();
+    la = std::clamp(la, 0, GetLatitudeBandCount() - 1);
+    lo = std::clamp(lo, 0, lonSegs - 1);
+    return m_data.grid[static_cast<std::size_t>(la) * lonSegs + lo];
 }
 
 double PlanetMap::SampleElevation(int la, int lo) const { return GetRegion(la, lo).elevationNormalized; }
 bool   PlanetMap::IsOcean(int la, int lo)         const { return GetRegion(la, lo).isOcean; }
 
-PlanetRegion&       PlanetMap::Cell(int la, int lo)       { return m_grid[static_cast<std::size_t>(la) * LonSegs() + lo]; }
-const PlanetRegion& PlanetMap::Cell(int la, int lo) const { return m_grid[static_cast<std::size_t>(la) * LonSegs() + lo]; }
-
-int PlanetMap::LatBands() const noexcept { return m_planet.GetParameters().latitudeBands; }
-int PlanetMap::LonSegs()  const noexcept { return m_planet.GetParameters().longitudeSegments; }
+const Province* PlanetMap::FindProvince(ProvinceId id) const noexcept
+{
+    if (id == kNoProvince || id > m_data.provinces.size())
+    {
+        return nullptr;
+    }
+    return &m_data.provinces[id - 1];
+}
 
 } // namespace Infinitesia

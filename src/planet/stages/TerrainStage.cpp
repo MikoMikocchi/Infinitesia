@@ -1,4 +1,5 @@
 #include "planet/PlanetMap.h"
+#include "planet/stages/PlanetStages.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
 
 #include <algorithm>
@@ -10,21 +11,21 @@ namespace Infinitesia
 {
     using namespace GenerationDetail;
 
-    void PlanetMap::GenerateTerrain()
+    void RunTerrain(PlanetBuild& build)
     {
-        const int latB = LatBands();
-        const int lonS = LonSegs();
-        const std::uint32_t seed = m_planet.GetSeed();
+        const int latB = build.LatBands();
+        const int lonS = build.LonSegs();
+        const std::uint32_t seed = build.data.planet.GetSeed();
 
-        const double ageFrac = std::clamp(m_climate.planetAgeYears / 4.5e9, 0.0, 1.0);
-        const double gravScale = m_climate.gravityMetersPerSecondSquared / 9.81;
+        const double ageFrac = std::clamp(build.data.climate.planetAgeYears / 4.5e9, 0.0, 1.0);
+        const double gravScale = build.data.climate.gravityMetersPerSecondSquared / 9.81;
         std::vector<double> elevKm(static_cast<std::size_t>(latB) * lonS);
 
         for (int la = 0; la < latB; ++la)
         {
             for (int lo = 0; lo < lonS; ++lo)
             {
-                const auto& c = Cell(la, lo);
+                const auto& c = build.Cell(la, lo);
                 const std::size_t idx = static_cast<std::size_t>(la) * lonS + lo;
                 double elev = 0.0;
 
@@ -55,7 +56,7 @@ namespace Infinitesia
                             (lo + longitudeOffset + lonS) % lonS;
                         nearbyMountainRelief += std::max(
                             0.0,
-                            Cell(neighborLatitude, neighborLongitude).tectonicReliefKm);
+                            build.Cell(neighborLatitude, neighborLongitude).tectonicReliefKm);
                         ++nearbyWeight;
                     }
                 }
@@ -158,7 +159,7 @@ namespace Infinitesia
         {
             for (int lo = 0; lo < lonS; ++lo)
             {
-                auto& c = Cell(la, lo);
+                auto& c = build.Cell(la, lo);
                 const double elevationKm =
                     elevKm[static_cast<std::size_t>(la) * lonS + lo];
                 c.elevationNormalized =
@@ -171,7 +172,7 @@ namespace Infinitesia
         {
             for (int lo = 0; lo < lonS; ++lo)
             {
-                auto& c = Cell(la, lo);
+                auto& c = build.Cell(la, lo);
                 const int la1 = std::clamp(la - 1, 0, latB - 1);
                 const int la2 = std::clamp(la + 1, 0, latB - 1);
                 const int lo1 = ((lo - 1) + lonS) % lonS;
@@ -179,7 +180,7 @@ namespace Infinitesia
                 // Central-difference elevation gradients in km.
                 // Use the actual planet radius so that the slope calculation
                 // is correct for any planet size, not just Earth.
-                const double radiusKm = m_planet.GetRadius() / 1000.0;
+                const double radiusKm = build.data.planet.GetRadius() / 1000.0;
                 const double latStepKm =
                     (180.0 / latB) * (std::numbers::pi / 180.0) * radiusKm;
                 const double cosLat =
@@ -201,11 +202,11 @@ namespace Infinitesia
                 const double lonSpanKm = 2.0 * lonStepKm;
 
                 const double dElevLat =
-                    (Cell(la2, lo).elevationNormalized -
-                     Cell(la1, lo).elevationNormalized) * kMaxElevationKm; // km
+                    (build.Cell(la2, lo).elevationNormalized -
+                     build.Cell(la1, lo).elevationNormalized) * kMaxElevationKm; // km
                 const double dElevLon =
-                    (Cell(la, lo2).elevationNormalized -
-                     Cell(la, lo1).elevationNormalized) * kMaxElevationKm; // km
+                    (build.Cell(la, lo2).elevationNormalized -
+                     build.Cell(la, lo1).elevationNormalized) * kMaxElevationKm; // km
 
                 // Gradient magnitude [km/km = dimensionless].
                 // Normalise by a reference slope of 0.05 (rise/run ≈ 3°) so

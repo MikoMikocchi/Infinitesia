@@ -1,4 +1,5 @@
 #include "planet/PlanetMap.h"
+#include "planet/stages/PlanetStages.h"
 #include "planet/PlanetLoadSteps.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
 
@@ -67,18 +68,18 @@ namespace Infinitesia
 
     using namespace GenerationDetail;
 
-    void PlanetMap::GenerateClimate()
+    void RunClimate(PlanetBuild& build)
     {
-        const int latB = LatBands();
-        const int lonS = LonSegs();
-        const std::uint32_t seed = m_planet.GetSeed();
-        const double tilt = m_climate.axialTiltDegrees;
-        const double rot = m_climate.rotationPeriodHours;
-        const double pressKPa = m_climate.atmospherePressureKPa;
+        const int latB = build.LatBands();
+        const int lonS = build.LonSegs();
+        const std::uint32_t seed = build.data.planet.GetSeed();
+        const double tilt = build.data.climate.axialTiltDegrees;
+        const double rot = build.data.climate.rotationPeriodHours;
+        const double pressKPa = build.data.climate.atmospherePressureKPa;
         const double pressureScale =
             std::sqrt(std::clamp(pressKPa / 101.325, 0.1, 4.0));
         const double globalEquilK =
-            EquilibriumTempK(m_climate.meanIncidentFluxInEarthUnits);
+            EquilibriumTempK(build.data.climate.meanIncidentFluxInEarthUnits);
         const double greenhouse = GreenhouseK(pressKPa);
         std::vector<std::array<double, kMonthsPerYear>> monthlyInsolation(
             static_cast<std::size_t>(latB));
@@ -120,7 +121,7 @@ namespace Infinitesia
         {
             rowWeight[static_cast<std::size_t>(latitude)] = std::max(
                 0.0,
-                std::cos(Cell(latitude, 0).latitudeDegrees *
+                std::cos(build.Cell(latitude, 0).latitudeDegrees *
                          std::numbers::pi / 180.0));
         }
         const int windowWidth = 2 * windowLon + 1;
@@ -136,7 +137,7 @@ namespace Infinitesia
                 const int column = ((k - windowLon) % lonS + lonS) % lonS;
                 prefix[static_cast<std::size_t>(k) + 1] =
                     prefix[static_cast<std::size_t>(k)] +
-                    (Cell(latitude, column).isOcean ? 0 : 1);
+                    (build.Cell(latitude, column).isOcean ? 0 : 1);
             }
             for (int longitude = 0; longitude < lonS; ++longitude)
             {
@@ -163,13 +164,13 @@ namespace Infinitesia
                         static_cast<std::size_t>(neighborLatitude) * lonS + longitude];
                     totalArea += weight * windowWidth;
                 }
-                Cell(latitude, longitude).continentality =
+                build.Cell(latitude, longitude).continentality =
                     totalArea > 0.0 ? landArea / totalArea : 0.0;
             }
-            ReportRow(latitude, latB);
+            build.ReportRow(latitude, latB);
         }
 
-        BeginLoadStep(m_progress, LoadStep::kClimateTemperature, "Simulating climate: temperature");
+        BeginLoadStep(build.progress, LoadStep::kClimateTemperature, "Simulating climate: temperature");
         std::vector<double> annualInsolation(static_cast<std::size_t>(latB));
         double meanAnnualInsolation = 0.0;
         for (int latitude = 0; latitude < latB; ++latitude)
@@ -196,7 +197,7 @@ namespace Infinitesia
         {
             for (int longitude = 0; longitude < lonS; ++longitude)
             {
-                auto& cell = Cell(latitude, longitude);
+                auto& cell = build.Cell(latitude, longitude);
                 const double baseTemperatureC =
                     globalEquilK + greenhouse -
                     273.15 +
@@ -244,10 +245,10 @@ namespace Infinitesia
                 cell.temperatureAnnualRangeC =
                     maximumTemperature - minimumTemperature;
             }
-            ReportRow(latitude, latB);
+            build.ReportRow(latitude, latB);
         }
 
-        BeginLoadStep(m_progress, LoadStep::kClimatePrecipitation, "Simulating climate: precipitation");
+        BeginLoadStep(build.progress, LoadStep::kClimatePrecipitation, "Simulating climate: precipitation");
         const double rotationScale = std::clamp(24.0 / rot, 0.4, 2.0);
         // Everything below that depends only on (row, month) is hoisted out of
         // the per-cell loop: it was recomputed for every one of the lonS cells.
@@ -265,7 +266,7 @@ namespace Infinitesia
         }
         for (int latitude = 0; latitude < latB; ++latitude)
         {
-            const double rowLatitudeDegrees = Cell(latitude, 0).latitudeDegrees;
+            const double rowLatitudeDegrees = build.Cell(latitude, 0).latitudeDegrees;
             const double circulation =
                 CirculationWetness(std::abs(rowLatitudeDegrees), rot);
             std::array<double, kMonthsPerYear> seasonalWeights{};
@@ -299,7 +300,7 @@ namespace Infinitesia
 
             for (int longitude = 0; longitude < lonS; ++longitude)
             {
-                auto& cell = Cell(latitude, longitude);
+                auto& cell = build.Cell(latitude, longitude);
                 const double continentalDryness =
                     1.0 - cell.continentality * 0.6;
                 const double moistureNoise =
@@ -360,7 +361,7 @@ namespace Infinitesia
                         {
                             const int upwindLongitude =
                                 (longitude - windDirection * step + lonS * 2) % lonS;
-                            if (Cell(latitude, upwindLongitude).isOcean)
+                            if (build.Cell(latitude, upwindLongitude).isOcean)
                             {
                                 landFetchKm = (step - 1) * cellWidthKm;
                                 oceanFetch =
@@ -373,7 +374,7 @@ namespace Infinitesia
                         const int immediateUpwind =
                             (longitude - windDirection + lonS * 2) % lonS;
                         upslopeKm = (cell.elevationNormalized -
-                            Cell(latitude, immediateUpwind).elevationNormalized) *
+                            build.Cell(latitude, immediateUpwind).elevationNormalized) *
                             kMaxElevationKm;
                         for (int step = 2; step <= 8; ++step)
                         {
@@ -381,7 +382,7 @@ namespace Infinitesia
                                 (longitude - windDirection * step + lonS * 2) % lonS;
                             upwindHighlandKm = std::max(
                                 upwindHighlandKm,
-                                (Cell(latitude, upwindLongitude).elevationNormalized -
+                                (build.Cell(latitude, upwindLongitude).elevationNormalized -
                                  cell.elevationNormalized) *
                                     kMaxElevationKm);
                         }
@@ -457,7 +458,7 @@ namespace Infinitesia
                     }
                 }
             }
-            ReportRow(latitude, latB);
+            build.ReportRow(latitude, latB);
         }
 
     }

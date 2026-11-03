@@ -162,6 +162,11 @@ if (BUILD_TESTING)
   include("${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake")
   doctest_discover_tests(PlanetGenerationTests)
 
+  add_executable(PlanetPipelineTests tests/PlanetPipelineTests.cpp)
+  target_link_libraries(PlanetPipelineTests PRIVATE InfinitesiaPlanet doctest::doctest)
+  infinitesia_enable_warnings(PlanetPipelineTests)
+  doctest_discover_tests(PlanetPipelineTests)
+
   add_executable(RegionTests tests/RegionTests.cpp)
   target_link_libraries(RegionTests PRIVATE InfinitesiaPlanet doctest::doctest)
   infinitesia_enable_warnings(RegionTests)

@@ -1,4 +1,5 @@
 #include "planet/PlanetMap.h"
+#include "planet/stages/PlanetStages.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
 
 #include <algorithm>
@@ -48,19 +49,19 @@ namespace Infinitesia
 //     plate centre.
 //   • Continental crust age is assigned regionally via fBm, not per-cell random.
 // ==========================================================================
-void PlanetMap::GenerateTectonics()
+void RunTectonics(PlanetBuild& build)
 {
-    const int latB = LatBands();
-    const int lonS = LonSegs();
-    const std::uint32_t seed = m_planet.GetSeed();
+    const int latB = build.LatBands();
+    const int lonS = build.LonSegs();
+    const std::uint32_t seed = build.data.planet.GetSeed();
 
     // -----------------------------------------------------------------------
     // Number of plates from internal heat production.
     // More massive / younger planet → more heat → more convection cells.
     // Earth (~6e24 kg, 4.5 Gyr) → 12–15 major plates.
     // -----------------------------------------------------------------------
-    const double massFrac  = m_planet.GetParameters().massKilograms / 5.972e24;
-    const double ageFrac   = std::clamp(m_climate.planetAgeYears / 4.5e9, 0.0, 1.0);
+    const double massFrac  = build.data.planet.GetParameters().massKilograms / 5.972e24;
+    const double ageFrac   = std::clamp(build.data.climate.planetAgeYears / 4.5e9, 0.0, 1.0);
     // Older planets lose internal heat → fewer, larger, slower plates
     const double heatScale = std::sqrt(massFrac) * (1.0 - 0.4 * ageFrac);
     const int numPlates    = static_cast<int>(std::clamp(5.0 + heatScale * 11.0, 5.0, 16.0));
@@ -81,7 +82,7 @@ void PlanetMap::GenerateTectonics()
         for (int lo = 0; lo < lonS; ++lo)
         {
             const std::size_t index = static_cast<std::size_t>(la) * lonS + lo;
-            const PlanetRegion& cell = Cell(la, lo);
+            const PlanetRegion& cell = build.Cell(la, lo);
             const double field = SphericalFbm(
                 cell.latitudeDegrees, cell.longitudeDegrees, seed ^ 0x71a1d001u, 3, 5);
             const double areaWeight =
@@ -187,7 +188,7 @@ void PlanetMap::GenerateTectonics()
     {
         for (int lo = 0; lo < lonS; ++lo)
         {
-            const auto& c = Cell(la, lo);
+            const auto& c = build.Cell(la, lo);
             auto& a = assignments[static_cast<std::size_t>(la)*lonS + lo];
             const Vec3d cellVector = LatLonToCart(c.latitudeDegrees, c.longitudeDegrees);
             double bestDot = -2.0, secondDot = -2.0;
@@ -224,7 +225,7 @@ void PlanetMap::GenerateTectonics()
     {
         for (int lo = 0; lo < lonS; ++lo)
         {
-            auto& c = Cell(la, lo);
+            auto& c = build.Cell(la, lo);
             const auto& a  = assignments[static_cast<std::size_t>(la)*lonS + lo];
             const TectonicPlate& plateA = plates[a.best];
             const TectonicPlate& plateB = plates[a.second];
@@ -297,7 +298,7 @@ void PlanetMap::GenerateTectonics()
             // Geological context of the cell: nearest boundary, plate motion. These
             // are recorded for later stages and feed nothing below.
             {
-                const double radiusKm = m_planet.GetRadius() / 1000.0;
+                const double radiusKm = build.data.planet.GetRadius() / 1000.0;
                 const double kmPerDegree = radiusKm * std::numbers::pi / 180.0;
                 // 1 deg/Myr of arc is radiusKm*1e5*pi/180 cm per 1e6 yr.
                 const double cmPerYearPerDegPerMy = kmPerDegree * 1.0e5 / 1.0e6;
@@ -567,7 +568,7 @@ void PlanetMap::GenerateTectonics()
                     if (isContinentalCrust[index])
                         continue;
 
-                    Cell(la, lo).crustAge =
+                    build.Cell(la, lo).crustAge =
                         std::clamp(distance[index] / kMaxAgeDistDeg, 0.0, 1.0);
                 }
             }
@@ -580,7 +581,7 @@ void PlanetMap::GenerateTectonics()
             {
                 for (int lo = 0; lo < lonS; ++lo)
                 {
-                    auto& c = Cell(la, lo);
+                    auto& c = build.Cell(la, lo);
                     const auto& a = assignments[static_cast<std::size_t>(la)*lonS + lo];
                     if (!isContinentalCrust[static_cast<std::size_t>(la) * lonS + lo])
                         c.crustAge = std::clamp(a.bestDist / 90.0, 0.0, 1.0);
@@ -596,7 +597,7 @@ void PlanetMap::GenerateTectonics()
     for (int la = 0; la < latB; ++la)
         for (int lo = 0; lo < lonS; ++lo)
             relief[static_cast<std::size_t>(la) * lonS + lo] =
-                Cell(la, lo).tectonicReliefKm;
+                build.Cell(la, lo).tectonicReliefKm;
 
     for (int pass = 0; pass < 5; ++pass)
     {
@@ -638,7 +639,7 @@ void PlanetMap::GenerateTectonics()
 
     for (int la = 0; la < latB; ++la)
         for (int lo = 0; lo < lonS; ++lo)
-            Cell(la, lo).tectonicReliefKm =
+            build.Cell(la, lo).tectonicReliefKm =
                 relief[static_cast<std::size_t>(la) * lonS + lo];
     }
 
@@ -652,7 +653,7 @@ void PlanetMap::GenerateTectonics()
     constexpr double kCratonAreaShare = 0.28;
     constexpr double kCratonAgeFraction = 2.0 / 3.0;
     constexpr double kYoungestContinentalAgeFraction = 0.05;
-    const double planetAgeMyr = std::max(m_climate.planetAgeYears / 1.0e6, 1.0);
+    const double planetAgeMyr = std::max(build.data.climate.planetAgeYears / 1.0e6, 1.0);
 
     struct RankedCell
     {
@@ -667,7 +668,7 @@ void PlanetMap::GenerateTectonics()
         for (int lo = 0; lo < lonS; ++lo)
         {
             const std::size_t index = static_cast<std::size_t>(la) * lonS + lo;
-            auto& c = Cell(la, lo);
+            auto& c = build.Cell(la, lo);
             if (isContinentalCrust[index])
             {
                 const double area = std::max(0.0, std::cos(c.latitudeDegrees * std::numbers::pi / 180.0));
@@ -696,7 +697,7 @@ void PlanetMap::GenerateTectonics()
             ? kYoungestContinentalAgeFraction +
                 (kCratonAgeFraction - kYoungestContinentalAgeFraction) * (rank / youngShare)
             : kCratonAgeFraction + (1.0 - kCratonAgeFraction) * ((rank - youngShare) / kCratonAreaShare);
-        m_grid[ranked.index].crustAgeMyr = std::clamp(ageFraction, 0.0, 1.0) * planetAgeMyr;
+        build.data.grid[ranked.index].crustAgeMyr = std::clamp(ageFraction, 0.0, 1.0) * planetAgeMyr;
     }
 }
 
