@@ -150,26 +150,45 @@ void PlanetMap::GenerateTectonics()
     };
     std::vector<CellAssignment> assignments(static_cast<std::size_t>(latB) * lonS);
 
+    // Great-circle distance is acos(dot) of the unit vectors, which is
+    // monotonic, so the two nearest plates are the two with the largest dot.
+    // Build the plate vectors once and the cell vector once per cell, and
+    // evaluate acos (as GCDistance does) only for the two winners.
+    std::vector<Vec3d> plateVectors(static_cast<std::size_t>(numPlates));
+    for (int p = 0; p < numPlates; ++p)
+        plateVectors[static_cast<std::size_t>(p)] =
+            LatLonToCart(plates[p].centerLat, plates[p].centerLon);
+    const auto dotToDistanceDeg = [](double dot)
+    {
+        return std::acos(std::clamp(dot, -1.0, 1.0)) * 180.0 / std::numbers::pi;
+    };
+
     for (int la = 0; la < latB; ++la)
     {
         for (int lo = 0; lo < lonS; ++lo)
         {
             const auto& c = Cell(la, lo);
             auto& a = assignments[static_cast<std::size_t>(la)*lonS + lo];
+            const Vec3d cellVector = LatLonToCart(c.latitudeDegrees, c.longitudeDegrees);
+            double bestDot = -2.0, secondDot = -2.0;
             for (int p = 0; p < numPlates; ++p)
             {
-                const double d = GCDistance(c.latitudeDegrees, c.longitudeDegrees,
-                                            plates[p].centerLat, plates[p].centerLon);
-                if (d < a.bestDist)
+                const Vec3d& pv = plateVectors[static_cast<std::size_t>(p)];
+                const double dot = std::clamp(
+                    cellVector.x * pv.x + cellVector.y * pv.y + cellVector.z * pv.z,
+                    -1.0, 1.0);
+                if (dot > bestDot)
                 {
-                    a.secondDist = a.bestDist; a.second = a.best;
-                    a.bestDist   = d;          a.best   = p;
+                    secondDot = bestDot; a.second = a.best;
+                    bestDot   = dot;     a.best   = p;
                 }
-                else if (d < a.secondDist)
+                else if (dot > secondDot)
                 {
-                    a.secondDist = d; a.second = p;
+                    secondDot = dot; a.second = p;
                 }
             }
+            a.bestDist = dotToDistanceDeg(bestDot);
+            a.secondDist = secondDot > -2.0 ? dotToDistanceDeg(secondDot) : 1e18;
         }
     }
 
