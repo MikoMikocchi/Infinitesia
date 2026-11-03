@@ -11,11 +11,15 @@ namespace Infinitesia
 {
     namespace
     {
-        // Pulls a tile's rectangle in by half a texel on every side.
+        // Pulls a tile's rectangle in by a tiny fraction of a texel on every side.
+        // The atlas uses point filtering, so a half-texel inset would squash the
+        // edge texels to half size; this only guards against float rounding
+        // sampling the neighbouring tile.
         Rectangle NormalisedTile(int column, int row, int tileSize, int atlasWidth, int atlasHeight)
         {
-            const float texelX = 0.5f / static_cast<float>(atlasWidth);
-            const float texelY = 0.5f / static_cast<float>(atlasHeight);
+            constexpr float kInsetTexels = 0.001f;
+            const float texelX = kInsetTexels / static_cast<float>(atlasWidth);
+            const float texelY = kInsetTexels / static_cast<float>(atlasHeight);
             const float x0 = static_cast<float>(column * tileSize) / static_cast<float>(atlasWidth);
             const float y0 = static_cast<float>(row * tileSize) / static_cast<float>(atlasHeight);
             const float width = static_cast<float>(tileSize) / static_cast<float>(atlasWidth);
