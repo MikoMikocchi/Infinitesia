@@ -142,6 +142,11 @@ if (BUILD_TESTING)
   infinitesia_enable_warnings(WorldTests)
   doctest_discover_tests(WorldTests)
 
+  add_executable(PlanetGeologyTests tests/PlanetGeologyTests.cpp)
+  target_link_libraries(PlanetGeologyTests PRIVATE InfinitesiaPlanet doctest::doctest)
+  infinitesia_enable_warnings(PlanetGeologyTests)
+  doctest_discover_tests(PlanetGeologyTests)
+
   add_executable(ChemistryTests tests/ChemistryTests.cpp)
   target_link_libraries(ChemistryTests PRIVATE InfinitesiaChemistry doctest::doctest)
   infinitesia_enable_warnings(ChemistryTests)

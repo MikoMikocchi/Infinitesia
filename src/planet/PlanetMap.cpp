@@ -690,6 +690,9 @@ PlanetMap::PlanetMap(PlanetParameters parameters, ClimateInputs climate, LoadPro
     GenerateTectonics();
     BeginLoadStep(m_progress, LoadStep::kTerrain, "Shaping terrain");
     GenerateTerrain();
+    BeginLoadStep(m_progress, LoadStep::kGeology, "Mapping geological provinces");
+    m_epochs = PlanetEpochTable(m_climate.planetAgeYears / 1.0e6);
+    GenerateGeology();
     BeginLoadStep(m_progress, LoadStep::kClimateContinentality, "Simulating climate");
     GenerateClimate();
     BeginLoadStep(m_progress, LoadStep::kHydrology, "Carving rivers and lakes");

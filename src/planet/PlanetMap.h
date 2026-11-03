@@ -3,6 +3,8 @@
 #include "core/LoadProgress.h"
 #include "planet/Planet.h"
 #include "planet/StarSystem.h"
+#include "planet/geology/PlanetEpochs.h"
+#include "planet/geology/Province.h"
 
 #include <array>
 #include <cstdint>
@@ -12,6 +14,16 @@ namespace Infinitesia
 {
     // PlanetRegion::elevationNormalized spans [-1..1] over +/- this height [km].
     inline constexpr double kMaxElevationKm = 9.0;
+
+    // Version of the geological data a PlanetMap carries (boundary context, crust age,
+    // sediment, heat flow, provinces). Kept apart from the generator version: adding
+    // these fields leaves every older field of the map unchanged. Raise it whenever a
+    // change alters any geological field; saves record it next to the planet seed.
+    inline constexpr std::uint32_t kPlanetGeologyDataVersion = 1;
+
+    // Plate boundary within kBoundaryReachKm of a cell. Order-independent of the
+    // generator's internal classification.
+    inline constexpr double kBoundaryReachKm = 1000.0;
 
     // -----------------------------------------------------------------------
     // Biome classification — Köppen-extended, 25 types
@@ -74,6 +86,20 @@ namespace Infinitesia
     };
 
     // -----------------------------------------------------------------------
+    // Kind of the nearest plate boundary (see PlanetRegion::boundarySubtype)
+    // -----------------------------------------------------------------------
+    enum class PlateBoundaryKind : std::uint8_t
+    {
+        None,                   // no boundary within kBoundaryReachKm
+        MidOceanRidge,
+        ContinentalRift,
+        OceanicSubduction,      // both sides oceanic: trench plus island arc
+        ContinentalSubduction,  // oceanic plate under a continent: trench plus continental arc
+        ContinentalCollision,
+        TransformFault,
+    };
+
+    // -----------------------------------------------------------------------
     // PlanetRegion — full planetary data for one grid cell
     // -----------------------------------------------------------------------
     struct PlanetRegion
@@ -95,6 +121,26 @@ namespace Infinitesia
         double isostaticCrustThicknessKm = 0.0; // smoothed background thickness for terrain
         double crustAge = 0.0;            // normalized 0..1 (0=brand new, 1=ancient)
         RockType surfaceRock = RockType::BasalticOceanic;
+
+        // --- Geological context (additive; the fields above are unchanged) ---
+        // Nearest plate boundary: its kind (None beyond kBoundaryReachKm), the distance
+        // to it and which side of it the cell is on. The distance is half the gap between
+        // the two nearest plate centres, an approximation good to about a cell.
+        PlateBoundaryKind boundarySubtype = PlateBoundaryKind::None;
+        double distanceToBoundaryKm = 0.0;
+        bool   isSubductingPlate = false;  // down-going side of a subduction boundary
+        // Motion of the cell's plate over the planet's rigid sphere, and of the cell's
+        // plate relative to the neighbouring plate across the nearest boundary.
+        double plateVelocityEastCmPerYear = 0.0;
+        double plateVelocityNorthCmPerYear = 0.0;
+        double boundaryRelativeVelocityEastCmPerYear = 0.0;
+        double boundaryRelativeVelocityNorthCmPerYear = 0.0;
+        double crustAgeMyr = 0.0;         // absolute age of the crust, million years
+        double sedimentThicknessKm = 0.0; // basin, shelf and abyssal sediment cover
+        double heatFlowMwPerM2 = 0.0;     // surface heat flow
+        double hotspotInfluence = 0.0;    // 0..1, mantle-plume activity away from boundaries
+        double paleoLatitudeDegrees = 0.0; // reserved: equals latitudeDegrees until plates are reconstructed
+        ProvinceId provinceId = kNoProvince;
 
         // --- Terrain ---
         double elevationNormalized = 0.0; // [-1..1]: <0 = below sea level
@@ -192,8 +238,17 @@ namespace Infinitesia
         bool   IsOcean(int latitudeIndex, int longitudeIndex) const;
         const PlanetWaterBalance& GetWaterBalance() const noexcept { return m_waterBalance; }
 
+        // Geological provinces of the planet, indexed by ProvinceId - 1.
+        const std::vector<Province>& GetProvinces() const noexcept { return m_provinces; }
+        // nullptr for kNoProvince or an unknown id.
+        const Province* FindProvince(ProvinceId id) const noexcept;
+        const Province* FindProvince(const PlanetRegion& region) const noexcept { return FindProvince(region.provinceId); }
+        const PlanetEpochTable& GetEpochs() const noexcept { return m_epochs; }
+
     private:
         PlanetWaterBalance m_waterBalance;
+        std::vector<Province> m_provinces;
+        PlanetEpochTable m_epochs;
         Planet       m_planet;
         ClimateInputs m_climate;
         std::vector<PlanetRegion> m_grid; // row-major [lat * lonSegments + lon]
@@ -201,6 +256,8 @@ namespace Infinitesia
         // Generation stages (called in constructor)
         void GenerateTectonics();
         void GenerateTerrain();
+        void GenerateGeology();   // heat flow, sediment, hotspots, provinces (after terrain)
+        void GenerateProvinces(const std::vector<double>& distanceToOceanKm); // called by GenerateGeology
         void GenerateHydrology();
         void GenerateClimate();
         void GenerateSoils();

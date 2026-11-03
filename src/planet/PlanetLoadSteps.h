@@ -8,6 +8,7 @@ namespace Infinitesia::LoadStep
     inline constexpr const char* kStarSystem = "star_system";
     inline constexpr const char* kTectonics = "tectonics";
     inline constexpr const char* kTerrain = "terrain";
+    inline constexpr const char* kGeology = "geology";
     inline constexpr const char* kClimateContinentality = "climate_continentality";
     inline constexpr const char* kClimateTemperature = "climate_temperature";
     inline constexpr const char* kClimatePrecipitation = "climate_precipitation";

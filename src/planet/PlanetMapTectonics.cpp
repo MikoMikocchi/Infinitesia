@@ -14,6 +14,26 @@ namespace Infinitesia
 {
     using namespace GenerationDetail;
 
+    namespace
+    {
+        PlateBoundaryKind ToPlateBoundaryKind(BoundarySubtype subtype)
+        {
+            switch (subtype)
+            {
+            case BoundarySubtype::MidOceanRidge: return PlateBoundaryKind::MidOceanRidge;
+            case BoundarySubtype::ContinentalRift: return PlateBoundaryKind::ContinentalRift;
+            case BoundarySubtype::OceanicSubduction: return PlateBoundaryKind::OceanicSubduction;
+            case BoundarySubtype::ContinentalSubduction: return PlateBoundaryKind::ContinentalSubduction;
+            case BoundarySubtype::ContinentalCollision: return PlateBoundaryKind::ContinentalCollision;
+            case BoundarySubtype::TransformFault: return PlateBoundaryKind::TransformFault;
+            }
+            return PlateBoundaryKind::None;
+        }
+
+        // Oceanic crust age is stored normalized over this many million years.
+        constexpr double kOceanicCrustAgeScaleMyr = 180.0;
+    }
+
 // ==========================================================================
 // Stage 1 — Tectonics
 //
@@ -273,6 +293,38 @@ void PlanetMap::GenerateTectonics()
             }
 
             const BoundarySubtype bst = DetailedBoundary(bt, cellAOceanic, cellBOceanic);
+
+            // Geological context of the cell: nearest boundary, plate motion. These
+            // are recorded for later stages and feed nothing below.
+            {
+                const double radiusKm = m_planet.GetRadius() / 1000.0;
+                const double kmPerDegree = radiusKm * std::numbers::pi / 180.0;
+                // 1 deg/Myr of arc is radiusKm*1e5*pi/180 cm per 1e6 yr.
+                const double cmPerYearPerDegPerMy = kmPerDegree * 1.0e5 / 1.0e6;
+
+                c.distanceToBoundaryKm = 0.5 * boundaryGap * kmPerDegree;
+                c.boundarySubtype = c.distanceToBoundaryKm <= kBoundaryReachKm
+                    ? ToPlateBoundaryKind(bst)
+                    : PlateBoundaryKind::None;
+                switch (bst)
+                {
+                case BoundarySubtype::ContinentalSubduction:
+                    c.isSubductingPlate = cellAOceanic;
+                    break;
+                case BoundarySubtype::OceanicSubduction:
+                    // The denser (older, colder) oceanic plate goes down.
+                    c.isSubductingPlate = plateA.crustDensity > plateB.crustDensity ||
+                        (plateA.crustDensity == plateB.crustDensity && plateA.id > plateB.id);
+                    break;
+                default:
+                    c.isSubductingPlate = false;
+                    break;
+                }
+                c.plateVelocityEastCmPerYear = vLonA * cmPerYearPerDegPerMy;
+                c.plateVelocityNorthCmPerYear = vLatA * cmPerYearPerDegPerMy;
+                c.boundaryRelativeVelocityEastCmPerYear = (vLonA - vLonB) * cmPerYearPerDegPerMy;
+                c.boundaryRelativeVelocityNorthCmPerYear = (vLatA - vLatB) * cmPerYearPerDegPerMy;
+            }
 
             const double beltStrength =
                 broadBoundaryInfluence * broadBoundaryInfluence;
@@ -588,6 +640,63 @@ void PlanetMap::GenerateTectonics()
         for (int lo = 0; lo < lonS; ++lo)
             Cell(la, lo).tectonicReliefKm =
                 relief[static_cast<std::size_t>(la) * lonS + lo];
+    }
+
+    // Absolute crust age. Oceanic crust keeps the normalization its bathymetry uses.
+    // Continental crust keeps the spatial pattern of its coherent age field (so cratons
+    // stay where the field is high), but the ages are assigned by rank: the oldest
+    // quarter of the continental area is older than two thirds of the planet's age (the
+    // cratonic cores), the rest spreads over younger crust. Without this the share of
+    // old crust would follow the noise field's mean, which varies from seed to seed.
+    // The craton share is a gameplay calibration.
+    constexpr double kCratonAreaShare = 0.28;
+    constexpr double kCratonAgeFraction = 2.0 / 3.0;
+    constexpr double kYoungestContinentalAgeFraction = 0.05;
+    const double planetAgeMyr = std::max(m_climate.planetAgeYears / 1.0e6, 1.0);
+
+    struct RankedCell
+    {
+        double age;
+        std::size_t index;
+        double area;
+    };
+    std::vector<RankedCell> continentalCells;
+    double continentalArea = 0.0;
+    for (int la = 0; la < latB; ++la)
+    {
+        for (int lo = 0; lo < lonS; ++lo)
+        {
+            const std::size_t index = static_cast<std::size_t>(la) * lonS + lo;
+            auto& c = Cell(la, lo);
+            if (isContinentalCrust[index])
+            {
+                const double area = std::max(0.0, std::cos(c.latitudeDegrees * std::numbers::pi / 180.0));
+                continentalCells.push_back({ c.crustAge, index, area });
+                continentalArea += area;
+            }
+            else
+            {
+                c.crustAgeMyr = std::clamp(c.crustAge, 0.0, 1.0) * kOceanicCrustAgeScaleMyr;
+            }
+        }
+    }
+    std::sort(continentalCells.begin(), continentalCells.end(),
+        [](const RankedCell& first, const RankedCell& second)
+        {
+            return first.age != second.age ? first.age < second.age : first.index < second.index;
+        });
+    double cumulativeArea = 0.0;
+    for (const RankedCell& ranked : continentalCells)
+    {
+        const double rank = continentalArea > 0.0
+            ? (cumulativeArea + 0.5 * ranked.area) / continentalArea : 0.5;
+        cumulativeArea += ranked.area;
+        const double youngShare = 1.0 - kCratonAreaShare;
+        const double ageFraction = rank < youngShare
+            ? kYoungestContinentalAgeFraction +
+                (kCratonAgeFraction - kYoungestContinentalAgeFraction) * (rank / youngShare)
+            : kCratonAgeFraction + (1.0 - kCratonAgeFraction) * ((rank - youngShare) / kCratonAreaShare);
+        m_grid[ranked.index].crustAgeMyr = std::clamp(ageFraction, 0.0, 1.0) * planetAgeMyr;
     }
 }
 

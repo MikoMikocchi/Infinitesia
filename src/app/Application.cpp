@@ -142,7 +142,7 @@ namespace Infinitesia
         // Step shares come from the durations measured on the previous run; the
         // equal-weight default plan only applies when no profile exists yet.
         progress->SetDefaultPlan({
-            LoadStep::kStarSystem, LoadStep::kTectonics, LoadStep::kTerrain,
+            LoadStep::kStarSystem, LoadStep::kTectonics, LoadStep::kTerrain, LoadStep::kGeology,
             LoadStep::kClimateContinentality, LoadStep::kClimateTemperature,
             LoadStep::kClimatePrecipitation, LoadStep::kHydrology, LoadStep::kSoils,
             LoadStep::kBiomes, LoadStep::kViewerColors, LoadStep::kViewerSmoothing });
