@@ -3,6 +3,7 @@
 
 #include "raylib.h"
 #include "raymath.h"
+#include "rlgl.h"
 
 #include <algorithm>
 #include <cmath>
@@ -37,6 +38,48 @@ namespace Infinitesia
             // Meshes of chunks this far past the drawn radius stay cached, so that moving
             // the view back and forth does not unload and rebuild the same chunks.
             constexpr int kRetainedChunkMargin = 4;
+
+            // The six planes of the view volume, from the projection and view the draw runs under.
+            struct Frustum
+            {
+                float planes[6][4];
+
+                static Frustum Current()
+                {
+                    const Matrix m = MatrixMultiply(rlGetMatrixModelview(), rlGetMatrixProjection());
+                    const float row[4][4] = {
+                        { m.m0, m.m4, m.m8, m.m12 },
+                        { m.m1, m.m5, m.m9, m.m13 },
+                        { m.m2, m.m6, m.m10, m.m14 },
+                        { m.m3, m.m7, m.m11, m.m15 }
+                    };
+                    Frustum frustum{};
+                    for (int axis = 0; axis < 3; ++axis)
+                    {
+                        for (int i = 0; i < 4; ++i)
+                        {
+                            frustum.planes[axis * 2][i] = row[3][i] + row[axis][i];
+                            frustum.planes[axis * 2 + 1][i] = row[3][i] - row[axis][i];
+                        }
+                    }
+                    return frustum;
+                }
+
+                bool Intersects(const Vector3& min, const Vector3& max) const
+                {
+                    for (const auto& plane : planes)
+                    {
+                        const float x = plane[0] >= 0.0f ? max.x : min.x;
+                        const float y = plane[1] >= 0.0f ? max.y : min.y;
+                        const float z = plane[2] >= 0.0f ? max.z : min.z;
+                        if (plane[0] * x + plane[1] * y + plane[2] * z + plane[3] < 0.0f)
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            };
 
             bool IsMeshLoaded(const Mesh& mesh)
             {
@@ -104,6 +147,23 @@ namespace Infinitesia
                        std::abs(coordinate.z - centerChunkZ) <= chunkRadius;
             };
 
+            const Frustum frustum = Frustum::Current();
+            const float chunkWorldSize = static_cast<float>(kChunkSize) * grid.GetCellSize();
+            const auto isVisible = [&](const WorldChunk& chunk)
+            {
+                const Vector3 min{
+                    -grid.GetWorldWidth() * 0.5f + static_cast<float>(chunk.coordinate.x) * chunkWorldSize,
+                    static_cast<float>(chunk.coordinate.y) * chunkWorldSize,
+                    -grid.GetWorldDepth() * 0.5f + static_cast<float>(chunk.coordinate.z) * chunkWorldSize
+                };
+                const Vector3 max{
+                    min.x + chunkWorldSize,
+                    min.y + static_cast<float>(chunk.height) * grid.GetCellSize(),
+                    min.z + chunkWorldSize
+                };
+                return frustum.Intersects(min, max);
+            };
+
             int buildsLeft = kMeshBuildsPerFrame;
             std::set<ChunkMeshKey> wantedMeshes;
             for (const auto& [coordinate, chunk] : world.GetChunks())
@@ -115,6 +175,10 @@ namespace Infinitesia
 
                 const ChunkMeshKey key = GetMeshKey(chunk, viewLevel, mode);
                 wantedMeshes.insert(key);
+                if (!isVisible(chunk))
+                {
+                    continue;
+                }
                 const auto found = meshCache.find(key);
                 const bool isCurrent = found != meshCache.end() &&
                                        found->second.terrainRevision == chunk.terrainRevision;
