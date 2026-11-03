@@ -3,6 +3,7 @@
 #include "world/Block.h"
 #include "world/Chunk.h"
 #include "world/Grid.h"
+#include "world/SurfaceMaterials.h"
 #include "world/VoxelWorld.h"
 
 #include <cstdint>
@@ -20,6 +21,6 @@ namespace Infinitesia
         float LatticeValue(int x, int z, std::uint32_t seed);
         float TerrainNoise(int x, int z, std::uint32_t seed);
         std::size_t GetBlockIndex(const WorldChunk& chunk, GridCell cell);
-        BlockType GenerateBlockType(int gridHeight, std::uint32_t seed, GridCell cell);
+        MaterialId GenerateMaterial(int gridHeight, std::uint32_t seed, GridCell cell, const SurfaceMaterials& materials);
     }
 }

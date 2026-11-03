@@ -1,750 +1,750 @@
 {
- "source": "Typical sections of docs/03a_GEOLOGY_CATALOGS.md, section 7, simplified to a flat pile per province type. Thicknesses are real-world metres before the strataThicknessScale game factor. Interim model: stage G2 replaces it with structures derived from province history. Structure: dip range, fold amplitude factor (amplitude = factor * wavelength^0.8, as in docs/03_GEOLOGY.md section 8.1) and the range of lateral thickness variability of the layers. Faults: one candidate per lattice cell of spacingM with the given probability; slip (throwM is the displacement along the fault plane) and the share of normal and thrust faults (the rest are strike-slip).",
- "provenance": "gameplay",
- "columns": {
-  "oceanic_ridge": {
-   "structure": {
-    "dipDegrees": [
-     0,
-     3
-    ],
-    "foldAmplitude": 0.02,
-    "foldCount": 2,
-    "layerVariability": [
-     0.1,
-     0.3
-    ],
-    "faults": {
-     "spacingM": 1500,
-     "probability": 0.5,
-     "throwM": [
-      9,
-      45
-     ],
-     "normalShare": 0.8,
-     "thrustShare": 0.0
+    "source": "Typical sections of docs/03a_GEOLOGY_CATALOGS.md, section 7, simplified to a flat pile per province type. Thicknesses are real-world metres before the strataThicknessScale game factor. Interim model: stage G2 replaces it with structures derived from province history. Structure: dip range, fold amplitude factor (amplitude = factor * wavelength^0.8, as in docs/03_GEOLOGY.md section 8.1) and the range of lateral thickness variability of the layers. Faults: one candidate per lattice cell of spacingM with the given probability; slip (throwM is the displacement along the fault plane) and the share of normal and thrust faults (the rest are strike-slip).",
+    "provenance": "gameplay",
+    "columns": {
+        "oceanic_ridge": {
+            "structure": {
+                "dipDegrees": [
+                    0,
+                    3
+                ],
+                "foldAmplitude": 0.02,
+                "foldCount": 2,
+                "layerVariability": [
+                    0.1,
+                    0.3
+                ],
+                "faults": {
+                    "spacingM": 1500,
+                    "probability": 0.5,
+                    "throwM": [
+                        9,
+                        45
+                    ],
+                    "normalShare": 0.8,
+                    "thrustShare": 0.0
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.peridotite",
+                    "thicknessM": 4000
+                },
+                {
+                    "rock": "rock.gabbro",
+                    "thicknessM": 3000
+                },
+                {
+                    "rock": "rock.dolerite",
+                    "thicknessM": 1500
+                },
+                {
+                    "rock": "rock.pillow_basalt",
+                    "thicknessM": 1000
+                },
+                {
+                    "rock": "rock.claystone",
+                    "thicknessM": 100
+                }
+            ]
+        },
+        "abyssal_plain": {
+            "structure": {
+                "dipDegrees": [
+                    0,
+                    2
+                ],
+                "foldAmplitude": 0.01,
+                "foldCount": 1,
+                "layerVariability": [
+                    0.1,
+                    0.3
+                ],
+                "faults": {
+                    "spacingM": 3000,
+                    "probability": 0.3,
+                    "throwM": [
+                        6,
+                        24
+                    ],
+                    "normalShare": 0.8,
+                    "thrustShare": 0.0
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.peridotite",
+                    "thicknessM": 4000
+                },
+                {
+                    "rock": "rock.gabbro",
+                    "thicknessM": 3000
+                },
+                {
+                    "rock": "rock.dolerite",
+                    "thicknessM": 1500
+                },
+                {
+                    "rock": "rock.pillow_basalt",
+                    "thicknessM": 1000
+                },
+                {
+                    "rock": "rock.chert",
+                    "thicknessM": 100,
+                    "requires": "organicRichMarineSediments"
+                },
+                {
+                    "rock": "rock.chalk",
+                    "thicknessM": 200,
+                    "requires": "calcareousPlankton"
+                },
+                {
+                    "rock": "rock.claystone",
+                    "thicknessM": 200
+                }
+            ]
+        },
+        "trench": {
+            "structure": {
+                "dipDegrees": [
+                    5,
+                    25
+                ],
+                "foldAmplitude": 0.15,
+                "foldCount": 3,
+                "layerVariability": [
+                    0.2,
+                    0.5
+                ],
+                "faults": {
+                    "spacingM": 500,
+                    "probability": 0.6,
+                    "throwM": [
+                        30,
+                        120
+                    ],
+                    "normalShare": 0.2,
+                    "thrustShare": 0.7
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.peridotite",
+                    "thicknessM": 4000
+                },
+                {
+                    "rock": "rock.gabbro",
+                    "thicknessM": 3000
+                },
+                {
+                    "rock": "rock.pillow_basalt",
+                    "thicknessM": 1000
+                },
+                {
+                    "rock": "rock.chert",
+                    "thicknessM": 100
+                },
+                {
+                    "rock": "rock.greywacke",
+                    "thicknessM": 800
+                },
+                {
+                    "rock": "rock.mudstone",
+                    "thicknessM": 400
+                }
+            ]
+        },
+        "island_arc": {
+            "structure": {
+                "dipDegrees": [
+                    5,
+                    25
+                ],
+                "foldAmplitude": 0.12,
+                "foldCount": 3,
+                "layerVariability": [
+                    0.2,
+                    0.6
+                ],
+                "faults": {
+                    "spacingM": 500,
+                    "probability": 0.6,
+                    "throwM": [
+                        30,
+                        120
+                    ],
+                    "normalShare": 0.3,
+                    "thrustShare": 0.5
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.diorite",
+                    "thicknessM": 3000
+                },
+                {
+                    "rock": "rock.andesite",
+                    "thicknessM": 800
+                },
+                {
+                    "rock": "rock.volcanic_breccia",
+                    "thicknessM": 300
+                },
+                {
+                    "rock": "rock.tuff",
+                    "thicknessM": 300
+                },
+                {
+                    "rock": "rock.andesite",
+                    "thicknessM": 300
+                }
+            ]
+        },
+        "continental_arc": {
+            "structure": {
+                "dipDegrees": [
+                    5,
+                    30
+                ],
+                "foldAmplitude": 0.15,
+                "foldCount": 3,
+                "layerVariability": [
+                    0.2,
+                    0.6
+                ],
+                "faults": {
+                    "spacingM": 500,
+                    "probability": 0.6,
+                    "throwM": [
+                        30,
+                        150
+                    ],
+                    "normalShare": 0.3,
+                    "thrustShare": 0.5
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.granodiorite",
+                    "thicknessM": 3000
+                },
+                {
+                    "rock": "rock.andesite",
+                    "thicknessM": 800
+                },
+                {
+                    "rock": "rock.dacite",
+                    "thicknessM": 500
+                },
+                {
+                    "rock": "rock.tuff",
+                    "thicknessM": 300
+                },
+                {
+                    "rock": "rock.ignimbrite",
+                    "thicknessM": 200
+                },
+                {
+                    "rock": "rock.rhyolite",
+                    "thicknessM": 200
+                }
+            ]
+        },
+        "collision_orogen": {
+            "structure": {
+                "dipDegrees": [
+                    20,
+                    70
+                ],
+                "foldAmplitude": 0.45,
+                "foldCount": 4,
+                "layerVariability": [
+                    0.2,
+                    0.5
+                ],
+                "faults": {
+                    "spacingM": 300,
+                    "probability": 0.8,
+                    "throwM": [
+                        45,
+                        240
+                    ],
+                    "normalShare": 0.1,
+                    "thrustShare": 0.7
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.gneiss",
+                    "thicknessM": 4000
+                },
+                {
+                    "rock": "rock.mica_schist",
+                    "thicknessM": 1500
+                },
+                {
+                    "rock": "rock.amphibolite",
+                    "thicknessM": 800
+                },
+                {
+                    "rock": "rock.marble",
+                    "thicknessM": 400
+                },
+                {
+                    "rock": "rock.quartzite",
+                    "thicknessM": 400
+                },
+                {
+                    "rock": "rock.phyllite",
+                    "thicknessM": 800
+                },
+                {
+                    "rock": "rock.slate",
+                    "thicknessM": 600
+                }
+            ]
+        },
+        "ancient_orogen": {
+            "structure": {
+                "dipDegrees": [
+                    15,
+                    60
+                ],
+                "foldAmplitude": 0.35,
+                "foldCount": 4,
+                "layerVariability": [
+                    0.2,
+                    0.5
+                ],
+                "faults": {
+                    "spacingM": 450,
+                    "probability": 0.7,
+                    "throwM": [
+                        30,
+                        180
+                    ],
+                    "normalShare": 0.2,
+                    "thrustShare": 0.6
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.gneiss",
+                    "thicknessM": 3000
+                },
+                {
+                    "rock": "rock.amphibolite",
+                    "thicknessM": 800
+                },
+                {
+                    "rock": "rock.garnet_schist",
+                    "thicknessM": 700
+                },
+                {
+                    "rock": "rock.mica_schist",
+                    "thicknessM": 1200
+                },
+                {
+                    "rock": "rock.quartzite",
+                    "thicknessM": 400
+                },
+                {
+                    "rock": "rock.marble",
+                    "thicknessM": 300
+                },
+                {
+                    "rock": "rock.greenschist",
+                    "thicknessM": 500
+                }
+            ]
+        },
+        "rift_system": {
+            "structure": {
+                "dipDegrees": [
+                    5,
+                    35
+                ],
+                "foldAmplitude": 0.1,
+                "foldCount": 3,
+                "layerVariability": [
+                    0.3,
+                    0.8
+                ],
+                "faults": {
+                    "spacingM": 400,
+                    "probability": 0.8,
+                    "throwM": [
+                        30,
+                        180
+                    ],
+                    "normalShare": 0.85,
+                    "thrustShare": 0.0
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.gneiss",
+                    "thicknessM": 3000
+                },
+                {
+                    "rock": "rock.red_beds",
+                    "thicknessM": 600,
+                    "requires": "freeOxygen"
+                },
+                {
+                    "rock": "rock.basalt",
+                    "thicknessM": 500
+                },
+                {
+                    "rock": "rock.shale",
+                    "thicknessM": 400
+                },
+                {
+                    "rock": "rock.rock_salt",
+                    "thicknessM": 200
+                },
+                {
+                    "rock": "rock.quartz_sandstone",
+                    "thicknessM": 300
+                }
+            ]
+        },
+        "large_igneous_province": {
+            "structure": {
+                "dipDegrees": [
+                    0,
+                    5
+                ],
+                "foldAmplitude": 0.03,
+                "foldCount": 2,
+                "layerVariability": [
+                    0.3,
+                    0.9
+                ],
+                "faults": {
+                    "spacingM": 1200,
+                    "probability": 0.4,
+                    "throwM": [
+                        15,
+                        75
+                    ],
+                    "normalShare": 0.7,
+                    "thrustShare": 0.0
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.granite",
+                    "thicknessM": 3000
+                },
+                {
+                    "rock": "rock.quartz_sandstone",
+                    "thicknessM": 200
+                },
+                {
+                    "rock": "rock.dolerite",
+                    "thicknessM": 150
+                },
+                {
+                    "rock": "rock.basalt",
+                    "thicknessM": 400
+                },
+                {
+                    "rock": "rock.scoria",
+                    "thicknessM": 30
+                },
+                {
+                    "rock": "rock.basalt",
+                    "thicknessM": 400
+                },
+                {
+                    "rock": "rock.tuff",
+                    "thicknessM": 40
+                },
+                {
+                    "rock": "rock.basalt",
+                    "thicknessM": 400
+                }
+            ]
+        },
+        "craton": {
+            "structure": {
+                "dipDegrees": [
+                    0,
+                    6
+                ],
+                "foldAmplitude": 0.03,
+                "foldCount": 2,
+                "layerVariability": [
+                    0.1,
+                    0.3
+                ],
+                "faults": {
+                    "spacingM": 1500,
+                    "probability": 0.4,
+                    "throwM": [
+                        12,
+                        60
+                    ],
+                    "normalShare": 0.4,
+                    "thrustShare": 0.2
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.orthogneiss",
+                    "thicknessM": 5000
+                },
+                {
+                    "rock": "rock.tonalite",
+                    "thicknessM": 3000
+                },
+                {
+                    "rock": "rock.greenschist",
+                    "thicknessM": 700
+                },
+                {
+                    "rock": "rock.granite",
+                    "thicknessM": 1500
+                }
+            ]
+        },
+        "platform": {
+            "structure": {
+                "dipDegrees": [
+                    0,
+                    3
+                ],
+                "foldAmplitude": 0.04,
+                "foldCount": 2,
+                "layerVariability": [
+                    0.25,
+                    0.6
+                ],
+                "faults": {
+                    "spacingM": 1200,
+                    "probability": 0.5,
+                    "throwM": [
+                        12,
+                        75
+                    ],
+                    "normalShare": 0.6,
+                    "thrustShare": 0.1
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.orthogneiss",
+                    "thicknessM": 4000
+                },
+                {
+                    "rock": "rock.conglomerate",
+                    "thicknessM": 100
+                },
+                {
+                    "rock": "rock.quartz_sandstone",
+                    "thicknessM": 300
+                },
+                {
+                    "rock": "rock.shale",
+                    "thicknessM": 300
+                },
+                {
+                    "rock": "rock.limestone",
+                    "thicknessM": 400
+                },
+                {
+                    "rock": "rock.dolomite",
+                    "thicknessM": 200
+                },
+                {
+                    "rock": "rock.gypsum_rock",
+                    "thicknessM": 100
+                },
+                {
+                    "rock": "rock.red_beds",
+                    "thicknessM": 200,
+                    "requires": "freeOxygen"
+                },
+                {
+                    "rock": "rock.bituminous_coal",
+                    "thicknessM": 20,
+                    "requires": "landPlants"
+                },
+                {
+                    "rock": "rock.siltstone",
+                    "thicknessM": 150
+                }
+            ]
+        },
+        "sedimentary_basin": {
+            "structure": {
+                "dipDegrees": [
+                    0,
+                    5
+                ],
+                "foldAmplitude": 0.05,
+                "foldCount": 2,
+                "layerVariability": [
+                    0.25,
+                    0.7
+                ],
+                "faults": {
+                    "spacingM": 900,
+                    "probability": 0.6,
+                    "throwM": [
+                        15,
+                        105
+                    ],
+                    "normalShare": 0.7,
+                    "thrustShare": 0.1
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.orthogneiss",
+                    "thicknessM": 4000
+                },
+                {
+                    "rock": "rock.red_beds",
+                    "thicknessM": 500,
+                    "requires": "freeOxygen"
+                },
+                {
+                    "rock": "rock.rock_salt",
+                    "thicknessM": 300
+                },
+                {
+                    "rock": "rock.shale",
+                    "thicknessM": 500
+                },
+                {
+                    "rock": "rock.quartz_sandstone",
+                    "thicknessM": 600
+                },
+                {
+                    "rock": "rock.limestone",
+                    "thicknessM": 400
+                },
+                {
+                    "rock": "rock.bituminous_coal",
+                    "thicknessM": 15,
+                    "requires": "landPlants"
+                },
+                {
+                    "rock": "rock.siltstone",
+                    "thicknessM": 500
+                },
+                {
+                    "rock": "rock.mudstone",
+                    "thicknessM": 300
+                }
+            ]
+        },
+        "passive_margin": {
+            "structure": {
+                "dipDegrees": [
+                    1,
+                    6
+                ],
+                "foldAmplitude": 0.05,
+                "foldCount": 2,
+                "layerVariability": [
+                    0.25,
+                    0.7
+                ],
+                "faults": {
+                    "spacingM": 700,
+                    "probability": 0.7,
+                    "throwM": [
+                        24,
+                        120
+                    ],
+                    "normalShare": 0.85,
+                    "thrustShare": 0.0
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.orthogneiss",
+                    "thicknessM": 4000
+                },
+                {
+                    "rock": "rock.red_beds",
+                    "thicknessM": 400,
+                    "requires": "freeOxygen"
+                },
+                {
+                    "rock": "rock.rock_salt",
+                    "thicknessM": 200
+                },
+                {
+                    "rock": "rock.limestone",
+                    "thicknessM": 600
+                },
+                {
+                    "rock": "rock.quartz_sandstone",
+                    "thicknessM": 500
+                },
+                {
+                    "rock": "rock.shale",
+                    "thicknessM": 400
+                }
+            ]
+        },
+        "metamorphic_complex": {
+            "structure": {
+                "dipDegrees": [
+                    10,
+                    50
+                ],
+                "foldAmplitude": 0.3,
+                "foldCount": 4,
+                "layerVariability": [
+                    0.2,
+                    0.5
+                ],
+                "faults": {
+                    "spacingM": 450,
+                    "probability": 0.7,
+                    "throwM": [
+                        24,
+                        150
+                    ],
+                    "normalShare": 0.2,
+                    "thrustShare": 0.5
+                }
+            },
+            "layers": [
+                {
+                    "rock": "rock.gneiss",
+                    "thicknessM": 4000
+                },
+                {
+                    "rock": "rock.migmatite",
+                    "thicknessM": 800
+                },
+                {
+                    "rock": "rock.granulite",
+                    "thicknessM": 600
+                },
+                {
+                    "rock": "rock.amphibolite",
+                    "thicknessM": 800
+                },
+                {
+                    "rock": "rock.mica_schist",
+                    "thicknessM": 1000
+                },
+                {
+                    "rock": "rock.garnet_schist",
+                    "thicknessM": 400
+                },
+                {
+                    "rock": "rock.marble",
+                    "thicknessM": 300
+                }
+            ]
+        }
     }
-   },
-   "layers": [
-    {
-     "rock": "rock.peridotite",
-     "thicknessM": 4000
-    },
-    {
-     "rock": "rock.gabbro",
-     "thicknessM": 3000
-    },
-    {
-     "rock": "rock.dolerite",
-     "thicknessM": 1500
-    },
-    {
-     "rock": "rock.pillow_basalt",
-     "thicknessM": 1000
-    },
-    {
-     "rock": "rock.claystone",
-     "thicknessM": 100
-    }
-   ]
-  },
-  "abyssal_plain": {
-   "structure": {
-    "dipDegrees": [
-     0,
-     2
-    ],
-    "foldAmplitude": 0.01,
-    "foldCount": 1,
-    "layerVariability": [
-     0.1,
-     0.3
-    ],
-    "faults": {
-     "spacingM": 3000,
-     "probability": 0.3,
-     "throwM": [
-      6,
-      24
-     ],
-     "normalShare": 0.8,
-     "thrustShare": 0.0
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.peridotite",
-     "thicknessM": 4000
-    },
-    {
-     "rock": "rock.gabbro",
-     "thicknessM": 3000
-    },
-    {
-     "rock": "rock.dolerite",
-     "thicknessM": 1500
-    },
-    {
-     "rock": "rock.pillow_basalt",
-     "thicknessM": 1000
-    },
-    {
-     "rock": "rock.chert",
-     "thicknessM": 100,
-     "requires": "organicRichMarineSediments"
-    },
-    {
-     "rock": "rock.chalk",
-     "thicknessM": 200,
-     "requires": "calcareousPlankton"
-    },
-    {
-     "rock": "rock.claystone",
-     "thicknessM": 200
-    }
-   ]
-  },
-  "trench": {
-   "structure": {
-    "dipDegrees": [
-     5,
-     25
-    ],
-    "foldAmplitude": 0.15,
-    "foldCount": 3,
-    "layerVariability": [
-     0.2,
-     0.5
-    ],
-    "faults": {
-     "spacingM": 500,
-     "probability": 0.6,
-     "throwM": [
-      30,
-      120
-     ],
-     "normalShare": 0.2,
-     "thrustShare": 0.7
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.peridotite",
-     "thicknessM": 4000
-    },
-    {
-     "rock": "rock.gabbro",
-     "thicknessM": 3000
-    },
-    {
-     "rock": "rock.pillow_basalt",
-     "thicknessM": 1000
-    },
-    {
-     "rock": "rock.chert",
-     "thicknessM": 100
-    },
-    {
-     "rock": "rock.greywacke",
-     "thicknessM": 800
-    },
-    {
-     "rock": "rock.mudstone",
-     "thicknessM": 400
-    }
-   ]
-  },
-  "island_arc": {
-   "structure": {
-    "dipDegrees": [
-     5,
-     25
-    ],
-    "foldAmplitude": 0.12,
-    "foldCount": 3,
-    "layerVariability": [
-     0.2,
-     0.6
-    ],
-    "faults": {
-     "spacingM": 500,
-     "probability": 0.6,
-     "throwM": [
-      30,
-      120
-     ],
-     "normalShare": 0.3,
-     "thrustShare": 0.5
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.diorite",
-     "thicknessM": 3000
-    },
-    {
-     "rock": "rock.andesite",
-     "thicknessM": 800
-    },
-    {
-     "rock": "rock.volcanic_breccia",
-     "thicknessM": 300
-    },
-    {
-     "rock": "rock.tuff",
-     "thicknessM": 300
-    },
-    {
-     "rock": "rock.andesite",
-     "thicknessM": 300
-    }
-   ]
-  },
-  "continental_arc": {
-   "structure": {
-    "dipDegrees": [
-     5,
-     30
-    ],
-    "foldAmplitude": 0.15,
-    "foldCount": 3,
-    "layerVariability": [
-     0.2,
-     0.6
-    ],
-    "faults": {
-     "spacingM": 500,
-     "probability": 0.6,
-     "throwM": [
-      30,
-      150
-     ],
-     "normalShare": 0.3,
-     "thrustShare": 0.5
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.granodiorite",
-     "thicknessM": 3000
-    },
-    {
-     "rock": "rock.andesite",
-     "thicknessM": 800
-    },
-    {
-     "rock": "rock.dacite",
-     "thicknessM": 500
-    },
-    {
-     "rock": "rock.tuff",
-     "thicknessM": 300
-    },
-    {
-     "rock": "rock.ignimbrite",
-     "thicknessM": 200
-    },
-    {
-     "rock": "rock.rhyolite",
-     "thicknessM": 200
-    }
-   ]
-  },
-  "collision_orogen": {
-   "structure": {
-    "dipDegrees": [
-     20,
-     70
-    ],
-    "foldAmplitude": 0.45,
-    "foldCount": 4,
-    "layerVariability": [
-     0.2,
-     0.5
-    ],
-    "faults": {
-     "spacingM": 300,
-     "probability": 0.8,
-     "throwM": [
-      45,
-      240
-     ],
-     "normalShare": 0.1,
-     "thrustShare": 0.7
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.gneiss",
-     "thicknessM": 4000
-    },
-    {
-     "rock": "rock.mica_schist",
-     "thicknessM": 1500
-    },
-    {
-     "rock": "rock.amphibolite",
-     "thicknessM": 800
-    },
-    {
-     "rock": "rock.marble",
-     "thicknessM": 400
-    },
-    {
-     "rock": "rock.quartzite",
-     "thicknessM": 400
-    },
-    {
-     "rock": "rock.phyllite",
-     "thicknessM": 800
-    },
-    {
-     "rock": "rock.slate",
-     "thicknessM": 600
-    }
-   ]
-  },
-  "ancient_orogen": {
-   "structure": {
-    "dipDegrees": [
-     15,
-     60
-    ],
-    "foldAmplitude": 0.35,
-    "foldCount": 4,
-    "layerVariability": [
-     0.2,
-     0.5
-    ],
-    "faults": {
-     "spacingM": 450,
-     "probability": 0.7,
-     "throwM": [
-      30,
-      180
-     ],
-     "normalShare": 0.2,
-     "thrustShare": 0.6
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.gneiss",
-     "thicknessM": 3000
-    },
-    {
-     "rock": "rock.amphibolite",
-     "thicknessM": 800
-    },
-    {
-     "rock": "rock.garnet_schist",
-     "thicknessM": 700
-    },
-    {
-     "rock": "rock.mica_schist",
-     "thicknessM": 1200
-    },
-    {
-     "rock": "rock.quartzite",
-     "thicknessM": 400
-    },
-    {
-     "rock": "rock.marble",
-     "thicknessM": 300
-    },
-    {
-     "rock": "rock.greenschist",
-     "thicknessM": 500
-    }
-   ]
-  },
-  "rift_system": {
-   "structure": {
-    "dipDegrees": [
-     5,
-     35
-    ],
-    "foldAmplitude": 0.1,
-    "foldCount": 3,
-    "layerVariability": [
-     0.3,
-     0.8
-    ],
-    "faults": {
-     "spacingM": 400,
-     "probability": 0.8,
-     "throwM": [
-      30,
-      180
-     ],
-     "normalShare": 0.85,
-     "thrustShare": 0.0
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.gneiss",
-     "thicknessM": 3000
-    },
-    {
-     "rock": "rock.red_beds",
-     "thicknessM": 600,
-     "requires": "freeOxygen"
-    },
-    {
-     "rock": "rock.basalt",
-     "thicknessM": 500
-    },
-    {
-     "rock": "rock.shale",
-     "thicknessM": 400
-    },
-    {
-     "rock": "rock.rock_salt",
-     "thicknessM": 200
-    },
-    {
-     "rock": "rock.quartz_sandstone",
-     "thicknessM": 300
-    }
-   ]
-  },
-  "large_igneous_province": {
-   "structure": {
-    "dipDegrees": [
-     0,
-     5
-    ],
-    "foldAmplitude": 0.03,
-    "foldCount": 2,
-    "layerVariability": [
-     0.3,
-     0.9
-    ],
-    "faults": {
-     "spacingM": 1200,
-     "probability": 0.4,
-     "throwM": [
-      15,
-      75
-     ],
-     "normalShare": 0.7,
-     "thrustShare": 0.0
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.granite",
-     "thicknessM": 3000
-    },
-    {
-     "rock": "rock.quartz_sandstone",
-     "thicknessM": 200
-    },
-    {
-     "rock": "rock.dolerite",
-     "thicknessM": 150
-    },
-    {
-     "rock": "rock.basalt",
-     "thicknessM": 400
-    },
-    {
-     "rock": "rock.scoria",
-     "thicknessM": 30
-    },
-    {
-     "rock": "rock.basalt",
-     "thicknessM": 400
-    },
-    {
-     "rock": "rock.tuff",
-     "thicknessM": 40
-    },
-    {
-     "rock": "rock.basalt",
-     "thicknessM": 400
-    }
-   ]
-  },
-  "craton": {
-   "structure": {
-    "dipDegrees": [
-     0,
-     6
-    ],
-    "foldAmplitude": 0.03,
-    "foldCount": 2,
-    "layerVariability": [
-     0.1,
-     0.3
-    ],
-    "faults": {
-     "spacingM": 1500,
-     "probability": 0.4,
-     "throwM": [
-      12,
-      60
-     ],
-     "normalShare": 0.4,
-     "thrustShare": 0.2
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.orthogneiss",
-     "thicknessM": 5000
-    },
-    {
-     "rock": "rock.tonalite",
-     "thicknessM": 3000
-    },
-    {
-     "rock": "rock.greenschist",
-     "thicknessM": 700
-    },
-    {
-     "rock": "rock.granite",
-     "thicknessM": 1500
-    }
-   ]
-  },
-  "platform": {
-   "structure": {
-    "dipDegrees": [
-     0,
-     3
-    ],
-    "foldAmplitude": 0.04,
-    "foldCount": 2,
-    "layerVariability": [
-     0.25,
-     0.6
-    ],
-    "faults": {
-     "spacingM": 1200,
-     "probability": 0.5,
-     "throwM": [
-      12,
-      75
-     ],
-     "normalShare": 0.6,
-     "thrustShare": 0.1
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.orthogneiss",
-     "thicknessM": 4000
-    },
-    {
-     "rock": "rock.conglomerate",
-     "thicknessM": 100
-    },
-    {
-     "rock": "rock.quartz_sandstone",
-     "thicknessM": 300
-    },
-    {
-     "rock": "rock.shale",
-     "thicknessM": 300
-    },
-    {
-     "rock": "rock.limestone",
-     "thicknessM": 400
-    },
-    {
-     "rock": "rock.dolomite",
-     "thicknessM": 200
-    },
-    {
-     "rock": "rock.gypsum_rock",
-     "thicknessM": 100
-    },
-    {
-     "rock": "rock.red_beds",
-     "thicknessM": 200,
-     "requires": "freeOxygen"
-    },
-    {
-     "rock": "rock.bituminous_coal",
-     "thicknessM": 20,
-     "requires": "landPlants"
-    },
-    {
-     "rock": "rock.siltstone",
-     "thicknessM": 150
-    }
-   ]
-  },
-  "sedimentary_basin": {
-   "structure": {
-    "dipDegrees": [
-     0,
-     5
-    ],
-    "foldAmplitude": 0.05,
-    "foldCount": 2,
-    "layerVariability": [
-     0.25,
-     0.7
-    ],
-    "faults": {
-     "spacingM": 900,
-     "probability": 0.6,
-     "throwM": [
-      15,
-      105
-     ],
-     "normalShare": 0.7,
-     "thrustShare": 0.1
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.orthogneiss",
-     "thicknessM": 4000
-    },
-    {
-     "rock": "rock.red_beds",
-     "thicknessM": 500,
-     "requires": "freeOxygen"
-    },
-    {
-     "rock": "rock.rock_salt",
-     "thicknessM": 300
-    },
-    {
-     "rock": "rock.shale",
-     "thicknessM": 500
-    },
-    {
-     "rock": "rock.quartz_sandstone",
-     "thicknessM": 600
-    },
-    {
-     "rock": "rock.limestone",
-     "thicknessM": 400
-    },
-    {
-     "rock": "rock.bituminous_coal",
-     "thicknessM": 15,
-     "requires": "landPlants"
-    },
-    {
-     "rock": "rock.siltstone",
-     "thicknessM": 500
-    },
-    {
-     "rock": "rock.mudstone",
-     "thicknessM": 300
-    }
-   ]
-  },
-  "passive_margin": {
-   "structure": {
-    "dipDegrees": [
-     1,
-     6
-    ],
-    "foldAmplitude": 0.05,
-    "foldCount": 2,
-    "layerVariability": [
-     0.25,
-     0.7
-    ],
-    "faults": {
-     "spacingM": 700,
-     "probability": 0.7,
-     "throwM": [
-      24,
-      120
-     ],
-     "normalShare": 0.85,
-     "thrustShare": 0.0
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.orthogneiss",
-     "thicknessM": 4000
-    },
-    {
-     "rock": "rock.red_beds",
-     "thicknessM": 400,
-     "requires": "freeOxygen"
-    },
-    {
-     "rock": "rock.rock_salt",
-     "thicknessM": 200
-    },
-    {
-     "rock": "rock.limestone",
-     "thicknessM": 600
-    },
-    {
-     "rock": "rock.quartz_sandstone",
-     "thicknessM": 500
-    },
-    {
-     "rock": "rock.shale",
-     "thicknessM": 400
-    }
-   ]
-  },
-  "metamorphic_complex": {
-   "structure": {
-    "dipDegrees": [
-     10,
-     50
-    ],
-    "foldAmplitude": 0.3,
-    "foldCount": 4,
-    "layerVariability": [
-     0.2,
-     0.5
-    ],
-    "faults": {
-     "spacingM": 450,
-     "probability": 0.7,
-     "throwM": [
-      24,
-      150
-     ],
-     "normalShare": 0.2,
-     "thrustShare": 0.5
-    }
-   },
-   "layers": [
-    {
-     "rock": "rock.gneiss",
-     "thicknessM": 4000
-    },
-    {
-     "rock": "rock.migmatite",
-     "thicknessM": 800
-    },
-    {
-     "rock": "rock.granulite",
-     "thicknessM": 600
-    },
-    {
-     "rock": "rock.amphibolite",
-     "thicknessM": 800
-    },
-    {
-     "rock": "rock.mica_schist",
-     "thicknessM": 1000
-    },
-    {
-     "rock": "rock.garnet_schist",
-     "thicknessM": 400
-    },
-    {
-     "rock": "rock.marble",
-     "thicknessM": 300
-    }
-   ]
-  }
- }
 }

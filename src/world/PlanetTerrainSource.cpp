@@ -10,46 +10,60 @@ namespace Infinitesia
         // Thickness of the topsoil under the surface block.
         constexpr int kTopsoilBlocks = 3;
 
-        BlockType SurfaceBlock(SurfaceKind kind)
+        PlanetTerrainSource::Layer SurfaceLayer(SurfaceKind kind)
         {
             switch (kind)
             {
-            case SurfaceKind::Grass: return BlockType::Grass;
-            case SurfaceKind::Dirt:  return BlockType::Dirt;
-            case SurfaceKind::Sand:  return BlockType::Sand;
-            case SurfaceKind::Stone: return BlockType::Stone;
+            case SurfaceKind::Grass: return PlanetTerrainSource::Layer::Turf;
+            case SurfaceKind::Dirt:  return PlanetTerrainSource::Layer::Subsoil;
+            case SurfaceKind::Sand:  return PlanetTerrainSource::Layer::Sand;
+            case SurfaceKind::Stone: return PlanetTerrainSource::Layer::Rock;
             }
-            return BlockType::Stone;
+            return PlanetTerrainSource::Layer::Rock;
         }
 
-        BlockType TopsoilBlock(SurfaceKind kind)
+        PlanetTerrainSource::Layer TopsoilLayer(SurfaceKind kind)
         {
             switch (kind)
             {
             case SurfaceKind::Grass:
-            case SurfaceKind::Dirt:  return BlockType::Dirt;
-            case SurfaceKind::Sand:  return BlockType::Sand;
-            case SurfaceKind::Stone: return BlockType::Stone;
+            case SurfaceKind::Dirt:  return PlanetTerrainSource::Layer::Subsoil;
+            case SurfaceKind::Sand:  return PlanetTerrainSource::Layer::Sand;
+            case SurfaceKind::Stone: return PlanetTerrainSource::Layer::Rock;
             }
-            return BlockType::Stone;
+            return PlanetTerrainSource::Layer::Rock;
         }
     }
 
     PlanetTerrainSource::PlanetTerrainSource(
         std::shared_ptr<const SettlementTerrain> terrain,
         int gridWidth, int gridHeight, int gridDepth, int anchorLevel,
+        std::shared_ptr<const BlockRegistry> registry,
         std::shared_ptr<const GeologyModel> geology)
         : m_terrain(std::move(terrain))
+        , m_registry(std::move(registry))
         , m_geology(std::move(geology))
         , m_width(gridWidth)
         , m_height(gridHeight)
         , m_depth(gridDepth)
         , m_anchorLevel(anchorLevel)
     {
-        if (m_terrain == nullptr || gridWidth <= 0 || gridHeight < 4 || gridDepth <= 0 ||
+        if (m_terrain == nullptr || m_registry == nullptr || gridWidth <= 0 || gridHeight < 4 || gridDepth <= 0 ||
             anchorLevel < 0 || anchorLevel >= gridHeight)
         {
-            throw std::invalid_argument("Planet terrain source needs a terrain and a valid grid.");
+            throw std::invalid_argument("Planet terrain source needs a terrain, a registry and a valid grid.");
+        }
+        m_materials = SurfaceMaterials::Resolve(*m_registry);
+        if (m_geology != nullptr)
+        {
+            for (int type = 0; type < kProvinceTypeCount; ++type)
+            {
+                for (const ColumnLayer& layer : m_geology->Catalog().ColumnFor(static_cast<ProvinceType>(type)).bottomUp)
+                {
+                    if (m_registry->GetMaterial(layer.rock) == nullptr)
+                        throw std::invalid_argument("The registry does not know a rock of the geology.");
+                }
+            }
         }
         const std::size_t columns = static_cast<std::size_t>(gridWidth) * static_cast<std::size_t>(gridDepth);
         m_columns.resize(columns);
@@ -108,45 +122,42 @@ namespace Infinitesia
         return std::min(top, m_height - 1);
     }
 
-    BlockType PlanetTerrainSource::BlockAt(GridCell cell) const
+    BlockState PlanetTerrainSource::StateAt(GridCell cell) const
     {
         if (cell.x < 0 || cell.x >= m_width || cell.y < 0 || cell.y >= m_height ||
             cell.z < 0 || cell.z >= m_depth)
         {
-            return BlockType::Air;
+            return {};
         }
 
         const Column& column = ColumnAt(cell.x, cell.z);
         if (cell.y > column.surface)
         {
-            return cell.y <= WaterTopLevel() ? BlockType::Water : BlockType::Air;
+            return { cell.y <= WaterTopLevel() ? m_materials.seawater : kAirMaterial, kShapeFull };
         }
-        return LayerAt(column.kind, column.surface - cell.y);
-    }
-
-    MaterialId PlanetTerrainSource::MaterialAt(GridCell cell) const
-    {
-        if (m_geology == nullptr || BlockAt(cell) != BlockType::Stone)
+        switch (LayerAt(column.kind, column.surface - cell.y))
         {
-            return kUnspecifiedMaterial;
+        case Layer::Turf:    return { m_materials.turf, kShapeFull };
+        case Layer::Subsoil: return { m_materials.subsoil, kShapeFull };
+        case Layer::Sand:    return { m_materials.sand, kShapeFull };
+        case Layer::Rock:    break;
+        }
+        if (m_geology == nullptr)
+        {
+            return { m_materials.bedrock, kShapeFull };
         }
         // A level is a metre of height: the ground of the origin column is at anchorLevel
         // and OriginElevationMeters above sea level.
         const int elevation = m_terrain->OriginElevationMeters() + (cell.y - m_anchorLevel);
-        return GeologyModel::RockAt(ProfileAt(cell.x, cell.z), elevation);
+        return { GeologyModel::RockAt(ProfileAt(cell.x, cell.z), elevation), kShapeFull };
     }
 
-    const GeologyCatalog* PlanetTerrainSource::Catalog() const
-    {
-        return m_geology == nullptr ? nullptr : &m_geology->Catalog();
-    }
-
-    BlockType PlanetTerrainSource::LayerAt(SurfaceKind kind, int depthBelowSurface)
+    PlanetTerrainSource::Layer PlanetTerrainSource::LayerAt(SurfaceKind kind, int depthBelowSurface)
     {
         if (depthBelowSurface <= 0)
         {
-            return SurfaceBlock(kind);
+            return SurfaceLayer(kind);
         }
-        return depthBelowSurface <= kTopsoilBlocks ? TopsoilBlock(kind) : BlockType::Stone;
+        return depthBelowSurface <= kTopsoilBlocks ? TopsoilLayer(kind) : Layer::Rock;
     }
 }

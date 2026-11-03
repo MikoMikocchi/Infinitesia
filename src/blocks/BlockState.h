@@ -1,6 +1,6 @@
 #pragma once
 
-#include "geology/catalog/MaterialId.h"
+#include "materials/MaterialId.h"
 
 #include <cstdint>
 
@@ -20,9 +20,5 @@ namespace Infinitesia
         friend bool operator==(const BlockState&, const BlockState&) = default;
     };
 
-    // Materials of the registry: the geology catalog fills 0-1023, the other materials of the
-    // game (planks, glass, lamps) 1024 up to this limit.
-    inline constexpr MaterialId kFirstBuiltMaterial = kFirstReservedMaterial;
-    inline constexpr int kRegistryMaterialCapacity = 4096;
     inline constexpr int kShapeCapacity = 256;
 }

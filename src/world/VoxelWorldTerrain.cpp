@@ -42,11 +42,11 @@ namespace Infinitesia
         {
             const GridCell above{ cell.x, y, cell.z };
             const auto chunk = m_chunks.find(GetChunkCoordinate(above));
-            const BlockType type = chunk == m_chunks.end()
-                ? m_terrain->BlockAt(above)
-                : chunk->second.blocks[GetBlockIndexHelper(chunk->second, above)].type;
-            // Water lets the light through; anything else shades the cell.
-            if (type != BlockType::Air && type != BlockType::Water)
+            const BlockState state = chunk == m_chunks.end()
+                ? m_terrain->StateAt(above)
+                : chunk->second.blocks[GetBlockIndexHelper(chunk->second, above)].state;
+            // Air and water let the light through; anything that stops it shades the cell.
+            if (!m_terrain->Registry().LetsLightThrough(state))
             {
                 return false;
             }
@@ -54,13 +54,12 @@ namespace Infinitesia
         return true;
     }
 
-    void VoxelWorld::SetBlockType(GridCell cell, BlockType type)
+    void VoxelWorld::SetBlock(GridCell cell, BlockState state)
     {
-        if (type != BlockType::Air && type != BlockType::Grass &&
-            type != BlockType::Dirt && type != BlockType::Stone &&
-            type != BlockType::Sand && type != BlockType::Water)
+        if (m_terrain->Registry().GetMaterial(state.material) == nullptr ||
+            m_terrain->Registry().GetShape(state.shape) == nullptr)
         {
-            throw std::invalid_argument("Block has an unsupported type.");
+            throw std::invalid_argument("The block registry does not know the material or shape of the block.");
         }
         if (cell.x < 0 || cell.x >= m_gridWidth ||
             cell.y < 0 || cell.y >= m_gridHeight ||
@@ -72,8 +71,7 @@ namespace Infinitesia
         const ChunkCoordinate changedChunk = GetChunkCoordinate(cell);
         WorldChunk& chunk = m_chunks.at(changedChunk);
         Block& changed = chunk.blocks[GetBlockIndexHelper(chunk, cell)];
-        changed.type = type;
-        changed.material = kUnspecifiedMaterial; // the old material no longer applies
+        changed.state = state;
         ++m_terrainRevision;
 
         const int localX = cell.x % kChunkSize;

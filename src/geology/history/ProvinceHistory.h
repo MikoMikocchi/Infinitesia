@@ -1,6 +1,6 @@
 #pragma once
 
-#include "geology/catalog/CatalogTypes.h"
+#include "materials/MaterialTypes.h"
 #include "geology/history/GeologicEvent.h"
 
 #include <cstdint>

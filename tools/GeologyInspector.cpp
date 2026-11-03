@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -46,7 +47,7 @@ namespace
         bool faults = false;
         std::uint64_t seed = 1;
         int planetBands = 0;
-        std::string assets = INFINITESIA_GEOLOGY_ASSET_DIR;
+        std::string assets = INFINITESIA_ASSET_DIR; // the assets folder
     };
 
     void PrintUsage()
@@ -95,9 +96,9 @@ namespace
         return true;
     }
 
-    std::string RockName(const GeologyCatalog& catalog, MaterialId id)
+    std::string RockName(const MaterialCatalog& catalog, MaterialId id)
     {
-        const MaterialDef* material = catalog.GetMaterial(id);
+        const MaterialDef* material = catalog.Get(id);
         return material == nullptr ? "?" : material->key;
     }
 
@@ -112,7 +113,7 @@ namespace
         return text;
     }
 
-    void PrintEvent(const GeologyCatalog& catalog, const PlanetEpochTable& epochs, const GeologicEvent& event,
+    void PrintEvent(const MaterialCatalog& catalog, const PlanetEpochTable& epochs, const GeologicEvent& event,
                     const char* prefix)
     {
         std::printf("%s%-22s %7.0f .. %-7.0f Myr", prefix, std::string(EventTypeName(event.type)).c_str(), event.startMyr,
@@ -155,7 +156,11 @@ namespace
         }
         const PlanetMap map(parameters, ClimateInputsFor(system));
         const RegionGenerator generator(map);
-        const auto catalog = std::make_shared<const GeologyCatalog>(GeologyCatalog::LoadFromDirectory(options.assets));
+        const std::filesystem::path assets = options.assets;
+        const auto materials = std::make_shared<const MaterialCatalog>(
+            MaterialCatalog::LoadFromFile(assets / "materials" / "materials.json"));
+        const auto catalog = std::make_shared<const GeologyCatalog>(
+            GeologyCatalog::Load(materials, assets / "geology" / "province_columns.json"));
         const GeologyModel geology(catalog, map);
         const PlanetEpochTable& epochs = map.GetEpochs();
 
@@ -207,7 +212,7 @@ namespace
         const GeologyModel::ColumnProfile profile =
             geology.ProfileAt(province->id, eastMeters, northMeters, column.pileTopMeters);
         const MaterialId rock = GeologyModel::RockAt(profile, elevation);
-        const MaterialDef* material = catalog->GetMaterial(rock);
+        const MaterialDef* material = materials->Get(rock);
         std::printf("\n");
         if (elevation > ground)
         {
@@ -219,12 +224,8 @@ namespace
         }
         if (material != nullptr && elevation <= ground)
         {
-            const Rock* info = catalog->GetRock(rock);
             std::printf("rock %s (%s)", material->key.c_str(), material->name.c_str());
-            if (info != nullptr)
-            {
-                std::printf(", %.0f kg/m3, dig class %d", info->density, info->digClass);
-            }
+            std::printf(", %.0f kg/m3, dig class %d", material->density, material->digClass);
             std::printf(", colour #%02x%02x%02x\n", material->color.r, material->color.g, material->color.b);
 
             const std::vector<EventId> chain =
@@ -234,7 +235,7 @@ namespace
             for (EventId id : chain)
             {
                 if (const GeologicEvent* event = history.Find(id))
-                    PrintEvent(*catalog, epochs, *event, "  ");
+                    PrintEvent(*materials, epochs, *event, "  ");
             }
         }
 
@@ -256,7 +257,7 @@ namespace
                     std::snprintf(range, sizeof range, "%d .. %d (%d m)", top, bottom, top - bottom);
                 const GeologicEvent* event = history.Find(
                     geology.FormationEvent(province->id, profile.formation[static_cast<std::size_t>(i)]));
-                std::printf("  %-26s %-24s %s\n", range, RockName(*catalog, profile.rock[static_cast<std::size_t>(i)]).c_str(),
+                std::printf("  %-26s %-24s %s\n", range, RockName(*materials, profile.rock[static_cast<std::size_t>(i)]).c_str(),
                             event != nullptr ? AgeText(epochs, 0.5 * (event->startMyr + event->endMyr)).c_str() : "");
             }
         }
@@ -293,7 +294,7 @@ namespace
         {
             std::printf("\nhistory of province #%u, oldest event first:\n", province->id);
             for (const GeologicEvent& event : geology.HistoryOf(province->id).events)
-                PrintEvent(*catalog, epochs, event, "  ");
+                PrintEvent(*materials, epochs, event, "  ");
         }
         return 0;
     }

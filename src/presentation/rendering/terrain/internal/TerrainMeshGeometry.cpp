@@ -2,8 +2,6 @@
 
 #include "raymath.h"
 
-#include <stdexcept>
-
 namespace Infinitesia
 {
     namespace WorldGeometryRenderer
@@ -46,78 +44,37 @@ namespace Infinitesia
                 }
             }
 
-            Color GetBlockColor(BlockType type)
+            Color GetBlockColor(const Block& block, const BlockRegistry& registry)
             {
-                switch (type)
-                {
-                case BlockType::Grass:
-                    return { 82, 145, 66, 255 };
-                case BlockType::Dirt:
-                    return { 139, 94, 60, 255 };
-                case BlockType::Stone:
-                    return { 132, 137, 142, 255 };
-                case BlockType::Sand:
-                    return { 219, 203, 140, 255 };
-                case BlockType::Water:
-                    return { 52, 110, 170, 255 };
-                case BlockType::Air:
-                    break;
-                }
-
-                throw std::invalid_argument("Block has an unsupported type.");
-            }
-
-            Color GetBlockColor(const Block& block, const GeologyCatalog* catalog)
-            {
-                if (catalog != nullptr && block.material != kUnspecifiedMaterial)
-                {
-                    const MaterialDef* material = catalog->GetMaterial(block.material);
-                    if (material != nullptr && material->blockClass == BlockClass::Rock)
-                    {
-                        return { material->color.r, material->color.g, material->color.b, 255 };
-                    }
-                }
-                return GetBlockColor(block.type);
+                const RgbColor color = registry.ColorOf(block.state.material);
+                return { color.r, color.g, color.b, 255 };
             }
 
             FaceLook GetFaceLook(
                 const Block& block,
-                const GeologyCatalog* catalog,
+                const BlockRegistry& registry,
                 const BlockTextureAtlas* atlas,
                 FaceKind kind)
             {
                 if (atlas != nullptr && atlas->IsLoaded())
                 {
                     const Rectangle* tile = nullptr;
-                    if (catalog != nullptr && block.material != kUnspecifiedMaterial)
+                    const MaterialDef* material = registry.GetMaterial(block.state.material);
+                    if (material != nullptr)
                     {
-                        const MaterialDef* material = catalog->GetMaterial(block.material);
-                        if (material != nullptr)
+                        tile = atlas->Find(material->key + (kind == FaceKind::Top ? "_top" : "_side"));
+                        if (tile == nullptr)
                         {
                             tile = atlas->Find(material->key);
-                        }
-                    }
-                    if (tile == nullptr)
-                    {
-                        switch (block.type)
-                        {
-                        case BlockType::Grass:
-                            tile = atlas->Find(kind == FaceKind::Top ? "block.grass_top" : "block.grass_side");
-                            break;
-                        case BlockType::Dirt:  tile = atlas->Find("block.dirt");  break;
-                        case BlockType::Stone: tile = atlas->Find("block.stone"); break;
-                        case BlockType::Sand:  tile = atlas->Find("block.sand");  break;
-                        case BlockType::Water: tile = atlas->Find("block.water"); break;
-                        case BlockType::Air:   break;
                         }
                     }
                     if (tile != nullptr)
                     {
                         return { WHITE, *tile };
                     }
-                    return { GetBlockColor(block, catalog), atlas->WhiteTile() };
+                    return { GetBlockColor(block, registry), atlas->WhiteTile() };
                 }
-                return { GetBlockColor(block, catalog), Rectangle{} };
+                return { GetBlockColor(block, registry), Rectangle{} };
             }
 
             void MeshData::AppendFace(
@@ -207,7 +164,7 @@ namespace Infinitesia
                     if (grid.Contains(neighbors[side]))
                     {
                         const Block* neighbor = world.GetBlock(neighbors[side]);
-                        if (neighbor == nullptr || neighbor->type != BlockType::Air)
+                        if (neighbor == nullptr || world.Registry().Occupied(neighbor->state))
                         {
                             continue;
                         }

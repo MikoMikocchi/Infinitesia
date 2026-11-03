@@ -103,7 +103,7 @@ namespace Infinitesia
                 }
                 return std::string{};
             }();
-            const bool solidCell = block != nullptr && block->type != BlockType::Air;
+            const bool solidCell = block != nullptr && world.terrain.Registry().Occupied(block->state);
             if (solidCell)
             {
                 const bool occupied = world.entities.FindObjectAt(*m_hoveredCell).has_value();

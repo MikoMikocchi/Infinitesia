@@ -18,7 +18,7 @@ namespace SnapshotTool
         const double extent = window.extent;
         const double step = window.step;
         const int columns = window.columns;
-        const GeologyCatalog& catalog = world.Catalog();
+        const MaterialCatalog& catalog = world.Materials();
         const GeologyModel& geology = world.Geology();
         const SettlementTerrain& terrain = world.Terrain();
 

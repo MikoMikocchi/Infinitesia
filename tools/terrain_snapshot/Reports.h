@@ -1,6 +1,6 @@
 #pragma once
 
-#include "geology/catalog/GeologyCatalog.h"
+#include "materials/MaterialCatalog.h"
 #include "planet/PlanetMap.h"
 #include "terrain_snapshot/Options.h"
 
@@ -9,7 +9,7 @@
 namespace SnapshotTool
 {
     // The rocks that were drawn, most visible first, with their colours.
-    void PrintRocks(const Infinitesia::GeologyCatalog& catalog,
+    void PrintRocks(const Infinitesia::MaterialCatalog& catalog,
                     const std::map<Infinitesia::MaterialId, long>& seen);
 
     // The geological setting of the planet cell under the window centre.

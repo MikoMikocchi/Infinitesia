@@ -27,10 +27,12 @@ namespace Infinitesia
         void EnsureChunkContaining(GridCell cell);
         const Block* GetBlock(GridCell cell) const;
         bool HasSkyAccess(GridCell cell) const;
-        void SetBlockType(GridCell cell, BlockType type);
+        // Puts a block into the cell; throws std::invalid_argument when the registry does not know
+        // its material or shape, std::out_of_range outside the grid.
+        void SetBlock(GridCell cell, BlockState state);
         std::uint64_t GetTerrainRevision() const;
-        // Catalog naming the blocks' materials; nullptr when the terrain has no geology.
-        const GeologyCatalog* GetCatalog() const { return m_terrain->Catalog(); }
+        // The registry that names the blocks' materials and shapes and answers every rule about them.
+        const BlockRegistry& Registry() const { return m_terrain->Registry(); }
         const std::map<ChunkCoordinate, WorldChunk>& GetChunks() const;
         std::size_t GetLoadedChunkCount() const;
         std::size_t GetTotalChunkCount() const;

@@ -27,20 +27,6 @@ namespace SnapshotTool
             GeologyModel::ColumnProfile profile; // the rocks under the column
         };
 
-        Rgb BlockColor(BlockType type)
-        {
-            switch (type)
-            {
-            case BlockType::Grass: return { 82, 145, 66 };
-            case BlockType::Dirt:  return { 139, 94, 60 };
-            case BlockType::Stone: return { 132, 137, 142 };
-            case BlockType::Sand:  return { 219, 203, 140 };
-            case BlockType::Water: return { 52, 110, 170 };
-            case BlockType::Air:   break;
-            }
-            return { 255, 0, 255 };
-        }
-
         // ------------------------------------------------------------------ rendering
 
         struct View
@@ -80,12 +66,13 @@ namespace SnapshotTool
         const double extent = window.extent;
         const double step = window.step;
         const int columns = window.columns;
-        const GeologyCatalog& catalog = world.Catalog();
+        const BlockRegistry& registry = world.Registry();
+        const SurfaceMaterials surface = SurfaceMaterials::Resolve(registry);
         const GeologyModel& geology = world.Geology();
         const SettlementTerrain& terrain = world.Terrain();
-        const auto catalogColor = [&catalog](MaterialId id)
+        const auto colorOf = [&registry](MaterialId id)
         {
-            const RgbColor color = catalog.ColorOf(id);
+            const RgbColor color = registry.ColorOf(id);
             return Rgb{ color.r, color.g, color.b };
         };
 
@@ -168,48 +155,39 @@ namespace SnapshotTool
         Image image(width, height, { 24, 28, 34 });
 
         // ---- paint far to near
-        // What fills a block at `level` (relative to the window centre ground): water above the
-        // ground, topsoil and then real rock below it. Rock blocks carry their catalog material.
-        struct Layer
-        {
-            BlockType type = BlockType::Air;
-            MaterialId material = kUnspecifiedMaterial;
-
-            bool operator==(const Layer&) const = default;
-        };
+        // What fills a block at `level` (relative to the window centre ground): seawater above the
+        // ground, topsoil and then real rock below it.
         std::map<MaterialId, long> rocksSeen;
-        const auto layerAt = [&](const Column& cell, int level) -> Layer
+        const auto materialAt = [&](const Column& cell, int level) -> MaterialId
         {
             if (level > cell.ground)
             {
-                return { BlockType::Water, kUnspecifiedMaterial };
+                return surface.seawater;
             }
-            const BlockType type = PlanetTerrainSource::LayerAt(cell.kind, cell.ground - level);
-            if (type != BlockType::Stone)
+            switch (PlanetTerrainSource::LayerAt(cell.kind, cell.ground - level))
             {
-                return { type, kUnspecifiedMaterial };
+            case PlanetTerrainSource::Layer::Turf:    return surface.turf;
+            case PlanetTerrainSource::Layer::Subsoil: return surface.subsoil;
+            case PlanetTerrainSource::Layer::Sand:    return surface.sand;
+            case PlanetTerrainSource::Layer::Rock:    break;
             }
-            return { type, GeologyModel::RockAt(cell.profile, terrain.OriginElevationMeters() + level) };
+            return GeologyModel::RockAt(cell.profile, terrain.OriginElevationMeters() + level);
         };
-        const auto layerRgb = [&](const Layer& layer) -> Rgb
+        const auto countRock = [&](MaterialId id)
         {
-            if (layer.material != kUnspecifiedMaterial)
+            const MaterialDef* material = registry.GetMaterial(id);
+            if (material != nullptr && material->blockClass == BlockClass::Rock)
             {
-                return catalogColor(layer.material);
+                ++rocksSeen[id];
             }
-            return BlockColor(layer.type);
         };
 
         const auto layerColor = [&](const Column& cell, int level) -> Rgb
         {
-            const Layer layer = layerAt(cell, level);
-            const BlockType type = layer.type;
-            Rgb color = layerRgb(layer);
-            if (layer.material != kUnspecifiedMaterial)
-            {
-                ++rocksSeen[layer.material];
-            }
-            if (type == BlockType::Water)
+            const MaterialId id = materialAt(cell, level);
+            Rgb color = colorOf(id);
+            countRock(id);
+            if (id == surface.seawater)
             {
                 color = Mix({ 96, 170, 205 }, { 22, 56, 116 }, (cell.top - level) / 40.0);
             }
@@ -225,13 +203,13 @@ namespace SnapshotTool
             int level = cell.top;
             while (level > downTo)
             {
-                const Layer type = layerAt(cell, level);
+                const MaterialId type = materialAt(cell, level);
                 // Merge blocks of one kind into one quad (colour varies slowly with depth).
                 int last = level;
                 while (last - 1 > downTo)
                 {
                     const int next = last - 1;
-                    const Layer nextType = layerAt(cell, next);
+                    const MaterialId nextType = materialAt(cell, next);
                     if (nextType != type || (cell.top - level) / 8 != (cell.top - next) / 8)
                     {
                         break;
@@ -282,12 +260,9 @@ namespace SnapshotTool
                 }
                 else
                 {
-                    top = layerRgb(layerAt(cell, cell.ground));
-                    const Layer topLayer = layerAt(cell, cell.ground);
-                    if (topLayer.material != kUnspecifiedMaterial)
-                    {
-                        ++rocksSeen[topLayer.material];
-                    }
+                    const MaterialId topMaterial = materialAt(cell, cell.ground);
+                    top = colorOf(topMaterial);
+                    countRock(topMaterial);
                 }
                 // Hillshade: the light comes from the far corner, so slopes that fall towards the
                 // camera are lit and slopes that rise towards it are dark. Slopes are stretched
@@ -334,7 +309,7 @@ namespace SnapshotTool
                         kMaxWaterDrawn, kMaxWaterDrawn);
         }
 
-        PrintRocks(catalog, rocksSeen);
+        PrintRocks(registry.Catalog(), rocksSeen);
 
         PrintPlanetCell(options, world.Map());
         return 0;

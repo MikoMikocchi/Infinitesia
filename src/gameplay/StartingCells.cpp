@@ -20,10 +20,12 @@ namespace Infinitesia
         {
             return -1;
         }
+        const BlockRegistry& registry = terrain.Registry();
         for (int y = grid.GetHeight() - 1; y >= 0; --y)
         {
-            const BlockType type = terrain.BlockAt({ x, y, z });
-            if (type != BlockType::Air && type != BlockType::Water)
+            const BlockState state = terrain.StateAt({ x, y, z });
+            // Ground to stand on: something is there and it is not water.
+            if (registry.Occupied(state) && !registry.Has(state.material, Tag::Water))
             {
                 return y;
             }

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Generates the 32x32 block textures into assets/textures/blocks/.
 
-One seamless PNG per material of assets/geology/{rocks,materials}.json and assets/blocks/built_materials.json plus the base
-blocks. File name = material id (rock.granite.png) or block.<name>.png.
+One seamless PNG per fluid, loose ground, ice, rock and built material of assets/materials/materials.json.
+File name = material id (rock.granite.png); a face of its own is <id>_top, <id>_side, <id>_bottom.
+Minerals get no tile: a mineral block is drawn in its catalog colour.
 Standard library only. Colours are deliberately loud (GregTech style): the catalog
 colour is saturated, and near-grey rocks get a hue derived from their id so that every
 rock is recognisable at a glance. Output is deterministic.
@@ -340,7 +341,7 @@ SOILS = {
     "ice.permafrost": "gravel",
 }
 
-# Materials of assets/blocks/built_materials.json.
+# Built materials of assets/materials/materials.json.
 BUILT = {
     "built.planks": "layered", "built.brick": "clastic", "built.glass": "ice",
     "built.glass_red": "ice", "built.glass_green": "ice", "built.glass_blue": "ice",
@@ -357,7 +358,7 @@ def render(material_id, family, rgb, keep_dark=False):
     return canvas.px
 
 
-def grass_side(name="block.grass_side", green_rgb=(82, 145, 66)):
+def grass_side(name, green_rgb):
     c = Canvas((139, 94, 60), name)
     f_soil(c)
     edge = make_noise(c.rng, 8)
@@ -377,19 +378,10 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     textures = {}
 
-    # Base blocks. Fixed colours: they are the fallback look of Block types.
-    base = Canvas((82, 145, 66), "block.grass_top")
-    f_grass_top(base)
-    textures["block.grass_top"] = base.px
-    textures["block.grass_side"] = grass_side()
-    textures["block.dirt"] = render("block.dirt", "soil", (139, 94, 60))
-    textures["block.sand"] = render("block.sand", "sand", (219, 203, 140))
-    textures["block.stone"] = render("block.stone", "granular", (132, 137, 142))
-    textures["block.water"] = render("block.water", "wave", (52, 110, 170))
-
-    materials = json.loads((ROOT / "assets/geology/materials.json").read_text("utf-8"))["materials"]
+    materials = json.loads((ROOT / "assets/materials/materials.json").read_text("utf-8"))["materials"]
     for m in materials:
-        if m["id"] == "soil.turf":
+        key, kind = m["id"], m["class"]
+        if key == "soil.turf":
             # Grass-covered ground: one tile per face (docs/06_BLOCKS.md, section 3.5).
             green = hex_rgb(m["color"])
             top = Canvas(green, "soil.turf_top")
@@ -397,22 +389,15 @@ def main():
             textures["soil.turf_top"] = top.px
             textures["soil.turf_side"] = grass_side("soil.turf_side", green)
             textures["soil.turf_bottom"] = render("soil.turf_bottom", "soil", (139, 94, 60))
-            continue
-        family = SOILS.get(m["id"]) or FLUIDS.get(m["id"])
-        if family:
-            textures[m["id"]] = render(m["id"], family, hex_rgb(m["color"]),
-                                       keep_dark=m["id"] == "fluid.oil")
-
-    built = json.loads((ROOT / "assets/blocks/built_materials.json").read_text("utf-8"))["materials"]
-    for b in built:
-        family = BUILT.get(b["id"], "dense")
-        textures[b["id"]] = render(b["id"], family, hex_rgb(b["color"]))
-
-    rocks = json.loads((ROOT / "assets/geology/rocks.json").read_text("utf-8"))["rocks"]
-    for r in rocks:
-        family = BY_ROCK.get(r["id"], BY_CLASS[r["class"]])
-        textures[r["id"]] = render(r["id"], family, hex_rgb(r["color"]),
-                                   keep_dark=family == "coal")
+        elif kind == "rock":
+            family = BY_ROCK.get(key, BY_CLASS[m["rock"]["class"]])
+            textures[key] = render(key, family, hex_rgb(m["color"]), keep_dark=family == "coal")
+        elif kind == "built":
+            textures[key] = render(key, BUILT.get(key, "dense"), hex_rgb(m["color"]))
+        elif kind in ("loose", "ice", "fluid"):
+            family = SOILS.get(key) or FLUIDS.get(key)
+            if family:
+                textures[key] = render(key, family, hex_rgb(m["color"]), keep_dark=key == "fluid.oil")
 
     for name, pixels in textures.items():
         write_png(OUT / f"{name}.png", pixels)

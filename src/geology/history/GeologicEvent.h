@@ -1,6 +1,6 @@
 #pragma once
 
-#include "geology/catalog/MaterialId.h"
+#include "materials/MaterialId.h"
 #include "planet/geology/Province.h"
 
 #include <cstdint>

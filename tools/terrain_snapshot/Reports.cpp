@@ -15,7 +15,7 @@ namespace SnapshotTool
     using namespace Infinitesia;
 
     // The rocks that were drawn, most visible first, with their colours.
-    void PrintRocks(const GeologyCatalog& catalog, const std::map<MaterialId, long>& seen)
+    void PrintRocks(const MaterialCatalog& catalog, const std::map<MaterialId, long>& seen)
     {
         if (seen.empty())
         {
@@ -31,7 +31,7 @@ namespace SnapshotTool
         std::printf("rocks in view:\n");
         for (const auto& [material, count] : ranked)
         {
-            const MaterialDef* info = catalog.GetMaterial(material);
+            const MaterialDef* info = catalog.Get(material);
             const RgbColor color = catalog.ColorOf(material);
             std::printf("  #%02x%02x%02x  %-26s %-22s %4.1f%%\n", color.r, color.g, color.b,
                         info != nullptr ? info->key.c_str() : "?", info != nullptr ? info->name.c_str() : "?",

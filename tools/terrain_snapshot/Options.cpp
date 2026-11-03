@@ -41,9 +41,9 @@ namespace SnapshotTool
             "                         dark lines, hill shading) instead of the block picture; faults are drawn\n"
             "                         where their plane reaches the ground: red normal, blue thrust, yellow\n"
             "                         strike-slip\n"
-            "  --assets <dir>         geology catalogs (default: the source tree's assets/geology)\n"
+            "  --assets <dir>         the assets folder (default: the source tree's assets)\n"
             "\n"
-            "Stone is drawn in the colour of its rock, taken from the geology catalog; the rocks\n"
+            "Every block is drawn in the colour of its material, taken from the material catalog; the rocks\n"
             "in view are listed with their colours after the picture is written.\n");
     }
 

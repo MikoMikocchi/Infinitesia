@@ -1,11 +1,11 @@
-﻿#include "geology/catalog/internal/CatalogJson.h"
+#include "materials/CatalogJson.h"
 
-#include "geology/catalog/GeologyCatalog.h"
+#include "materials/CatalogError.h"
 
 #include <algorithm>
 #include <fstream>
 
-namespace Infinitesia::CatalogInternal
+namespace Infinitesia::CatalogJson
 {
     [[noreturn]] void Fail(const Where& where, const std::string& what)
     {

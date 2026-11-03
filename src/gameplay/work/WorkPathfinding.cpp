@@ -26,7 +26,7 @@ namespace Infinitesia
                     workerObject->cell.y == cell.y &&
                     workerObject->cell.z == cell.z;
                 const bool isWalkable = block != nullptr &&
-                    (block->type != BlockType::Air || isWorkersCurrentCell);
+                    (world.terrain.Registry().Walkable(block->state) || isWorkersCurrentCell);
                 const bool reservedForAnotherOrder =
                     WorkInternal::IsReserved(orders, cell) && (cell.x != goal.x || cell.y != goal.y || cell.z != goal.z);
                 return isWalkable && !occupiedByAnotherObject && !reservedForAnotherOrder;

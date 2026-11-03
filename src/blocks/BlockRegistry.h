@@ -3,11 +3,12 @@
 #include "blocks/BlockState.h"
 #include "blocks/ShapeDef.h"
 #include "blocks/Tag.h"
-#include "geology/catalog/GeologyCatalog.h"
+#include "materials/MaterialCatalog.h"
 
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <span>
 #include <string_view>
 #include <unordered_map>
@@ -15,30 +16,35 @@
 
 namespace Infinitesia
 {
-    // The one list of everything a world cell can hold (docs/06_BLOCKS.md, section 3): the
-    // materials of the geology catalog (air, fluids, rocks, soils, ice) and the other materials of
-    // the game (assets/blocks/built_materials.json), and the shapes (assets/blocks/shapes.json).
-    // Immutable after loading, so it can be shared freely between threads.
+    // What a world cell can hold (docs/06_BLOCKS.md, section 3): the materials of the game
+    // (the MaterialCatalog) and the shapes (assets/blocks/shapes.json). The registry adds to the
+    // catalog the dense tables the hot paths read. Immutable after loading, so it can be shared
+    // freely between threads.
     //
     // The per-cell questions (Occupied, Opacity, ...) read dense tables and cost one array lookup;
     // an id the registry does not know behaves like air, a shape it does not know like a full cube.
     class BlockRegistry
     {
     public:
-        // Reads built_materials.json and shapes.json from `directory`. Throws CatalogError.
-        static BlockRegistry Build(const GeologyCatalog& geology, const std::filesystem::path& directory);
+        // Reads the shapes from `shapesFile`. Throws CatalogError.
+        static BlockRegistry Build(std::shared_ptr<const MaterialCatalog> materials,
+                                   const std::filesystem::path& shapesFile);
 
-        // A minimum without files, for terrains and tests that have no geology: air, water,
+        // A minimum without files, for terrains and tests that have no catalog: air, water,
         // seawater, turf, subsoil, sand and bedrock, and the full cube.
         static BlockRegistry BuiltIn();
 
+        const MaterialCatalog& Catalog() const noexcept { return *m_catalog; }
+        std::shared_ptr<const MaterialCatalog> CatalogPointer() const noexcept { return m_catalog; }
+
         // Every material, sorted by id.
-        std::span<const MaterialDef> Materials() const noexcept { return m_materials; }
+        std::span<const MaterialDef> Materials() const noexcept { return m_catalog->Materials(); }
         std::span<const ShapeDef> Shapes() const noexcept { return m_shapes; }
 
-        const MaterialDef* FindMaterial(std::string_view key) const noexcept;
+        const MaterialDef* FindMaterial(std::string_view key) const noexcept { return m_catalog->Find(key); }
         // nullptr for an id that is not registered.
-        const MaterialDef* GetMaterial(MaterialId id) const noexcept;
+        const MaterialDef* GetMaterial(MaterialId id) const noexcept { return m_catalog->Get(id); }
+        RgbColor ColorOf(MaterialId id) const noexcept { return m_catalog->ColorOf(id); }
         const ShapeDef* FindShape(std::string_view key) const noexcept;
         const ShapeDef* GetShape(ShapeId id) const noexcept;
 
@@ -55,6 +61,12 @@ namespace Infinitesia
         LightRgb Opacity(BlockState state) const noexcept
         {
             return ShapeProps(state.shape).passesLight ? LightRgb{} : Props(state.material).opacity;
+        }
+        // Some light gets through the cell: it stops a channel only when it dims it fully.
+        bool LetsLightThrough(BlockState state) const noexcept
+        {
+            const LightRgb dimming = Opacity(state);
+            return dimming.r < kMaxLightLevel || dimming.g < kMaxLightLevel || dimming.b < kMaxLightLevel;
         }
         LightRgb Emission(MaterialId material) const noexcept { return Props(material).emission; }
         // Sides of the cell the shape covers completely.
@@ -88,8 +100,8 @@ namespace Infinitesia
             bool passesLight = false;
         };
 
-        // Sorts, checks and indexes the materials and shapes handed in.
-        static BlockRegistry Assemble(std::vector<MaterialDef> materials, std::vector<ShapeDef> shapes);
+        // Builds the dense tables and checks and indexes the shapes handed in.
+        static BlockRegistry Assemble(std::shared_ptr<const MaterialCatalog> materials, std::vector<ShapeDef> shapes);
 
         const MaterialProps& Props(MaterialId material) const noexcept
         {
@@ -100,13 +112,11 @@ namespace Infinitesia
             return m_shapeProps[m_shapeKnown[shape] ? shape : kShapeFull];
         }
 
-        std::vector<MaterialDef> m_materials;
+        std::shared_ptr<const MaterialCatalog> m_catalog;
         std::vector<ShapeDef> m_shapes;
         std::vector<MaterialProps> m_props;                     // by MaterialId
         std::array<ShapeProperties, kShapeCapacity> m_shapeProps{};
         std::array<bool, kShapeCapacity> m_shapeKnown{};
-        std::vector<int> m_materialIndex;                       // by MaterialId, -1 when absent
-        std::unordered_map<std::string, int> m_materialByKey;
         std::unordered_map<std::string, int> m_shapeByKey;
     };
 }

@@ -28,7 +28,7 @@ namespace Infinitesia
                 (m_orders[index].type == WorkType::ChopTree &&
                  (targetObject == nullptr || !targetObject->Is(ObjectAbility::Choppable))) ||
                 (m_orders[index].type == WorkType::DigBlock &&
-                 (targetBlock == nullptr || targetBlock->type == BlockType::Air)))
+                 (targetBlock == nullptr || !world.terrain.Registry().Diggable(targetBlock->state))))
             {
                 m_orders.erase(m_orders.begin() + static_cast<std::ptrdiff_t>(index));
                 continue;
@@ -54,7 +54,7 @@ namespace Infinitesia
                 }
                 else
                 {
-                    world.terrain.SetBlockType(m_orders[index].targetCell, BlockType::Air);
+                    world.terrain.SetBlock(m_orders[index].targetCell, BlockState{ kAirMaterial, kShapeFull });
                 }
                 m_orders.erase(m_orders.begin() + static_cast<std::ptrdiff_t>(index));
                 continue;

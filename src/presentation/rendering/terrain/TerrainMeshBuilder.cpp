@@ -62,6 +62,7 @@ namespace Infinitesia
                 }
 
                 TerrainMeshGeometry::MeshData meshData;
+                const BlockRegistry& registry = world.Registry();
 
                 const std::size_t surfaceCellCount =
                     static_cast<std::size_t>(chunk.width) *
@@ -87,7 +88,7 @@ namespace Infinitesia
                                 static_cast<std::size_t>(chunk.width) +
                             static_cast<std::size_t>(localX);
                         const Block& block = chunk.blocks[blockIndex];
-                        const bool isAir = block.type == BlockType::Air;
+                        const bool isAir = !registry.Occupied(block.state);
 
                         // An empty cell shows the first solid block below it, drawn on the
                         // cutting plane and darkened the deeper it lies.
@@ -103,7 +104,7 @@ namespace Infinitesia
                                 {
                                     break;
                                 }
-                                if (below->type != BlockType::Air)
+                                if (registry.Occupied(below->state))
                                 {
                                     floorBlock = below;
                                     floorDepth = depth;
@@ -126,9 +127,9 @@ namespace Infinitesia
                         const float topY = isAir ? floorY : blockTopY;
                         const Block& visibleBlock = isAir ? *floorBlock : block;
                         TerrainMeshGeometry::FaceLook topLook = TerrainMeshGeometry::GetFaceLook(
-                            visibleBlock, world.GetCatalog(), atlas, TerrainMeshGeometry::FaceKind::Top);
+                            visibleBlock, registry, atlas, TerrainMeshGeometry::FaceKind::Top);
                         TerrainMeshGeometry::FaceLook sideLook = TerrainMeshGeometry::GetFaceLook(
-                            visibleBlock, world.GetCatalog(), atlas, TerrainMeshGeometry::FaceKind::Side);
+                            visibleBlock, registry, atlas, TerrainMeshGeometry::FaceKind::Side);
                         if (!world.HasSkyAccess(lightingCell))
                         {
                             topLook.tint = BLACK;
@@ -182,10 +183,10 @@ namespace Infinitesia
                                 block.cell.z
                             };
                             const Block* upperBlock = world.GetBlock(upperCell);
-                            if (upperBlock != nullptr && upperBlock->type != BlockType::Air)
+                            if (upperBlock != nullptr && registry.Occupied(upperBlock->state))
                             {
                                 TerrainMeshGeometry::FaceLook upperLook = TerrainMeshGeometry::GetFaceLook(
-                                    *upperBlock, world.GetCatalog(), atlas, TerrainMeshGeometry::FaceKind::Side);
+                                    *upperBlock, registry, atlas, TerrainMeshGeometry::FaceKind::Side);
                                 if (!world.HasSkyAccess(upperCell))
                                 {
                                     upperLook.tint = BLACK;

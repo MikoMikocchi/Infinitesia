@@ -66,8 +66,8 @@ namespace Infinitesia
         {
             throw std::invalid_argument("The geology model needs a catalog and a positive strata scale.");
         }
-        const Rock* granite = m_catalog->FindRock("rock.granite");
-        m_fallbackPile = { { granite != nullptr ? granite->material : kFirstRockMaterial, 0 } };
+        const MaterialDef* granite = m_catalog->Materials().Find("rock.granite");
+        m_fallbackPile = { { granite != nullptr ? granite->id : kFirstRockMaterial, 0 } };
         m_fallbackStructure.layers = { LayerShape{} };
 
         const std::uint64_t seed = map.GetSeed();
@@ -190,7 +190,7 @@ namespace Infinitesia
                 const std::size_t topDown = layers.size() - 1 - b;
                 HistoryFormation formation;
                 formation.rock = layers[topDown].rock;
-                const Rock* info = m_catalog->GetRock(formation.rock);
+                const ModalComposition* info = m_catalog->Materials().ModalOf(formation.rock);
                 formation.rockClass = info != nullptr ? info->rockClass : RockClass::SedimentaryClastic;
                 formation.thicknessMeters = layers[topDown].thicknessMeters;
                 formation.erased = topDown < stripped;

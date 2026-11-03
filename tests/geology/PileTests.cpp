@@ -33,7 +33,7 @@ TEST_CASE("EveryProvinceGetsAPileOfFormations")
         Require(model.ExposedRock(province.id) == pile.front().rock, "ExposedRock is not the top of the pile");
         for (const GeologyModel::Layer& layer : pile)
         {
-            Require(catalog->GetRock(layer.rock) != nullptr, "a layer is not a rock");
+            Require(catalog->Materials().ModalOf(layer.rock) != nullptr, "a layer is not a rock");
         }
 
         // Erosion strips the top: the deeper the cut the fewer formations remain.
@@ -43,7 +43,7 @@ TEST_CASE("EveryProvinceGetsAPileOfFormations")
         }
     }
     // Unknown provinces fall back to granite basement.
-    CHECK(model.BedrockAt(kNoProvince, 0.0, 0.0, -100, 0) == RockNamed("rock.granite").material);
+    CHECK(model.BedrockAt(kNoProvince, 0.0, 0.0, -100, 0) == MaterialNamed("rock.granite").id);
 }
 
 TEST_CASE("ProfilesFollowThePileOrderFromTopToBasement")

@@ -1,13 +1,12 @@
 #include "blocks/BlockLoaders.h"
 
-#include "geology/catalog/GeologyCatalog.h"
-#include "geology/catalog/internal/CatalogJson.h"
+#include "materials/CatalogJson.h"
 
 #include <set>
 
 namespace Infinitesia
 {
-    using namespace CatalogInternal;
+    using namespace CatalogJson;
 
     namespace
     {
@@ -39,42 +38,6 @@ namespace Infinitesia
                     Fail(where, "unknown face in 'faces' (top, bottom, north, south, east, west)");
             }
             return mask;
-        }
-    }
-
-    void LoadBuiltMaterials(const std::filesystem::path& path, std::vector<MaterialDef>& materials)
-    {
-        const Json root = ReadJson(path);
-        const Where where{ path.string(), "" };
-        std::size_t index = 0;
-        for (const Json& entry : ArrayField(root, "materials", where))
-        {
-            Where record{ path.string(), "materials[" + std::to_string(index++) + "]" };
-            MaterialDef material;
-            material.key = StringField(entry, "id", record);
-            record.record = material.key;
-            if (!StartsWith(material.key, "built."))
-                Fail(record, "id must start with 'built.'");
-            const int numericId = IntField(entry, "numericId", record);
-            if (numericId < kFirstReservedMaterial || numericId >= 4096)
-                Fail(record, "numericId must be in 1024-4095");
-            material.id = static_cast<MaterialId>(numericId);
-            material.blockClass = BlockClass::Built;
-            material.name = StringField(entry, "name", record);
-            material.density = NumberField(entry, "density", record);
-            if (!(material.density > 0.0))
-                Fail(record, "density must be positive");
-            material.digClass = IntField(entry, "digClass", record);
-            if (material.digClass < 0 || material.digClass > 5)
-                Fail(record, "digClass must be 0-5");
-            material.color = ColorField(entry, record);
-            ProvenanceField(entry, record);
-            material.tags = TagsField(entry, material.blockClass, record);
-            material.opacity = LightField(entry, "opacity", record, DefaultOpacity(material.blockClass), true);
-            material.emission = LightField(entry, "emission", record, LightRgb{}, false);
-            material.walkable = BoolField(entry, "walkable", record, true);
-            material.diggable = BoolField(entry, "diggable", record, true);
-            materials.push_back(std::move(material));
         }
     }
 

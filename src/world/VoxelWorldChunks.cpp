@@ -151,11 +151,7 @@ namespace Infinitesia
                         startY + localY,
                         startZ + localZ
                     };
-                    chunk.blocks.push_back({
-                        cell,
-                        m_terrain->BlockAt(cell),
-                        m_terrain->MaterialAt(cell)
-                    });
+                    chunk.blocks.push_back({ cell, m_terrain->StateAt(cell) });
                 }
             }
         }

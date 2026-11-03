@@ -1,26 +1,16 @@
 #pragma once
 
-#include "geology/catalog/MaterialId.h"
+#include "blocks/BlockState.h"
 #include "world/Grid.h"
 
 namespace Infinitesia
 {
-    enum class BlockType
-    {
-        Air,
-        Grass,
-        Dirt,
-        Stone,
-        Sand,
-        Water
-    };
-
+    // One cell of the world: what it is made of and what was made of it. Every rule about the
+    // cell (is it empty, can it be walked on, how much light it stops) is the BlockRegistry's
+    // answer for `state`.
     struct Block
     {
         GridCell cell;
-        BlockType type;
-        // What the block is made of when the terrain knows it (the rock of a stone block);
-        // kUnspecifiedMaterial leaves it to the block type.
-        MaterialId material = kUnspecifiedMaterial;
+        BlockState state;
     };
 }

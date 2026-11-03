@@ -1,5 +1,6 @@
 #pragma once
 
+#include "blocks/BlockRegistry.h"
 #include "geology/catalog/GeologyCatalog.h"
 #include "geology/model/GeologyModel.h"
 #include "planet/PlanetMap.h"
@@ -29,14 +30,18 @@ namespace SnapshotTool
         explicit SnapshotWorld(const Options& options);
 
         const Infinitesia::PlanetMap& Map() const noexcept { return m_map; }
+        const Infinitesia::MaterialCatalog& Materials() const noexcept { return *m_materials; }
         const Infinitesia::GeologyCatalog& Catalog() const noexcept { return *m_catalog; }
+        const Infinitesia::BlockRegistry& Registry() const noexcept { return *m_registry; }
         const Infinitesia::GeologyModel& Geology() const noexcept { return m_geology; }
         const Infinitesia::SettlementTerrain& Terrain() const noexcept { return m_terrain; }
 
     private:
         Infinitesia::PlanetMap m_map;
         Infinitesia::RegionGenerator m_generator;
+        std::shared_ptr<const Infinitesia::MaterialCatalog> m_materials;
         std::shared_ptr<const Infinitesia::GeologyCatalog> m_catalog;
+        std::shared_ptr<const Infinitesia::BlockRegistry> m_registry;
         Infinitesia::GeologyModel m_geology;
         Infinitesia::SettlementTerrain m_terrain;
     };

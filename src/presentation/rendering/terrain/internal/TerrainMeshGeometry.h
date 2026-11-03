@@ -14,7 +14,7 @@ namespace Infinitesia
     {
         namespace TerrainMeshGeometry
         {
-            // Which side of a block a face is: grass has a different top and side.
+            // Which side of a block a face is: turf has a different top and side.
             enum class FaceKind
             {
                 Top,
@@ -52,18 +52,16 @@ namespace Infinitesia
                     const FaceLook& look);
             };
 
-            Color GetBlockColor(BlockType type);
+            // The colour of a block: its material's colour in the registry.
+            Color GetBlockColor(const Block& block, const BlockRegistry& registry);
 
-            // The colour of a block: the rock's own colour for a stone block whose material the
-            // catalog knows, otherwise the colour of its block type.
-            Color GetBlockColor(const Block& block, const GeologyCatalog* catalog);
-
-            // The tile and tint of a block face. The tile is the material's own (rock.granite)
-            // when the block has one, else that of its block type (block.grass_top, ...). With
-            // no atlas the uv stays zero and the default white texture leaves just the tint.
+            // The tile and tint of a block face. The tile is found by the material's key: the face's
+            // own (rock.granite_top) first, then the plain one (rock.granite). A material with no tile
+            // gets a flat tint of its colour. With no atlas the uv stays zero and the default white
+            // texture leaves just the tint.
             FaceLook GetFaceLook(
                 const Block& block,
-                const GeologyCatalog* catalog,
+                const BlockRegistry& registry,
                 const BlockTextureAtlas* atlas,
                 FaceKind kind);
         }

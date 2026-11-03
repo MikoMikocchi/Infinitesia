@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
 #include <memory>
 
 namespace SnapshotTool
@@ -51,7 +52,12 @@ namespace SnapshotTool
     SnapshotWorld::SnapshotWorld(const Options& options)
         : m_map(BuildMap(options))
         , m_generator(m_map)
-        , m_catalog(std::make_shared<const GeologyCatalog>(GeologyCatalog::LoadFromDirectory(options.assets)))
+        , m_materials(std::make_shared<const MaterialCatalog>(
+              MaterialCatalog::LoadFromFile(std::filesystem::path(options.assets) / "materials" / "materials.json")))
+        , m_catalog(std::make_shared<const GeologyCatalog>(
+              GeologyCatalog::Load(m_materials, std::filesystem::path(options.assets) / "geology" / "province_columns.json")))
+        , m_registry(std::make_shared<const BlockRegistry>(
+              BlockRegistry::Build(m_materials, std::filesystem::path(options.assets) / "blocks" / "shapes.json")))
         , m_geology(m_catalog, m_map)
         , m_terrain(m_generator.GetTerrain(), BuildGrid(options, m_generator), options.originEast, options.originNorth)
     {

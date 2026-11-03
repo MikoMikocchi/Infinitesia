@@ -54,15 +54,20 @@ namespace Infinitesia
             site.region.i * LocalGrid::kRegionSizeMeters,
             site.region.j * LocalGrid::kRegionSizeMeters);
 
-        // The rocks under the soil come from the geology catalog shipped next to the executable.
-        auto catalog = std::make_shared<const GeologyCatalog>(GeologyCatalog::LoadFromDirectory(
-            std::filesystem::path(GetApplicationDirectory()) / "assets" / "geology"));
+        // Materials, geology columns and shapes come from the assets shipped next to the executable.
+        const std::filesystem::path assets = std::filesystem::path(GetApplicationDirectory()) / "assets";
+        auto materials = std::make_shared<const MaterialCatalog>(
+            MaterialCatalog::LoadFromFile(assets / "materials" / "materials.json"));
+        auto catalog = std::make_shared<const GeologyCatalog>(
+            GeologyCatalog::Load(materials, assets / "geology" / "province_columns.json"));
+        auto registry = std::make_shared<const BlockRegistry>(
+            BlockRegistry::Build(materials, assets / "blocks" / "shapes.json"));
         auto geology = std::make_shared<const GeologyModel>(catalog, terrain.GetPlanetMap());
 
         const GridConfig gridConfig = m_config.settlementGrid;
         auto source = std::make_shared<PlanetTerrainSource>(
             settlement, gridConfig.width, gridConfig.height, gridConfig.depth, m_config.settlementAnchorLevel,
-            geology);
+            registry, geology);
 
         m_game.reset();
         m_game.emplace(m_content,

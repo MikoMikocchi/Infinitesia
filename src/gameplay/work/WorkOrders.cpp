@@ -103,7 +103,7 @@ namespace Infinitesia
         }
 
         const Block* block = world.terrain.GetBlock(target);
-        if (block == nullptr || block->type == BlockType::Air ||
+        if (block == nullptr || !world.terrain.Registry().Diggable(block->state) ||
             world.entities.FindObjectAt(target).has_value())
         {
             return WorkOrderResult::InvalidTarget;
@@ -177,7 +177,7 @@ namespace Infinitesia
         }
 
         const Block* block = world.terrain.GetBlock(target);
-        if (block == nullptr || block->type == BlockType::Air)
+        if (block == nullptr || !world.terrain.Registry().Walkable(block->state))
         {
             return WorkOrderResult::InvalidTarget;
         }

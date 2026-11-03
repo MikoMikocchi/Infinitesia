@@ -1,6 +1,7 @@
 #pragma once
 
-#include "geology/catalog/CatalogTypes.h"
+#include "materials/CatalogError.h"
+#include "materials/MaterialTypes.h"
 
 #include <nlohmann/json.hpp>
 
@@ -8,9 +9,9 @@
 #include <string>
 #include <vector>
 
-// JSON helpers shared by the catalog loaders: reading a file, required fields, and errors
-// that name the file and the record.
-namespace Infinitesia::CatalogInternal
+// JSON helpers shared by the catalog loaders (materials, geology columns, block shapes): reading a
+// file, required fields, and errors that name the file and the record.
+namespace Infinitesia::CatalogJson
 {
     using Json = nlohmann::json;
 

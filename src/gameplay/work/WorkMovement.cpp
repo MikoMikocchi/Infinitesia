@@ -87,7 +87,7 @@ namespace Infinitesia
             else
             {
                 const Block* block = world.terrain.GetBlock(order.targetCell);
-                if (block == nullptr || block->type == BlockType::Air)
+                if (block == nullptr || !world.terrain.Registry().Occupied(block->state))
                 {
                     return false;
                 }

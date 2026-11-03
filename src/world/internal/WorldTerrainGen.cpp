@@ -59,23 +59,23 @@ namespace Infinitesia
                    localX;
         }
 
-        BlockType GenerateBlockType(int gridHeight, std::uint32_t seed, GridCell cell)
+        MaterialId GenerateMaterial(int gridHeight, std::uint32_t seed, GridCell cell, const SurfaceMaterials& materials)
         {
             if (cell.y < gridHeight - 1)
             {
-                return cell.y >= gridHeight - 4 ? BlockType::Dirt : BlockType::Stone;
+                return cell.y >= gridHeight - 4 ? materials.subsoil : materials.bedrock;
             }
 
             const float noise = TerrainNoise(cell.x, cell.z, seed);
             if (noise < 0.25f)
             {
-                return BlockType::Dirt;
+                return materials.subsoil;
             }
             if (noise > 0.78f)
             {
-                return BlockType::Stone;
+                return materials.bedrock;
             }
-            return BlockType::Grass;
+            return materials.turf;
         }
     }
 }

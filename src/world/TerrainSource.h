@@ -1,38 +1,42 @@
 #pragma once
 
-#include "geology/catalog/GeologyCatalog.h"
+#include "blocks/BlockRegistry.h"
 #include "world/Block.h"
 #include "world/Grid.h"
+#include "world/SurfaceMaterials.h"
 
 #include <cstdint>
+#include <memory>
 
 namespace Infinitesia
 {
     // Decides what a world cell is made of before anything has been dug or built.
-    // Must be deterministic: the same cell always gives the same block.
+    // Must be deterministic: the same cell always gives the same state.
     class TerrainSource
     {
     public:
         virtual ~TerrainSource() = default;
-        virtual BlockType BlockAt(GridCell cell) const = 0;
+        virtual BlockState StateAt(GridCell cell) const = 0;
 
-        // The material of a block when the terrain has a geology; kUnspecifiedMaterial otherwise.
-        virtual MaterialId MaterialAt(GridCell cell) const { (void)cell; return kUnspecifiedMaterial; }
-
-        // The catalog that names the materials this terrain hands out; nullptr without geology.
-        virtual const GeologyCatalog* Catalog() const { return nullptr; }
+        // The registry that names the materials and shapes this terrain hands out.
+        virtual const BlockRegistry& Registry() const = 0;
     };
 
     // The original flat world: a value-noise patchwork on a single surface layer.
     class NoiseTerrainSource final : public TerrainSource
     {
     public:
-        NoiseTerrainSource(int gridHeight, std::uint32_t seed);
+        // Without a registry the minimum one (BlockRegistry::BuiltIn) is used.
+        NoiseTerrainSource(int gridHeight, std::uint32_t seed,
+                           std::shared_ptr<const BlockRegistry> registry = nullptr);
 
-        BlockType BlockAt(GridCell cell) const override;
+        BlockState StateAt(GridCell cell) const override;
+        const BlockRegistry& Registry() const override { return *m_registry; }
 
     private:
         int m_gridHeight;
         std::uint32_t m_seed;
+        std::shared_ptr<const BlockRegistry> m_registry;
+        SurfaceMaterials m_materials;
     };
 }

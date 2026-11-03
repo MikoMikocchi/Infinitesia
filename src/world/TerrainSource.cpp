@@ -3,14 +3,18 @@
 
 namespace Infinitesia
 {
-    NoiseTerrainSource::NoiseTerrainSource(int gridHeight, std::uint32_t seed)
+    NoiseTerrainSource::NoiseTerrainSource(int gridHeight, std::uint32_t seed,
+                                           std::shared_ptr<const BlockRegistry> registry)
         : m_gridHeight(gridHeight)
         , m_seed(seed)
+        , m_registry(registry != nullptr ? std::move(registry)
+                                         : std::make_shared<const BlockRegistry>(BlockRegistry::BuiltIn()))
+        , m_materials(SurfaceMaterials::Resolve(*m_registry))
     {
     }
 
-    BlockType NoiseTerrainSource::BlockAt(GridCell cell) const
+    BlockState NoiseTerrainSource::StateAt(GridCell cell) const
     {
-        return WorldInternal::GenerateBlockType(m_gridHeight, m_seed, cell);
+        return { WorldInternal::GenerateMaterial(m_gridHeight, m_seed, cell, m_materials), kShapeFull };
     }
 }

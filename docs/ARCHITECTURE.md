@@ -8,7 +8,9 @@ app            main loop, screens, wiring                      (exe)
 presentation   rendering, ui, input, assets - raylib           (exe)
 gameplay       GameWorld, entities, items, work, commands      (lib, no raylib)
 world          grid, chunks, VoxelWorld, terrain sources       (lib, no raylib)
-geology        what the ground is made of; JSON catalogs       (lib)
+blocks         shapes of a cell, dense tables over materials   (lib)
+geology        what the ground is made of: province columns    (lib)
+materials      every material of the game; JSON catalog        (lib)
 planet         planet generation pipeline                      (lib)
 chemistry      elements, compositions, reactions               (lib)
 foundation     time, simulation clock, load progress, coords   (lib)
@@ -25,7 +27,11 @@ in step.
 - Terrain (`VoxelWorld`) and things standing on it (`EntityStore`) are separate; `GameWorld`
   bundles them for systems that need both. Take the narrowest half you can.
 - Content is data in `assets/`, loaded into registries with stable string ids
-  (`foundation/ContentRegistry.h`). Geology has its own catalog; gameplay items and object
+  (`foundation/ContentRegistry.h`). Materials are one list, `assets/materials/materials.json`
+  (`MaterialCatalog`): air, fluids, rocks, soils, minerals, built materials alike, one `MaterialDef`
+  each; what only some have (a mineral's formula, a rock's modal composition) is a side table by
+  the same id. A world cell is `BlockState{material, shape}`; every rule about it is a
+  `BlockRegistry` query (docs/06_BLOCKS.md). Gameplay items and object
   kinds are in `assets/gameplay/{items,objects}.json` (`GameContent`). Code asks an object
   for its *abilities* (worker, choppable, pickable), never for a particular kind. Adding a
   kind with a known look is JSON only; a new look is a new `ObjectVisual` plus a draw routine.
@@ -45,6 +51,4 @@ domains add stages and layers instead of editing it. See `docs/05_PLANET_PIPELIN
 
 ## Planned (not done yet)
 
-- `BlockType` (and the legacy block rules around it) still an enum; it should give way to
-  the geology catalog's materials with `BlockClass`.
 - A system scheduler with per-system cadence, once a second ticking system exists.

@@ -22,6 +22,7 @@ MODULE_OF = {
     "foundation": "foundation",
     "chemistry": "chemistry",
     "planet": "planet",
+    "materials": "materials",
     "geology": "geology",
     "blocks": "blocks",
     "world": "world",
@@ -35,15 +36,17 @@ ALLOWED = {
     "foundation": set(),
     "chemistry": {"foundation"},
     "planet": {"foundation"},
+    # materials is the one list of what things are made of (docs/06_BLOCKS.md); it also owns the JSON
+    # helpers the catalog loaders of geology and blocks share.
+    "materials": {"foundation", "chemistry"},
     # geology takes from planet only the data types (planet/geology/Province.h, PlanetEpochs.h);
     # GeologyModel reads the planet through GeologyPlanetView, never planet/PlanetMap.h.
-    "geology": {"foundation", "chemistry", "planet"},
-    # blocks reads the geology catalog and its JSON helpers (materials of the world, docs/06_BLOCKS.md).
-    "blocks": {"foundation", "chemistry", "planet", "geology"},
-    "world": {"foundation", "planet", "geology", "blocks"},
-    "gameplay": {"foundation", "planet", "geology", "blocks", "world"},
-    "presentation": {"foundation", "chemistry", "planet", "geology", "blocks", "world", "gameplay"},
-    "app": {"foundation", "chemistry", "planet", "geology", "blocks", "world", "gameplay", "presentation"},
+    "geology": {"foundation", "chemistry", "planet", "materials"},
+    "blocks": {"foundation", "chemistry", "materials"},
+    "world": {"foundation", "planet", "materials", "geology", "blocks"},
+    "gameplay": {"foundation", "planet", "materials", "geology", "blocks", "world"},
+    "presentation": {"foundation", "chemistry", "planet", "materials", "geology", "blocks", "world", "gameplay"},
+    "app": {"foundation", "chemistry", "planet", "materials", "geology", "blocks", "world", "gameplay", "presentation"},
 }
 
 # Include prefixes that are not part of src/.

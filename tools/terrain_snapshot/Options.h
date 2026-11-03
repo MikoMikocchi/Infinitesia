@@ -23,7 +23,7 @@ namespace SnapshotTool
         std::string output = "snapshot.png";
         std::uint64_t seed = 1;
         int planetBands = 0;           // 0: the game's resolution
-        std::string assets = INFINITESIA_GEOLOGY_ASSET_DIR; // geology catalogs
+        std::string assets = INFINITESIA_ASSET_DIR; // the assets folder: materials, geology, blocks
         bool map = false;              // a geological map from above instead of the block picture
     };
 

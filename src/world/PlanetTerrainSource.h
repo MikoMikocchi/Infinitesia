@@ -15,27 +15,30 @@ namespace Infinitesia
     // origin (z grows southward, so looking north the map reads the right way round);
     // the origin ground sits at `anchorLevel`, and one level is one metre of height.
     //
-    // Each column is a surface block (grass, dirt, sand or stone by biome), a few
-    // blocks of matching topsoil, and stone below. Ground below sea level is covered
-    // by water up to the waterline.
+    // Each column is a surface block (turf, subsoil, sand or rock by biome), a few
+    // blocks of matching topsoil, and rock below. Ground below sea level is covered
+    // by seawater up to the waterline.
     //
-    // With a geology model the stone is real rock: MaterialAt gives the rock of every
-    // stone block from the layers of the column's province. Without one every stone block
-    // is unspecified, as before.
+    // With a geology model the rock is real: StateAt gives the rock of every rock block from the
+    // layers of the column's province. Without one every rock block is bedrock.
     class PlanetTerrainSource final : public TerrainSource
     {
     public:
+        // The registry must know every rock the geology can hand out (checked here).
         PlanetTerrainSource(std::shared_ptr<const SettlementTerrain> terrain,
                             int gridWidth, int gridHeight, int gridDepth, int anchorLevel,
+                            std::shared_ptr<const BlockRegistry> registry,
                             std::shared_ptr<const GeologyModel> geology = nullptr);
 
-        BlockType BlockAt(GridCell cell) const override;
-        MaterialId MaterialAt(GridCell cell) const override;
-        const GeologyCatalog* Catalog() const override;
+        BlockState StateAt(GridCell cell) const override;
+        const BlockRegistry& Registry() const override { return *m_registry; }
+
+        // What a layer of ground is, before a material is chosen for it.
+        enum class Layer { Turf, Subsoil, Sand, Rock };
 
         // What lies `depthBelowSurface` blocks under the surface block of a column of the
-        // given kind (0 is the surface block itself): topsoil, then stone.
-        static BlockType LayerAt(SurfaceKind kind, int depthBelowSurface);
+        // given kind (0 is the surface block itself): topsoil, then rock.
+        static Layer LayerAt(SurfaceKind kind, int depthBelowSurface);
 
         // Level of the topmost solid block of a column (clamped inside the grid).
         int SurfaceLevelAt(int x, int z) const;
@@ -56,6 +59,8 @@ namespace Infinitesia
         const GeologyModel::ColumnProfile& ProfileAt(int x, int z) const;
 
         std::shared_ptr<const SettlementTerrain> m_terrain;
+        std::shared_ptr<const BlockRegistry> m_registry;
+        SurfaceMaterials m_materials;
         std::shared_ptr<const GeologyModel> m_geology;
         int m_width;
         int m_height;

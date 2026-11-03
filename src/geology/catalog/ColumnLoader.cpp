@@ -1,12 +1,11 @@
 #include "geology/catalog/ColumnLoader.h"
 
-#include "geology/catalog/GeologyCatalog.h"
-#include "geology/catalog/internal/CatalogJson.h"
+#include "materials/CatalogJson.h"
 
 
 namespace Infinitesia
 {
-    using namespace CatalogInternal;
+    using namespace CatalogJson;
 
     namespace
     {
@@ -28,8 +27,8 @@ namespace Infinitesia
         }
     }
 
-    void LoadColumns(const std::filesystem::path& path, const std::unordered_map<std::string, int>& rockByKey,
-                     const std::vector<Rock>& rocks, std::array<ProvinceColumn, kProvinceTypeCount>& columns)
+    void LoadColumns(const std::filesystem::path& path, const MaterialCatalog& materials,
+                     std::array<ProvinceColumn, kProvinceTypeCount>& columns)
     {
         const Json root = ReadJson(path);
         Where where{ path.string(), "" };
@@ -84,11 +83,11 @@ namespace Infinitesia
             for (const Json& layer : layers)
             {
                 const std::string rockKey = StringField(layer, "rock", record);
-                const auto found = rockByKey.find(rockKey);
-                if (found == rockByKey.end())
+                const MaterialDef* rock = materials.Find(rockKey);
+                if (rock == nullptr || rock->blockClass != BlockClass::Rock)
                     Fail(record, "unknown rock '" + rockKey + "'");
                 ColumnLayer parsed;
-                parsed.rock = rocks[static_cast<std::size_t>(found->second)].material;
+                parsed.rock = rock->id;
                 parsed.thicknessMeters = NumberField(layer, "thicknessM", record);
                 if (!(parsed.thicknessMeters > 0.0))
                     Fail(record, "layer thickness must be positive");

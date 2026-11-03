@@ -21,16 +21,29 @@ namespace
     constexpr int kHeight = 24;
     constexpr int kGround = 8;
 
+    // The minimum registry the test terrains draw their materials from.
+    const BlockRegistry& TestRegistry()
+    {
+        static const BlockRegistry registry = BlockRegistry::BuiltIn();
+        return registry;
+    }
+
+    MaterialId Material(const char* key)
+    {
+        return TestRegistry().FindMaterial(key)->id;
+    }
+
     // Terrain made of a height function: solid up to and including height(x, z), air above.
     class HeightTerrain final : public TerrainSource
     {
     public:
         explicit HeightTerrain(std::function<int(int, int)> height) : m_height(std::move(height)) {}
 
-        BlockType BlockAt(GridCell cell) const override
+        BlockState StateAt(GridCell cell) const override
         {
-            return cell.y <= m_height(cell.x, cell.z) ? BlockType::Stone : BlockType::Air;
+            return { cell.y <= m_height(cell.x, cell.z) ? Material("rock.bedrock") : kAirMaterial, kShapeFull };
         }
+        const BlockRegistry& Registry() const override { return TestRegistry(); }
 
     private:
         std::function<int(int, int)> m_height;
@@ -64,11 +77,12 @@ TEST_CASE("WaterIsNotGround")
     const class Flooded final : public TerrainSource
     {
     public:
-        BlockType BlockAt(GridCell cell) const override
+        BlockState StateAt(GridCell cell) const override
         {
-            if (cell.y <= kGround) { return BlockType::Sand; }
-            return cell.y <= kGround + 3 ? BlockType::Water : BlockType::Air;
+            if (cell.y <= kGround) { return { Material("soil.sand"), kShapeFull }; }
+            return { cell.y <= kGround + 3 ? Material("fluid.water") : kAirMaterial, kShapeFull };
         }
+        const BlockRegistry& Registry() const override { return TestRegistry(); }
     } terrain;
     CHECK(SurfaceLevelOf(TestGrid(), terrain, 10, 10) == kGround);
     CHECK(SurfaceLevelOf(TestGrid(), terrain, -1, 10) == -1);

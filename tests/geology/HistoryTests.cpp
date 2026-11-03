@@ -56,7 +56,7 @@ TEST_CASE("HistoriesAreOrderedAndEachEventHasAnOlderCause")
                                    event.type == EventType::RegionalMetamorphism;
             if (formation)
             {
-                const Rock* rock = catalog->GetRock(event.rock);
+                const ModalComposition* rock = catalog->Materials().ModalOf(event.rock);
                 Require(rock != nullptr, "a formation event has no rock");
                 if (rock != nullptr && event.type != EventType::BasementFormation)
                 {
@@ -159,9 +159,9 @@ TEST_CASE("PilesRespectTheBiosphereOfTheirTime")
     const PlanetMap& map = SharedMap();
     const auto catalog = std::make_shared<const GeologyCatalog>(SharedCatalog());
     const GeologyModel model(catalog, map);
-    const MaterialId coal = RockNamed("rock.bituminous_coal").material;
-    const MaterialId redBeds = RockNamed("rock.red_beds").material;
-    const MaterialId chalk = RockNamed("rock.chalk").material;
+    const MaterialId coal = MaterialNamed("rock.bituminous_coal").id;
+    const MaterialId redBeds = MaterialNamed("rock.red_beds").id;
+    const MaterialId chalk = MaterialNamed("rock.chalk").id;
 
     int withCoal = 0;
     for (const Province& province : map.GetProvinces())

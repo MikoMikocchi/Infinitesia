@@ -74,24 +74,26 @@ endfunction()
 #   foundation                      ids, time, load progress, coordinates; no domain knowledge
 #   chemistry                       elements, compositions, reactions
 #   planet                          planet generation pipeline (no raylib)
-#   geology                         what the ground is made of; content from assets/geology/*.json
-#   blocks                          materials and shapes of a world cell; content from assets/blocks/*.json
+#   materials                       every material of the game (rocks, minerals, fluids, built); assets/materials/materials.json
+#   geology                         what the ground is made of: province columns of rocks; assets/geology/*.json
+#   blocks                          shapes of a world cell and the dense tables over materials; assets/blocks/*.json
 #   world                           the block terrain: grid, chunks, terrain sources (no raylib)
 #   gameplay                        entities, items, work, commands, pathfinding (no raylib)
 #   (executable)                    presentation (rendering, ui, input, assets) and app
 infinitesia_add_module(InfinitesiaFoundation DIRS foundation)
 infinitesia_add_module(InfinitesiaChemistry DIRS chemistry PUBLIC InfinitesiaFoundation)
 infinitesia_add_module(InfinitesiaPlanet DIRS planet PUBLIC InfinitesiaFoundation)
+infinitesia_add_module(InfinitesiaMaterials DIRS materials
+  PUBLIC InfinitesiaChemistry PRIVATE nlohmann_json::nlohmann_json)
 infinitesia_add_module(InfinitesiaGeology DIRS geology
-  PUBLIC InfinitesiaPlanet InfinitesiaChemistry PRIVATE nlohmann_json::nlohmann_json)
+  PUBLIC InfinitesiaPlanet InfinitesiaChemistry InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
 
 # Where the source tree keeps the catalogs; tools and tests that run from a build
 # directory read them from here (the game reads the copy next to its executable).
 infinitesia_add_module(InfinitesiaBlocks DIRS blocks
-  PUBLIC InfinitesiaGeology PRIVATE nlohmann_json::nlohmann_json)
+  PUBLIC InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
 
-set(INFINITESIA_GEOLOGY_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/geology")
-set(INFINITESIA_BLOCKS_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/blocks")
+set(INFINITESIA_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
 set(INFINITESIA_GAMEPLAY_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/gameplay")
 
 infinitesia_add_module(InfinitesiaWorld DIRS world PUBLIC InfinitesiaPlanet InfinitesiaGeology InfinitesiaBlocks)
@@ -102,7 +104,7 @@ file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
-foreach(module_dir IN ITEMS foundation chemistry geology planet blocks world gameplay)
+foreach(module_dir IN ITEMS foundation chemistry materials geology planet blocks world gameplay)
   list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/${module_dir}/")
 endforeach()
 add_executable(Infinitesia ${INFINITESIA_SOURCES})
@@ -124,7 +126,7 @@ target_include_directories(Infinitesia PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaGameplay InfinitesiaWorld InfinitesiaBlocks InfinitesiaGeology InfinitesiaPlanet InfinitesiaFoundation)
+target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaGameplay InfinitesiaWorld InfinitesiaBlocks InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet InfinitesiaFoundation)
 
 # Treat raylib headers as system headers so their warnings do not drown ours.
 get_target_property(RAYLIB_INCLUDE_DIRS raylib INTERFACE_INCLUDE_DIRECTORIES)
@@ -146,14 +148,14 @@ add_executable(TerrainSnapshot
   tools/terrain_snapshot/Reports.cpp
   tools/terrain_snapshot/SnapshotWorld.cpp)
 target_include_directories(TerrainSnapshot PRIVATE tools)
-target_link_libraries(TerrainSnapshot PRIVATE InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet)
-target_compile_definitions(TerrainSnapshot PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
+target_link_libraries(TerrainSnapshot PRIVATE InfinitesiaWorld InfinitesiaBlocks InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet)
+target_compile_definitions(TerrainSnapshot PRIVATE INFINITESIA_ASSET_DIR="${INFINITESIA_ASSET_DIR}")
 infinitesia_enable_warnings(TerrainSnapshot)
 
 # Command-line tool: asks the geology what lies at a point of the planet and why (no window).
 add_executable(GeologyInspector tools/GeologyInspector.cpp)
-target_link_libraries(GeologyInspector PRIVATE InfinitesiaGeology InfinitesiaPlanet)
-target_compile_definitions(GeologyInspector PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
+target_link_libraries(GeologyInspector PRIVATE InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet)
+target_compile_definitions(GeologyInspector PRIVATE INFINITESIA_ASSET_DIR="${INFINITESIA_ASSET_DIR}")
 infinitesia_enable_warnings(GeologyInspector)
 
 include(CTest)
@@ -202,15 +204,15 @@ if (BUILD_TESTING)
   doctest_discover_tests(RegionTests)
 
   add_executable(WorldTests tests/WorldTests.cpp)
-  target_link_libraries(WorldTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet doctest::doctest)
+  target_link_libraries(WorldTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaBlocks InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet doctest::doctest)
   target_compile_definitions(WorldTests PRIVATE
-    INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}"
+    INFINITESIA_ASSET_DIR="${INFINITESIA_ASSET_DIR}"
     INFINITESIA_GAMEPLAY_ASSET_DIR="${INFINITESIA_GAMEPLAY_ASSET_DIR}")
   infinitesia_enable_warnings(WorldTests)
   doctest_discover_tests(WorldTests)
 
   add_executable(LocalGameTests tests/LocalGameTests.cpp)
-  target_link_libraries(LocalGameTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet doctest::doctest)
+  target_link_libraries(LocalGameTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaBlocks InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet doctest::doctest)
   target_compile_definitions(LocalGameTests PRIVATE INFINITESIA_GAMEPLAY_ASSET_DIR="${INFINITESIA_GAMEPLAY_ASSET_DIR}")
   infinitesia_enable_warnings(LocalGameTests)
   doctest_discover_tests(LocalGameTests)
@@ -224,29 +226,35 @@ if (BUILD_TESTING)
   infinitesia_enable_warnings(PlanetGeologyTests)
   doctest_discover_tests(PlanetGeologyTests)
 
+  add_executable(MaterialsTests
+    tests/support/DoctestMain.cpp
+    tests/materials/MaterialCatalogTests.cpp)
+  target_link_libraries(MaterialsTests PRIVATE InfinitesiaMaterials InfinitesiaChemistry nlohmann_json::nlohmann_json TestSupport)
+  target_compile_definitions(MaterialsTests PRIVATE INFINITESIA_ASSET_DIR="${INFINITESIA_ASSET_DIR}")
+  infinitesia_enable_warnings(MaterialsTests)
+  doctest_discover_tests(MaterialsTests)
+
   add_executable(GeologyTests
     tests/support/DoctestMain.cpp
-    tests/geology/CatalogTests.cpp
+    tests/geology/ColumnTests.cpp
     tests/geology/PileTests.cpp
     tests/geology/FaultTests.cpp
     tests/geology/HistoryTests.cpp)
-  target_link_libraries(GeologyTests PRIVATE InfinitesiaGeology InfinitesiaPlanet InfinitesiaChemistry TestSupport)
-  target_compile_definitions(GeologyTests PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
+  target_link_libraries(GeologyTests PRIVATE InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet InfinitesiaChemistry nlohmann_json::nlohmann_json TestSupport)
+  target_compile_definitions(GeologyTests PRIVATE INFINITESIA_ASSET_DIR="${INFINITESIA_ASSET_DIR}")
   infinitesia_enable_warnings(GeologyTests)
   doctest_discover_tests(GeologyTests)
 
   add_executable(BlocksTests
     tests/support/DoctestMain.cpp
     tests/blocks/RegistryTests.cpp)
-  target_link_libraries(BlocksTests PRIVATE InfinitesiaBlocks InfinitesiaGeology InfinitesiaPlanet InfinitesiaChemistry TestSupport)
-  target_compile_definitions(BlocksTests PRIVATE
-    INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}"
-    INFINITESIA_BLOCKS_ASSET_DIR="${INFINITESIA_BLOCKS_ASSET_DIR}")
+  target_link_libraries(BlocksTests PRIVATE InfinitesiaBlocks InfinitesiaMaterials InfinitesiaChemistry nlohmann_json::nlohmann_json TestSupport)
+  target_compile_definitions(BlocksTests PRIVATE INFINITESIA_ASSET_DIR="${INFINITESIA_ASSET_DIR}")
   infinitesia_enable_warnings(BlocksTests)
   doctest_discover_tests(BlocksTests)
 
   add_executable(ContentTests tests/ContentTests.cpp)
-  target_link_libraries(ContentTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet doctest::doctest)
+  target_link_libraries(ContentTests PRIVATE InfinitesiaGameplay InfinitesiaWorld InfinitesiaBlocks InfinitesiaGeology InfinitesiaMaterials InfinitesiaPlanet doctest::doctest)
   target_compile_definitions(ContentTests PRIVATE INFINITESIA_GAMEPLAY_ASSET_DIR="${INFINITESIA_GAMEPLAY_ASSET_DIR}")
   infinitesia_enable_warnings(ContentTests)
   doctest_discover_tests(ContentTests)
