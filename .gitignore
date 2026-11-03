@@ -44,7 +44,6 @@ _deps/
 
 # Misc
 *.log
-docs/
 
 # Generated load-time profile
 loading_profile.txt

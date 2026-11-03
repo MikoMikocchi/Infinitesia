@@ -1,0 +1,50 @@
+# Architecture
+
+The game is one executable built from layers. A layer may include only layers below it;
+`tools/check_dependencies.py` (CTest: `LayeringCheck`) fails the build otherwise.
+
+```
+app            main loop, screens, wiring                      (exe)
+presentation   rendering, ui, input, assets - raylib           (exe)
+gameplay       GameWorld, entities, items, work, commands      (lib, no raylib)
+world          grid, chunks, VoxelWorld, terrain sources       (lib, no raylib)
+geology        what the ground is made of; JSON catalogs       (lib)
+planet         planet generation pipeline                      (lib)
+chemistry      elements, compositions, reactions               (lib)
+foundation     time, simulation clock, load progress, coords   (lib)
+```
+
+Exact allowed edges are the `ALLOWED` table in `tools/check_dependencies.py`; the
+libraries are declared with `infinitesia_add_module(...)` in `CMakeLists.txt`. Keep both
+in step.
+
+## Rules
+
+- Dependencies go down only. Domains never reach sideways into each other's internals.
+- Pure models (chemistry, planet, geology) and the block terrain know nothing about raylib.
+- Terrain (`VoxelWorld`) and things standing on it (`EntityStore`) are separate; `GameWorld`
+  bundles them for systems that need both. Take the narrowest half you can.
+- Content is data in `assets/`, loaded into registries with stable string ids
+  (`foundation/ContentRegistry.h`). Geology has its own catalog; gameplay items and object
+  kinds are in `assets/gameplay/{items,objects}.json` (`GameContent`). Code asks an object
+  for its *abilities* (worker, choppable, pickable), never for a particular kind. Adding a
+  kind with a known look is JSON only; a new look is a new `ObjectVisual` plus a draw routine.
+
+## Adding a domain
+
+1. `src/<domain>/` with a public header surface and `internal/` for the rest.
+2. A line in `MODULE_OF` and `ALLOWED` (`tools/check_dependencies.py`) and an
+   `infinitesia_add_module` in `CMakeLists.txt`.
+3. A test executable in `tests/`, registered with `doctest_discover_tests`.
+4. A section in `docs/`.
+
+## Planet generation
+
+`PlanetMap` is built by a pipeline of stages that declare what they need and provide; new
+domains add stages and layers instead of editing it. See `docs/05_PLANET_PIPELINE.md`.
+
+## Planned (not done yet)
+
+- `BlockType` (and the legacy block rules around it) still an enum; it should give way to
+  the geology catalog's materials with `BlockClass`.
+- A system scheduler with per-system cadence, once a second ticking system exists.
