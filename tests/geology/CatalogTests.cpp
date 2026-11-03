@@ -20,7 +20,7 @@ TEST_CASE("CatalogLoadsWithStableIds")
     const GeologyCatalog& catalog = SharedCatalog();
     CHECK(catalog.Minerals().size() >= 160);
     CHECK(catalog.Rocks().size() >= 95);
-    CHECK(catalog.Materials().size() == catalog.Rocks().size() + 21);
+    CHECK(catalog.Materials().size() == catalog.Rocks().size() + 22);
 
     // Numeric IDs are saved with worlds: these never change.
     CHECK(catalog.FindMineral("mineral.quartz")->numericId == 1);
@@ -29,6 +29,8 @@ TEST_CASE("CatalogLoadsWithStableIds")
     CHECK(catalog.FindMaterial("fluid.water")->id == kWaterMaterial);
     CHECK(catalog.FindMaterial("air")->id == kAirMaterial);
     CHECK(catalog.FindMaterial("soil.humus")->id == kFirstLooseMaterial);
+    CHECK(catalog.FindMaterial("soil.turf")->id == 527);
+    CHECK(catalog.FindMaterial("rock.bedrock")->id == 130);
 
     std::set<std::string> ids;
     std::set<int> mineralNumbers;
@@ -85,6 +87,17 @@ TEST_CASE("MaterialsCarryTagsAndLightProperties")
     CHECK(catalog.FindMaterial("fluid.magma")->emission == LightRgb{ 14, 6, 1 });
     CHECK(catalog.FindMaterial("fluid.magma")->opacity == LightRgb{ 15, 15, 15 });
     CHECK(catalog.FindMaterial("fluid.oil")->emission == LightRgb{});
+
+    // Grass-covered ground and the stand-in rock for terrains without geology (docs/06_BLOCKS.md, section 4).
+    const MaterialDef& turf = *catalog.FindMaterial("soil.turf");
+    CHECK(turf.blockClass == BlockClass::Loose);
+    CHECK(hasTag(turf, "soil"));
+    CHECK(turf.digClass == 1);
+    const MaterialDef& bedrock = *catalog.FindMaterial("rock.bedrock");
+    CHECK(bedrock.blockClass == BlockClass::Rock);
+    CHECK(bedrock.digClass == 4);
+    CHECK(catalog.FindRock("rock.bedrock")->modal.empty());
+    CHECK(catalog.FindMaterial("soil.sand")->tags.size() == 2);
 
     // The sea is the same as fresh water for now (docs/06_BLOCKS.md): one tag, equal properties.
     const MaterialDef& water = *catalog.FindMaterial("fluid.water");

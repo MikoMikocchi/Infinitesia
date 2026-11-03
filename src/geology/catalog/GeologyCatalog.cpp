@@ -28,7 +28,6 @@ namespace Infinitesia
             material.id = rock.material;
             material.key = rock.id;
             material.name = rock.name;
-            material.nameRu = rock.nameRu;
             material.blockClass = BlockClass::Rock;
             material.density = rock.density;
             material.digClass = rock.digClass;

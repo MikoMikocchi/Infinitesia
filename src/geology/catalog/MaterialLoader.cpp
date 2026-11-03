@@ -96,7 +96,6 @@ namespace Infinitesia
                 Fail(record, "numericId is outside the range of its class");
             material.id = static_cast<MaterialId>(numericId);
             material.name = StringField(entry, "name", record);
-            material.nameRu = entry.value("nameRu", std::string());
             material.density = NumberField(entry, "density", record);
             if (!(material.density > 0.0))
                 Fail(record, "density must be positive");

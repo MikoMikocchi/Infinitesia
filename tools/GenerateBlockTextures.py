@@ -350,11 +350,11 @@ def render(material_id, family, rgb, keep_dark=False):
     return canvas.px
 
 
-def grass_side():
-    c = Canvas((139, 94, 60), "block.grass_side")
+def grass_side(name="block.grass_side", green_rgb=(82, 145, 66)):
+    c = Canvas((139, 94, 60), name)
     f_soil(c)
     edge = make_noise(c.rng, 8)
-    green = Canvas((82, 145, 66), "block.grass_top")
+    green = Canvas(green_rgb, name)
     f_grass_top(green)
     for y in range(SIZE):
         for x in range(SIZE):
@@ -382,6 +382,15 @@ def main():
 
     materials = json.loads((ROOT / "assets/geology/materials.json").read_text("utf-8"))["materials"]
     for m in materials:
+        if m["id"] == "soil.turf":
+            # Grass-covered ground: one tile per face (docs/06_BLOCKS.md, section 3.5).
+            green = hex_rgb(m["color"])
+            top = Canvas(green, "soil.turf_top")
+            f_grass_top(top)
+            textures["soil.turf_top"] = top.px
+            textures["soil.turf_side"] = grass_side("soil.turf_side", green)
+            textures["soil.turf_bottom"] = render("soil.turf_bottom", "soil", (139, 94, 60))
+            continue
         family = SOILS.get(m["id"]) or FLUIDS.get(m["id"])
         if family:
             textures[m["id"]] = render(m["id"], family, hex_rgb(m["color"]),

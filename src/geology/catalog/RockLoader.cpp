@@ -55,7 +55,6 @@ namespace Infinitesia
                 Fail(record, "numericId must be unique and in 32-511");
             rock.material = static_cast<MaterialId>(rock.numericId);
             rock.name = StringField(entry, "name", record);
-            rock.nameRu = entry.value("nameRu", std::string());
             rock.rockClass = RockClassField(entry, record);
             rock.density = NumberField(entry, "density", record);
             if (!(rock.density >= 500.0 && rock.density <= 6000.0))

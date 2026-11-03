@@ -106,7 +106,6 @@ namespace Infinitesia
         std::string id;          // "rock.granite"
         int numericId = 0;       // also its MaterialId
         std::string name;
-        std::string nameRu;
         RockClass rockClass = RockClass::IgneousIntrusive;
         double density = 0.0;    // kg/m3, typical bulk
         int digClass = 3;        // 1 soft ground .. 5 very hard
@@ -122,7 +121,6 @@ namespace Infinitesia
         MaterialId id = 0;
         std::string key;         // "rock.granite", "soil.sand", "fluid.water"
         std::string name;
-        std::string nameRu;
         BlockClass blockClass = BlockClass::Air;
         double density = 0.0;    // kg/m3
         int digClass = 0;

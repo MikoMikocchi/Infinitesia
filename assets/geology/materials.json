@@ -6,7 +6,6 @@
    "id": "air",
    "numericId": 0,
    "name": "air",
-   "nameRu": "воздух",
    "class": "air",
    "density": 1.2,
    "digClass": 0,
@@ -17,7 +16,6 @@
    "id": "fluid.water",
    "numericId": 1,
    "name": "water",
-   "nameRu": "вода",
    "class": "fluid",
    "density": 1000,
    "digClass": 0,
@@ -29,7 +27,6 @@
    "id": "fluid.seawater",
    "numericId": 2,
    "name": "seawater",
-   "nameRu": "морская вода",
    "class": "fluid",
    "density": 1000,
    "digClass": 0,
@@ -41,7 +38,6 @@
    "id": "fluid.brine",
    "numericId": 3,
    "name": "brine",
-   "nameRu": "рассол",
    "class": "fluid",
    "density": 1200,
    "digClass": 0,
@@ -52,7 +48,6 @@
    "id": "fluid.oil",
    "numericId": 4,
    "name": "oil",
-   "nameRu": "нефть",
    "class": "fluid",
    "density": 850,
    "digClass": 0,
@@ -63,7 +58,6 @@
    "id": "fluid.magma",
    "numericId": 5,
    "name": "magma",
-   "nameRu": "магма",
    "class": "fluid",
    "density": 2700,
    "digClass": 0,
@@ -76,150 +70,149 @@
    "id": "soil.humus",
    "numericId": 512,
    "name": "humus",
-   "nameRu": "гумусовый горизонт (A)",
    "class": "loose",
    "density": 1300.0,
    "digClass": 1,
    "color": "#4a3a2a",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.subsoil",
    "numericId": 513,
    "name": "subsoil",
-   "nameRu": "подпочва (B)",
    "class": "loose",
    "density": 1600.0,
    "digClass": 1,
    "color": "#7a5a3a",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.clay",
    "numericId": 514,
    "name": "clay",
-   "nameRu": "глина",
    "class": "loose",
    "density": 1800.0,
    "digClass": 1,
    "color": "#9a6a4a",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.silt",
    "numericId": 515,
    "name": "silt",
-   "nameRu": "ил (алеврит)",
    "class": "loose",
    "density": 1700.0,
    "digClass": 1,
    "color": "#a8957a",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.sand",
    "numericId": 516,
    "name": "sand",
-   "nameRu": "песок",
    "class": "loose",
    "density": 1650.0,
    "digClass": 1,
    "color": "#dbcb8c",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.gravel",
    "numericId": 517,
    "name": "gravel",
-   "nameRu": "гравий",
    "class": "loose",
    "density": 1800.0,
    "digClass": 1,
    "color": "#8f8a80",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.peat",
    "numericId": 518,
    "name": "peat",
-   "nameRu": "торф",
    "class": "loose",
    "density": 800.0,
    "digClass": 1,
    "color": "#3a2c20",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.loess",
    "numericId": 519,
    "name": "loess",
-   "nameRu": "лёсс",
    "class": "loose",
    "density": 1500.0,
    "digClass": 1,
    "color": "#c4a97a",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.till",
    "numericId": 520,
    "name": "till",
-   "nameRu": "ледниковый тилл",
    "class": "loose",
    "density": 2000.0,
    "digClass": 2,
    "color": "#837a6c",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.saprolite",
    "numericId": 521,
    "name": "saprolite",
-   "nameRu": "сапролит",
    "class": "loose",
    "density": 1800.0,
    "digClass": 1,
    "color": "#b07a50",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.laterite",
    "numericId": 522,
    "name": "laterite",
-   "nameRu": "латерит (мягкий)",
    "class": "loose",
    "density": 1900.0,
    "digClass": 2,
    "color": "#a0522d",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.alluvium",
    "numericId": 523,
    "name": "alluvium",
-   "nameRu": "аллювий",
    "class": "loose",
    "density": 1800.0,
    "digClass": 1,
    "color": "#9a8a6a",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "soil.scree",
    "numericId": 524,
    "name": "scree",
-   "nameRu": "осыпь",
    "class": "loose",
    "density": 1700.0,
    "digClass": 2,
    "color": "#8a8a8a",
-   "provenance": "gameplay"
+   "provenance": "gameplay",
+   "tags": ["soil"]
   },
   {
    "id": "ice.glacier",
    "numericId": 525,
    "name": "glacier ice",
-   "nameRu": "ледник",
    "class": "ice",
    "density": 920.0,
    "digClass": 2,
@@ -230,12 +223,22 @@
    "id": "ice.permafrost",
    "numericId": 526,
    "name": "permafrost",
-   "nameRu": "мерзлота (грунт с льдом)",
    "class": "ice",
    "density": 1900.0,
    "digClass": 3,
    "color": "#8a9aa5",
    "provenance": "gameplay"
+  },
+  {
+   "id": "soil.turf",
+   "numericId": 527,
+   "name": "turf",
+   "class": "loose",
+   "density": 1300.0,
+   "digClass": 1,
+   "color": "#529142",
+   "provenance": "gameplay",
+   "tags": ["soil"]
   }
  ]
 }
