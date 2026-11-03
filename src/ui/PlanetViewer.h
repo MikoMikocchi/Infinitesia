@@ -25,7 +25,6 @@ namespace Infinitesia
 
         StarSystem m_system;
         PlanetMap m_planetMap;
-        std::vector<PlanetRegion> m_regions;
         std::vector<Color> m_regionColors;
         std::vector<float> m_regionBrightness;
         std::vector<Vector3> m_sphereVertices;

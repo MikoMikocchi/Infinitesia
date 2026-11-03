@@ -382,26 +382,16 @@ namespace Infinitesia
     {
         const int rows = m_planetMap.GetLatitudeBandCount();
         const int columns = m_planetMap.GetLongitudeSegmentCount();
-        m_regions.reserve(static_cast<std::size_t>(rows) * static_cast<std::size_t>(columns));
-        m_regionColors.reserve(m_regions.capacity());
-        m_regionBrightness.reserve(m_regions.capacity());
+        const std::size_t cellCount = static_cast<std::size_t>(rows) * static_cast<std::size_t>(columns);
+        m_regionColors.reserve(cellCount);
+        m_regionBrightness.reserve(cellCount);
         const Vector3 lightDirection = Vector3Normalize(Vector3{ -0.45f, 0.62f, -0.85f });
-        for (int latitude = 0; latitude < rows; ++latitude)
-        {
-            for (int longitude = 0; longitude < columns; ++longitude)
-            {
-                const PlanetRegion region = m_planetMap.GetRegion(latitude, longitude);
-                m_regions.push_back(region);
-            }
-        }
 
         for (int latitude = 0; latitude < rows; ++latitude)
         {
             for (int longitude = 0; longitude < columns; ++longitude)
             {
-                const std::size_t regionIndex =
-                    static_cast<std::size_t>(latitude) * columns + longitude;
-                const PlanetRegion& region = m_regions[regionIndex];
+                const PlanetRegion& region = m_planetMap.GetRegion(latitude, longitude);
                 m_regionColors.push_back(GetRegionColor(region));
                 const float latitudeRadians =
                     static_cast<float>(region.latitudeDegrees) * kPi / 180.0f;
@@ -417,16 +407,16 @@ namespace Infinitesia
                 const int eastLongitude = (longitude + 1) % columns;
                 const int westLongitude = (longitude + columns - 1) % columns;
                 const double northElevation =
-                    m_regions[static_cast<std::size_t>(northLatitude) * columns + longitude]
+                    m_planetMap.GetRegion(northLatitude, longitude)
                         .elevationNormalized * kMaxElevationKm;
                 const double southElevation =
-                    m_regions[static_cast<std::size_t>(southLatitude) * columns + longitude]
+                    m_planetMap.GetRegion(southLatitude, longitude)
                         .elevationNormalized * kMaxElevationKm;
                 const double eastElevation =
-                    m_regions[static_cast<std::size_t>(latitude) * columns + eastLongitude]
+                    m_planetMap.GetRegion(latitude, eastLongitude)
                         .elevationNormalized * kMaxElevationKm;
                 const double westElevation =
-                    m_regions[static_cast<std::size_t>(latitude) * columns + westLongitude]
+                    m_planetMap.GetRegion(latitude, westLongitude)
                         .elevationNormalized * kMaxElevationKm;
                 const float reliefShade = std::clamp(
                     1.0f + static_cast<float>(
@@ -923,7 +913,7 @@ namespace Infinitesia
 
         char selectionText[256];
         const PlanetRegion& selectedRegion =
-            m_regions[static_cast<std::size_t>(m_selectedLatitude) * columns + m_selectedLongitude];
+            m_planetMap.GetRegion(m_selectedLatitude, m_selectedLongitude);
 
         const char* biomeName = [](Biome b) -> const char* {
             switch (b) {
