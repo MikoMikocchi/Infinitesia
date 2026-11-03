@@ -314,14 +314,28 @@ namespace Infinitesia
             if (region.isOcean)
                 return biomeColor;
 
+            // A lake covers only part of its cell: tint the land colour toward
+            // water by the covered fraction. sqrt keeps small lakes visible.
+            const auto withLake = [&region](Color land)
+            {
+                if (!region.isLake)
+                    return land;
+                const float depth = std::clamp(
+                    static_cast<float>(region.lakeSpillHeightKm) / 0.6f, 0.0f, 1.0f);
+                const Color water = LerpColor({ 70, 150, 190, 255 }, { 24, 84, 140, 255 }, depth);
+                return LerpColor(
+                    land, water,
+                    std::sqrt(static_cast<float>(region.lakeFraction)));
+            };
+
             const float elevationKm =
                 static_cast<float>(region.elevationNormalized * kMaxElevationKm);
             const float mountainBlend = SmootherStepF(
                 std::clamp((elevationKm - 1.0f) / 4.0f, 0.0f, 1.0f));
-            return LerpColor(
+            return withLake(LerpColor(
                 biomeColor,
                 { 132, 124, 112, 255 },
-                mountainBlend * 0.55f);
+                mountainBlend * 0.55f));
         }
 
         Color ShadeColor(Color color, float brightness)

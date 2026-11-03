@@ -19,8 +19,8 @@ namespace Infinitesia
         double volatileMassFraction = 0.02;
         double atmospherePressureKPa = 101.325;
         std::uint32_t seed = 1;
-        int latitudeBands = 180;
-        int longitudeSegments = 360;
+        int latitudeBands = 360;      // 0.5 deg, ~55 km per cell
+        int longitudeSegments = 720;
 
         bool IsValid() const
         {
