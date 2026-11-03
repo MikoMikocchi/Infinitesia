@@ -8,6 +8,9 @@ namespace Infinitesia::GenerationDetail
     {
         std::vector<double> filledElevations;
         std::vector<int> flowDirections;
+        // Cell indices sorted from highest to lowest filled elevation, so every
+        // cell comes after all of its upstream contributors.
+        std::vector<int> processingOrder;
         std::vector<double> normalizedAccumulation;
         std::vector<double> volumeAccumulation;
         bool usedLandFallback = false;

@@ -471,8 +471,13 @@ double GreenhouseK(double pressKPa)
 // Altitude lapse cooling [K]
 double LapseK(double elevNorm)
 {
-    const double elevM = std::max(0.0, elevNorm) * 9000.0;
+    const double elevM = std::max(0.0, elevNorm) * kMaxElevationKm * 1000.0;
     return elevM * 0.0065;
+}
+
+double AnnualEvapotranspirationMm(double temperatureCelsius)
+{
+    return std::clamp(120.0 + temperatureCelsius * 12.0, 0.0, 600.0);
 }
 
 // Zonal atmospheric circulation wetness [0..1]
@@ -502,7 +507,7 @@ double CirculationWetness(double absLatDeg, double rotHours)
 }
 
 // Dry-season months derived from the circulation wetness signal
-double DrySeasonMonths(double precipMm, double circulationWetness)
+double DrySeasonMonths(double /*precipMm*/, double circulationWetness)
 {
     const double dryFraction = std::clamp(1.0 - circulationWetness * 1.4, 0.0, 1.0);
     return dryFraction * 7.0;
@@ -552,7 +557,7 @@ double SoilDepth(RockType rock, double precipMm, double slope, double planetAgeF
 // --------------------------------------------------------------------------
 Biome ClassifyBiome(const PlanetRegion& r)
 {
-    const double elevKm = r.elevationNormalized * 9.0;
+    const double elevKm = r.elevationNormalized * kMaxElevationKm;
     const double t      = r.temperatureCelsius;
     const double p      = r.precipitationMm;
     const double dry    = r.drySeasonMonths;

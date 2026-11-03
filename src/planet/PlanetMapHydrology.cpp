@@ -9,6 +9,8 @@
 
 namespace Infinitesia
 {
+    using namespace GenerationDetail;
+
     void PlanetMap::GenerateHydrology()
     {
         const int latB = LatBands();
@@ -63,7 +65,7 @@ namespace Infinitesia
                     continue;
 
                 const double etAnnualMm =
-                    std::clamp(120.0 + cell.temperatureCelsius * 12.0, 0.0, 600.0);
+                    AnnualEvapotranspirationMm(cell.temperatureCelsius);
                 const double runoffMm =
                     std::max(0.0, cell.precipitationMm - etAnnualMm);
                 const double areaCellKm2 = cellAreaKm2[static_cast<std::size_t>(la)];
@@ -86,60 +88,51 @@ namespace Infinitesia
                 localRunoffVolume);
         const auto& filledElev = network.filledElevations;
         const auto& waterAccum = network.normalizedAccumulation;
-        const auto& volumeAccum = network.volumeAccumulation;
         const double maxWater =
             *std::max_element(waterAccum.begin(), waterAccum.end());
 
         // -----------------------------------------------------------------------
-        // Step 5: Classify rivers and lakes.
+        // Classify lakes and propagate runoff volume with lake losses.
         //
-        // Lakes: a cell is a genuine lake candidate only when the Priority-Flood
-        // raised its elevation by more than a noise epsilon (fillDelta test).
-        // This separates true closed-basin sinks from cells that were given only
-        // a tiny upward nudge to maintain a drainage gradient across a flat area.
-        // We additionally require non-trivial upstream drainage to exclude
-        // isolated single-cell pits with no contributing catchment.
+        // A cell is a lake candidate only when Priority-Flood raised it by more
+        // than a noise epsilon (a genuine closed-basin sink) and it has
+        // non-trivial upstream drainage.  Cells are visited from high to low
+        // filled elevation, so all upstream outflow has already been added when
+        // a cell is processed.  A lake keeps what it evaporates or infiltrates
+        // and passes only its spill downstream; a sink whose losses exceed its
+        // inflow is a dry endorheic basin and passes nothing downstream.
         // -----------------------------------------------------------------------
-        for (int la = 0; la < latB; ++la)
+        constexpr double kRiverDischargeThreshold = 0.005;
+        constexpr double kLakeFillThreshold = 0.001;
+        constexpr double kUpstreamThreshold = 0.002;
+        constexpr double kSecondsPerYear = 31557600.0;
+
+        std::vector<double> outflowKm3 = localRunoffVolume;
+        for (const int order : network.processingOrder)
         {
-            for (int lo = 0; lo < lonS; ++lo)
+            const std::size_t idx = static_cast<std::size_t>(order);
+            auto& c = Cell(order / lonS, order % lonS);
+            if (c.isOcean)
+                continue;
+
+            c.drainageAccumulation = maxWater > 0.0
+                ? waterAccum[idx] / maxWater
+                : 0.0;
+
+            const double fillDeltaKm =
+                (filledElev[idx] - c.elevationNormalized) * kMaxElevationKm;
+            const bool genuineSink =
+                fillDeltaKm > kLakeFillThreshold * kMaxElevationKm;
+            const bool hasUpstream = c.drainageAccumulation > kUpstreamThreshold;
+            if (genuineSink && hasUpstream)
             {
-                auto& c = Cell(la, lo);
-                const std::size_t idx = static_cast<std::size_t>(la) * lonS + lo;
-
-                c.drainageAccumulation = maxWater > 0.0
-                    ? waterAccum[idx] / maxWater
-                    : 0.0;
-
-                constexpr double kRiverDischargeThreshold = 0.005;
-                c.hasRiver = !c.isOcean &&
-                    c.drainageAccumulation > kRiverDischargeThreshold;
-c.riverDischarge = c.hasRiver ? c.drainageAccumulation : 0.0;
-c.annualRunoffVolumeKm3 = c.hasRiver
-    ? volumeAccum[idx]
-    : 0.0;
-c.riverDischargeM3PerSecond = c.hasRiver
-    ? c.annualRunoffVolumeKm3 * 1e9 / 31557600.0
-    : 0.0;
-
-                constexpr double kLakeFillThreshold = 0.001;
-                constexpr double kMaxElevationKm = 9.0;
-                const double fillDeltaKm =
-                    (filledElev[idx] - c.elevationNormalized) * kMaxElevationKm;
-                const bool genuineSink = fillDeltaKm > kLakeFillThreshold * kMaxElevationKm;
-                const bool hasUpstream = c.drainageAccumulation > 0.002;
-                if (c.isOcean || !genuineSink || !hasUpstream)
-                    continue;
-
-                const double areaKm2 = cellAreaKm2[static_cast<std::size_t>(la)];
-                const double localRunoffKm3 =
-                    localRunoffVolume[idx];
-                const double catchmentRunoffKm3 =
-                    std::max(0.0, volumeAccum[idx] - localRunoffKm3);
+                const double areaKm2 = cellAreaKm2[static_cast<std::size_t>(c.latitudeIndex)];
+                const double catchmentInflowKm3 =
+                    std::max(0.0, outflowKm3[idx] - localRunoffVolume[idx]);
                 const double directPrecipitationKm3 =
                     c.precipitationMm * areaKm2 * 1e-6;
                 const double annualInflowKm3 =
-                    catchmentRunoffKm3 + directPrecipitationKm3;
+                    catchmentInflowKm3 + directPrecipitationKm3;
 
                 double infiltrationMm = 40.0;
                 switch (c.surfaceRock)
@@ -159,23 +152,42 @@ c.riverDischargeM3PerSecond = c.hasRiver
                 const double annualWaterSurplusKm3 =
                     annualInflowKm3 - annualEvaporationKm3 -
                     annualInfiltrationKm3;
-                if (annualWaterSurplusKm3 <= 0.0)
-                    continue;
 
-                // Treat the cell depression as a hypsometrically uniform bowl:
-                // its full storage is cell area times depth to the lowest spill.
-                c.isLake = true;
-                c.lakeSurfaceAreaKm2 = areaKm2;
-                c.lakeSpillHeightKm = fillDeltaKm;
-                c.lakeSpillElevationKm =
-                    c.elevationNormalized * kMaxElevationKm + fillDeltaKm;
-                c.lakeWaterLevelKm = c.lakeSpillElevationKm;
-                c.lakeWaterVolumeKm3 = areaKm2 * fillDeltaKm;
-                c.lakeAnnualInflowKm3 = annualInflowKm3;
-                c.lakeAnnualEvaporationKm3 = annualEvaporationKm3;
-                c.lakeAnnualInfiltrationKm3 = annualInfiltrationKm3;
-                c.lakeAnnualSpillKm3 = annualWaterSurplusKm3;
+                if (annualWaterSurplusKm3 > 0.0)
+                {
+                    // Treat the depression as a hypsometrically uniform bowl:
+                    // its full storage is cell area times depth to the spill.
+                    c.isLake = true;
+                    c.lakeSurfaceAreaKm2 = areaKm2;
+                    c.lakeSpillHeightKm = fillDeltaKm;
+                    c.lakeSpillElevationKm =
+                        c.elevationNormalized * kMaxElevationKm + fillDeltaKm;
+                    c.lakeWaterLevelKm = c.lakeSpillElevationKm;
+                    c.lakeWaterVolumeKm3 = areaKm2 * fillDeltaKm;
+                    c.lakeAnnualInflowKm3 = annualInflowKm3;
+                    c.lakeAnnualEvaporationKm3 = annualEvaporationKm3;
+                    c.lakeAnnualInfiltrationKm3 = annualInfiltrationKm3;
+                    c.lakeAnnualSpillKm3 = annualWaterSurplusKm3;
+                }
+                outflowKm3[idx] = std::max(0.0, annualWaterSurplusKm3);
             }
+
+            const int target = network.flowDirections[idx];
+            if (target >= 0)
+                outflowKm3[static_cast<std::size_t>(target)] += outflowKm3[idx];
+        }
+
+        for (std::size_t idx = 0; idx < cellCount; ++idx)
+        {
+            auto& c = m_grid[idx];
+            if (c.isOcean)
+                continue;
+            c.hasRiver = c.drainageAccumulation > kRiverDischargeThreshold &&
+                outflowKm3[idx] > 0.0;
+            c.riverDischarge = c.hasRiver ? c.drainageAccumulation : 0.0;
+            c.annualRunoffVolumeKm3 = c.hasRiver ? outflowKm3[idx] : 0.0;
+            c.riverDischargeM3PerSecond =
+                c.annualRunoffVolumeKm3 * 1e9 / kSecondsPerYear;
         }
     }
 }

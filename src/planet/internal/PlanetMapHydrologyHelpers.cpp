@@ -138,6 +138,8 @@ namespace Infinitesia::GenerationDetail
                    network.filledElevations[static_cast<std::size_t>(second)];
         });
 
+        network.processingOrder = order;
+
         network.normalizedAccumulation.assign(cellCount, 0.0);
         network.volumeAccumulation.assign(cellCount, 0.0);
         for (std::size_t cell = 0; cell < cellCount; ++cell)

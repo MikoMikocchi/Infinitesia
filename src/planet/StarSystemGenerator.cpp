@@ -173,7 +173,7 @@ namespace Infinitesia
         constexpr std::uint64_t kSystemStage = 0x53595354454d0001ull;
         constexpr std::uint64_t kStarStage = 0x5354415200000002ull;
         constexpr std::uint64_t kDiskStage = 0x4449534b00000003ull;
-        constexpr std::uint64_t kOrbitStage = 0x4f52424954000004ull;
+        [[maybe_unused]] constexpr std::uint64_t kOrbitStage = 0x4f52424954000004ull;
         constexpr std::uint64_t kPlanetStage = 0x504c414e455405ull;
         constexpr std::uint64_t kFormationStage = 0x464f524d415406ull;
         constexpr std::uint64_t kSystemEventStage = 0x4556454e540001ull;

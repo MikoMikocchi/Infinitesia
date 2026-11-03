@@ -25,7 +25,7 @@ namespace Infinitesia
     public:
         static CartesianPoint3D ToCartesian(
             GeographicCoordinates coordinates,
-            double radius = 1.0)
+            [[maybe_unused]] double radius = 1.0)
         {
             const double latitudeRadians = coordinates.latitudeDegrees * std::numbers::pi / 180.0;
             const double longitudeRadians = coordinates.longitudeDegrees * std::numbers::pi / 180.0;
@@ -40,7 +40,7 @@ namespace Infinitesia
 
         static GeographicCoordinates ToGeographic(
             CartesianPoint3D point,
-            double radius = 1.0)
+            [[maybe_unused]] double radius = 1.0)
         {
             const double length = std::sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
             if (length <= 0.0)

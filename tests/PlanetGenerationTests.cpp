@@ -796,6 +796,16 @@ void TestEdgeCasePlanetConfigurations()
                         r.lakeWaterVolumeKm3,
                         r.lakeSurfaceAreaKm2 * r.lakeSpillHeightKm),
                 "Lake storage must match its area and spill depth.");
+            Require(NearlyEqual(
+                        r.lakeAnnualSpillKm3,
+                        r.lakeAnnualInflowKm3 - r.lakeAnnualEvaporationKm3 -
+                            r.lakeAnnualInfiltrationKm3,
+                        1e-9),
+                "Lake spill must equal inflow minus evaporation and infiltration.");
+            // Water lost in the lake must not reappear downstream.
+            Require(!r.hasRiver ||
+                    NearlyEqual(r.annualRunoffVolumeKm3, r.lakeAnnualSpillKm3, 1e-9),
+                "River discharge at a lake must equal the lake spill.");
         };
         bool foundStableLake = false;
 

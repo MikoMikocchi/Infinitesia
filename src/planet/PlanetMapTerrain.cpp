@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <vector>
 
 namespace Infinitesia
@@ -153,7 +154,6 @@ namespace Infinitesia
             elevKm = std::move(smoothed);
         }
 
-        constexpr double kMaxElevationKm = 9.0;
         for (int la = 0; la < latB; ++la)
         {
             for (int lo = 0; lo < lonS; ++lo)

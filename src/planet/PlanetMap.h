@@ -8,6 +8,9 @@
 
 namespace Infinitesia
 {
+    // PlanetRegion::elevationNormalized spans [-1..1] over +/- this height [km].
+    inline constexpr double kMaxElevationKm = 9.0;
+
     // -----------------------------------------------------------------------
     // Biome classification — Köppen-extended, 25 types
     // -----------------------------------------------------------------------

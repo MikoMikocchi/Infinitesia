@@ -139,7 +139,7 @@ namespace Infinitesia
             const float temp   = static_cast<float>(region.temperatureCelsius);
             const float precip = static_cast<float>(region.precipitationMm);
             // Physical elevation in km for shading calculations
-            const float elevKm     = static_cast<float>(region.elevationNormalized * 9.0);
+            const float elevKm     = static_cast<float>(region.elevationNormalized * kMaxElevationKm);
             const float elevNorm   = static_cast<float>(region.elevationNormalized);
             // Land fraction: 0=sea level, 1=max mountain
             const float landElev   = std::clamp(elevNorm, 0.0f, 1.0f);
@@ -151,7 +151,7 @@ namespace Infinitesia
                 // ---- Aquatic ----
                 case Biome::DeepOcean:
                     return LerpColor({ 10, 28, 70, 255 }, { 16, 45, 100, 255 },
-                        std::clamp(-elevKm / 9.0f, 0.0f, 1.0f));
+                        std::clamp(-elevKm / static_cast<float>(kMaxElevationKm), 0.0f, 1.0f));
 
                 case Biome::ShallowSea:
                 {
@@ -315,7 +315,7 @@ namespace Infinitesia
                 return biomeColor;
 
             const float elevationKm =
-                static_cast<float>(region.elevationNormalized * 9.0);
+                static_cast<float>(region.elevationNormalized * kMaxElevationKm);
             const float mountainBlend = SmootherStepF(
                 std::clamp((elevationKm - 1.0f) / 4.0f, 0.0f, 1.0f));
             return LerpColor(
@@ -439,16 +439,16 @@ namespace Infinitesia
                 const int westLongitude = (longitude + columns - 1) % columns;
                 const double northElevation =
                     m_regions[static_cast<std::size_t>(northLatitude) * columns + longitude]
-                        .elevationNormalized * 9.0;
+                        .elevationNormalized * kMaxElevationKm;
                 const double southElevation =
                     m_regions[static_cast<std::size_t>(southLatitude) * columns + longitude]
-                        .elevationNormalized * 9.0;
+                        .elevationNormalized * kMaxElevationKm;
                 const double eastElevation =
                     m_regions[static_cast<std::size_t>(latitude) * columns + eastLongitude]
-                        .elevationNormalized * 9.0;
+                        .elevationNormalized * kMaxElevationKm;
                 const double westElevation =
                     m_regions[static_cast<std::size_t>(latitude) * columns + westLongitude]
-                        .elevationNormalized * 9.0;
+                        .elevationNormalized * kMaxElevationKm;
                 const float reliefShade = std::clamp(
                     1.0f + static_cast<float>(
                         (southElevation - northElevation) * 0.12 +
@@ -555,7 +555,7 @@ namespace Infinitesia
                      m_planetMap.GetRegion(northCell, eastCell).elevationNormalized +
                      m_planetMap.GetRegion(southCell, westCell).elevationNormalized +
                      m_planetMap.GetRegion(southCell, eastCell).elevationNormalized) *
-                    9.0 / 4.0;
+                    kMaxElevationKm / 4.0;
                 const double planetRadiusMeters =
                     m_planetMap.GetParameters().radiusMeters;
                 const float displayRadius = static_cast<float>(
@@ -922,7 +922,7 @@ namespace Infinitesia
             m_selectedLongitude,
             selectedRegion.latitudeDegrees,
             selectedRegion.longitudeDegrees,
-            selectedRegion.elevationNormalized * 9.0,   // physical km
+            selectedRegion.elevationNormalized * kMaxElevationKm,   // physical km
             selectedRegion.temperatureCelsius,
             selectedRegion.precipitationMm,
             biomeName);

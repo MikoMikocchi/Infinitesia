@@ -333,17 +333,18 @@ namespace Infinitesia
                     {
                         const int immediateUpwind =
                             (longitude - windDirection + lonS * 2) % lonS;
-                        upslopeKm = cell.elevationNormalized * 9.0 -
-                            Cell(latitude, immediateUpwind).elevationNormalized * 9.0;
+                        upslopeKm = (cell.elevationNormalized -
+                            Cell(latitude, immediateUpwind).elevationNormalized) *
+                            kMaxElevationKm;
                         for (int step = 2; step <= 8; ++step)
                         {
                             const int upwindLongitude =
                                 (longitude - windDirection * step + lonS * 2) % lonS;
                             upwindHighlandKm = std::max(
                                 upwindHighlandKm,
-                                Cell(latitude, upwindLongitude).elevationNormalized *
-                                    9.0 -
-                                    cell.elevationNormalized * 9.0);
+                                (Cell(latitude, upwindLongitude).elevationNormalized -
+                                 cell.elevationNormalized) *
+                                    kMaxElevationKm);
                         }
                     }
 
@@ -385,7 +386,7 @@ namespace Infinitesia
                     [](double precipitation) { return precipitation < 30.0; }));
 
                 const double potentialEvapotranspiration =
-                    std::max(0.0, cell.temperatureCelsius * 15.0);
+                    AnnualEvapotranspirationMm(cell.temperatureCelsius);
                 cell.soilMoisture = std::clamp(
                     cell.precipitationMm /
                         (cell.precipitationMm + potentialEvapotranspiration + 1.0),
