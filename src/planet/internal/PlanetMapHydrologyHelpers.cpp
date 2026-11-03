@@ -201,6 +201,14 @@ namespace Infinitesia::GenerationDetail
                 network.volumeAccumulation[cell];
         }
 
+        for (std::size_t cell = 0; cell < cellCount; ++cell)
+        {
+            if (oceanCells[cell])
+                network.oceanInflowVolume += network.volumeAccumulation[cell];
+            else if (network.flowDirections[cell] < 0)
+                network.landSinkVolume += network.volumeAccumulation[cell];
+        }
+
         return network;
     }
 }

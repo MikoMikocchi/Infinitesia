@@ -154,6 +154,21 @@ namespace Infinitesia
     };
 
     // -----------------------------------------------------------------------
+    // Planet-wide annual freshwater ledger produced by hydrology (km^3/yr).
+    //   oceanDischarge + landSink == landRunoff + lakePrecipitationGain
+    //                                - lakeLoss - drySinkLoss
+    // -----------------------------------------------------------------------
+    struct PlanetWaterBalance
+    {
+        double landRunoffKm3 = 0.0;           // sum of local runoff over land
+        double lakePrecipitationGainKm3 = 0.0; // rain on lake surfaces beyond the runoff it replaces
+        double lakeLossKm3 = 0.0;             // evaporation + infiltration kept by lakes
+        double drySinkLossKm3 = 0.0;          // inflow of sinks too small to hold a lake
+        double oceanDischargeKm3 = 0.0;       // total delivered into ocean cells
+        double landSinkKm3 = 0.0;             // left in land cells with no outlet
+    };
+
+    // -----------------------------------------------------------------------
     // PlanetMap — caches a fully-generated grid; GetRegion is O(1)
     // -----------------------------------------------------------------------
     class PlanetMap
@@ -171,8 +186,10 @@ namespace Infinitesia
         const PlanetRegion& GetRegion(int latitudeIndex, int longitudeIndex) const noexcept;
         double SampleElevation(int latitudeIndex, int longitudeIndex) const;
         bool   IsOcean(int latitudeIndex, int longitudeIndex) const;
+        const PlanetWaterBalance& GetWaterBalance() const noexcept { return m_waterBalance; }
 
     private:
+        PlanetWaterBalance m_waterBalance;
         Planet       m_planet;
         ClimateInputs m_climate;
         std::vector<PlanetRegion> m_grid; // row-major [lat * lonSegments + lon]

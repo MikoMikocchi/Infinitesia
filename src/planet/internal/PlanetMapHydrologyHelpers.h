@@ -13,6 +13,13 @@ namespace Infinitesia::GenerationDetail
         std::vector<int> processingOrder;
         std::vector<double> normalizedAccumulation;
         std::vector<double> volumeAccumulation;
+        // Total runoff volume (same units as localRunoffVolume) delivered into
+        // ocean cells, and total volume that terminates in land cells with no
+        // downstream neighbour (only the global minimum of an ocean-free map).
+        // Water is conserved: oceanInflowVolume + landSinkVolume equals the sum
+        // of localRunoffVolume over all land cells.
+        double oceanInflowVolume = 0.0;
+        double landSinkVolume = 0.0;
         bool usedLandFallback = false;
     };
 

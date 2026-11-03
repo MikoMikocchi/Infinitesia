@@ -111,6 +111,9 @@ namespace Infinitesia
         constexpr double kBowlScaleKm = 0.3; // depth scale of f_topo saturation
 
         std::vector<double> outflowKm3 = localRunoffVolume;
+        PlanetWaterBalance balance;
+        for (const double runoff : localRunoffVolume)
+            balance.landRunoffKm3 += runoff;
         for (const int order : network.processingOrder)
         {
             const std::size_t idx = static_cast<std::size_t>(order);
@@ -171,7 +174,12 @@ namespace Infinitesia
                     std::min(equilibriumFraction, topoFraction);
 
                 double annualSpillKm3 = 0.0;
-                if (lakeFraction >= kMinLakeCellFraction)
+                const double sinkInflowKm3 = outflowKm3[idx];
+                if (lakeFraction < kMinLakeCellFraction)
+                {
+                    balance.drySinkLossKm3 += sinkInflowKm3;
+                }
+                else
                 {
                     const double lakeAreaKm2 = lakeFraction * areaKm2;
                     const double evapKm3 = evapMm * lakeAreaKm2 * 1e-6;
@@ -183,6 +191,12 @@ namespace Infinitesia
                     annualSpillKm3 = overflows
                         ? std::max(0.0, inflowKm3 - evapKm3 - infilKm3)
                         : 0.0;
+
+                    const double precipGainKm3 =
+                        (precipMm - runoffMm) * lakeAreaKm2 * 1e-6;
+                    balance.lakePrecipitationGainKm3 += precipGainKm3;
+                    balance.lakeLossKm3 +=
+                        sinkInflowKm3 + precipGainKm3 - annualSpillKm3;
 
                     // Paraboloid bowl: area grows linearly with depth, so a
                     // closed lake below its spill is shallower by the same
@@ -211,6 +225,15 @@ namespace Infinitesia
             if (target >= 0)
                 outflowKm3[static_cast<std::size_t>(target)] += outflowKm3[idx];
         }
+
+        for (std::size_t idx = 0; idx < cellCount; ++idx)
+        {
+            if (oceanCells[idx])
+                balance.oceanDischargeKm3 += outflowKm3[idx];
+            else if (network.flowDirections[idx] < 0)
+                balance.landSinkKm3 += outflowKm3[idx];
+        }
+        m_waterBalance = balance;
 
         for (std::size_t idx = 0; idx < cellCount; ++idx)
         {
