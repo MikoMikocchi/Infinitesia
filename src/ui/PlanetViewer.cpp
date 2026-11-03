@@ -701,7 +701,8 @@ namespace Infinitesia
 
     void PlanetViewer::FocusRegionOnSelectedCell()
     {
-        m_regionMap.FocusAt(PlanetaryCoordinates::ToCartesian(
+        // A fresh chessboard anchored at the middle of the selected cell.
+        m_regionMap.Anchor(PlanetaryCoordinates::ToCartesian(
             m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
     }
 
@@ -873,12 +874,16 @@ namespace Infinitesia
             focalLength / layout.globeRadius * 1.08f) * m_zoom;
         const float cameraDistance =
             overviewDistance + (kRegionCameraDistance - overviewDistance) * SmootherStepF(m_regionBlend);
+        // Shift the view so the anchor lands on the panel centre. The anchor is the
+        // globe centre in the overview and the (nearer) focused surface point once
+        // zoomed in; the shift needed in world units grows with the anchor's depth.
+        const float anchorDepth = cameraDistance - SmootherStepF(m_regionBlend);
         const float targetZ =
             (static_cast<float>(GetScreenWidth()) * 0.5f - layout.globeCenter.x) *
-            cameraDistance / focalLength;
+            anchorDepth / focalLength;
         const float targetY =
             (layout.globeCenter.y - static_cast<float>(GetScreenHeight()) * 0.5f) *
-            cameraDistance / focalLength;
+            anchorDepth / focalLength;
 
         Camera3D camera{};
         camera.position = { -cameraDistance, targetY, targetZ };
@@ -923,7 +928,9 @@ namespace Infinitesia
             const int stepY = (pressed(KEY_UP, KEY_W) ? 1 : 0) - (pressed(KEY_DOWN, KEY_S) ? 1 : 0);
             if (stepX != 0 || stepY != 0)
             {
-                m_regionMap.Focus(m_regionMap.GetLayout().Neighbor(m_regionMap.GetFocus(), stepX, stepY));
+                // The map is north-up, so arrows move along the compass, one region at a time.
+                const RegionId focus = m_regionMap.GetFocus();
+                m_regionMap.Focus({ focus.i + stepX, focus.j + stepY });
                 SyncSelectionToRegion();
             }
         }
@@ -1195,17 +1202,17 @@ namespace Infinitesia
             {
                 std::snprintf(
                     regionText, sizeof(regionText),
-                    "Region face %d (%d, %d)  |  %.3f, %.3f deg  |  Cursor: %.0f m, %s",
-                    focus.face, focus.i, focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees,
+                    "Region (%d, %d) from anchor  |  %.3f, %.3f deg  |  Cursor: %.0f m, %s",
+                    focus.i, focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees,
                     *cursorElevation, BiomeName(*cursorBiome));
             }
             else
             {
                 std::snprintf(
                     regionText, sizeof(regionText),
-                    "Region face %d (%d, %d)  |  %.3f, %.3f deg  |  ~%.1f km across",
-                    focus.face, focus.i, focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees,
-                    m_regionMap.GetLayout().RegionSizeMeters() / 1000.0);
+                    "Region (%d, %d) from anchor  |  %.3f, %.3f deg  |  %.1f km across",
+                    focus.i, focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees,
+                    LocalGrid::kRegionSizeMeters / 1000.0);
             }
             DrawText(regionText, 30, footerY + 40, 13, kSelectedCellColor);
             DrawText(

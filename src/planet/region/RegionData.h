@@ -1,7 +1,7 @@
 #pragma once
 
 #include "planet/PlanetMap.h"
-#include "planet/region/RegionLayout.h"
+#include "planet/region/LocalGrid.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -10,11 +10,11 @@
 namespace Infinitesia
 {
     // Refined fields for one region on a (kPointsPerRegionEdge)^2 lattice.
-    // Row-major, index = y * kPointsPerRegionEdge + x. Border points are shared
-    // with the neighbouring regions and hold identical values.
+    // Row-major, index = y * kPoints + x; x runs east, y runs north. Border points
+    // are shared with the neighbouring regions on every side and hold identical values.
     struct RegionData
     {
-        static constexpr int kPoints = RegionLayout::kPointsPerRegionEdge;
+        static constexpr int kPoints = LocalGrid::kPointsPerRegionEdge;
 
         RegionId id{};
         GeographicCoordinates center{};
@@ -32,17 +32,19 @@ namespace Infinitesia
         Biome BiomeAt(int x, int y) const noexcept { return biome[Index(x, y)]; }
     };
 
-    // Lattice covering (2 * radius + 1)^2 regions around a centre region, in the
-    // centre region's face frame. Unlike stitching neighbouring RegionData it stays
-    // consistent across cube-face edges, where neighbours' axes are rotated.
-    // Lattice point (x, y) sits at offset (x - radius * kCells, y - radius * kCells)
-    // cells from the centre region's origin point; y grows toward the face v axis.
+    // Lattice covering a square of (2 * radius + 1) region widths centred on a region
+    // of a LocalGrid, laid out like the grid: x grows east, y grows north, and the
+    // middle point is the region's centre. The lattice is the grid's own, so a
+    // patch agrees point for point with the RegionData of the regions it covers.
     struct RegionPatch
     {
         RegionId center{};
         int radiusRegions = 0;
         int points = 0; // points per edge
         double cellSizeMeters = 0.0;
+        LocalGrid grid{};
+        double originEastMeters = 0.0;  // grid coordinates of lattice point (0, 0)
+        double originNorthMeters = 0.0;
         std::vector<float> elevationMeters;
         std::vector<Biome> biome;
         std::vector<std::uint32_t> planetCell; // index into the planet grid, row-major
@@ -52,5 +54,21 @@ namespace Infinitesia
             return static_cast<std::size_t>(y) * points + static_cast<std::size_t>(x);
         }
         float ElevationAt(int x, int y) const noexcept { return elevationMeters[Index(x, y)]; }
+
+        // Unit direction of lattice position (x, y); fractional positions are fine.
+        CartesianPoint3D Direction(double x, double y) const noexcept
+        {
+            return grid.Direction(originEastMeters + x * cellSizeMeters, originNorthMeters + y * cellSizeMeters);
+        }
+
+        // Inverse of Direction.
+        void Project(CartesianPoint3D direction, double& x, double& y) const noexcept
+        {
+            double east = 0.0;
+            double north = 0.0;
+            grid.Project(direction, east, north);
+            x = (east - originEastMeters) / cellSizeMeters;
+            y = (north - originNorthMeters) / cellSizeMeters;
+        }
     };
 }

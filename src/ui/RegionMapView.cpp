@@ -28,11 +28,6 @@ namespace Infinitesia
             return biome == Biome::DeepOcean || biome == Biome::ShallowSea ||
                    biome == Biome::CoralReef || biome == Biome::PolarSea;
         }
-
-        double Dot(CartesianPoint3D a, CartesianPoint3D b)
-        {
-            return a.x * b.x + a.y * b.y + a.z * b.z;
-        }
     }
 
     RegionMapView::RegionMapView(const PlanetMap& map, ColorFunction color)
@@ -40,8 +35,7 @@ namespace Infinitesia
         , m_generator(map)
         , m_color(std::move(color))
     {
-        m_focus = m_generator.GetLayout().RegionAt(PlanetaryCoordinates::ToCartesian({ 0.0, 0.0 }));
-        m_displayed = m_focus;
+        m_grid = m_generator.MakeGrid(PlanetaryCoordinates::ToCartesian({ 0.0, 0.0 }));
     }
 
     RegionMapView::~RegionMapView()
@@ -53,9 +47,16 @@ namespace Infinitesia
         }
     }
 
+    void RegionMapView::Anchor(CartesianPoint3D direction)
+    {
+        m_grid = m_generator.MakeGrid(direction);
+        ++m_gridVersion;
+        m_focus = RegionId{};
+    }
+
     void RegionMapView::Focus(RegionId id)
     {
-        if (m_generator.GetLayout().IsValid(id))
+        if (LocalGrid::IsValid(id))
         {
             m_focus = id;
         }
@@ -63,19 +64,20 @@ namespace Infinitesia
 
     void RegionMapView::FocusAt(CartesianPoint3D direction)
     {
-        m_focus = m_generator.GetLayout().RegionAt(direction);
+        Focus(m_grid.RegionAt(direction));
     }
 
     GeographicCoordinates RegionMapView::GetFocusCenter() const noexcept
     {
-        return m_generator.GetLayout().Center(m_focus);
+        return m_grid.Center(m_focus);
     }
 
     RegionMapView::Built RegionMapView::Build(
-        const RegionGenerator& generator, const PlanetMap& map, const ColorFunction& color, RegionId focus)
+        const RegionGenerator& generator, const PlanetMap& map, const ColorFunction& color,
+        const LocalGrid& grid, RegionId focus)
     {
         Built built;
-        built.patch = generator.GeneratePatch(focus, kPatchRadiusRegions);
+        built.patch = generator.GeneratePatch(grid, focus, kPatchRadiusRegions);
         const RegionPatch& patch = built.patch;
         const int points = patch.points;
         const double cellSize = patch.cellSizeMeters;
@@ -154,16 +156,19 @@ namespace Infinitesia
                 m_texture = UniqueTexture(texture);
                 m_patch = std::make_shared<const RegionPatch>(std::move(built.patch));
                 m_displayed = m_pendingFocus;
+                m_displayedVersion = m_pendingVersion;
                 m_hasImage = true;
             }
         }
 
-        if (!m_pending.valid() && (!m_hasImage || !(m_displayed == m_focus)))
+        if (!m_pending.valid() &&
+            (!m_hasImage || !(m_displayed == m_focus) || m_displayedVersion != m_gridVersion))
         {
             m_pendingFocus = m_focus;
+            m_pendingVersion = m_gridVersion;
             m_pending = std::async(
                 std::launch::async,
-                [this, focus = m_focus] { return Build(m_generator, m_map, m_color, focus); });
+                [this, focus = m_focus, grid = m_grid] { return Build(m_generator, m_map, m_color, grid, focus); });
         }
     }
 
@@ -204,10 +209,9 @@ namespace Infinitesia
             return std::nullopt;
         }
         const int last = m_patch->points - 1;
-        const int origin = m_patch->radiusRegions * RegionLayout::kCellsPerRegionEdge;
         const double x = (mouse.x - square.x) / square.width * last;
         const double y = last - (mouse.y - square.y) / square.height * last;
-        return m_generator.GetLayout().PointDirection(m_displayed, x - origin, y - origin);
+        return m_patch->Direction(x, y);
     }
 
     std::optional<float> RegionMapView::ElevationAt(Vector2 mouse, Rectangle bounds) const
@@ -248,20 +252,45 @@ namespace Infinitesia
         DrawTexturePro(m_texture.Get(), { 0.0f, 0.0f, static_cast<float>(points), static_cast<float>(points) },
                        square, { 0.0f, 0.0f }, 0.0f, WHITE);
 
-        // Region borders; the focus region is outlined.
-        const int regionCount = 2 * m_patch->radiusRegions + 1;
-        const float regionSide = square.width / regionCount;
-        for (int k = 0; k <= regionCount; ++k)
+        // Region borders: an exact chessboard, upright on this north-up map. The focus
+        // region is outlined.
+        const LocalGrid& grid = m_patch->grid;
+        const auto toScreen = [&](double x, double y)
         {
-            const float offset = k * regionSide;
-            DrawLineV({ square.x + offset, square.y }, { square.x + offset, square.y + square.height },
-                      Fade(RAYWHITE, 0.18f));
-            DrawLineV({ square.x, square.y + offset }, { square.x + square.width, square.y + offset },
-                      Fade(RAYWHITE, 0.18f));
+            return Vector2{ square.x + static_cast<float>(x / last) * square.width,
+                            square.y + static_cast<float>(1.0 - y / last) * square.height };
+        };
+        const auto outline = [&](RegionId id, float thickness, Color color)
+        {
+            constexpr int edge = LocalGrid::kCellsPerRegionEdge;
+            Vector2 corners[4];
+            const int cornerCells[4][2] = { { 0, 0 }, { edge, 0 }, { edge, edge }, { 0, edge } };
+            for (int index = 0; index < 4; ++index)
+            {
+                double x = 0.0;
+                double y = 0.0;
+                m_patch->Project(grid.PointDirection(id, cornerCells[index][0], cornerCells[index][1]), x, y);
+                corners[index] = toScreen(x, y);
+            }
+            for (int side = 0; side < 4; ++side)
+            {
+                DrawLineEx(corners[side], corners[(side + 1) % 4], thickness, color);
+            }
+        };
+
+        BeginScissorMode(static_cast<int>(square.x), static_cast<int>(square.y),
+                         static_cast<int>(square.width), static_cast<int>(square.height));
+        const RegionId middle = m_patch->center;
+        const int reach = m_patch->radiusRegions;
+        for (int j = -reach; j <= reach; ++j)
+        {
+            for (int i = -reach; i <= reach; ++i)
+            {
+                outline({ middle.i + i, middle.j + j }, 1.0f, Fade(RAYWHITE, 0.2f));
+            }
         }
-        DrawRectangleLinesEx({ square.x + m_patch->radiusRegions * regionSide,
-                               square.y + m_patch->radiusRegions * regionSide, regionSide, regionSide },
-                             2.0f, kFocusColor);
+        outline(middle, 2.0f, kFocusColor);
+        EndScissorMode();
         DrawRectangleLinesEx(square, 1.0f, { 129, 158, 180, 255 });
 
         // Scale bar: 1 km.
@@ -270,30 +299,12 @@ namespace Infinitesia
         DrawRectangle(static_cast<int>(square.x + 12.0f), static_cast<int>(barY), static_cast<int>(kilometre), 3, RAYWHITE);
         DrawText("1 km", static_cast<int>(square.x + 12.0f), static_cast<int>(barY - 16.0f), 14, RAYWHITE);
 
-        // North arrow, from the pole direction projected onto the map plane.
-        const RegionLayout& layout = m_generator.GetLayout();
-        const double middle = RegionLayout::kCellsPerRegionEdge * 0.5;
-        const CartesianPoint3D center = layout.PointDirection(m_displayed, middle, middle);
-        const CartesianPoint3D stepX = layout.PointDirection(m_displayed, middle + 1.0, middle);
-        const CartesianPoint3D stepY = layout.PointDirection(m_displayed, middle, middle + 1.0);
-        const CartesianPoint3D pole{ 0.0, 1.0, 0.0 };
-        const double along = Dot(pole, center);
-        const CartesianPoint3D north{ pole.x - along * center.x, pole.y - along * center.y, pole.z - along * center.z };
-        const CartesianPoint3D axisX{ stepX.x - center.x, stepX.y - center.y, stepX.z - center.z };
-        const CartesianPoint3D axisY{ stepY.x - center.x, stepY.y - center.y, stepY.z - center.z };
-        const double northX = Dot(north, axisX) / Dot(axisX, axisX);
-        const double northY = Dot(north, axisY) / Dot(axisY, axisY);
-        const double northLength = std::sqrt(northX * northX + northY * northY);
-        if (northLength > 1e-9)
-        {
-            const Vector2 origin{ square.x + 34.0f, square.y + 46.0f };
-            const Vector2 direction{ static_cast<float>(northX / northLength), static_cast<float>(-northY / northLength) };
-            const Vector2 tip{ origin.x + direction.x * 22.0f, origin.y + direction.y * 22.0f };
-            DrawCircleV(origin, 3.0f, Fade(RAYWHITE, 0.6f));
-            DrawLineEx(origin, tip, 2.0f, RAYWHITE);
-            DrawText("N", static_cast<int>(tip.x + direction.x * 8.0f - 4.0f),
-                     static_cast<int>(tip.y + direction.y * 8.0f - 7.0f), 14, RAYWHITE);
-        }
+        // The map is north-up, so the arrow is fixed.
+        const Vector2 arrowBase{ square.x + 34.0f, square.y + 52.0f };
+        DrawLineEx(arrowBase, { arrowBase.x, arrowBase.y - 24.0f }, 2.0f, RAYWHITE);
+        DrawTriangle({ arrowBase.x, arrowBase.y - 30.0f }, { arrowBase.x - 4.0f, arrowBase.y - 22.0f },
+                     { arrowBase.x + 4.0f, arrowBase.y - 22.0f }, RAYWHITE);
+        DrawText("N", static_cast<int>(arrowBase.x - 4.0f), static_cast<int>(arrowBase.y - 48.0f), 14, RAYWHITE);
 
         if (m_pending.valid())
         {

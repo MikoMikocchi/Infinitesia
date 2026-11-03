@@ -2,14 +2,12 @@
 #include <doctest/doctest.h>
 
 #include "planet/PlanetMap.h"
-#include "planet/region/CubeSphere.h"
+#include "planet/region/LocalGrid.h"
 #include "planet/region/RegionGenerator.h"
-#include "planet/region/RegionLayout.h"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <limits>
+#include <numbers>
 #include <stdexcept>
 
 #define Require(condition, message)     do { if (!(condition)) { FAIL_CHECK(message); } } while (0)
@@ -17,6 +15,8 @@
 namespace
 {
     using namespace Infinitesia;
+
+    constexpr double kRadius = 6371000.0;
 
     // A coarse planet keeps these tests fast in unoptimized builds.
     const PlanetMap& SharedMap()
@@ -36,110 +36,128 @@ namespace
         return std::sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) + (a.z - b.z) * (a.z - b.z));
     }
 
-    constexpr std::array<std::array<int, 2>, 4> kEdgeSteps{ { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } };
-}
-
-TEST_CASE("CubeSphereRoundTripsDirections")
-{
-    for (int face = 0; face < CubeSphere::kFaceCount; ++face)
+    CartesianPoint3D Place(double latitude, double longitude)
     {
-        for (double u : { 0.0, 0.1, 0.5, 0.93, 1.0 })
-        {
-            for (double v : { 0.0, 0.27, 0.5, 0.71, 1.0 })
-            {
-                const CartesianPoint3D direction = CubeSphere::ToDirection({ face, u, v });
-                const double length = std::sqrt(direction.x * direction.x + direction.y * direction.y +
-                                                direction.z * direction.z);
-                Require(std::abs(length - 1.0) < 1e-12, "Face direction is not a unit vector.");
-
-                // Points on a cube edge may legitimately resolve to the other face,
-                // so compare directions rather than face coordinates.
-                const CubeFacePoint back = CubeSphere::FromDirection(direction);
-                const CartesianPoint3D again = CubeSphere::ToDirection(back);
-                Require(Distance(direction, again) < 1e-9, "Cube sphere round trip drifted.");
-            }
-        }
+        return PlanetaryCoordinates::ToCartesian({ latitude, longitude });
     }
-}
 
-TEST_CASE("RegionLayoutHasRoughlyFourKilometreSquareRegions")
-{
-    const RegionLayout layout(6371000.0);
-    Require(layout.RegionSizeMeters() > 4000.0 && layout.RegionSizeMeters() < 4200.0,
-            "Region size is not near 4 km.");
-    Require(layout.CellSizeMeters() > 31.0 && layout.CellSizeMeters() < 33.0,
-            "Lattice cell size is not near 32 m.");
-
-    // Equal-angle cells shrink toward cube corners but stay within ~1.5x.
-    const RegionId center{ 4, layout.RegionsPerEdge() / 2, layout.RegionsPerEdge() / 2 };
-    const RegionId corner{ 4, 0, 0 };
-    const auto span = [&](RegionId id)
+    double EastwardDegrees(double from, double to)
     {
-        return Distance(layout.PointDirection(id, 0, 0), layout.PointDirection(id, RegionLayout::kCellsPerRegionEdge, 0)) *
-               layout.PlanetRadiusMeters();
+        double delta = to - from;
+        if (delta > 180.0) delta -= 360.0;
+        if (delta < -180.0) delta += 360.0;
+        return delta;
+    }
+
+    // Anchors spread over the planet: tropics, mid-latitudes, the longitude seam and both poles.
+    const GeographicCoordinates kAnchors[] = {
+        { 0.0, 0.0 }, { 35.0, 100.0 }, { -50.0, 10.0 }, { 70.0, 359.99 }, { -9.8, 126.8 },
+        { 89.0, 40.0 }, { -90.0, 0.0 }, { 90.0, 0.0 }
     };
-    Require(span(center) / span(corner) < 1.6, "Corner regions are too distorted.");
 }
 
-TEST_CASE("RegionAtInvertsCenterDirection")
+TEST_CASE("RegionsAreEqualSquaresOfFourKilometres")
 {
-    const RegionLayout layout(6371000.0);
-    const int last = layout.RegionsPerEdge() - 1;
-    for (int face = 0; face < CubeSphere::kFaceCount; ++face)
+    static_assert(LocalGrid::kRegionSizeMeters == 4096.0);
+    static_assert(LocalGrid::kCellSizeMeters == 32.0);
+
+    for (const GeographicCoordinates anchor : kAnchors)
     {
-        for (int i : { 0, 1, last / 2, last - 1, last })
+        const LocalGrid grid(kRadius, Place(anchor.latitudeDegrees, anchor.longitudeDegrees));
+        for (const RegionId id : { RegionId{ 0, 0 }, RegionId{ 3, -2 }, RegionId{ -20, 14 }, RegionId{ 40, 40 } })
         {
-            for (int j : { 0, 1, last / 2, last - 1, last })
+            // Side lengths of the region measured along the surface.
+            const double east = Distance(grid.PointDirection(id, 0, 0), grid.PointDirection(id, 128, 0)) * kRadius;
+            const double north = Distance(grid.PointDirection(id, 0, 0), grid.PointDirection(id, 0, 128)) * kRadius;
+            // Within ~160 km of the anchor the projection stretches by less than 0.1%.
+            Require(std::abs(east - 4096.0) < 5.0 && std::abs(north - 4096.0) < 5.0,
+                    "Region is not a 4 km square near the anchor.");
+        }
+    }
+}
+
+TEST_CASE("RegionsFormAChessboard")
+{
+    for (const GeographicCoordinates anchor : kAnchors)
+    {
+        const LocalGrid grid(kRadius, Place(anchor.latitudeDegrees, anchor.longitudeDegrees));
+        for (const RegionId id : { RegionId{ 0, 0 }, RegionId{ 5, -7 }, RegionId{ -30, 22 } })
+        {
+            const int edge = LocalGrid::kCellsPerRegionEdge;
+            for (int k = 0; k <= edge; k += 16)
             {
-                const RegionId id{ face, i, j };
-                Require(layout.RegionAt(layout.CenterDirection(id)) == id, "RegionAt does not invert CenterDirection.");
+                // Each side meets exactly one neighbour, point for point.
+                Require(Distance(grid.PointDirection(id, edge, k), grid.PointDirection({ id.i + 1, id.j }, 0, k)) < 1e-12,
+                        "Eastern border does not meet the eastern neighbour.");
+                Require(Distance(grid.PointDirection(id, 0, k), grid.PointDirection({ id.i - 1, id.j }, edge, k)) < 1e-12,
+                        "Western border does not meet the western neighbour.");
+                Require(Distance(grid.PointDirection(id, k, edge), grid.PointDirection({ id.i, id.j + 1 }, k, 0)) < 1e-12,
+                        "Northern border does not meet the northern neighbour.");
+                Require(Distance(grid.PointDirection(id, k, 0), grid.PointDirection({ id.i, id.j - 1 }, k, edge)) < 1e-12,
+                        "Southern border does not meet the southern neighbour.");
             }
         }
     }
 }
 
-TEST_CASE("RegionNeighborsAreSymmetricAcrossFaces")
+TEST_CASE("RegionAtInvertsCenterDirectionAndProjectInvertsDirection")
 {
-    const RegionLayout layout(6371000.0);
-    const int last = layout.RegionsPerEdge() - 1;
-    for (int face = 0; face < CubeSphere::kFaceCount; ++face)
+    for (const GeographicCoordinates anchor : kAnchors)
     {
-        for (int i : { 0, 5, last / 2, last })
+        const LocalGrid grid(kRadius, Place(anchor.latitudeDegrees, anchor.longitudeDegrees));
+        Require(grid.RegionAt(Place(anchor.latitudeDegrees, anchor.longitudeDegrees)) == RegionId{},
+                "The anchor is not in region (0, 0).");
+        for (const RegionId id : { RegionId{ 0, 0 }, RegionId{ 1, 0 }, RegionId{ 0, -1 }, RegionId{ -12, 9 }, RegionId{ 100, 100 } })
         {
-            for (int j : { 0, 5, last / 2, last })
-            {
-                const RegionId id{ face, i, j };
-                for (const auto& step : kEdgeSteps)
-                {
-                    const RegionId neighbor = layout.Neighbor(id, step[0], step[1]);
-                    Require(layout.IsValid(neighbor), "Neighbor is outside the planet.");
-                    Require(!(neighbor == id), "Neighbor is the region itself.");
-                    // Axes rotate across a cube edge, so "back" is whichever of the
-                    // neighbour's four steps leads home.
-                    bool returnsHome = false;
-                    for (const auto& back : kEdgeSteps)
-                    {
-                        returnsHome = returnsHome || layout.Neighbor(neighbor, back[0], back[1]) == id;
-                    }
-                    Require(returnsHome, "The neighbour does not list the region as its own neighbour.");
-
-                    const double spacing = Distance(layout.CenterDirection(id), layout.CenterDirection(neighbor)) *
-                                           layout.PlanetRadiusMeters();
-                    Require(spacing > 0.5 * layout.RegionSizeMeters() && spacing < 1.6 * layout.RegionSizeMeters(),
-                            "Neighbour is not adjacent.");
-                }
-            }
+            Require(grid.RegionAt(grid.CenterDirection(id)) == id, "RegionAt does not invert CenterDirection.");
+        }
+        for (const double east : { -150000.0, -4096.0, 0.0, 3000.5, 90000.0 })
+        {
+            double e = 0.0;
+            double n = 0.0;
+            grid.Project(grid.Direction(east, -2.5 * east), e, n);
+            Require(std::abs(e - east) < 1e-3 && std::abs(n + 2.5 * east) < 1e-3, "Project does not invert Direction.");
         }
     }
+}
+
+TEST_CASE("GridIsNorthUpAndEastRight")
+{
+    // Away from the poles the grid axes follow the compass at the anchor.
+    for (const GeographicCoordinates anchor : kAnchors)
+    {
+        if (std::abs(anchor.latitudeDegrees) > 85.0)
+        {
+            continue;
+        }
+        const LocalGrid grid(kRadius, Place(anchor.latitudeDegrees, anchor.longitudeDegrees));
+        const GeographicCoordinates here = PlanetaryCoordinates::ToGeographic(grid.Direction(0.0, 0.0));
+        const GeographicCoordinates north = PlanetaryCoordinates::ToGeographic(grid.Direction(0.0, 5000.0));
+        const GeographicCoordinates east = PlanetaryCoordinates::ToGeographic(grid.Direction(5000.0, 0.0));
+        Require(north.latitudeDegrees > here.latitudeDegrees, "Grid y axis does not run north.");
+        Require(EastwardDegrees(here.longitudeDegrees, east.longitudeDegrees) > 0.0, "Grid x axis does not run east.");
+        Require(std::abs(EastwardDegrees(here.longitudeDegrees, north.longitudeDegrees)) < 1e-6,
+                "Grid y axis is not along the meridian.");
+    }
+}
+
+TEST_CASE("TheGridStretchesLittleFarFromTheAnchor")
+{
+    const LocalGrid grid(kRadius, Place(45.0, 100.0));
+    // A region 1600 km out (the limit) is stretched by about 3%.
+    const RegionId outermost{ LocalGrid::kMaxRegionIndex, 0 };
+    const double side = Distance(grid.PointDirection(outermost, 0, 0), grid.PointDirection(outermost, 128, 0)) * kRadius;
+    Require(side < 4096.0 && side > 4096.0 * 0.9, "Distance stretch at the grid limit is out of range.");
+    Require(LocalGrid::IsValid(outermost) && !LocalGrid::IsValid({ LocalGrid::kMaxRegionIndex + 1, 0 }),
+            "Grid limit is not enforced by IsValid.");
 }
 
 TEST_CASE("RegionGenerationIsDeterministic")
 {
     const RegionGenerator generator(SharedMap());
-    const RegionId id = generator.GetLayout().RegionAt(
-        PlanetaryCoordinates::ToCartesian({ 35.0, 80.0 }));
-    const RegionData first = generator.Generate(id);
-    const RegionData second = generator.Generate(id);
+    const LocalGrid grid = generator.MakeGrid(Place(35.0, 80.0));
+    const RegionData first = generator.Generate(grid, { 2, -1 });
+    const RegionData second = generator.Generate(grid, { 2, -1 });
     Require(first.elevationMeters == second.elevationMeters, "Region elevation is not deterministic.");
     Require(first.biome == second.biome, "Region biomes are not deterministic.");
     Require(first.elevationMeters.size() ==
@@ -147,65 +165,40 @@ TEST_CASE("RegionGenerationIsDeterministic")
             "Region lattice has the wrong size.");
 }
 
-TEST_CASE("NeighbouringRegionsShareBorderElevation")
+TEST_CASE("NeighbouringRegionsShareBorderElevationOnAllSides")
 {
     const RegionGenerator generator(SharedMap());
-    const RegionLayout& layout = generator.GetLayout();
-    const RegionId id = layout.RegionAt(PlanetaryCoordinates::ToCartesian({ 20.0, 200.0 }));
-    const int edge = RegionLayout::kCellsPerRegionEdge;
+    const int edge = LocalGrid::kCellsPerRegionEdge;
 
-    const RegionData a = generator.Generate(id);
-    const RegionData right = generator.Generate(layout.Neighbor(id, 1, 0));
-    const RegionData up = generator.Generate(layout.Neighbor(id, 0, 1));
-
-    for (int k = 0; k <= edge; ++k)
+    for (const GeographicCoordinates anchor : { GeographicCoordinates{ 20.0, 200.0 }, { 70.0, 359.99 }, { -89.0, 10.0 } })
     {
-        Require(a.ElevationAt(edge, k) == right.ElevationAt(0, k), "Right border differs from neighbour.");
-        Require(a.ElevationAt(k, edge) == up.ElevationAt(k, 0), "Upper border differs from neighbour.");
+        const LocalGrid grid = generator.MakeGrid(Place(anchor.latitudeDegrees, anchor.longitudeDegrees));
+        const RegionId id{ 1, -2 };
+        const RegionData a = generator.Generate(grid, id);
+        const RegionData east = generator.Generate(grid, { id.i + 1, id.j });
+        const RegionData north = generator.Generate(grid, { id.i, id.j + 1 });
+        for (int k = 0; k <= edge; ++k)
+        {
+            Require(a.ElevationAt(edge, k) == east.ElevationAt(0, k), "Eastern border differs from the neighbour.");
+            Require(a.ElevationAt(k, edge) == north.ElevationAt(k, 0), "Northern border differs from the neighbour.");
+        }
     }
 }
 
-TEST_CASE("RegionsAgreeAcrossCubeEdges")
+TEST_CASE("PolesAreAnchorableAndGenerateFiniteTerrain")
 {
     const RegionGenerator generator(SharedMap());
-    const RegionLayout& layout = generator.GetLayout();
-    const int last = layout.RegionsPerEdge() - 1;
-    const int edge = RegionLayout::kCellsPerRegionEdge;
-
-    // Last column of a face, away from corners; its +u neighbour lives on another face.
-    const RegionId id{ 4, last, last / 2 };
-    const RegionId across = layout.Neighbor(id, 1, 0);
-    Require(across.face != id.face, "Expected the neighbour on another face.");
-
-    const RegionData a = generator.Generate(id);
-    const RegionData b = generator.Generate(across);
-
-    // Match each shared border point to the closest border point of the other region.
-    for (int k = 0; k <= edge; k += 8)
+    for (const double latitude : { 90.0, -90.0 })
     {
-        const CartesianPoint3D direction = layout.PointDirection(id, edge, k);
-        double best = std::numeric_limits<double>::max();
-        float bestElevation = 0.0f;
-        for (int x = 0; x <= edge; ++x)
+        const LocalGrid grid = generator.MakeGrid(Place(latitude, 0.0));
+        for (const RegionId id : { RegionId{ 0, 0 }, RegionId{ 3, -2 } })
         {
-            for (int y : { 0, edge })
+            const RegionData data = generator.Generate(grid, id);
+            for (float value : data.elevationMeters)
             {
-                for (int swap = 0; swap < 2; ++swap)
-                {
-                    const int px = swap ? y : x;
-                    const int py = swap ? x : y;
-                    const double distance = Distance(direction, layout.PointDirection(across, px, py));
-                    if (distance < best)
-                    {
-                        best = distance;
-                        bestElevation = b.ElevationAt(px, py);
-                    }
-                }
+                Require(std::isfinite(value), "Polar region has a non-finite elevation.");
             }
         }
-        Require(best * layout.PlanetRadiusMeters() < 0.01, "No matching lattice point across the cube edge.");
-        Require(std::abs(a.ElevationAt(edge, k) - bestElevation) < 0.01f,
-                "Elevation differs across a cube edge.");
     }
 }
 
@@ -217,8 +210,8 @@ TEST_CASE("RegionElevationTracksThePlanetField")
     // Averaged over a region, detail must not drift far from the coarse field.
     for (const GeographicCoordinates place : { GeographicCoordinates{ 10.0, 20.0 }, { -40.0, 300.0 }, { 65.0, 100.0 } })
     {
-        const CartesianPoint3D direction = PlanetaryCoordinates::ToCartesian(place);
-        const RegionData data = generator.Generate(generator.GetLayout().RegionAt(direction));
+        const CartesianPoint3D direction = Place(place.latitudeDegrees, place.longitudeDegrees);
+        const RegionData data = generator.Generate(generator.MakeGrid(direction), {});
         double sum = 0.0;
         for (float value : data.elevationMeters)
         {
@@ -235,54 +228,102 @@ TEST_CASE("FinerWavelengthOnlyAddsDetail")
 {
     const RegionGenerator generator(SharedMap());
     const RegionTerrain& terrain = generator.GetTerrain();
-    const CartesianPoint3D direction = PlanetaryCoordinates::ToCartesian({ 30.0, 45.0 });
+    const CartesianPoint3D direction = Place(30.0, 45.0);
     const double coarse = terrain.ElevationMeters(direction, 256.0);
     const double fine = terrain.ElevationMeters(direction, 1.0);
     // Remaining octaves sum to at most their own amplitude, well below the full detail range.
     Require(std::abs(fine - coarse) < 50.0, "Fine detail rescaled the coarse terrain.");
 }
 
-TEST_CASE("PatchMatchesRegionDataAndCrossesCubeEdges")
+TEST_CASE("TerrainHasNoCliffWhereTheCoarseFieldCrossesSeaLevel")
 {
     const RegionGenerator generator(SharedMap());
-    const RegionLayout& layout = generator.GetLayout();
-    const int cells = RegionLayout::kCellsPerRegionEdge;
+    const RegionTerrain& terrain = generator.GetTerrain();
 
-    // Inside a face the centre of the patch is exactly the region's own lattice.
-    const RegionId inner{ 4, 100, 100 };
-    const RegionData region = generator.Generate(inner);
-    const RegionPatch patch = generator.GeneratePatch(inner, 1);
-    Require(patch.points == 3 * cells + 1, "Patch has the wrong size.");
-    for (int k = 0; k <= cells; k += 16)
+    // Walk along a parallel in coarse steps until the planet field changes sign.
+    int crossings = 0;
+    for (const double latitude : { -40.0, -10.0, 15.0, 45.0 })
     {
-        Require(patch.ElevationAt(cells + k, cells + 7) == region.ElevationAt(k, 7),
-                "Patch centre differs from the region lattice.");
-    }
+        const double coarseStep = 20000.0 / (kRadius * std::cos(latitude * std::numbers::pi / 180.0)) * 180.0 / std::numbers::pi;
+        for (double longitude = 0.0; longitude < 360.0 && crossings < 12; longitude += coarseStep)
+        {
+            const double before = terrain.SamplePlanet(Place(latitude, longitude)).elevationMeters;
+            const double after = terrain.SamplePlanet(Place(latitude, longitude + coarseStep)).elevationMeters;
+            if ((before < 0.0) == (after < 0.0))
+            {
+                continue;
+            }
+            ++crossings;
 
-    // At a cube edge the patch continues onto the next face without a jump.
-    const RegionId edge{ 4, layout.RegionsPerEdge() - 1, layout.RegionsPerEdge() / 2 };
-    const RegionPatch across = generator.GeneratePatch(edge, 1);
-    double largestStep = 0.0;
-    for (int x = 1; x < across.points; ++x)
-    {
-        largestStep = std::max<double>(largestStep, std::abs(across.ElevationAt(x, across.points / 2) -
-                                                             across.ElevationAt(x - 1, across.points / 2)));
+            // Fine walk across the crossing, 8 m steps, at the resolution of a region lattice.
+            const double fineStep = 8.0 / (kRadius * std::cos(latitude * std::numbers::pi / 180.0)) * 180.0 / std::numbers::pi;
+            const int steps = static_cast<int>(coarseStep / fineStep);
+            double previous = terrain.ElevationMeters(Place(latitude, longitude), 64.0);
+            double largestStep = 0.0;
+            for (int i = 1; i <= steps; ++i)
+            {
+                const double h = terrain.ElevationMeters(Place(latitude, longitude + i * fineStep), 64.0);
+                largestStep = std::max(largestStep, std::abs(h - previous));
+                previous = h;
+            }
+            Require(largestStep < 12.0, "Terrain has a cliff where the coarse field crosses sea level.");
+        }
     }
-    Require(largestStep < 40.0, "Patch has a jump where it crosses a cube edge.");
+    Require(crossings > 0, "Found no coastline to test.");
+}
+
+TEST_CASE("PatchIsTheGridsOwnLattice")
+{
+    const RegionGenerator generator(SharedMap());
+    const int cells = LocalGrid::kCellsPerRegionEdge;
+
+    for (const GeographicCoordinates anchor : { GeographicCoordinates{ 35.0, 100.0 }, { 5.0, 359.99 }, { 89.0, 10.0 } })
+    {
+        const LocalGrid grid = generator.MakeGrid(Place(anchor.latitudeDegrees, anchor.longitudeDegrees));
+        const RegionId id{ 2, -1 };
+        const RegionPatch patch = generator.GeneratePatch(grid, id, 1);
+        const RegionData region = generator.Generate(grid, id);
+        Require(patch.points == 3 * cells + 1, "Patch has the wrong size.");
+
+        // The patch centre is the region's centre, and its middle region is the region itself, point for point.
+        const double middle = (patch.points - 1) * 0.5;
+        Require(Distance(patch.Direction(middle, middle), grid.CenterDirection(id)) < 1e-9,
+                "Patch is not centred on the region.");
+        for (int k = 0; k <= cells; k += 16)
+        {
+            Require(patch.ElevationAt(cells + k, cells + 7) == region.ElevationAt(k, 7),
+                    "Patch centre differs from the region lattice.");
+        }
+
+        for (int k = 0; k <= 2 * cells; k += 32)
+        {
+            const double x = patch.points * 0.3 + k * 0.1;
+            const double y = patch.points * 0.6 - k * 0.2;
+            double px = 0.0;
+            double py = 0.0;
+            patch.Project(patch.Direction(x, y), px, py);
+            Require(std::abs(px - x) < 1e-3 && std::abs(py - y) < 1e-3, "Patch projection does not invert Direction.");
+        }
+    }
 
     bool invalidRadiusRejected = false;
-    try { generator.GeneratePatch(inner, 9); } catch (const std::invalid_argument&) { invalidRadiusRejected = true; }
+    try { generator.GeneratePatch(generator.MakeGrid(Place(0.0, 0.0)), {}, 9); }
+    catch (const std::invalid_argument&) { invalidRadiusRejected = true; }
     Require(invalidRadiusRejected, "An oversized patch radius was accepted.");
+
+    bool farRegionRejected = false;
+    try { generator.Generate(generator.MakeGrid(Place(0.0, 0.0)), { LocalGrid::kMaxRegionIndex + 1, 0 }); }
+    catch (const std::out_of_range&) { farRegionRejected = true; }
+    Require(farRegionRejected, "A region beyond the grid limit was accepted.");
 }
 
 TEST_CASE("RegionCacheEvictsLeastRecentlyUsed")
 {
     const RegionGenerator generator(SharedMap());
-    RegionCache cache(generator, 2);
-    const RegionLayout& layout = generator.GetLayout();
-    const RegionId a{ 0, 10, 10 };
-    const RegionId b = layout.Neighbor(a, 1, 0);
-    const RegionId c = layout.Neighbor(a, 0, 1);
+    RegionCache cache(generator, generator.MakeGrid(Place(10.0, 10.0)), 2);
+    const RegionId a{ 0, 0 };
+    const RegionId b{ 1, 0 };
+    const RegionId c{ 2, 0 };
 
     const auto first = cache.Get(a);
     cache.Get(b);

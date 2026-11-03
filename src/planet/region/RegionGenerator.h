@@ -1,7 +1,7 @@
 #pragma once
 
+#include "planet/region/LocalGrid.h"
 #include "planet/region/RegionData.h"
-#include "planet/region/RegionLayout.h"
 #include "planet/region/RegionTerrain.h"
 
 #include <cstddef>
@@ -17,25 +17,31 @@ namespace Infinitesia
     public:
         explicit RegionGenerator(const PlanetMap& map);
 
-        const RegionLayout& GetLayout() const noexcept { return m_layout; }
         const RegionTerrain& GetTerrain() const noexcept { return m_terrain; }
+        double PlanetRadiusMeters() const noexcept { return m_radiusMeters; }
 
-        RegionData Generate(RegionId id) const;
+        // The grid anchored at a point on the planet.
+        LocalGrid MakeGrid(CartesianPoint3D anchorDirection) const noexcept
+        {
+            return LocalGrid(m_radiusMeters, anchorDirection);
+        }
+
+        RegionData Generate(const LocalGrid& grid, RegionId id) const;
 
         // Lattice around `center` covering radiusRegions regions in every direction.
-        RegionPatch GeneratePatch(RegionId center, int radiusRegions) const;
+        RegionPatch GeneratePatch(const LocalGrid& grid, RegionId center, int radiusRegions) const;
 
     private:
-        RegionLayout m_layout;
+        double m_radiusMeters;
         RegionTerrain m_terrain;
     };
 
     // Small LRU cache so panning across a region map does not regenerate tiles.
-    // Not thread-safe.
+    // Bound to one grid. Not thread-safe.
     class RegionCache
     {
     public:
-        RegionCache(const RegionGenerator& generator, std::size_t capacity);
+        RegionCache(const RegionGenerator& generator, LocalGrid grid, std::size_t capacity);
 
         std::shared_ptr<const RegionData> Get(RegionId id);
         std::size_t Size() const noexcept { return m_entries.size(); }
@@ -48,6 +54,7 @@ namespace Infinitesia
         };
 
         const RegionGenerator& m_generator;
+        LocalGrid m_grid;
         std::size_t m_capacity;
         std::list<RegionId> m_recent; // front = most recently used
         std::unordered_map<RegionId, Entry> m_entries;

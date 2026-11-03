@@ -31,9 +31,12 @@ namespace Infinitesia
         RegionMapView(const RegionMapView&) = delete;
         RegionMapView& operator=(const RegionMapView&) = delete;
 
-        const RegionLayout& GetLayout() const noexcept { return m_generator.GetLayout(); }
+        const LocalGrid& GetGrid() const noexcept { return m_grid; }
         const RegionTerrain& GetTerrain() const noexcept { return m_generator.GetTerrain(); }
 
+        // Lays a new chessboard anchored at a point of the planet and focuses its middle region.
+        void Anchor(CartesianPoint3D direction);
+        // Focus a region of the current grid, by id or by the point it contains.
         void Focus(RegionId id);
         void FocusAt(CartesianPoint3D direction);
         RegionId GetFocus() const noexcept { return m_focus; }
@@ -62,15 +65,19 @@ namespace Infinitesia
         };
 
         static Built Build(const RegionGenerator& generator, const PlanetMap& map,
-                           const ColorFunction& color, RegionId focus);
+                           const ColorFunction& color, const LocalGrid& grid, RegionId focus);
         bool PatchPoint(Vector2 mouse, Rectangle bounds, int& x, int& y) const;
 
         const PlanetMap& m_map;
         RegionGenerator m_generator;
         ColorFunction m_color;
 
+        LocalGrid m_grid;
+        unsigned m_gridVersion = 0;    // bumped whenever the anchor moves
         RegionId m_focus{};            // requested
         RegionId m_displayed{};        // what the texture and patch show
+        unsigned m_displayedVersion = 0;
+        unsigned m_pendingVersion = 0;
         bool m_hasImage = false;
         std::future<Built> m_pending;
         RegionId m_pendingFocus{};

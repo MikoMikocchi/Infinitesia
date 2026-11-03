@@ -6,22 +6,22 @@
 namespace Infinitesia
 {
     RegionGenerator::RegionGenerator(const PlanetMap& map)
-        : m_layout(map.GetPlanet().GetRadius())
+        : m_radiusMeters(map.GetPlanet().GetRadius())
         , m_terrain(map)
     {
     }
 
-    RegionData RegionGenerator::Generate(RegionId id) const
+    RegionData RegionGenerator::Generate(const LocalGrid& grid, RegionId id) const
     {
-        if (!m_layout.IsValid(id))
+        if (!LocalGrid::IsValid(id))
         {
-            throw std::out_of_range("Region id is outside the planet.");
+            throw std::out_of_range("Region is too far from the grid anchor.");
         }
 
         RegionData data;
         data.id = id;
-        data.center = m_layout.Center(id);
-        data.cellSizeMeters = m_layout.CellSizeMeters();
+        data.center = grid.Center(id);
+        data.cellSizeMeters = LocalGrid::kCellSizeMeters;
 
         const std::size_t count = static_cast<std::size_t>(RegionData::kPoints) * RegionData::kPoints;
         data.elevationMeters.resize(count);
@@ -37,7 +37,7 @@ namespace Infinitesia
         {
             for (int x = 0; x < RegionData::kPoints; ++x)
             {
-                const CartesianPoint3D direction = m_layout.PointDirection(id, x, y);
+                const CartesianPoint3D direction = grid.PointDirection(id, x, y);
                 const PlanetFieldSample planet = m_terrain.SamplePlanet(direction);
                 const float elevation = static_cast<float>(
                     m_terrain.ElevationMeters(direction, planet, minWavelength));
@@ -59,11 +59,11 @@ namespace Infinitesia
         return data;
     }
 
-    RegionPatch RegionGenerator::GeneratePatch(RegionId center, int radiusRegions) const
+    RegionPatch RegionGenerator::GeneratePatch(const LocalGrid& grid, RegionId center, int radiusRegions) const
     {
-        if (!m_layout.IsValid(center))
+        if (!LocalGrid::IsValid(center))
         {
-            throw std::out_of_range("Region id is outside the planet.");
+            throw std::out_of_range("Region is too far from the grid anchor.");
         }
         if (radiusRegions < 0 || radiusRegions > 8)
         {
@@ -73,8 +73,11 @@ namespace Infinitesia
         RegionPatch patch;
         patch.center = center;
         patch.radiusRegions = radiusRegions;
-        patch.points = (2 * radiusRegions + 1) * RegionLayout::kCellsPerRegionEdge + 1;
-        patch.cellSizeMeters = m_layout.CellSizeMeters();
+        patch.points = (2 * radiusRegions + 1) * LocalGrid::kCellsPerRegionEdge + 1;
+        patch.cellSizeMeters = LocalGrid::kCellSizeMeters;
+        patch.grid = grid;
+        patch.originEastMeters = (center.i - 0.5 - radiusRegions) * LocalGrid::kRegionSizeMeters;
+        patch.originNorthMeters = (center.j - 0.5 - radiusRegions) * LocalGrid::kRegionSizeMeters;
 
         const std::size_t count = static_cast<std::size_t>(patch.points) * patch.points;
         patch.elevationMeters.resize(count);
@@ -84,13 +87,12 @@ namespace Infinitesia
         const double minWavelength = patch.cellSizeMeters * 2.0;
         const PlanetMap& map = m_terrain.GetPlanetMap();
         const int longitudeSegments = map.GetLongitudeSegmentCount();
-        const int origin = radiusRegions * RegionLayout::kCellsPerRegionEdge;
 
         for (int y = 0; y < patch.points; ++y)
         {
             for (int x = 0; x < patch.points; ++x)
             {
-                const CartesianPoint3D direction = m_layout.PointDirection(center, x - origin, y - origin);
+                const CartesianPoint3D direction = patch.Direction(x, y);
                 const PlanetFieldSample planet = m_terrain.SamplePlanet(direction);
                 const std::size_t index = patch.Index(x, y);
                 patch.elevationMeters[index] = static_cast<float>(
@@ -104,8 +106,9 @@ namespace Infinitesia
         return patch;
     }
 
-    RegionCache::RegionCache(const RegionGenerator& generator, std::size_t capacity)
+    RegionCache::RegionCache(const RegionGenerator& generator, LocalGrid grid, std::size_t capacity)
         : m_generator(generator)
+        , m_grid(grid)
         , m_capacity(std::max<std::size_t>(1, capacity))
     {
     }
@@ -119,7 +122,7 @@ namespace Infinitesia
             return found->second.data;
         }
 
-        auto data = std::make_shared<const RegionData>(m_generator.Generate(id));
+        auto data = std::make_shared<const RegionData>(m_generator.Generate(m_grid, id));
         m_recent.push_front(id);
         m_entries.emplace(id, Entry{ data, m_recent.begin() });
 

@@ -57,6 +57,7 @@ namespace Infinitesia
         }
 
         constexpr double kSoftAbsMean = 0.375;
+        constexpr double kCoastBlendMeters = 150.0;
 
         int WrapIndex(int index, int count) noexcept
         {
@@ -143,15 +144,19 @@ namespace Infinitesia
     double RegionTerrain::ElevationMeters(CartesianPoint3D direction, const PlanetFieldSample& planet,
                                           double minWavelengthMeters) const noexcept
     {
-        const bool isOcean = planet.elevationMeters < 0.0;
         const double roughness = planet.roughness;
 
         // Total detail amplitude is fixed per location, so a finer minimum
         // wavelength only adds octaves and never rescales the coarse ones.
-        const double detailAmplitude = isOcean
-            ? 20.0 + 150.0 * roughness
-            : 60.0 + 1400.0 * roughness * std::sqrt(roughness);
-        const double ridgeMix = isOcean ? 0.0 : std::clamp(roughness * 1.5, 0.0, 1.0);
+        // Sea floor and land differ in character, but the switch is blended over
+        // +/- kCoastBlendMeters of coarse elevation: a hard switch at the zero
+        // contour would leave a visible cliff along it.
+        const double seaFloorAmplitude = 20.0 + 150.0 * roughness;
+        const double landAmplitude = 60.0 + 1400.0 * roughness * std::sqrt(roughness);
+        const double t = std::clamp(planet.elevationMeters / (2.0 * kCoastBlendMeters) + 0.5, 0.0, 1.0);
+        const double land = t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+        const double detailAmplitude = seaFloorAmplitude + (landAmplitude - seaFloorAmplitude) * land;
+        const double ridgeMix = land * std::clamp(roughness * 1.5, 0.0, 1.0);
 
         const double px = direction.x * m_radiusMeters;
         const double py = direction.y * m_radiusMeters;
