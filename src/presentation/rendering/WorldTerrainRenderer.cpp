@@ -1,5 +1,6 @@
 ﻿#include "presentation/rendering/WorldGeometryRenderer.h"
 #include "presentation/rendering/terrain/TerrainMeshBuilder.h"
+#include "presentation/rendering/terrain/TerrainOcclusion.h"
 
 #include "raylib.h"
 #include "raymath.h"
@@ -147,6 +148,8 @@ namespace Infinitesia
                        std::abs(coordinate.z - centerChunkZ) <= chunkRadius;
             };
 
+            static TerrainOcclusion occlusion;
+            const int topShownLevel = mode == ViewMode::CutAtLevel ? viewLevel : grid.GetHeight() - 1;
             const Frustum frustum = Frustum::Current();
             const float chunkWorldSize = static_cast<float>(kChunkSize) * grid.GetCellSize();
             const auto isVisible = [&](const WorldChunk& chunk)
@@ -161,7 +164,8 @@ namespace Infinitesia
                     min.y + static_cast<float>(chunk.height) * grid.GetCellSize(),
                     min.z + chunkWorldSize
                 };
-                return frustum.Intersects(min, max);
+                return frustum.Intersects(min, max) &&
+                       !occlusion.IsHidden(world, chunk, topShownLevel);
             };
 
             int buildsLeft = kMeshBuildsPerFrame;
