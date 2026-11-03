@@ -1,6 +1,7 @@
 #include "planet/StarSystemGenerator.h"
 #include "planet/PlanetMap.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
+#include "planet/internal/PlanetMapHydrologyHelpers.h"
 
 #include <algorithm>
 #include <array>
@@ -638,9 +639,131 @@ void TestBoundaryClassificationSignConvention()
         "Southward motion against northward A→B normal must be Divergent.");
 }
 
+
 // --------------------------------------------------------------------------
 // Robustness tests: edge-case planet configurations.
 // --------------------------------------------------------------------------
+void TestSyntheticFullyLandDrainageFallback()
+{
+    constexpr int latitudeBands = 5;
+    constexpr int longitudeSegments = 8;
+    const std::size_t cellCount =
+        static_cast<std::size_t>(latitudeBands) * longitudeSegments;
+    std::vector<double> elevations(cellCount);
+    std::vector<bool> oceanCells(cellCount, false);
+    std::vector<double> localRunoff(cellCount);
+    std::vector<double> localRunoffVolume(cellCount);
+
+    for (std::size_t index = 0; index < cellCount; ++index)
+    {
+        elevations[index] = 0.1 + static_cast<double>((index * 7) % 17) / 20.0;
+        localRunoff[index] = 1.0 + static_cast<double>(index % 5);
+        localRunoffVolume[index] = localRunoff[index] * 0.01;
+    }
+
+    // Guarantee a fully land-covered map with no ocean cells at all.
+    for (std::size_t index = 0; index < cellCount; ++index)
+    {
+        oceanCells[index] = false;
+    }
+
+    const auto network = Infinitesia::GenerationDetail::BuildDrainageNetwork(
+        latitudeBands,
+        longitudeSegments,
+        elevations,
+        oceanCells,
+        localRunoff,
+        localRunoffVolume);
+
+    Require(std::none_of(oceanCells.begin(), oceanCells.end(), [](bool isOcean)
+        {
+            return isOcean;
+        }),
+        "Synthetic fallback map must contain no ocean cells.");
+    Require(network.usedLandFallback,
+        "Fully land-covered map did not use the Priority-Flood fallback.");
+
+    const std::size_t minimumIndex = static_cast<std::size_t>(
+        std::distance(
+            elevations.begin(),
+            std::min_element(elevations.begin(), elevations.end())));
+    for (std::size_t cell = 0; cell < cellCount; ++cell)
+    {
+        if (cell == minimumIndex)
+        {
+            Require(network.flowDirections[cell] == -1,
+                "Global minimum of a fully land-covered map must be the drainage sink.");
+        }
+        else
+        {
+            Require(network.flowDirections[cell] >= 0,
+                "Land cell in a fully land-covered map has no downstream route.");
+        }
+
+        std::size_t downstream = cell;
+        std::size_t steps = 0;
+        while (network.flowDirections[downstream] >= 0 && steps < cellCount)
+        {
+            downstream = static_cast<std::size_t>(
+                network.flowDirections[downstream]);
+            ++steps;
+        }
+        Require(downstream == minimumIndex && steps < cellCount,
+            "Land drainage path does not terminate at the global minimum.");
+    }
+}
+
+void TestDrainageAccumulationIsMonotonicAlongFlowGraph()
+{
+    constexpr int latitudeBands = 5;
+    constexpr int longitudeSegments = 8;
+    const std::size_t cellCount =
+        static_cast<std::size_t>(latitudeBands) * longitudeSegments;
+    std::vector<double> elevations(cellCount);
+    std::vector<bool> oceanCells(cellCount, false);
+    std::vector<double> localRunoff(cellCount);
+    std::vector<double> localRunoffVolume(cellCount);
+
+    for (std::size_t index = 0; index < cellCount; ++index)
+    {
+        elevations[index] = static_cast<double>((index * 11) % 23) / 10.0;
+        localRunoff[index] = 1.0 + static_cast<double>(index % 3);
+        localRunoffVolume[index] = localRunoff[index] * 0.025;
+    }
+    oceanCells[3] = true;
+    oceanCells[latitudeBands * longitudeSegments - 5] = true;
+
+    const auto network = Infinitesia::GenerationDetail::BuildDrainageNetwork(
+        latitudeBands,
+        longitudeSegments,
+        elevations,
+        oceanCells,
+        localRunoff,
+        localRunoffVolume);
+
+    Require(!network.usedLandFallback,
+        "Drainage graph test with ocean outlets unexpectedly used the land fallback.");
+    for (std::size_t cell = 0; cell < cellCount; ++cell)
+    {
+        if (oceanCells[cell])
+            continue;
+        const int downstreamIndex = network.flowDirections[cell];
+        if (downstreamIndex < 0)
+            continue;
+
+        const std::size_t downstream = static_cast<std::size_t>(downstreamIndex);
+        Require(network.filledElevations[downstream] <
+                    network.filledElevations[cell] - 1e-18,
+            "Drainage edge does not descend in the filled elevation graph.");
+        Require(network.normalizedAccumulation[downstream] + 1e-12 >=
+                    network.normalizedAccumulation[cell],
+            "Normalized drainage accumulation decreased downstream.");
+        Require(network.volumeAccumulation[downstream] + 1e-12 >=
+                    network.volumeAccumulation[cell],
+            "Runoff volume accumulation decreased downstream.");
+    }
+}
+
 void TestEdgeCasePlanetConfigurations()
 {
     // --- Hydrology invariants: flow must respect topology ---
@@ -846,8 +969,8 @@ void TestEdgeCasePlanetConfigurations()
                 break;
             }
         }
-        // Not finding a land-heavy seed in this range is acceptable —
-        // the generator may simply not produce such planets at default params.
+        // Some generator configurations may not produce very land-heavy planets;
+        // the key is that when ocean coverage is low the invariants hold.
         (void)foundLandHeavy;
     }
 
@@ -914,6 +1037,8 @@ int main()
     try
     {
         TestBoundaryClassificationSignConvention();
+        TestSyntheticFullyLandDrainageFallback();
+        TestDrainageAccumulationIsMonotonicAlongFlowGraph();
         TestEdgeCasePlanetConfigurations();
         TestSameScenarioIsDeterministic();
         TestDifferentScenariosProduceDifferentSystems();

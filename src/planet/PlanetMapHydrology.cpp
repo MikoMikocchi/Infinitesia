@@ -1,11 +1,10 @@
 #include "planet/PlanetMap.h"
 #include "planet/internal/PlanetMapGenerationHelpers.h"
+#include "planet/internal/PlanetMapHydrologyHelpers.h"
 
 #include <algorithm>
 #include <cmath>
 #include <numbers>
-#include <numeric>
-#include <queue>
 #include <vector>
 
 namespace Infinitesia
@@ -14,9 +13,6 @@ namespace Infinitesia
     {
         const int latB = LatBands();
         const int lonS = LonSegs();
-
-        const int dx[8] = { -1, -1, -1, 0, 0, 1, 1, 1 };
-        const int dy[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
 
         // -----------------------------------------------------------------------
         // Precompute per-latitude cell area weights (spherical shell segment).
@@ -48,174 +44,49 @@ namespace Infinitesia
         }
         meanCellAreaKm2 /= latB;
 
-        // -----------------------------------------------------------------------
-        // Step 1: Depression filling (Priority-Flood).
-        //
-        // D8 flow routing on a raw DEM produces spurious inland sinks caused
-        // by terrain noise.  Priority-Flood fills every depression up to its
-        // lowest spill elevation so that all land cells (except genuine
-        // endorheic basins) can drain to the ocean.
-        //
-        // On a planet with no ocean (fully land-covered), we fall back to
-        // seeding the Priority-Flood from the global elevation minimum so that
-        // all depressions are still processed and the drainage network
-        // terminates at the lowest point on the surface.
-        // -----------------------------------------------------------------------
         const std::size_t cellCount = static_cast<std::size_t>(latB) * lonS;
-        std::vector<double> filledElev(cellCount);
-        for (std::size_t i = 0; i < cellCount; ++i)
-            filledElev[i] = m_grid[i].elevationNormalized;
-
-        std::vector<bool> processed(cellCount, false);
-        using HeapEntry = std::pair<double, int>;
-        std::priority_queue<
-            HeapEntry,
-            std::vector<HeapEntry>,
-            std::greater<HeapEntry>> heap;
-
-        for (int la = 0; la < latB; ++la)
-        {
-            for (int lo = 0; lo < lonS; ++lo)
-            {
-                if (Cell(la, lo).isOcean)
-                {
-                    const std::size_t idx = static_cast<std::size_t>(la) * lonS + lo;
-                    processed[idx] = true;
-                    heap.emplace(filledElev[idx], static_cast<int>(idx));
-                }
-            }
-        }
-
-        // Fallback for fully land-covered planets: seed from the global minimum.
-        if (heap.empty())
-        {
-            int minIdx = 0;
-            for (std::size_t i = 1; i < cellCount; ++i)
-                if (filledElev[i] < filledElev[static_cast<std::size_t>(minIdx)])
-                    minIdx = static_cast<int>(i);
-            processed[static_cast<std::size_t>(minIdx)] = true;
-            heap.emplace(filledElev[static_cast<std::size_t>(minIdx)], minIdx);
-        }
-
-        constexpr double kEpsilon = 1e-7;
-        while (!heap.empty())
-        {
-            const auto [elev, cellIdx] = heap.top();
-            heap.pop();
-
-            const int la = cellIdx / lonS;
-            const int lo = cellIdx % lonS;
-
-            for (int d = 0; d < 8; ++d)
-            {
-                const int nla = la + dx[d];
-                const int nlo = ((lo + dy[d]) + lonS) % lonS;
-                if (nla < 0 || nla >= latB)
-                    continue;
-                const std::size_t nIdx = static_cast<std::size_t>(nla) * lonS + nlo;
-                if (processed[nIdx])
-                    continue;
-                const double newElev = std::max(filledElev[nIdx], elev + kEpsilon);
-                filledElev[nIdx] = newElev;
-                processed[nIdx] = true;
-                heap.emplace(newElev, static_cast<int>(nIdx));
-            }
-        }
-
-        // -----------------------------------------------------------------------
-        // Step 2: D8 flow direction on the filled DEM.
-        // -----------------------------------------------------------------------
-        std::vector<int> flowDir(cellCount, -1);
-        for (int la = 0; la < latB; ++la)
-        {
-            for (int lo = 0; lo < lonS; ++lo)
-            {
-                const std::size_t idx = static_cast<std::size_t>(la) * lonS + lo;
-                if (Cell(la, lo).isOcean)
-                    continue;
-
-                const double cellElev = filledElev[idx];
-                double minElev = cellElev;
-                int bestNeighbor = -1;
-                for (int d = 0; d < 8; ++d)
-                {
-                    const int nla = la + dx[d];
-                    const int nlo = ((lo + dy[d]) + lonS) % lonS;
-                    if (nla < 0 || nla >= latB)
-                        continue;
-                    const double ne =
-                        filledElev[static_cast<std::size_t>(nla) * lonS + nlo];
-                    if (ne < minElev) { minElev = ne; bestNeighbor = nla * lonS + nlo; }
-                }
-                flowDir[idx] = bestNeighbor;
-            }
-        }
-
-        // -----------------------------------------------------------------------
-        // Step 3: Topological sort (high → low) for upstream accumulation.
-        // -----------------------------------------------------------------------
-        std::vector<int> order(static_cast<int>(cellCount));
-        std::iota(order.begin(), order.end(), 0);
-        std::sort(order.begin(), order.end(), [&](int a, int b)
-        {
-            return filledElev[static_cast<std::size_t>(a)] >
-                   filledElev[static_cast<std::size_t>(b)];
-        });
-
-        // -----------------------------------------------------------------------
-        // Step 4a: Area-weighted normalised accumulation (for drainageAccumulation).
-        //
-        //   Q_out = Q_in + max(0, P − ET) × (A_cell / A_mean)
-        //
-        // Dimensionless area ratio preserves the 0..1 normalised range while
-        // correcting for the convergence of meridians at high latitudes.
-        //
-        // Step 4b: Physical runoff volume accumulation (for annualRunoffVolumeKm3).
-        //
-        //   V_out = V_in + max(0, P − ET) × A_cell × 1e-6
-        //
-        // where P, ET are in mm/yr and A_cell is in km².
-        // The factor 1e-6 converts mm·km² to km³  (1 mm·km² = 10⁻⁶ km³).
-        //
-        // ET approximation (Penman-inspired linear fit):
-        //   At  0 °C → ET ≈ 120 mm/yr
-        //   At 30 °C → ET ≈ 480 mm/yr
-        // -----------------------------------------------------------------------
-        std::vector<double> waterAccum(cellCount, 0.0);  // dimensionless (norm)
-        std::vector<double> volumeAccum(cellCount, 0.0); // km³/yr (physical)
+        std::vector<double> elevations(cellCount);
+        std::vector<bool> oceanCells(cellCount);
+        std::vector<double> localNormalizedRunoff(cellCount, 0.0);
         std::vector<double> localRunoffVolume(cellCount, 0.0);
         std::vector<double> etAnnualMmByCell(cellCount, 0.0);
-        for (const int idx : order)
+        for (int la = 0; la < latB; ++la)
         {
-            const int la = idx / lonS;
-            const auto& c = Cell(la, idx % lonS);
-            if (c.isOcean)
-                continue;
-
-            const double etAnnualMm =
-                std::clamp(120.0 + c.temperatureCelsius * 12.0, 0.0, 600.0);
-            const double runoffMm = std::max(0.0, c.precipitationMm - etAnnualMm);
-            const double areaCellKm2 = cellAreaKm2[static_cast<std::size_t>(la)];
-            const double areaRatio =
-                meanCellAreaKm2 > 0.0 ? areaCellKm2 / meanCellAreaKm2 : 1.0;
-            const double localVolumeKm3 =
-                runoffMm * areaCellKm2 * 1e-6;
-
-            waterAccum[static_cast<std::size_t>(idx)] += runoffMm * areaRatio;
-            volumeAccum[static_cast<std::size_t>(idx)] += localVolumeKm3;
-            localRunoffVolume[static_cast<std::size_t>(idx)] = localVolumeKm3;
-            etAnnualMmByCell[static_cast<std::size_t>(idx)] = etAnnualMm;
-
-            const int target = flowDir[static_cast<std::size_t>(idx)];
-            if (target >= 0)
+            for (int lo = 0; lo < lonS; ++lo)
             {
-                waterAccum[static_cast<std::size_t>(target)] +=
-                    waterAccum[static_cast<std::size_t>(idx)];
-                volumeAccum[static_cast<std::size_t>(target)] +=
-                    volumeAccum[static_cast<std::size_t>(idx)];
+                const std::size_t index =
+                    static_cast<std::size_t>(la) * lonS + lo;
+                const auto& cell = Cell(la, lo);
+                elevations[index] = cell.elevationNormalized;
+                oceanCells[index] = cell.isOcean;
+                if (cell.isOcean)
+                    continue;
+
+                const double etAnnualMm =
+                    std::clamp(120.0 + cell.temperatureCelsius * 12.0, 0.0, 600.0);
+                const double runoffMm =
+                    std::max(0.0, cell.precipitationMm - etAnnualMm);
+                const double areaCellKm2 = cellAreaKm2[static_cast<std::size_t>(la)];
+                const double areaRatio =
+                    meanCellAreaKm2 > 0.0 ? areaCellKm2 / meanCellAreaKm2 : 1.0;
+
+                localNormalizedRunoff[index] = runoffMm * areaRatio;
+                localRunoffVolume[index] = runoffMm * areaCellKm2 * 1e-6;
+                etAnnualMmByCell[index] = etAnnualMm;
             }
         }
 
+        GenerationDetail::DrainageNetwork network =
+            GenerationDetail::BuildDrainageNetwork(
+                latB,
+                lonS,
+                elevations,
+                oceanCells,
+                localNormalizedRunoff,
+                localRunoffVolume);
+        const auto& filledElev = network.filledElevations;
+        const auto& waterAccum = network.normalizedAccumulation;
+        const auto& volumeAccum = network.volumeAccumulation;
         const double maxWater =
             *std::max_element(waterAccum.begin(), waterAccum.end());
 

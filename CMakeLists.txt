@@ -52,6 +52,7 @@ add_executable(Infinitesia
   src/planet/PlanetMap.cpp
   src/planet/PlanetMapTectonics.cpp
   src/planet/PlanetMapHydrology.cpp
+  src/planet/internal/PlanetMapHydrologyHelpers.cpp
   src/planet/PlanetMapClassification.cpp
   src/planet/PlanetMapTerrain.cpp
   src/planet/PlanetMapClimate.cpp
@@ -147,6 +148,7 @@ if (BUILD_TESTING)
     src/planet/PlanetMap.cpp
     src/planet/PlanetMapTectonics.cpp
     src/planet/PlanetMapHydrology.cpp
+    src/planet/internal/PlanetMapHydrologyHelpers.cpp
     src/planet/PlanetMapClassification.cpp
     src/planet/PlanetMapTerrain.cpp
     src/planet/PlanetMapClimate.cpp
