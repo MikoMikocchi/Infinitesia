@@ -981,13 +981,15 @@ namespace Infinitesia
             }
         }(selectedRegion.surfaceRock);
 
-        char detailText[384];
+        char detailText[512];
         if (selectedRegion.isLake)
         {
             std::snprintf(
                 detailText, sizeof(detailText),
-                "Lake V %.3f km3  |  Annual in/evap/infil/spill %.3f/%.3f/%.3f/%.3f km3/yr"
+                "Lake %.0f%% of cell (%.0f km2)  |  V %.3f km3  |  Annual in/evap/infil/spill %.3f/%.3f/%.3f/%.3f km3/yr"
                 "  |  Level %.2f km  |  Spill height %.3f km",
+                selectedRegion.lakeFraction * 100.0,
+                selectedRegion.lakeSurfaceAreaKm2,
                 selectedRegion.lakeWaterVolumeKm3,
                 selectedRegion.lakeAnnualInflowKm3,
                 selectedRegion.lakeAnnualEvaporationKm3,

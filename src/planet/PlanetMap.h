@@ -107,7 +107,8 @@ namespace Infinitesia
         double annualRunoffVolumeKm3 = 0.0; // physical annual runoff volume [km³/yr]
         bool   isLake = false;
         double drainageAccumulation = 0.0; // watershed flow, area-weighted, normalised
-        double lakeSurfaceAreaKm2 = 0.0;
+        double lakeFraction = 0.0;         // share of the cell covered by water [0..1]
+        double lakeSurfaceAreaKm2 = 0.0;   // water surface, <= cell area
         double lakeWaterVolumeKm3 = 0.0;
         double lakeAnnualInflowKm3 = 0.0;       // [km³/yr]
         double lakeAnnualEvaporationKm3 = 0.0;  // [km³/yr]

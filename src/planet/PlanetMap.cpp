@@ -573,7 +573,9 @@ Biome ClassifyBiome(const PlanetRegion& r)
         return Biome::ShallowSea;
     }
 
-    if (r.isLake) return Biome::ShallowSea;
+    // Only a cell mostly covered by water reads as water; smaller lakes sit
+    // inside an ordinary land biome and are reported via lakeFraction.
+    if (r.isLake && r.lakeFraction >= 0.5) return Biome::ShallowSea;
 
     // Salt flat: hot endorheic basin, near-zero precip
     if (t > 15.0 && p < 80.0 && r.drainageAccumulation < 0.01)

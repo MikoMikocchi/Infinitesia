@@ -106,6 +106,9 @@ namespace Infinitesia
         constexpr double kLakeFillThreshold = 0.001;
         constexpr double kUpstreamThreshold = 0.002;
         constexpr double kSecondsPerYear = 31557600.0;
+        constexpr double kMaxLakeCellFraction = 0.6; // lakes never fill a cell
+        constexpr double kMinLakeCellFraction = 0.01; // smaller = pond, ignored
+        constexpr double kBowlScaleKm = 0.3; // depth scale of f_topo saturation
 
         std::vector<double> outflowKm3 = localRunoffVolume;
         for (const int order : network.processingOrder)
@@ -129,11 +132,6 @@ namespace Infinitesia
                 const double areaKm2 = cellAreaKm2[static_cast<std::size_t>(c.latitudeIndex)];
                 const double catchmentInflowKm3 =
                     std::max(0.0, outflowKm3[idx] - localRunoffVolume[idx]);
-                const double directPrecipitationKm3 =
-                    c.precipitationMm * areaKm2 * 1e-6;
-                const double annualInflowKm3 =
-                    catchmentInflowKm3 + directPrecipitationKm3;
-
                 double infiltrationMm = 40.0;
                 switch (c.surfaceRock)
                 {
@@ -145,31 +143,68 @@ namespace Infinitesia
                 case RockType::FoldedSedimentary: infiltrationMm = 65.0; break;
                 }
 
-                const double annualEvaporationKm3 =
-                    etAnnualMmByCell[idx] * areaKm2 * 1e-6;
-                const double annualInfiltrationKm3 =
-                    infiltrationMm * areaKm2 * 1e-6;
-                const double annualWaterSurplusKm3 =
-                    annualInflowKm3 - annualEvaporationKm3 -
-                    annualInfiltrationKm3;
+                // The lake covers only a fraction f of the cell; the rest stays
+                // land and keeps producing ordinary runoff into the lake.
+                //   surplus(f) = Q_up + R*A + f*A*(P - R - E - I)
+                //              = Q_up + R*A - f*A*d
+                // with d = I + max(0, E - P) > 0 the net loss per lake area.
+                const double precipMm = c.precipitationMm;
+                const double evapMm = etAnnualMmByCell[idx];
+                const double runoffMm = std::max(0.0, precipMm - evapMm);
+                const double netLossMm =
+                    infiltrationMm + std::max(0.0, evapMm - precipMm);
+                const double landSupplyKm3 =
+                    catchmentInflowKm3 + runoffMm * areaKm2 * 1e-6;
+                const double netLossKm3 = netLossMm * areaKm2 * 1e-6;
 
-                if (annualWaterSurplusKm3 > 0.0)
+                // Equilibrium (closed-basin) fraction where inflow == losses.
+                const double equilibriumFraction = netLossKm3 > 0.0
+                    ? landSupplyKm3 / netLossKm3
+                    : kMaxLakeCellFraction;
+                // Largest fraction the depression's depth can hold at spill.
+                const double topoFraction = std::min(
+                    kMaxLakeCellFraction,
+                    1.0 - std::exp(-fillDeltaKm / kBowlScaleKm));
+
+                const bool overflows = equilibriumFraction > topoFraction;
+                const double lakeFraction =
+                    std::min(equilibriumFraction, topoFraction);
+
+                double annualSpillKm3 = 0.0;
+                if (lakeFraction >= kMinLakeCellFraction)
                 {
-                    // Treat the depression as a hypsometrically uniform bowl:
-                    // its full storage is cell area times depth to the spill.
+                    const double lakeAreaKm2 = lakeFraction * areaKm2;
+                    const double evapKm3 = evapMm * lakeAreaKm2 * 1e-6;
+                    const double infilKm3 = infiltrationMm * lakeAreaKm2 * 1e-6;
+                    const double inflowKm3 =
+                        catchmentInflowKm3 +
+                        runoffMm * (areaKm2 - lakeAreaKm2) * 1e-6 +
+                        precipMm * lakeAreaKm2 * 1e-6;
+                    annualSpillKm3 = overflows
+                        ? std::max(0.0, inflowKm3 - evapKm3 - infilKm3)
+                        : 0.0;
+
+                    // Paraboloid bowl: area grows linearly with depth, so a
+                    // closed lake below its spill is shallower by the same
+                    // ratio and V = 1/2 * A * depth.
+                    const double depthKm = overflows
+                        ? fillDeltaKm
+                        : fillDeltaKm * (lakeFraction / topoFraction);
+                    const double floorKm = c.elevationNormalized * kMaxElevationKm;
+
                     c.isLake = true;
-                    c.lakeSurfaceAreaKm2 = areaKm2;
+                    c.lakeFraction = lakeFraction;
+                    c.lakeSurfaceAreaKm2 = lakeAreaKm2;
                     c.lakeSpillHeightKm = fillDeltaKm;
-                    c.lakeSpillElevationKm =
-                        c.elevationNormalized * kMaxElevationKm + fillDeltaKm;
-                    c.lakeWaterLevelKm = c.lakeSpillElevationKm;
-                    c.lakeWaterVolumeKm3 = areaKm2 * fillDeltaKm;
-                    c.lakeAnnualInflowKm3 = annualInflowKm3;
-                    c.lakeAnnualEvaporationKm3 = annualEvaporationKm3;
-                    c.lakeAnnualInfiltrationKm3 = annualInfiltrationKm3;
-                    c.lakeAnnualSpillKm3 = annualWaterSurplusKm3;
+                    c.lakeSpillElevationKm = floorKm + fillDeltaKm;
+                    c.lakeWaterLevelKm = floorKm + depthKm;
+                    c.lakeWaterVolumeKm3 = 0.5 * lakeAreaKm2 * depthKm;
+                    c.lakeAnnualInflowKm3 = inflowKm3;
+                    c.lakeAnnualEvaporationKm3 = evapKm3;
+                    c.lakeAnnualInfiltrationKm3 = infilKm3;
+                    c.lakeAnnualSpillKm3 = annualSpillKm3;
                 }
-                outflowKm3[idx] = std::max(0.0, annualWaterSurplusKm3);
+                outflowKm3[idx] = annualSpillKm3;
             }
 
             const int target = network.flowDirections[idx];

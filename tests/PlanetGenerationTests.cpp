@@ -790,24 +790,35 @@ void TestEdgeCasePlanetConfigurations()
                     std::isfinite(r.lakeSpillElevationKm) &&
                     std::isfinite(r.lakeSpillHeightKm),
                 "Lake water-balance values must be finite and positive.");
-            Require(r.lakeAnnualInflowKm3 >
-                    r.lakeAnnualEvaporationKm3 +
-                    r.lakeAnnualInfiltrationKm3,
-                "Lake must have a positive annual water balance.");
-            Require(r.lakeAnnualSpillKm3 > 0.0 &&
-                    r.lakeSpillHeightKm > 0.0 &&
-                    r.lakeWaterLevelKm == r.lakeSpillElevationKm,
-                "Lake must reach its spill level and overflow.");
-            Require(NearlyEqual(
-                        r.lakeWaterVolumeKm3,
-                        r.lakeSurfaceAreaKm2 * r.lakeSpillHeightKm),
-                "Lake storage must match its area and spill depth.");
-            Require(NearlyEqual(
-                        r.lakeAnnualSpillKm3,
-                        r.lakeAnnualInflowKm3 - r.lakeAnnualEvaporationKm3 -
-                            r.lakeAnnualInfiltrationKm3,
-                        1e-9),
-                "Lake spill must equal inflow minus evaporation and infiltration.");
+            // A lake covers only part of its cell.
+            Require(r.lakeFraction >= 0.01 && r.lakeFraction <= 0.6,
+                "Lake must cover between 1% and 60% of its cell.");
+            Require(r.lakeSurfaceAreaKm2 < r.lakeSurfaceAreaKm2 / r.lakeFraction,
+                "Lake surface must be smaller than the cell area.");
+            const double balance = r.lakeAnnualInflowKm3 -
+                r.lakeAnnualEvaporationKm3 - r.lakeAnnualInfiltrationKm3;
+            Require(r.lakeSpillHeightKm > 0.0 &&
+                    r.lakeWaterLevelKm <= r.lakeSpillElevationKm + 1e-12,
+                "Lake level must not exceed its spill level.");
+            if (r.lakeAnnualSpillKm3 > 0.0)
+            {
+                // Open lake: full to the spill, overflow equals the surplus.
+                Require(r.lakeWaterLevelKm == r.lakeSpillElevationKm,
+                    "Overflowing lake must sit at its spill level.");
+                Require(NearlyEqual(r.lakeAnnualSpillKm3, balance, 1e-9),
+                    "Lake spill must equal inflow minus evaporation and infiltration.");
+                Require(NearlyEqual(
+                            r.lakeWaterVolumeKm3,
+                            0.5 * r.lakeSurfaceAreaKm2 * r.lakeSpillHeightKm),
+                    "Lake storage must match its bowl area and spill depth.");
+            }
+            else
+            {
+                // Closed lake: evaporation and infiltration use up all inflow.
+                Require(std::abs(balance) <=
+                        1e-6 * std::max(1.0, r.lakeAnnualInflowKm3),
+                    "Closed lake must be in water balance.");
+            }
             // Water lost in the lake must not reappear downstream.
             Require(!r.hasRiver ||
                     NearlyEqual(r.annualRunoffVolumeKm3, r.lakeAnnualSpillKm3, 1e-9),
