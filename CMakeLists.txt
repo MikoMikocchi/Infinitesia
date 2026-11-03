@@ -53,6 +53,7 @@ include(cmake/Modules.cmake)
 #   domains/natural/chemistry       elements, compositions, reactions
 #   domains/natural/planetary       planet generation pipeline (no raylib)
 #   materials                       every material of the game (rocks, minerals, fluids, built); assets/materials/materials.json
+#   domains/natural/biology         plants, their niches and communities, trees as blocks; assets/biology/*.json
 #   domains/natural/geology         what the ground is made of: province columns of rocks; assets/geology/*.json
 #   blocks                          shapes of a world cell and the dense tables over materials; assets/blocks/*.json
 #   world                           the block terrain: grid, chunks, terrain sources (no raylib)
@@ -64,6 +65,8 @@ infinitesia_add_module(InfinitesiaChemistry DIRS domains/natural/chemistry PUBLI
 infinitesia_add_module(InfinitesiaPlanet DIRS domains/natural/planetary PUBLIC InfinitesiaFoundation)
 infinitesia_add_module(InfinitesiaMaterials DIRS materials
   PUBLIC InfinitesiaChemistry PRIVATE nlohmann_json::nlohmann_json)
+infinitesia_add_module(InfinitesiaBiology DIRS domains/natural/biology
+  PUBLIC InfinitesiaPlanet InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
 infinitesia_add_module(InfinitesiaGeology DIRS domains/natural/geology
   PUBLIC InfinitesiaPlanet InfinitesiaChemistry InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
 infinitesia_add_module(InfinitesiaBlocks DIRS blocks

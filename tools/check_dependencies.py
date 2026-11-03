@@ -24,6 +24,7 @@ MODULE_OF = {
     "domains/natural/planetary": "planet",
     "materials": "materials",
     "domains/natural/geology": "geology",
+    "domains/natural/biology": "biology",
     "blocks": "blocks",
     "world": "world",
     "simulation": "simulation",
@@ -43,6 +44,8 @@ ALLOWED = {
     # geology takes from planet only the data types (planet/geology/Province.h, PlanetEpochs.h);
     # GeologyModel reads the planet through GeologyPlanetView, never planet/PlanetMap.h.
     "geology": {"foundation", "chemistry", "planet", "materials"},
+    # biology takes from planet only the data types it reads (climate and soil fields), like geology.
+    "biology": {"foundation", "planet", "materials"},
     "blocks": {"foundation", "chemistry", "materials"},
     "world": {"foundation", "planet", "materials", "geology", "blocks"},
     "simulation": {"foundation"},

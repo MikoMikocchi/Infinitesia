@@ -41,6 +41,10 @@ infinitesia_add_test(MaterialsTests MAIN ASSET_DIR
   SOURCES materials/MaterialCatalogTests.cpp
   LINK InfinitesiaMaterials nlohmann_json::nlohmann_json)
 
+infinitesia_add_test(BiologyTests MAIN ASSET_DIR
+  SOURCES domains/natural/biology/SpeciesCatalogTests.cpp
+  LINK InfinitesiaBiology nlohmann_json::nlohmann_json)
+
 infinitesia_add_test(GeologyTests MAIN ASSET_DIR
   SOURCES
     domains/natural/geology/ColumnTests.cpp

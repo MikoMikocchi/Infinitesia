@@ -1,0 +1,88 @@
+{
+  "species": [
+    {
+      "id": "species.oak",
+      "name": "oak",
+      "form": "broadleaf",
+      "niche": {
+        "temperatureC": [2, 9, 18, 26],
+        "precipitationMm": [350, 700, 1500, 2600],
+        "elevationM": [-50, 0, 900, 2200],
+        "maxDrySeasonMonths": 4,
+        "minSoilFertility": 0.25,
+        "minSoilDepth": 0.2,
+        "maxSlope": 1.0
+      },
+      "heightM": [12, 22],
+      "trunkRadiusM": [1.0, 2.0],
+      "crown": { "shape": "sphere", "radiusM": [4.0, 7.0], "startFraction": 0.45 },
+      "branching": { "count": [5, 9], "angleDegrees": 50 },
+      "rootDepthM": 2,
+      "shadeTolerance": 0.35,
+      "materials": {
+        "trunk": "plant.oak.trunk",
+        "branch": "plant.oak.branch",
+        "twig": "plant.oak.twig",
+        "leaves": "plant.oak.leaves",
+        "root": "plant.oak.root"
+      },
+      "yield": { "logsPerCubicM": 1.0 }
+    },
+    {
+      "id": "species.spruce",
+      "name": "spruce",
+      "form": "conifer",
+      "niche": {
+        "temperatureC": [-8, -1, 8, 16],
+        "precipitationMm": [300, 500, 1400, 2400],
+        "elevationM": [-50, 0, 1800, 3200],
+        "maxDrySeasonMonths": 3,
+        "minSoilFertility": 0.1,
+        "minSoilDepth": 0.1,
+        "maxSlope": 1.5
+      },
+      "heightM": [14, 28],
+      "trunkRadiusM": [0.8, 1.5],
+      "crown": { "shape": "cone", "radiusM": [2.5, 4.5], "startFraction": 0.25 },
+      "branching": { "count": [10, 18], "angleDegrees": 80 },
+      "rootDepthM": 1,
+      "shadeTolerance": 0.7,
+      "materials": {
+        "trunk": "plant.spruce.trunk",
+        "branch": "plant.spruce.branch",
+        "twig": "plant.spruce.twig",
+        "leaves": "plant.spruce.leaves",
+        "root": "plant.spruce.root"
+      },
+      "yield": { "logsPerCubicM": 0.9 }
+    },
+    {
+      "id": "species.palm",
+      "name": "palm",
+      "form": "palm",
+      "niche": {
+        "temperatureC": [16, 22, 30, 38],
+        "precipitationMm": [250, 600, 2500, 4500],
+        "elevationM": [-20, 0, 300, 900],
+        "maxDrySeasonMonths": 6,
+        "minSoilFertility": 0.05,
+        "minSoilDepth": 0.05,
+        "maxSlope": 0.8
+      },
+      "heightM": [8, 16],
+      "trunkRadiusM": [0.5, 0.8],
+      "crown": { "shape": "umbrella", "radiusM": [2.5, 4.0], "startFraction": 0.95 },
+      "branching": { "count": [6, 10], "angleDegrees": 25 },
+      "rootDepthM": 1,
+      "shadeTolerance": 0.15,
+      "materials": {
+        "trunk": "plant.palm.trunk",
+        "branch": "plant.palm.branch",
+        "twig": "plant.palm.twig",
+        "leaves": "plant.palm.leaves",
+        "root": "plant.palm.root"
+      },
+      "yield": { "logsPerCubicM": 0.5 }
+    }
+  ]
+}
