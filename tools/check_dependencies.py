@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Checks the layering of src/ against the #include graph.
+
+Every directory under src/ belongs to a module, and a module may include only the
+modules listed for it below (plus itself and the standard/third-party headers).
+Run from anywhere:  python tools/check_dependencies.py
+Exit code 1 lists every include that breaks the rules.
+
+To add a domain: give it a line in ALLOWED, and a matching infinitesia_add_module(...)
+in CMakeLists.txt. Dependencies go downwards only; never sideways between domains.
+"""
+
+import re
+import sys
+from pathlib import Path
+
+SRC = Path(__file__).resolve().parent.parent / "src"
+
+# directory under src/ -> module
+MODULE_OF = {
+    "core": "foundation",
+    "coordinates": "foundation",
+    "chemistry": "chemistry",
+    "planet": "planet",
+    "geology": "geology",
+    "world": "world",
+}
+# Everything else (app, input, ui, rendering, assets, commands) is the executable layer.
+EXECUTABLE = "executable"
+
+# module -> modules it may include. Keep in step with CMakeLists.txt.
+ALLOWED = {
+    "foundation": set(),
+    "chemistry": {"foundation"},
+    "planet": {"foundation"},
+    "geology": {"foundation", "chemistry", "planet"},
+    "world": {"foundation", "planet", "geology"},
+    EXECUTABLE: {"foundation", "chemistry", "planet", "geology", "world"},
+}
+
+INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"')
+
+
+def module_of_dir(directory: str) -> str:
+    return MODULE_OF.get(directory, EXECUTABLE)
+
+
+def main() -> int:
+    violations = []
+    for path in sorted(SRC.rglob("*")):
+        if path.suffix not in (".h", ".cpp"):
+            continue
+        relative = path.relative_to(SRC)
+        if len(relative.parts) < 2:
+            continue  # src/main.cpp: the executable's entry point
+        owner = module_of_dir(relative.parts[0])
+        for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+            match = INCLUDE.match(line)
+            if not match:
+                continue
+            target = match.group(1)
+            parts = target.split("/")
+            if len(parts) < 2 or not (SRC / target).exists():
+                continue  # same-directory include, raylib, or third party
+            dependency = module_of_dir(parts[0])
+            if dependency != owner and dependency not in ALLOWED[owner]:
+                violations.append(f"{relative.as_posix()}:{number}: {owner} must not include {target} ({dependency})")
+
+    if violations:
+        print("Layering violations:")
+        for violation in violations:
+            print("  " + violation)
+        return 1
+    print("Layering OK")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

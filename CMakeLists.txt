@@ -45,68 +45,57 @@ function(infinitesia_enable_warnings target)
   endif()
 endfunction()
 
-# Planet generation has no raylib dependency, so it is built as its own
-# library and shared by the game and the tests.
-file(GLOB_RECURSE INFINITESIA_PLANET_SOURCES CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/planet/*.cpp"
-)
-file(GLOB_RECURSE INFINITESIA_PLANET_HEADERS CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/planet/*.h"
-)
-add_library(InfinitesiaPlanet STATIC ${INFINITESIA_PLANET_SOURCES} ${INFINITESIA_PLANET_HEADERS})
-target_include_directories(InfinitesiaPlanet PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-infinitesia_enable_warnings(InfinitesiaPlanet)
+# Declares one module (a layer or domain of the project) as a static library built from
+# every .cpp/.h under the given src/ directories. Dependencies between modules are declared
+# explicitly here; tools/check_dependencies.py enforces the same layering on the #include
+# graph, so a module cannot quietly reach into one that is not below it.
+#   infinitesia_add_module(<target> DIRS <src subdirs>... [PUBLIC <libs>...] [PRIVATE <libs>...])
+function(infinitesia_add_module target)
+  cmake_parse_arguments(MODULE "" "" "DIRS;PUBLIC;PRIVATE" ${ARGN})
+  set(module_globs "")
+  foreach(dir IN LISTS MODULE_DIRS)
+    list(APPEND module_globs
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/${dir}/*.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/${dir}/*.h")
+  endforeach()
+  file(GLOB_RECURSE module_sources CONFIGURE_DEPENDS ${module_globs})
+  add_library(${target} STATIC ${module_sources})
+  target_include_directories(${target} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  if (MODULE_PUBLIC)
+    target_link_libraries(${target} PUBLIC ${MODULE_PUBLIC})
+  endif()
+  if (MODULE_PRIVATE)
+    target_link_libraries(${target} PRIVATE ${MODULE_PRIVATE})
+  endif()
+  infinitesia_enable_warnings(${target})
+endfunction()
 
-# Chemistry (elements, compositions, reactions) is the shared base of geology,
-# processing and industry. It depends on nothing else in the project.
-file(GLOB_RECURSE INFINITESIA_CHEMISTRY_SOURCES CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/chemistry/*.cpp"
-)
-file(GLOB_RECURSE INFINITESIA_CHEMISTRY_HEADERS CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/chemistry/*.h"
-)
-add_library(InfinitesiaChemistry STATIC ${INFINITESIA_CHEMISTRY_SOURCES} ${INFINITESIA_CHEMISTRY_HEADERS})
-target_include_directories(InfinitesiaChemistry PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-infinitesia_enable_warnings(InfinitesiaChemistry)
-
-# Geology: content catalogs (minerals, rocks, materials, province columns) and the model
-# that tells what the ground is made of. Content is read from assets/geology/*.json.
-file(GLOB_RECURSE INFINITESIA_GEOLOGY_SOURCES CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/geology/*.cpp"
-)
-file(GLOB_RECURSE INFINITESIA_GEOLOGY_HEADERS CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/geology/*.h"
-)
-add_library(InfinitesiaGeology STATIC ${INFINITESIA_GEOLOGY_SOURCES} ${INFINITESIA_GEOLOGY_HEADERS})
-target_include_directories(InfinitesiaGeology PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(InfinitesiaGeology PUBLIC InfinitesiaPlanet InfinitesiaChemistry PRIVATE nlohmann_json::nlohmann_json)
-infinitesia_enable_warnings(InfinitesiaGeology)
+# Layers, bottom to top:
+#   foundation (core, coordinates)  ids, time, load progress, coordinates; no domain knowledge
+#   chemistry                       elements, compositions, reactions
+#   planet                          planet generation pipeline (no raylib)
+#   geology                         what the ground is made of; content from assets/geology/*.json
+#   world                           the block world and its objects (no raylib)
+#   (executable)                    app, input, ui, rendering, assets, commands
+infinitesia_add_module(InfinitesiaFoundation DIRS core coordinates)
+infinitesia_add_module(InfinitesiaChemistry DIRS chemistry PUBLIC InfinitesiaFoundation)
+infinitesia_add_module(InfinitesiaPlanet DIRS planet PUBLIC InfinitesiaFoundation)
+infinitesia_add_module(InfinitesiaGeology DIRS geology
+  PUBLIC InfinitesiaPlanet InfinitesiaChemistry PRIVATE nlohmann_json::nlohmann_json)
 
 # Where the source tree keeps the catalogs; tools and tests that run from a build
 # directory read them from here (the game reads the copy next to its executable).
 set(INFINITESIA_GEOLOGY_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/geology")
 
-# The block world has no raylib dependency either (rendering lives outside it), so
-# it is its own library, shared by the game and the tests.
-file(GLOB_RECURSE INFINITESIA_WORLD_SOURCES CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/world/*.cpp"
-)
-file(GLOB_RECURSE INFINITESIA_WORLD_HEADERS CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/world/*.h"
-)
-add_library(InfinitesiaWorld STATIC ${INFINITESIA_WORLD_SOURCES} ${INFINITESIA_WORLD_HEADERS})
-target_include_directories(InfinitesiaWorld PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(InfinitesiaWorld PUBLIC InfinitesiaPlanet InfinitesiaGeology)
-infinitesia_enable_warnings(InfinitesiaWorld)
+infinitesia_add_module(InfinitesiaWorld DIRS world PUBLIC InfinitesiaPlanet InfinitesiaGeology)
 
 file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
-list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/chemistry/")
-list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/geology/")
-list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/planet/")
-list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/world/")
+foreach(module_dir IN ITEMS core coordinates chemistry geology planet world)
+  list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/${module_dir}/")
+endforeach()
 add_executable(Infinitesia ${INFINITESIA_SOURCES})
 infinitesia_enable_warnings(Infinitesia)
 
@@ -126,7 +115,7 @@ target_include_directories(Infinitesia PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet)
+target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet InfinitesiaFoundation)
 
 # Treat raylib headers as system headers so their warnings do not drown ours.
 get_target_property(RAYLIB_INCLUDE_DIRS raylib INTERFACE_INCLUDE_DIRECTORIES)
@@ -195,4 +184,11 @@ if (BUILD_TESTING)
   target_link_libraries(ChemistryTests PRIVATE InfinitesiaChemistry doctest::doctest)
   infinitesia_enable_warnings(ChemistryTests)
   doctest_discover_tests(ChemistryTests)
+endif()
+
+# Layering check: fails when a module includes one that is not below it.
+find_package(Python3 COMPONENTS Interpreter)
+if (BUILD_TESTING AND Python3_FOUND)
+  add_test(NAME LayeringCheck
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_dependencies.py)
 endif()
