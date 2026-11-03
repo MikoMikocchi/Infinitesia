@@ -19,13 +19,14 @@ namespace Infinitesia
                 GridCell cell,
                 GridCell viewCenter,
                 int chunkRadius,
-                int viewLevel)
+                int viewLevel,
+                ViewMode mode)
             {
                 const int chunkX = cell.x / kChunkSize;
                 const int chunkZ = cell.z / kChunkSize;
                 const int centerChunkX = viewCenter.x / kChunkSize;
                 const int centerChunkZ = viewCenter.z / kChunkSize;
-                return cell.y == viewLevel &&
+                return IsLevelShown(mode, cell.y, viewLevel) &&
                        std::abs(chunkX - centerChunkX) <= chunkRadius &&
                        std::abs(chunkZ - centerChunkZ) <= chunkRadius;
             }
@@ -196,11 +197,12 @@ namespace Infinitesia
             const EntityStore& world,
             GridCell viewCenter,
             int chunkRadius,
-            int viewLevel)
+            int viewLevel,
+            ViewMode mode)
         {
             for (const WorldObject& object : world.GetObjects())
             {
-                if (IsChunkVisible(object.cell, viewCenter, chunkRadius, viewLevel))
+                if (IsChunkVisible(object.cell, viewCenter, chunkRadius, viewLevel, mode))
                 {
                     DrawObjectShadow(grid, object);
                 }
@@ -215,11 +217,12 @@ namespace Infinitesia
             Material material,
             GridCell viewCenter,
             int chunkRadius,
-            int viewLevel)
+            int viewLevel,
+            ViewMode mode)
         {
             for (const WorldObject& object : world.GetObjects())
             {
-                if (IsChunkVisible(object.cell, viewCenter, chunkRadius, viewLevel))
+                if (IsChunkVisible(object.cell, viewCenter, chunkRadius, viewLevel, mode))
                 {
                     DrawWorldObject(grid, object, cylinderMesh, sphereMesh, material);
                 }

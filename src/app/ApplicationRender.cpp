@@ -32,7 +32,7 @@ namespace Infinitesia
             const WorldObject* selectedObject = game.GetWorld().entities.FindObject(*selectedObjectId);
             if (selectedObject != nullptr &&
                 selectedObject->Is(ObjectAbility::Worker) &&
-                selectedObject->cell.y == m_selectedLevel)
+                IsLevelShown(m_viewMode, selectedObject->cell.y, m_selectedLevel))
             {
                 pathOrigin = selectedObject->position;
                 debugPath = game.GetWorkSystem().GetRemainingPath(selectedObject->id);
@@ -50,7 +50,8 @@ namespace Infinitesia
             debugPath,
             m_chunkViewCenter,
             m_chunkRenderRadius,
-            m_selectedLevel);
+            m_selectedLevel,
+            m_viewMode);
         DrawText(
             m_config.window.title.c_str(),
             (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,
@@ -103,7 +104,8 @@ namespace Infinitesia
             m_worldInteraction.GetActionNotice(),
             game.GetWorld().terrain.GetLoadedChunkCount(),
             game.GetWorld().terrain.GetTotalChunkCount(),
-            m_selectedLevel
+            m_selectedLevel,
+            m_viewMode == ViewMode::ShowAll
         });
     }
 }

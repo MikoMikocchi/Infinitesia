@@ -108,10 +108,8 @@ namespace Infinitesia
             }
 
             void MeshData::AppendExposedSideFaces(
-                const Grid& grid,
                 const VoxelWorld& world,
                 GridCell cell,
-                int level,
                 float left,
                 float right,
                 float front,
@@ -121,10 +119,10 @@ namespace Infinitesia
                 const FaceLook& look)
             {
                 const std::array<GridCell, 4> neighbors{
-                    GridCell{ cell.x - 1, level, cell.z },
-                    GridCell{ cell.x + 1, level, cell.z },
-                    GridCell{ cell.x, level, cell.z - 1 },
-                    GridCell{ cell.x, level, cell.z + 1 }
+                    GridCell{ cell.x - 1, cell.y, cell.z },
+                    GridCell{ cell.x + 1, cell.y, cell.z },
+                    GridCell{ cell.x, cell.y, cell.z - 1 },
+                    GridCell{ cell.x, cell.y, cell.z + 1 }
                 };
                 const std::array<std::array<Vector3, 4>, 4> sideCorners{
                     std::array<Vector3, 4>{
@@ -161,13 +159,12 @@ namespace Infinitesia
 
                 for (std::size_t side = 0; side < neighbors.size(); ++side)
                 {
-                    if (grid.Contains(neighbors[side]))
+                    // A neighbour that is not loaded yet counts as open: a face hidden behind
+                    // it later costs nothing, a missing one would leave a hole in the ground.
+                    const Block* neighbor = world.GetBlock(neighbors[side]);
+                    if (neighbor != nullptr && world.Registry().Occupied(neighbor->state))
                     {
-                        const Block* neighbor = world.GetBlock(neighbors[side]);
-                        if (neighbor == nullptr || world.Registry().Occupied(neighbor->state))
-                        {
-                            continue;
-                        }
+                        continue;
                     }
 
                     AppendFace(sideCorners[side], sideNormals[side], look);

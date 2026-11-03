@@ -163,7 +163,8 @@ namespace Infinitesia
         const std::vector<GridCell>& debugPath,
         GridCell chunkViewCenter,
         int chunkRenderRadius,
-        int viewLevel) const
+        int viewLevel,
+        ViewMode viewMode) const
     {
         BeginMode3D(m_camera);
         BeginShaderMode(m_worldShader);
@@ -173,6 +174,7 @@ namespace Infinitesia
             chunkViewCenter,
             chunkRenderRadius,
             viewLevel,
+            viewMode,
             m_worldMaterial,
             m_blockAtlas,
             m_chunkMeshes);
@@ -185,7 +187,8 @@ namespace Infinitesia
             world.entities,
             chunkViewCenter,
             chunkRenderRadius,
-            viewLevel);
+            viewLevel,
+            viewMode);
         EndShaderMode();
         rlEnableDepthMask();
 
@@ -198,7 +201,8 @@ namespace Infinitesia
             m_objectMaterial,
             chunkViewCenter,
             chunkRenderRadius,
-            viewLevel);
+            viewLevel,
+            viewMode);
         EndShaderMode();
 
         if (hoveredCell.has_value())

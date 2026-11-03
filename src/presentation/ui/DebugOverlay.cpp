@@ -52,8 +52,9 @@ namespace Infinitesia
         std::snprintf(
             buffer,
             sizeof(buffer),
-            "Level: %d (Page Up/Down)",
-            data.selectedLevel);
+            "Level: %d (Page Up/Down)  View: %s (V)",
+            data.selectedLevel,
+            data.showAllLevels ? "all" : "cut");
         DrawText(buffer, padding, padding + 5 * lineHeight, fontSize, GOLD);
 
         if (data.hoveredCell.has_value())

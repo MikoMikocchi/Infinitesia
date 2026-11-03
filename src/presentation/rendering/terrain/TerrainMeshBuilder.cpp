@@ -17,11 +17,8 @@ namespace Infinitesia
         {
             namespace
             {
-                // How far below the cutting plane an empty cell looks for ground, and how
-                // fast that ground darkens with depth.
-                constexpr int kMaxVisibleDepth = 16;
-                constexpr float kFloorShadePerLevel = 0.04f;
-                constexpr float kDeepestFloorShade = 0.4f;
+                // The top of a cut in the ground that no sky reaches.
+                constexpr float kCutFaceShade = 0.6f;
 
                 template<typename T>
                 T* CopyMeshData(const std::vector<T>& data)
@@ -48,163 +45,142 @@ namespace Infinitesia
                 }
             }
 
-            Mesh BuildLevelChunkMesh(
+            Mesh BuildChunkMesh(
                 const Grid& grid,
                 const VoxelWorld& world,
                 const WorldChunk& chunk,
-                int viewLevel,
+                int cutLevel,
                 const BlockTextureAtlas* atlas)
             {
-                const int localY = viewLevel - chunk.coordinate.y * kChunkSize;
-                if (localY < 0 || localY >= chunk.height)
-                {
-                    return {};
-                }
+                const int firstLevel = chunk.coordinate.y * kChunkSize;
+                const bool isCut = cutLevel != kNoCut;
+                const int topLocalY = isCut
+                    ? std::min(cutLevel - firstLevel, chunk.height - 1)
+                    : chunk.height - 1;
 
                 TerrainMeshGeometry::MeshData meshData;
                 const BlockRegistry& registry = world.Registry();
-
-                const std::size_t surfaceCellCount =
-                    static_cast<std::size_t>(chunk.width) *
-                    static_cast<std::size_t>(chunk.depth);
-                meshData.vertices.reserve(surfaceCellCount * 60);
-                meshData.texcoords.reserve(surfaceCellCount * 40);
-                meshData.normals.reserve(surfaceCellCount * 60);
-                meshData.colors.reserve(surfaceCellCount * 80);
-                meshData.indices.reserve(surfaceCellCount * 30);
                 const float cellSize = grid.GetCellSize();
-                const float blockTopY = static_cast<float>(viewLevel + 1) * cellSize;
-                const float floorY = static_cast<float>(viewLevel) * cellSize;
                 const float worldLeft = -grid.GetWorldWidth() * 0.5f;
                 const float worldFront = -grid.GetWorldDepth() * 0.5f;
+
+                // Whether light reaches a cell is the same for the cells of a column that are
+                // above or below the last answer, so a column asks the world only a few times.
+                struct ColumnLight
+                {
+                    int litFrom = std::numeric_limits<int>::max();
+                    int shadedUpTo = -1;
+                };
+                std::vector<ColumnLight> columnLight(
+                    static_cast<std::size_t>(chunk.width) * static_cast<std::size_t>(chunk.depth));
+                const auto hasSkyAccess = [&](const Block& block, int localX, int localZ)
+                {
+                    ColumnLight& light = columnLight[
+                        static_cast<std::size_t>(localZ) * static_cast<std::size_t>(chunk.width) +
+                        static_cast<std::size_t>(localX)];
+                    if (block.cell.y >= light.litFrom)
+                    {
+                        return true;
+                    }
+                    if (block.cell.y <= light.shadedUpTo)
+                    {
+                        return false;
+                    }
+                    const bool lit = world.HasSkyAccess(block.cell);
+                    (lit ? light.litFrom : light.shadedUpTo) = block.cell.y;
+                    return lit;
+                };
+                const auto shade = [](TerrainMeshGeometry::FaceLook& look, float factor)
+                {
+                    look.tint = {
+                        static_cast<unsigned char>(look.tint.r * factor),
+                        static_cast<unsigned char>(look.tint.g * factor),
+                        static_cast<unsigned char>(look.tint.b * factor),
+                        look.tint.a
+                    };
+                };
+
                 for (int localZ = 0; localZ < chunk.depth; ++localZ)
                 {
-                    for (int localX = 0; localX < chunk.width; ++localX)
+                    for (int localY = 0; localY <= topLocalY; ++localY)
                     {
-                        const std::size_t blockIndex =
-                            (static_cast<std::size_t>(localZ) *
-                                 static_cast<std::size_t>(chunk.height) +
-                             static_cast<std::size_t>(localY)) *
-                                static_cast<std::size_t>(chunk.width) +
-                            static_cast<std::size_t>(localX);
-                        const Block& block = chunk.blocks[blockIndex];
-                        const bool isAir = !registry.Occupied(block.state);
-
-                        // An empty cell shows the first solid block below it, drawn on the
-                        // cutting plane and darkened the deeper it lies.
-                        const Block* floorBlock = nullptr;
-                        int floorDepth = 0;
-                        if (isAir)
+                        for (int localX = 0; localX < chunk.width; ++localX)
                         {
-                            for (int depth = 1; depth <= kMaxVisibleDepth; ++depth)
+                            // One block adds at most 20 vertices; indices are 16-bit.
+                            if (meshData.vertices.size() / 3 + 20 > std::numeric_limits<unsigned short>::max())
                             {
-                                const Block* below = world.GetBlock(
-                                    GridCell{ block.cell.x, viewLevel - depth, block.cell.z });
-                                if (below == nullptr)
-                                {
-                                    break;
-                                }
-                                if (registry.Occupied(below->state))
-                                {
-                                    floorBlock = below;
-                                    floorDepth = depth;
-                                    break;
-                                }
+                                break;
                             }
-                            if (floorBlock == nullptr)
+
+                            const std::size_t blockIndex =
+                                (static_cast<std::size_t>(localZ) *
+                                     static_cast<std::size_t>(chunk.height) +
+                                 static_cast<std::size_t>(localY)) *
+                                    static_cast<std::size_t>(chunk.width) +
+                                static_cast<std::size_t>(localX);
+                            const Block& block = chunk.blocks[blockIndex];
+                            if (!registry.Occupied(block.state))
                             {
                                 continue;
                             }
-                        }
-                        const GridCell lightingCell = isAir ? floorBlock->cell : block.cell;
 
-                        const float left = worldLeft +
-                                           static_cast<float>(block.cell.x) * cellSize;
-                        const float front = worldFront +
-                                            static_cast<float>(block.cell.z) * cellSize;
-                        const float right = left + cellSize;
-                        const float back = front + cellSize;
-                        const float topY = isAir ? floorY : blockTopY;
-                        const Block& visibleBlock = isAir ? *floorBlock : block;
-                        TerrainMeshGeometry::FaceLook topLook = TerrainMeshGeometry::GetFaceLook(
-                            visibleBlock, registry, atlas, TerrainMeshGeometry::FaceKind::Top);
-                        TerrainMeshGeometry::FaceLook sideLook = TerrainMeshGeometry::GetFaceLook(
-                            visibleBlock, registry, atlas, TerrainMeshGeometry::FaceKind::Side);
-                        if (!world.HasSkyAccess(lightingCell))
-                        {
-                            topLook.tint = BLACK;
-                            sideLook.tint = BLACK;
-                        }
-                        else if (isAir && floorDepth > 1)
-                        {
-                            const float shade = std::max(
-                                kDeepestFloorShade, 1.0f - kFloorShadePerLevel * static_cast<float>(floorDepth - 1));
-                            for (TerrainMeshGeometry::FaceLook* look : { &topLook, &sideLook })
+                            const float left = worldLeft +
+                                               static_cast<float>(block.cell.x) * cellSize;
+                            const float front = worldFront +
+                                                static_cast<float>(block.cell.z) * cellSize;
+                            const float right = left + cellSize;
+                            const float back = front + cellSize;
+                            const float bottomY = static_cast<float>(block.cell.y) * cellSize;
+                            const float topY = bottomY + cellSize;
+
+                            const bool isCutTop = isCut && block.cell.y == cutLevel;
+                            const Block* above = isCutTop
+                                ? nullptr
+                                : world.GetBlock(GridCell{ block.cell.x, block.cell.y + 1, block.cell.z });
+                            const bool topExposed = above == nullptr || !registry.Occupied(above->state);
+
+                            const bool lit = hasSkyAccess(block, localX, localZ);
+                            TerrainMeshGeometry::FaceLook topLook = TerrainMeshGeometry::GetFaceLook(
+                                block, registry, atlas, TerrainMeshGeometry::FaceKind::Top);
+                            TerrainMeshGeometry::FaceLook sideLook = TerrainMeshGeometry::GetFaceLook(
+                                block, registry, atlas, TerrainMeshGeometry::FaceKind::Side);
+                            if (!lit)
                             {
-                                look->tint = {
-                                    static_cast<unsigned char>(look->tint.r * shade),
-                                    static_cast<unsigned char>(look->tint.g * shade),
-                                    static_cast<unsigned char>(look->tint.b * shade),
-                                    look->tint.a
-                                };
+                                // The face of a cut is dimmed rather than black: it is what
+                                // the section looks like, not a dark place.
+                                if (isCutTop)
+                                {
+                                    shade(topLook, kCutFaceShade);
+                                }
+                                else
+                                {
+                                    topLook.tint = BLACK;
+                                }
+                                sideLook.tint = BLACK;
                             }
-                        }
-                        meshData.AppendFace(
-                            {
-                                Vector3{ left, topY, front },
-                                Vector3{ right, topY, front },
-                                Vector3{ right, topY, back },
-                                Vector3{ left, topY, back }
-                            },
-                            { 0.0f, 1.0f, 0.0f },
-                            topLook);
 
-                        if (!isAir)
-                        {
+                            if (topExposed)
+                            {
+                                meshData.AppendFace(
+                                    {
+                                        Vector3{ left, topY, front },
+                                        Vector3{ right, topY, front },
+                                        Vector3{ right, topY, back },
+                                        Vector3{ left, topY, back }
+                                    },
+                                    { 0.0f, 1.0f, 0.0f },
+                                    topLook);
+                            }
                             meshData.AppendExposedSideFaces(
-                                grid,
                                 world,
                                 block.cell,
-                                viewLevel,
                                 left,
                                 right,
                                 front,
                                 back,
-                                floorY,
-                                blockTopY,
+                                bottomY,
+                                topY,
                                 sideLook);
-                        }
-
-                        if (viewLevel + 1 < grid.GetHeight())
-                        {
-                            const GridCell upperCell{
-                                block.cell.x,
-                                viewLevel + 1,
-                                block.cell.z
-                            };
-                            const Block* upperBlock = world.GetBlock(upperCell);
-                            if (upperBlock != nullptr && registry.Occupied(upperBlock->state))
-                            {
-                                TerrainMeshGeometry::FaceLook upperLook = TerrainMeshGeometry::GetFaceLook(
-                                    *upperBlock, registry, atlas, TerrainMeshGeometry::FaceKind::Side);
-                                if (!world.HasSkyAccess(upperCell))
-                                {
-                                    upperLook.tint = BLACK;
-                                }
-
-                                meshData.AppendExposedSideFaces(
-                                    grid,
-                                    world,
-                                    upperCell,
-                                    viewLevel + 1,
-                                    left,
-                                    right,
-                                    front,
-                                    back,
-                                    blockTopY,
-                                    blockTopY + cellSize,
-                                    upperLook);
-                            }
                         }
                     }
                 }

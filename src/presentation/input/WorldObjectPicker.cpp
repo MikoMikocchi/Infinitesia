@@ -9,7 +9,8 @@ namespace Infinitesia
         const EntityStore& world,
         const Camera3D& camera,
         Vector2 screenPosition,
-        int selectedLevel) const
+        int selectedLevel,
+        ViewMode mode) const
     {
         const Ray ray = GetMouseRay(screenPosition, camera);
         float nearestDistance = std::numeric_limits<float>::max();
@@ -17,7 +18,7 @@ namespace Infinitesia
 
         for (const WorldObject& object : world.GetObjects())
         {
-            if (object.cell.y != selectedLevel)
+            if (!IsLevelShown(mode, object.cell.y, selectedLevel))
             {
                 continue;
             }

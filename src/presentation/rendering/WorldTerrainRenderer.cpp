@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <set>
 
 namespace Infinitesia
 {
@@ -14,15 +15,35 @@ namespace Infinitesia
     {
         namespace
         {
+            // Chunks wholly below the cut never change with the view level, so they share one
+            // mesh; only the chunk holding the level is cut (even at its top block, whose top
+            // face must show although the chunk above is hidden).
+            ChunkMeshKey GetMeshKey(const WorldChunk& chunk, int viewLevel, ViewMode mode)
+            {
+                const int firstLevel = chunk.coordinate.y * kChunkSize;
+                const bool isCut = mode == ViewMode::CutAtLevel &&
+                                   viewLevel < firstLevel + chunk.height;
+                return { chunk.coordinate, isCut ? viewLevel : TerrainMeshBuilder::kNoCut };
+            }
+
+            bool IsChunkShown(const ChunkCoordinate& coordinate, int viewLevel, ViewMode mode)
+            {
+                return IsLevelShown(mode, coordinate.y * kChunkSize, viewLevel);
+            }
+
+            bool IsMeshLoaded(const Mesh& mesh)
+            {
+                return mesh.vaoId != 0 || mesh.vboId != nullptr;
+            }
+
             ChunkMeshCacheEntry& GetOrBuildChunkMesh(
                 const Grid& grid,
                 const VoxelWorld& world,
                 const WorldChunk& chunk,
-                int viewLevel,
+                const ChunkMeshKey& key,
                 const BlockTextureAtlas& atlas,
                 ChunkMeshCache& meshCache)
             {
-                const ChunkMeshKey key{ chunk.coordinate, viewLevel };
                 auto cachedMesh = meshCache.find(key);
                 if (cachedMesh != meshCache.end() &&
                     cachedMesh->second.terrainRevision == chunk.terrainRevision)
@@ -30,15 +51,13 @@ namespace Infinitesia
                     return cachedMesh->second;
                 }
 
-                if (cachedMesh != meshCache.end() &&
-                    (cachedMesh->second.mesh.vaoId != 0 ||
-                     cachedMesh->second.mesh.vboId != nullptr))
+                if (cachedMesh != meshCache.end() && IsMeshLoaded(cachedMesh->second.mesh))
                 {
                     UnloadMesh(cachedMesh->second.mesh);
                 }
 
                 ChunkMeshCacheEntry entry{
-                    TerrainMeshBuilder::BuildLevelChunkMesh(grid, world, chunk, viewLevel, &atlas),
+                    TerrainMeshBuilder::BuildChunkMesh(grid, world, chunk, key.second, &atlas),
                     chunk.terrainRevision
                 };
                 if (cachedMesh == meshCache.end())
@@ -56,39 +75,31 @@ namespace Infinitesia
             GridCell viewCenter,
             int chunkRadius,
             int viewLevel,
+            ViewMode mode,
             Material material,
             const BlockTextureAtlas& atlas,
             ChunkMeshCache& meshCache)
         {
-            for (auto cachedMesh = meshCache.begin(); cachedMesh != meshCache.end();)
-            {
-                if (std::abs(cachedMesh->first.second - viewLevel) <= 1)
-                {
-                    ++cachedMesh;
-                    continue;
-                }
-                if (cachedMesh->second.mesh.vaoId != 0 ||
-                    cachedMesh->second.mesh.vboId != nullptr)
-                {
-                    UnloadMesh(cachedMesh->second.mesh);
-                }
-                cachedMesh = meshCache.erase(cachedMesh);
-            }
-
             const int centerChunkX = viewCenter.x / kChunkSize;
             const int centerChunkZ = viewCenter.z / kChunkSize;
+            const auto isInRadius = [&](const ChunkCoordinate& coordinate)
+            {
+                return std::abs(coordinate.x - centerChunkX) <= chunkRadius &&
+                       std::abs(coordinate.z - centerChunkZ) <= chunkRadius;
+            };
+
+            std::set<ChunkMeshKey> wantedMeshes;
             for (const auto& [coordinate, chunk] : world.GetChunks())
             {
-                if (std::abs(coordinate.x - centerChunkX) > chunkRadius ||
-                    std::abs(coordinate.z - centerChunkZ) > chunkRadius ||
-                    viewLevel < coordinate.y * kChunkSize ||
-                    viewLevel >= (coordinate.y + 1) * kChunkSize)
+                if (!isInRadius(coordinate) || !IsChunkShown(coordinate, viewLevel, mode))
                 {
                     continue;
                 }
 
+                const ChunkMeshKey key = GetMeshKey(chunk, viewLevel, mode);
+                wantedMeshes.insert(key);
                 const ChunkMeshCacheEntry& cachedMesh =
-                    GetOrBuildChunkMesh(grid, world, chunk, viewLevel, atlas, meshCache);
+                    GetOrBuildChunkMesh(grid, world, chunk, key, atlas, meshCache);
 
                 if (cachedMesh.mesh.vertexCount > 0)
                 {
@@ -100,39 +111,52 @@ namespace Infinitesia
                 }
             }
 
-            for (const int adjacentLevel : { viewLevel - 1, viewLevel + 1 })
+            // The meshes of the next levels up and down are built ahead, one chunk each a
+            // frame, so that paging through the levels does not stall on a whole layer of chunks.
+            if (mode == ViewMode::CutAtLevel)
             {
-                if (adjacentLevel < 0 || adjacentLevel >= grid.GetHeight())
+                for (const int adjacentLevel : { viewLevel - 1, viewLevel + 1 })
                 {
+                    if (adjacentLevel < 0 || adjacentLevel >= grid.GetHeight())
+                    {
+                        continue;
+                    }
+                    bool builtAhead = false;
+                    for (const auto& [coordinate, chunk] : world.GetChunks())
+                    {
+                        if (!isInRadius(coordinate) ||
+                            !IsChunkShown(coordinate, adjacentLevel, mode))
+                        {
+                            continue;
+                        }
+
+                        const ChunkMeshKey key = GetMeshKey(chunk, adjacentLevel, mode);
+                        wantedMeshes.insert(key);
+                        const auto cachedMesh = meshCache.find(key);
+                        if (!builtAhead &&
+                            (cachedMesh == meshCache.end() ||
+                             cachedMesh->second.terrainRevision != chunk.terrainRevision))
+                        {
+                            static_cast<void>(GetOrBuildChunkMesh(
+                                grid, world, chunk, key, atlas, meshCache));
+                            builtAhead = true;
+                        }
+                    }
+                }
+            }
+
+            for (auto cachedMesh = meshCache.begin(); cachedMesh != meshCache.end();)
+            {
+                if (wantedMeshes.count(cachedMesh->first) != 0)
+                {
+                    ++cachedMesh;
                     continue;
                 }
-                for (const auto& [coordinate, chunk] : world.GetChunks())
+                if (IsMeshLoaded(cachedMesh->second.mesh))
                 {
-                    if (std::abs(coordinate.x - centerChunkX) > chunkRadius ||
-                        std::abs(coordinate.z - centerChunkZ) > chunkRadius ||
-                        adjacentLevel < coordinate.y * kChunkSize ||
-                        adjacentLevel >= (coordinate.y + 1) * kChunkSize)
-                    {
-                        continue;
-                    }
-
-                    const ChunkMeshKey key{ coordinate, adjacentLevel };
-                    const auto cachedMesh = meshCache.find(key);
-                    if (cachedMesh != meshCache.end() &&
-                        cachedMesh->second.terrainRevision == chunk.terrainRevision)
-                    {
-                        continue;
-                    }
-
-                    static_cast<void>(GetOrBuildChunkMesh(
-                        grid,
-                        world,
-                        chunk,
-                        adjacentLevel,
-                        atlas,
-                        meshCache));
-                    break;
+                    UnloadMesh(cachedMesh->second.mesh);
                 }
+                cachedMesh = meshCache.erase(cachedMesh);
             }
         }
     }

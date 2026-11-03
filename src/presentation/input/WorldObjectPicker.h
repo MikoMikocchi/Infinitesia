@@ -3,6 +3,7 @@
 #include "raylib.h"
 #include "world/Grid.h"
 #include "gameplay/entities/EntityStore.h"
+#include "presentation/rendering/ViewMode.h"
 
 #include <optional>
 
@@ -16,6 +17,7 @@ namespace Infinitesia
             const EntityStore& world,
             const Camera3D& camera,
             Vector2 screenPosition,
-            int selectedLevel) const;
+            int selectedLevel,
+            ViewMode mode) const;
     };
 }

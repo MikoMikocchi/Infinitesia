@@ -38,11 +38,10 @@ namespace Infinitesia
                 std::vector<unsigned short> indices;
 
                 void AppendFace(const std::array<Vector3, 4>& corners, Vector3 normal, const FaceLook& look);
+                // The side faces of the block in the cell that no solid neighbour covers.
                 void AppendExposedSideFaces(
-                    const Grid& grid,
                     const VoxelWorld& world,
                     GridCell cell,
-                    int level,
                     float left,
                     float right,
                     float front,

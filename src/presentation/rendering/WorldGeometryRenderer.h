@@ -4,6 +4,7 @@
 #include "world/Grid.h"
 #include "gameplay/entities/EntityStore.h"
 #include "world/VoxelWorld.h"
+#include "presentation/rendering/ViewMode.h"
 #include "presentation/rendering/terrain/BlockTextureAtlas.h"
 
 #include <cstdint>
@@ -29,6 +30,7 @@ namespace Infinitesia
             GridCell viewCenter,
             int chunkRadius,
             int viewLevel,
+            ViewMode mode,
             Material material,
             const BlockTextureAtlas& atlas,
             ChunkMeshCache& meshCache);
@@ -37,7 +39,8 @@ namespace Infinitesia
             const EntityStore& world,
             GridCell viewCenter,
             int chunkRadius,
-            int viewLevel);
+            int viewLevel,
+            ViewMode mode);
         void DrawObjects(
             const Grid& grid,
             const EntityStore& world,
@@ -46,6 +49,7 @@ namespace Infinitesia
             Material material,
             GridCell viewCenter,
             int chunkRadius,
-            int viewLevel);
+            int viewLevel,
+            ViewMode mode);
     }
 }

@@ -3,6 +3,7 @@
 #include "raylib.h"
 #include "world/Grid.h"
 #include "gameplay/GameWorld.h"
+#include "presentation/rendering/ViewMode.h"
 #include "presentation/rendering/WorldGeometryRenderer.h"
 #include "presentation/rendering/terrain/BlockTextureAtlas.h"
 
@@ -37,7 +38,8 @@ namespace Infinitesia
             const std::vector<GridCell>& debugPath,
             GridCell chunkViewCenter,
             int chunkRenderRadius,
-            int viewLevel) const;
+            int viewLevel,
+            ViewMode viewMode) const;
         Camera3D& GetCamera();
         const Camera3D& GetCamera() const;
 

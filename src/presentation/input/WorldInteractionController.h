@@ -3,6 +3,7 @@
 #include "presentation/assets/TextureAssetManager.h"
 #include "presentation/input/GridPointer.h"
 #include "presentation/input/WorldObjectPicker.h"
+#include "presentation/rendering/ViewMode.h"
 #include "raylib.h"
 #include "presentation/ui/CharacterProfilePanel.h"
 #include "presentation/ui/WorldContextMenu.h"
@@ -36,7 +37,8 @@ namespace Infinitesia
             const CommandRegistry& commands,
             int screenWidth,
             int screenHeight,
-            int selectedLevel);
+            int selectedLevel,
+            ViewMode viewMode);
 
         std::optional<GridCell> GetHoveredCell() const;
         std::optional<WorldObjectId> GetHoveredObject() const;

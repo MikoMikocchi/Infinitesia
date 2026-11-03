@@ -15,6 +15,7 @@ namespace Infinitesia
     {
         constexpr float kDegreesToRadians = PI / 180.0f;
         constexpr std::size_t kChunksGeneratedPerFrame = 4;
+        constexpr int kVerticalChunkRadius = 4;
 
         GridCell GetCameraGridCell(const Grid& grid, Vector3 cameraTarget, int selectedLevel)
         {
@@ -114,6 +115,10 @@ namespace Infinitesia
         {
             m_showPathDebug = !m_showPathDebug;
         }
+        if (IsKeyPressed(KEY_V))
+        {
+            m_viewMode = m_viewMode == ViewMode::CutAtLevel ? ViewMode::ShowAll : ViewMode::CutAtLevel;
+        }
 
         LocalGame& game = *m_game;
         AppInternal::UpdateLevelSelection(m_worldRenderer, game.GetGrid(), m_selectedLevel);
@@ -125,8 +130,9 @@ namespace Infinitesia
             m_selectedLevel);
         m_chunkViewCenter.y = m_selectedLevel;
         m_chunkRenderRadius = GetChunkRenderRadius(m_worldRenderer.GetCamera(), game.GetGrid());
-        // Empty cells look up to 16 levels down for ground, which can lie in the chunk below.
-        const int verticalChunkRadius = 1;
+        // The ground is drawn as it is, so the chunks above and below the level are needed
+        // as far as the eye can usefully tell them apart.
+        const int verticalChunkRadius = kVerticalChunkRadius;
         game.GetWorld().terrain.RequestChunksAround(
             m_chunkViewCenter,
             m_chunkRenderRadius,
@@ -146,6 +152,7 @@ namespace Infinitesia
             game.GetCommands(),
             m_config.window.width,
             m_config.window.height,
-            m_selectedLevel);
+            m_selectedLevel,
+            m_viewMode);
     }
 }

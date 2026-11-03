@@ -13,7 +13,8 @@ namespace Infinitesia
         const CommandRegistry& commands,
         int screenWidth,
         int screenHeight,
-        int selectedLevel)
+        int selectedLevel,
+        ViewMode viewMode)
     {
         if (m_characterProfilePanel.IsOpen())
         {
@@ -39,9 +40,11 @@ namespace Infinitesia
 
         m_hoveredCell = m_gridPointer.PickCell(
             grid,
+            world.terrain,
             camera,
             input.mousePosition,
-            selectedLevel);
+            selectedLevel,
+            viewMode);
         if (m_contextMenu.BlocksWorldInput(input.mousePosition))
         {
             m_hoveredObject.reset();
@@ -50,7 +53,7 @@ namespace Infinitesia
         else
         {
             m_hoveredObject = m_worldObjectPicker.PickObject(
-                grid, world.entities, camera, input.mousePosition, selectedLevel);
+                grid, world.entities, camera, input.mousePosition, selectedLevel, viewMode);
         }
 
         std::optional<WorldObjectId> actor = m_selectedObject;
@@ -66,7 +69,7 @@ namespace Infinitesia
             {
                 actor.reset();
             }
-            else if (selectedObject->cell.y != selectedLevel)
+            else if (!IsLevelShown(viewMode, selectedObject->cell.y, selectedLevel))
             {
                 actor.reset();
                 m_selectedObject.reset();

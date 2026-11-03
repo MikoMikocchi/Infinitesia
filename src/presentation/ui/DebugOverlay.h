@@ -28,6 +28,7 @@ namespace Infinitesia
         std::size_t loadedChunkCount;
         std::size_t totalChunkCount;
         int selectedLevel;
+        bool showAllLevels;
     };
 
     class DebugOverlay
