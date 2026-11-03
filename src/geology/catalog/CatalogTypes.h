@@ -106,10 +106,25 @@ namespace Infinitesia
         BiosphereRequirement needs = BiosphereRequirement::None;
     };
 
-    // The stratigraphic pile typical for a province type, basement first.
+    // How the rocks of a province type are deformed (docs/03_GEOLOGY.md, section 8.1).
+    struct StructureStyle
+    {
+        double minDipDegrees = 0.0;
+        double maxDipDegrees = 0.0;
+        // Fold amplitude is foldAmplitude * wavelength^0.8, limited to a 60 degree flank.
+        double foldAmplitude = 0.0;
+        int foldCount = 0;
+        // Lateral change of a layer's thickness: thickness * (1 + variability * noise), noise in
+        // [-1, 1]. Above 1 the layer pinches out in places and forms lenses.
+        double minVariability = 0.0;
+        double maxVariability = 0.0;
+    };
+
+    // The stratigraphic pile typical for a province type, basement first, and how it is deformed.
     struct ProvinceColumn
     {
         ProvinceType type = ProvinceType::AbyssalPlain;
+        StructureStyle style;
         std::vector<ColumnLayer> bottomUp;
     };
 }

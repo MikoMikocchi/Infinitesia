@@ -322,8 +322,10 @@ TEST_CASE("RocksAreLaidOutInTheLayersOfTheProvincePile")
             for (int y = 0; y + 5 < surface; y += 9)
             {
                 const int elevation = terrain.OriginElevationMeters() + (y - kAnchorLevel);
-                Require(source->MaterialAt({ x, y, z }) == model.BedrockAt(column.province, elevation, column.pileTopMeters),
-                        "A rock block disagrees with the pile of its province.");
+                const double east = terrain.OriginEastMeters() + (x - kWidth / 2) + 0.5;
+                const double north = terrain.OriginNorthMeters() + (kDepth / 2 - z) + 0.5;
+                Require(source->MaterialAt({ x, y, z }) == model.BedrockAt(column.province, east, north, elevation, column.pileTopMeters),
+                        "A rock block disagrees with the structure of its province.");
             }
         }
     }

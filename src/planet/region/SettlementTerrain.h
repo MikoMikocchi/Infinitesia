@@ -54,6 +54,10 @@ namespace Infinitesia
 
         const LocalGrid& GetGrid() const noexcept { return m_grid; }
 
+        // The origin column's centre, metres east and north of the grid's anchor.
+        double OriginEastMeters() const noexcept { return m_originEastMeters; }
+        double OriginNorthMeters() const noexcept { return m_originNorthMeters; }
+
         // Ground elevation of the origin column, whole metres above sea level.
         int OriginElevationMeters() const noexcept { return m_originElevationMeters; }
 

@@ -92,12 +92,25 @@ namespace Infinitesia
             return value;
         }
 
-        void CheckSchemaVersion(const Json& root, const Where& where)
+        void CheckSchemaVersion(const Json& root, const Where& where, int expected = 1)
         {
-            if (IntField(root, "schemaVersion", where) != 1)
+            if (IntField(root, "schemaVersion", where) != expected)
             {
-                Fail(where, "unsupported schemaVersion (this build reads version 1)");
+                Fail(where, "unsupported schemaVersion (this build reads version " + std::to_string(expected) + ")");
             }
+        }
+
+        void ReadRange(const Json& object, const char* key, const Where& where, double lowest, double highest,
+                       double& first, double& second)
+        {
+            const Json& value = Field(object, key, where);
+            if (!value.is_array() || value.size() != 2 || !value[0].is_number() || !value[1].is_number())
+                Fail(where, std::string("field '") + key + "' must be [min, max]");
+            first = value[0].get<double>();
+            second = value[1].get<double>();
+            if (!(first >= lowest && first <= second && second <= highest))
+                Fail(where, std::string("field '") + key + "' must satisfy " + std::to_string(lowest) +
+                            " <= min <= max <= " + std::to_string(highest));
         }
 
         bool StartsWith(const std::string& text, const char* prefix)
@@ -335,13 +348,13 @@ namespace Infinitesia
         {
             const Json root = ReadJson(path);
             Where where{ path.string(), "" };
-            CheckSchemaVersion(root, where);
+            CheckSchemaVersion(root, where, 2);
             const Json& table = Field(root, "columns", where);
             if (!table.is_object())
                 Fail(where, "field 'columns' must be an object");
 
             std::array<bool, kProvinceTypeCount> seen{};
-            for (const auto& [name, layers] : table.items())
+            for (const auto& [name, definition] : table.items())
             {
                 Where record{ path.string(), "columns." + name };
                 int typeIndex = -1;
@@ -352,12 +365,24 @@ namespace Infinitesia
                 }
                 if (typeIndex < 0)
                     Fail(record, "unknown province type");
+                const Json& layers = Field(definition, "layers", record);
                 if (!layers.is_array() || layers.empty())
                     Fail(record, "a column needs at least one layer");
 
                 ProvinceColumn& column = columns[static_cast<std::size_t>(typeIndex)];
                 column.type = static_cast<ProvinceType>(typeIndex);
                 column.bottomUp.clear();
+
+                const Json& structure = Field(definition, "structure", record);
+                StructureStyle& style = column.style;
+                ReadRange(structure, "dipDegrees", record, 0.0, 89.0, style.minDipDegrees, style.maxDipDegrees);
+                ReadRange(structure, "layerVariability", record, 0.0, 2.0, style.minVariability, style.maxVariability);
+                style.foldAmplitude = NumberField(structure, "foldAmplitude", record);
+                if (!(style.foldAmplitude >= 0.0 && style.foldAmplitude <= 1.0))
+                    Fail(record, "foldAmplitude must be 0-1");
+                style.foldCount = IntField(structure, "foldCount", record);
+                if (style.foldCount < 0 || style.foldCount > 6)
+                    Fail(record, "foldCount must be 0-6");
                 for (const Json& layer : layers)
                 {
                     const std::string rockKey = StringField(layer, "rock", record);

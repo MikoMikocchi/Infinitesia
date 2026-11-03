@@ -342,6 +342,8 @@ namespace Infinitesia
             double landArea = 0.0;
             double crustAgeArea = 0.0;
             double sedimentArea = 0.0;
+            double motionCos = 0.0; // plate motion axis, doubled-angle sums weighted by speed
+            double motionSin = 0.0;
         };
         std::vector<Accumulator> sums(static_cast<std::size_t>(componentCount));
 
@@ -370,6 +372,12 @@ namespace Infinitesia
                 sum.landArea += c.isOcean ? 0.0 : area;
                 sum.crustAgeArea += c.crustAgeMyr * area;
                 sum.sedimentArea += c.sedimentThicknessKm * area;
+                const double motionEast = c.boundaryRelativeVelocityEastCmPerYear;
+                const double motionNorth = c.boundaryRelativeVelocityNorthCmPerYear;
+                const double azimuth = std::atan2(motionEast, motionNorth);
+                const double weight = std::hypot(motionEast, motionNorth) * area;
+                sum.motionCos += weight * std::cos(2.0 * azimuth);
+                sum.motionSin += weight * std::sin(2.0 * azimuth);
             }
         }
 
@@ -385,6 +393,13 @@ namespace Infinitesia
                 if (longitude < 0.0)
                     longitude += 360.0;
                 province.centroidLongitudeDegrees = longitude;
+            }
+            if (std::hypot(sum.motionCos, sum.motionSin) > 1.0e-9)
+            {
+                double axis = 0.5 * std::atan2(sum.motionSin, sum.motionCos) * 180.0 / std::numbers::pi;
+                if (axis < 0.0)
+                    axis += 180.0;
+                province.compressionAzimuthDegrees = axis;
             }
             province.landFraction = sum.landArea / area;
             province.meanCrustAgeMyr = sum.crustAgeArea / area;

@@ -59,6 +59,7 @@ namespace
         std::uint64_t seed = 1;
         int planetBands = 0;           // 0: the game's resolution
         std::string assets = INFINITESIA_GEOLOGY_ASSET_DIR; // geology catalogs
+        bool map = false;              // a geological map from above instead of the block picture
     };
 
     void PrintUsage()
@@ -86,6 +87,8 @@ namespace
             "  --scale <px>           pixels per metre (default: about 1600 px wide)\n"
             "  --vexag <f>            vertical exaggeration (default grows with the window)\n"
             "  --out <file.png>       output (default snapshot.png)\n"
+            "  --map                  a geological map from above (rock under the topsoil, contacts as\n"
+            "                         dark lines, hill shading) instead of the block picture\n"
             "  --assets <dir>         geology catalogs (default: the source tree's assets/geology)\n"
             "\n"
             "Stone is drawn in the colour of its rock, taken from the geology catalog; the rocks\n"
@@ -140,6 +143,7 @@ namespace
             else if (key == "--vexag") { options.verticalExaggeration = std::atof(value()); }
             else if (key == "--out") { options.output = value(); }
             else if (key == "--assets") { options.assets = value(); }
+            else if (key == "--map") { options.map = true; }
             else
             {
                 throw std::invalid_argument("Unknown option " + key);
@@ -350,6 +354,7 @@ namespace
         SurfaceKind kind = SurfaceKind::Grass;
         ProvinceId province = kNoProvince;
         int pileTop = 0;         // elevation of the province's rock pile top, metres above sea level
+        GeologyModel::ColumnProfile profile; // the rocks under the column
     };
 
     Rgb BlockColor(BlockType type)
@@ -397,6 +402,31 @@ namespace
         else if (view == "nw") { east = n - 1 - u; south = n - 1 - v; }
         else if (view == "ne") { east = v;         south = n - 1 - u; }
         else                   { east = u;         south = v; }
+    }
+
+    // The rocks that were drawn, most visible first, with their colours.
+    void PrintRocks(const GeologyCatalog& catalog, const std::map<MaterialId, long>& seen)
+    {
+        if (seen.empty())
+        {
+            return;
+        }
+        std::vector<std::pair<MaterialId, long>> ranked(seen.begin(), seen.end());
+        std::sort(ranked.begin(), ranked.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
+        long total = 0;
+        for (const auto& entry : ranked)
+        {
+            total += entry.second;
+        }
+        std::printf("rocks in view:\n");
+        for (const auto& [material, count] : ranked)
+        {
+            const MaterialDef* info = catalog.GetMaterial(material);
+            const RgbColor color = catalog.ColorOf(material);
+            std::printf("  #%02x%02x%02x  %-26s %-22s %4.1f%%\n", color.r, color.g, color.b,
+                        info != nullptr ? info->key.c_str() : "?", info != nullptr ? info->name.c_str() : "?",
+                        100.0 * static_cast<double>(count) / static_cast<double>(total));
+        }
     }
 
     int Run(const Options& options)
@@ -457,6 +487,78 @@ namespace
         std::fprintf(stderr, "Planet ready in %.1f s.\n",
                      std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count());
 
+        // ---- a geological map from above: the rock under the topsoil of every column, north up
+        if (options.map)
+        {
+            const int pixels = std::max(1, static_cast<int>(std::lround(
+                options.scale > 0.0 ? options.scale : std::max(1.0, 1200.0 / columns))));
+            std::vector<int> ground(static_cast<std::size_t>(columns) * columns);
+            std::vector<MaterialId> rockAt(ground.size(), kUnspecifiedMaterial);
+            std::vector<char> drowned(ground.size(), 0);
+            for (int south = 0; south < columns; ++south)
+            {
+                for (int east = 0; east < columns; ++east)
+                {
+                    const int eastMeters = static_cast<int>(std::lround(-extent * 0.5 + (east + 0.5) * step));
+                    const int northMeters = static_cast<int>(std::lround(extent * 0.5 - (south + 0.5) * step));
+                    const SurfaceColumn column = terrain.Column(eastMeters, northMeters);
+                    const auto profile = geology.ProfileAt(column.province, options.originEast + eastMeters + 0.5,
+                                                           options.originNorth + northMeters + 0.5, column.pileTopMeters);
+                    const std::size_t index = static_cast<std::size_t>(south) * columns + east;
+                    ground[index] = column.heightBlocks;
+                    drowned[index] = column.underSea ? 1 : 0;
+                    // Under the topsoil (3 m) the rock that outcrops or lies just below the ground.
+                    rockAt[index] = GeologyModel::RockAt(profile, terrain.OriginElevationMeters() + column.heightBlocks - 4);
+                }
+            }
+
+            Image image(columns * pixels, columns * pixels, { 24, 28, 34 });
+            std::map<MaterialId, long> mapped;
+            const auto groundAt = [&](int east, int south)
+            {
+                return ground[static_cast<std::size_t>(std::clamp(south, 0, columns - 1)) * columns +
+                              std::clamp(east, 0, columns - 1)];
+            };
+            const int reach = std::clamp(static_cast<int>(std::lround(8.0 / step)), 1, 8);
+            for (int south = 0; south < columns; ++south)
+            {
+                for (int east = 0; east < columns; ++east)
+                {
+                    const std::size_t index = static_cast<std::size_t>(south) * columns + east;
+                    const RgbColor rock = catalog->ColorOf(rockAt[index]);
+                    Rgb color{ rock.r, rock.g, rock.b };
+                    ++mapped[rockAt[index]];
+
+                    // Contacts: a dark line where the neighbouring column is another rock.
+                    const bool contact =
+                        (east + 1 < columns && rockAt[index + 1] != rockAt[index]) ||
+                        (south + 1 < columns && rockAt[index + static_cast<std::size_t>(columns)] != rockAt[index]);
+                    // Hill shading from the north-west, so relief and rock bands read together.
+                    const double slopeEast = (groundAt(east + reach, south) - groundAt(east - reach, south)) / (2.0 * reach * step);
+                    const double slopeNorth = (groundAt(east, south - reach) - groundAt(east, south + reach)) / (2.0 * reach * step);
+                    const double lit = std::clamp(1.0 + 1.5 * (slopeEast - slopeNorth) * 0.7, 0.75, 1.25);
+                    color = Shade(color, lit * (contact ? 0.55 : 1.0));
+                    if (drowned[index] != 0)
+                    {
+                        color = Mix(color, { 52, 110, 170 }, 0.7);
+                    }
+                    const double x0 = static_cast<double>(east) * pixels;
+                    const double y0 = static_cast<double>(south) * pixels;
+                    image.FillQuad({ Point{ x0, y0 }, Point{ x0 + pixels, y0 }, Point{ x0 + pixels, y0 + pixels },
+                                     Point{ x0, y0 + pixels } }, color);
+                }
+            }
+            if (!WritePng(options.output, image))
+            {
+                std::fprintf(stderr, "Could not write %s.\n", options.output.c_str());
+                return 1;
+            }
+            std::printf("%s: geological map %d x %d px, north up, %.0f m window (%.1f m per column)\n",
+                        options.output.c_str(), image.Width(), image.Height(), extent, step);
+            PrintRocks(*catalog, mapped);
+            return 0;
+        }
+
         // ---- columns in view coordinates, far corner first
         View view;
         view.columns = columns;
@@ -489,6 +591,8 @@ namespace
                 cell.kind = column.underSea ? SurfaceKind::Sand : column.kind;
                 cell.province = column.province;
                 cell.pileTop = column.pileTopMeters;
+                cell.profile = geology.ProfileAt(column.province, options.originEast + eastMeters + 0.5,
+                                                 options.originNorth + northMeters + 0.5, column.pileTopMeters);
                 // Over drowned ground the filled column reaches the sea surface, but no more
                 // than kMaxWaterDrawn above the ground: a 3 km deep ocean would swamp the picture.
                 const int seaTop = sea - 1;
@@ -555,7 +659,7 @@ namespace
             {
                 return { type, kUnspecifiedMaterial };
             }
-            return { type, geology.BedrockAt(cell.province, terrain.OriginElevationMeters() + level, cell.pileTop) };
+            return { type, GeologyModel::RockAt(cell.profile, terrain.OriginElevationMeters() + level) };
         };
         const auto layerRgb = [&](const Layer& layer) -> Rgb
         {
@@ -700,26 +804,7 @@ namespace
                         kMaxWaterDrawn, kMaxWaterDrawn);
         }
 
-        // ---- rocks in the picture, most visible first
-        if (!rocksSeen.empty())
-        {
-            std::vector<std::pair<MaterialId, long>> ranked(rocksSeen.begin(), rocksSeen.end());
-            std::sort(ranked.begin(), ranked.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
-            long total = 0;
-            for (const auto& entry : ranked)
-            {
-                total += entry.second;
-            }
-            std::printf("rocks in view:\n");
-            for (const auto& [material, count] : ranked)
-            {
-                const MaterialDef* info = catalog->GetMaterial(material);
-                const RgbColor color = catalog->ColorOf(material);
-                std::printf("  #%02x%02x%02x  %-26s %-22s %4.1f%%\n", color.r, color.g, color.b,
-                            info != nullptr ? info->key.c_str() : "?", info != nullptr ? info->name.c_str() : "?",
-                            100.0 * static_cast<double>(count) / static_cast<double>(total));
-            }
-        }
+        PrintRocks(*catalog, rocksSeen);
 
         // ---- geological setting of the planet cell under the window centre
         {

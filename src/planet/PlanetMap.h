@@ -19,7 +19,7 @@ namespace Infinitesia
     // sediment, heat flow, provinces). Kept apart from the generator version: adding
     // these fields leaves every older field of the map unchanged. Raise it whenever a
     // change alters any geological field; saves record it next to the planet seed.
-    inline constexpr std::uint32_t kPlanetGeologyDataVersion = 1;
+    inline constexpr std::uint32_t kPlanetGeologyDataVersion = 2;
 
     // Plate boundary within kBoundaryReachKm of a cell. Order-independent of the
     // generator's internal classification.

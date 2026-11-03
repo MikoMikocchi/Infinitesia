@@ -53,6 +53,7 @@ namespace Infinitesia
         };
 
         const Column& ColumnAt(int x, int z) const;
+        const GeologyModel::ColumnProfile& ProfileAt(int x, int z) const;
 
         std::shared_ptr<const SettlementTerrain> m_terrain;
         std::shared_ptr<const GeologyModel> m_geology;
@@ -63,5 +64,8 @@ namespace Infinitesia
         // Columns are worked out the first time a chunk touches them.
         mutable std::vector<Column> m_columns;
         mutable std::vector<std::uint8_t> m_known;
+        // The rocks under a column, worked out the first time one of its blocks is asked for.
+        mutable std::vector<GeologyModel::ColumnProfile> m_profiles;
+        mutable std::vector<std::uint8_t> m_profileKnown;
     };
 }

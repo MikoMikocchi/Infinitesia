@@ -54,6 +54,27 @@ namespace Infinitesia
         const std::size_t columns = static_cast<std::size_t>(gridWidth) * static_cast<std::size_t>(gridDepth);
         m_columns.resize(columns);
         m_known.assign(columns, 0);
+        if (m_geology != nullptr)
+        {
+            m_profiles.resize(columns);
+            m_profileKnown.assign(columns, 0);
+        }
+    }
+
+    const GeologyModel::ColumnProfile& PlanetTerrainSource::ProfileAt(int x, int z) const
+    {
+        const std::size_t index = static_cast<std::size_t>(z) * static_cast<std::size_t>(m_width) +
+                                  static_cast<std::size_t>(x);
+        if (m_profileKnown[index] == 0)
+        {
+            const Column& column = ColumnAt(x, z);
+            // The centre of the 1 m column, in metres east and north of the grid's anchor.
+            const double east = m_terrain->OriginEastMeters() + (x - m_width / 2) + 0.5;
+            const double north = m_terrain->OriginNorthMeters() + (m_depth / 2 - z) + 0.5;
+            m_profiles[index] = m_geology->ProfileAt(column.province, east, north, column.pileTopMeters);
+            m_profileKnown[index] = 1;
+        }
+        return m_profiles[index];
     }
 
     const PlanetTerrainSource::Column& PlanetTerrainSource::ColumnAt(int x, int z) const
@@ -111,9 +132,8 @@ namespace Infinitesia
         }
         // A level is a metre of height: the ground of the origin column is at anchorLevel
         // and OriginElevationMeters above sea level.
-        const Column& column = ColumnAt(cell.x, cell.z);
         const int elevation = m_terrain->OriginElevationMeters() + (cell.y - m_anchorLevel);
-        return m_geology->BedrockAt(column.province, elevation, column.pileTopMeters);
+        return GeologyModel::RockAt(ProfileAt(cell.x, cell.z), elevation);
     }
 
     const GeologyCatalog* PlanetTerrainSource::Catalog() const

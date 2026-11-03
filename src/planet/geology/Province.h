@@ -65,5 +65,8 @@ namespace Infinitesia
         double eventAgeMyr = 0.0;
         double erosionDepthKm = 0.0;
         ErosionLevel erosionLevel = ErosionLevel::Surface;
+        // Axis of the plate motion across the province, degrees clockwise from north in
+        // [0, 180): the direction rock layers are compressed along, so folds run across it.
+        double compressionAzimuthDegrees = 0.0;
     };
 }
