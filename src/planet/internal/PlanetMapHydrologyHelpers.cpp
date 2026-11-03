@@ -1,6 +1,8 @@
 #include "planet/internal/PlanetMapHydrologyHelpers.h"
 
 #include <algorithm>
+#include <cmath>
+#include <numbers>
 #include <numeric>
 #include <queue>
 #include <stdexcept>
@@ -93,6 +95,28 @@ namespace Infinitesia::GenerationDetail
             }
         }
 
+        // Flow goes along the steepest slope: elevation drop divided by the
+        // great-circle distance between cell centers (unit sphere; the radius
+        // cancels when comparing slopes). Cell centers sit at mid-band latitude.
+        const double deltaLat = std::numbers::pi / latitudeBands;
+        const double deltaLon = (2.0 * std::numbers::pi) / longitudeSegments;
+        std::vector<double> bandLatitude(static_cast<std::size_t>(latitudeBands));
+        for (int band = 0; band < latitudeBands; ++band)
+        {
+            bandLatitude[static_cast<std::size_t>(band)] =
+                -std::numbers::pi / 2.0 + (band + 0.5) * deltaLat;
+        }
+        const auto centerDistance = [&](int latA, int latB, int lonOffset)
+        {
+            const double phiA = bandLatitude[static_cast<std::size_t>(latA)];
+            const double phiB = bandLatitude[static_cast<std::size_t>(latB)];
+            const double sinHalfLat = std::sin((phiB - phiA) * 0.5);
+            const double sinHalfLon = std::sin(lonOffset * deltaLon * 0.5);
+            const double h = sinHalfLat * sinHalfLat +
+                std::cos(phiA) * std::cos(phiB) * sinHalfLon * sinHalfLon;
+            return 2.0 * std::asin(std::sqrt(std::min(1.0, h)));
+        };
+
         network.flowDirections.assign(cellCount, -1);
         for (int latitude = 0; latitude < latitudeBands; ++latitude)
         {
@@ -104,7 +128,8 @@ namespace Infinitesia::GenerationDetail
                 if (oceanCells[index])
                     continue;
 
-                double minimumElevation = network.filledElevations[index];
+                const double currentElevation = network.filledElevations[index];
+                double steepestSlope = 0.0;
                 int bestNeighbor = -1;
                 for (int direction = 0; direction < 8; ++direction)
                 {
@@ -118,11 +143,20 @@ namespace Infinitesia::GenerationDetail
                     const std::size_t neighborIndex =
                         static_cast<std::size_t>(neighborLatitude) * longitudeSegments +
                         neighborLongitude;
-                    const double neighborElevation =
-                        network.filledElevations[neighborIndex];
-                    if (neighborElevation < minimumElevation)
+                    const double drop =
+                        currentElevation - network.filledElevations[neighborIndex];
+                    if (drop <= 0.0)
+                        continue;
+
+                    const double distance =
+                        centerDistance(latitude, neighborLatitude, dy[direction]);
+                    if (distance <= 0.0)
+                        continue;
+
+                    const double slope = drop / distance;
+                    if (slope > steepestSlope)
                     {
-                        minimumElevation = neighborElevation;
+                        steepestSlope = slope;
                         bestNeighbor = static_cast<int>(neighborIndex);
                     }
                 }

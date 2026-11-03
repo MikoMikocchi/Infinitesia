@@ -240,8 +240,14 @@ namespace
         const auto start = std::chrono::steady_clock::now();
         const Infinitesia::PlanetMap defaultMap;
         const auto elapsed = std::chrono::steady_clock::now() - start;
-        Require(elapsed < std::chrono::seconds(2),
-                "Default planet-map generation exceeded the 2-second startup budget.");
+#ifdef NDEBUG
+        constexpr auto budget = std::chrono::seconds(2);
+#else
+        // Unoptimized builds are an order of magnitude slower.
+        constexpr auto budget = std::chrono::seconds(60);
+#endif
+        Require(elapsed < budget,
+                "Default planet-map generation exceeded the startup budget.");
 
         double totalAreaWeight = 0.0;
         double landAreaWeight = 0.0;
