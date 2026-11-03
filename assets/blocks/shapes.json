@@ -1,0 +1,13 @@
+{
+ "source": "Shapes of a cell (docs/06_BLOCKS.md, section 3.2a). Only the full cube exists so far.",
+ "shapes": [
+  {
+   "id": "shape.full",
+   "numericId": 0,
+   "faces": "all",
+   "walkable": true,
+   "passesLight": false,
+   "mesh": "cube"
+  }
+ ]
+}

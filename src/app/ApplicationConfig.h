@@ -20,7 +20,7 @@ namespace Infinitesia
 
     struct ApplicationConfig
     {
-        WindowConfig window{ 1920, 1080, 60, "Infinitesia" };
+        WindowConfig window{ 1280, 720, 60, "Infinitesia" };
         // The world of the founded settlement: a 256 m square window of the planet, 192 m
         // tall, with the ground of its middle column at level 112.
         GridConfig settlementGrid{ 256, 192, 256, 1.0f };

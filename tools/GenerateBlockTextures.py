@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generates the 32x32 block textures into assets/textures/blocks/.
 
-One seamless PNG per material of assets/geology/{rocks,materials}.json plus the base
+One seamless PNG per material of assets/geology/{rocks,materials}.json and assets/blocks/built_materials.json plus the base
 blocks. File name = material id (rock.granite.png) or block.<name>.png.
 Standard library only. Colours are deliberately loud (GregTech style): the catalog
 colour is saturated, and near-grey rocks get a hue derived from their id so that every
@@ -340,6 +340,13 @@ SOILS = {
     "ice.permafrost": "gravel",
 }
 
+# Materials of assets/blocks/built_materials.json.
+BUILT = {
+    "built.planks": "layered", "built.brick": "clastic", "built.glass": "ice",
+    "built.glass_red": "ice", "built.glass_green": "ice", "built.glass_blue": "ice",
+    "built.lamp": "crystal",
+}
+
 FLUIDS = {"fluid.water": "wave", "fluid.seawater": "wave", "fluid.brine": "wave",
           "fluid.oil": "wave", "fluid.magma": "magma"}
 
@@ -395,6 +402,11 @@ def main():
         if family:
             textures[m["id"]] = render(m["id"], family, hex_rgb(m["color"]),
                                        keep_dark=m["id"] == "fluid.oil")
+
+    built = json.loads((ROOT / "assets/blocks/built_materials.json").read_text("utf-8"))["materials"]
+    for b in built:
+        family = BUILT.get(b["id"], "dense")
+        textures[b["id"]] = render(b["id"], family, hex_rgb(b["color"]))
 
     rocks = json.loads((ROOT / "assets/geology/rocks.json").read_text("utf-8"))["rocks"]
     for r in rocks:

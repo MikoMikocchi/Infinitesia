@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 
 // JSON helpers shared by the catalog loaders: reading a file, required fields, and errors
 // that name the file and the record.
@@ -30,10 +31,17 @@ namespace Infinitesia::CatalogInternal
     int IntField(const Json& object, const char* key, const Where& where);
     const Json& ArrayField(const Json& object, const char* key, const Where& where);
 
-    void CheckSchemaVersion(const Json& root, const Where& where, int expected = 1);
     void ReadRange(const Json& object, const char* key, const Where& where, double lowest, double highest,
                    double& first, double& second);
     bool StartsWith(const std::string& text, const char* prefix);
+
+    // Light values (docs/06_BLOCKS.md): a level 0-15, or [r, g, b]. Absent gives `fallback`.
+    // `allowNumber` lets a single number stand for all three channels (opacity, not emission).
+    LightRgb LightField(const Json& object, const char* key, const Where& where, LightRgb fallback, bool allowNumber);
+    // The tags of a material: the tag of its class plus the optional "tags" array.
+    std::vector<std::string> TagsField(const Json& object, BlockClass blockClass, const Where& where);
+    // An optional boolean field.
+    bool BoolField(const Json& object, const char* key, const Where& where, bool fallback);
 
     RgbColor ColorField(const Json& object, const Where& where);
     Provenance ProvenanceField(const Json& object, const Where& where);

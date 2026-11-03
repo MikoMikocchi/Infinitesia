@@ -1,5 +1,4 @@
 {
- "schemaVersion": 3,
  "source": "Typical sections of docs/03a_GEOLOGY_CATALOGS.md, section 7, simplified to a flat pile per province type. Thicknesses are real-world metres before the strataThicknessScale game factor. Interim model: stage G2 replaces it with structures derived from province history. Structure: dip range, fold amplitude factor (amplitude = factor * wavelength^0.8, as in docs/03_GEOLOGY.md section 8.1) and the range of lateral thickness variability of the layers. Faults: one candidate per lattice cell of spacingM with the given probability; slip (throwM is the displacement along the fault plane) and the share of normal and thrust faults (the rest are strike-slip).",
  "provenance": "gameplay",
  "columns": {

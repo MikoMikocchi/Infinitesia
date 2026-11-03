@@ -2,6 +2,7 @@
 
 #include "geology/catalog/GeologyCatalog.h"
 
+#include <algorithm>
 #include <fstream>
 
 namespace Infinitesia::CatalogInternal
@@ -77,14 +78,6 @@ namespace Infinitesia::CatalogInternal
         return value;
     }
 
-    void CheckSchemaVersion(const Json& root, const Where& where, int expected)
-    {
-        if (IntField(root, "schemaVersion", where) != expected)
-        {
-            Fail(where, "unsupported schemaVersion (this build reads version " + std::to_string(expected) + ")");
-        }
-    }
-
     void ReadRange(const Json& object, const char* key, const Where& where, double lowest, double highest,
                    double& first, double& second)
     {
@@ -109,6 +102,60 @@ namespace Infinitesia::CatalogInternal
         if (c >= 'a' && c <= 'f') return c - 'a' + 10;
         if (c >= 'A' && c <= 'F') return c - 'A' + 10;
         return -1;
+    }
+
+    static std::uint8_t LightLevel(const Json& value, const char* key, const Where& where)
+    {
+        if (!value.is_number_integer())
+            Fail(where, std::string("field '") + key + "' must hold whole numbers");
+        const int level = value.get<int>();
+        if (level < 0 || level > kMaxLightLevel)
+            Fail(where, std::string("field '") + key + "' must be 0-15");
+        return static_cast<std::uint8_t>(level);
+    }
+
+    LightRgb LightField(const Json& object, const char* key, const Where& where, LightRgb fallback, bool allowNumber)
+    {
+        if (!object.contains(key))
+            return fallback;
+        const Json& value = object.at(key);
+        if (allowNumber && value.is_number())
+        {
+            const std::uint8_t level = LightLevel(value, key, where);
+            return { level, level, level };
+        }
+        if (!value.is_array() || value.size() != 3)
+            Fail(where, std::string("field '") + key + "' must be " + (allowNumber ? "a number or " : "") + "[r, g, b]");
+        return { LightLevel(value[0], key, where), LightLevel(value[1], key, where), LightLevel(value[2], key, where) };
+    }
+
+    std::vector<std::string> TagsField(const Json& object, BlockClass blockClass, const Where& where)
+    {
+        std::vector<std::string> tags{ ClassTag(blockClass) };
+        if (!object.contains("tags"))
+            return tags;
+        const Json& list = object.at("tags");
+        if (!list.is_array())
+            Fail(where, "field 'tags' must be an array of strings");
+        for (const Json& tag : list)
+        {
+            if (!tag.is_string() || tag.get<std::string>().empty())
+                Fail(where, "field 'tags' must be an array of non-empty strings");
+            const std::string text = tag.get<std::string>();
+            if (std::find(tags.begin(), tags.end(), text) == tags.end())
+                tags.push_back(text);
+        }
+        return tags;
+    }
+
+    bool BoolField(const Json& object, const char* key, const Where& where, bool fallback)
+    {
+        if (!object.contains(key))
+            return fallback;
+        const Json& value = object.at(key);
+        if (!value.is_boolean())
+            Fail(where, std::string("field '") + key + "' must be true or false");
+        return value.get<bool>();
     }
 
     RgbColor ColorField(const Json& object, const Where& where)

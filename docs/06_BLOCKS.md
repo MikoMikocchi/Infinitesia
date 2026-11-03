@@ -194,12 +194,13 @@ struct Block      { GridCell cell; BlockState state; };      // type исчез�
 Код не спрашивает «это вода?» по id, а спрашивает тег материала:
 
 ```cpp
-// Engine-level tags resolved once from names at load; an unknown name is a load error.
+// Tags the engine asks about, resolved once from names at load. Other names in the data are kept
+// as text (BlockRegistry::HasTag); a tag no code asks about is harmless.
 enum class Tag { Water, Fluid, Soil, Stone, LightSource, ... };
 bool BlockRegistry::Has(MaterialId, Tag) const;
 ```
 
-`fluid.water` и `fluid.seawater` оба `["water", "fluid"]`, свойства (плотность, цвет, `opacity`)
+`fluid.water` и `fluid.seawater` оба `["water"]` плюс тег класса `fluid`, свойства (плотность, цвет, `opacity`)
 в данных **идентичны**, пока это решено «одним и тем же». Генерация использует `seawater` для
 моря; правила и свет теги не различают.
 
@@ -245,7 +246,7 @@ public:
 };
 ```
 
-Таблица материалов до 4096 записей по 4 байта (16 КБ) и таблица форм до 256 записей; неизвестный
+Таблица материалов до 4096 записей по 16 байт (64 КБ: флаги, `digClass`, `opacity` RGB, `emission` RGB, маска тегов) и таблица форм до 256 записей; неизвестный
 `MaterialId` считается воздухом и логируется один раз, неизвестная форма `Full`. `Block` остаётся
 в 16 байт (клетка 12 + материал 2 + форма 1 + выравнивание), а не 20, как сейчас.
 

@@ -1,5 +1,4 @@
 {
- "schemaVersion": 1,
  "source": "Typical values from docs/03a_GEOLOGY_CATALOGS.md; densities, hardness, colours and modal compositions are gameplay approximations to be checked against Handbook of Mineralogy / Schon (2015).",
  "minerals": [
   {

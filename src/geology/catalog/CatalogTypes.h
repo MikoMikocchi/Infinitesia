@@ -24,7 +24,9 @@ namespace Infinitesia
     enum class Provenance : std::uint8_t { Reference, Derived, Gameplay };
 
     // What a block of this material is for gameplay and rendering.
-    enum class BlockClass : std::uint8_t { Air, Fluid, Loose, Rock, Ice };
+    // Built is everything made by people or by the game's design rather than by geology (planks, glass,
+    // lamps); those materials live in src/blocks, not in the geology catalog.
+    enum class BlockClass : std::uint8_t { Air, Fluid, Loose, Rock, Ice, Built };
 
     // Block light is coloured: one 0-15 level per channel. The same shape holds how much a material
     // dims each channel of the light that passes through it (docs/06_BLOCKS.md, section 3.2).
@@ -49,7 +51,8 @@ namespace Infinitesia
         case BlockClass::Fluid: return { 2, 2, 2 };
         case BlockClass::Ice:   return { 3, 3, 3 };
         case BlockClass::Loose:
-        case BlockClass::Rock:  break;
+        case BlockClass::Rock:
+        case BlockClass::Built: break;
         }
         return { kMaxLightLevel, kMaxLightLevel, kMaxLightLevel };
     }
@@ -64,6 +67,7 @@ namespace Infinitesia
         case BlockClass::Loose: return "loose";
         case BlockClass::Rock:  return "rock";
         case BlockClass::Ice:   return "ice";
+        case BlockClass::Built: return "built";
         }
         return "";
     }
@@ -131,6 +135,9 @@ namespace Infinitesia
         std::vector<std::string> tags;
         LightRgb opacity{ kMaxLightLevel, kMaxLightLevel, kMaxLightLevel }; // dimming per channel
         LightRgb emission;       // light the material gives off, per channel
+        // Rules a shape may narrow (docs/06_BLOCKS.md, section 3.2); air is neither.
+        bool walkable = true;    // a worker can stand on it and walk through it
+        bool diggable = true;    // a work order can remove it
     };
 
     // Biosphere conditions a layer of a stratigraphic column depends on.

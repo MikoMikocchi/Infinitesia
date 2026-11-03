@@ -23,6 +23,7 @@ MODULE_OF = {
     "chemistry": "chemistry",
     "planet": "planet",
     "geology": "geology",
+    "blocks": "blocks",
     "world": "world",
     "gameplay": "gameplay",
     "presentation": "presentation",  # compiled into the executable, but a layer of its own
@@ -37,10 +38,12 @@ ALLOWED = {
     # geology takes from planet only the data types (planet/geology/Province.h, PlanetEpochs.h);
     # GeologyModel reads the planet through GeologyPlanetView, never planet/PlanetMap.h.
     "geology": {"foundation", "chemistry", "planet"},
-    "world": {"foundation", "planet", "geology"},
-    "gameplay": {"foundation", "planet", "geology", "world"},
-    "presentation": {"foundation", "chemistry", "planet", "geology", "world", "gameplay"},
-    "app": {"foundation", "chemistry", "planet", "geology", "world", "gameplay", "presentation"},
+    # blocks reads the geology catalog and its JSON helpers (materials of the world, docs/06_BLOCKS.md).
+    "blocks": {"foundation", "chemistry", "planet", "geology"},
+    "world": {"foundation", "planet", "geology", "blocks"},
+    "gameplay": {"foundation", "planet", "geology", "blocks", "world"},
+    "presentation": {"foundation", "chemistry", "planet", "geology", "blocks", "world", "gameplay"},
+    "app": {"foundation", "chemistry", "planet", "geology", "blocks", "world", "gameplay", "presentation"},
 }
 
 # Include prefixes that are not part of src/.

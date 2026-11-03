@@ -33,7 +33,6 @@ namespace Infinitesia
     {
         const Json root = ReadJson(path);
         Where where{ path.string(), "" };
-        CheckSchemaVersion(root, where, 3);
         const Json& table = Field(root, "columns", where);
         if (!table.is_object())
             Fail(where, "field 'columns' must be an object");

@@ -52,6 +52,7 @@ TEST_CASE("CatalogLoadsWithStableIds")
         case BlockClass::Rock: Require(material.id >= kFirstRockMaterial && material.id < kFirstLooseMaterial, "rocks live in 32-511"); break;
         case BlockClass::Loose:
         case BlockClass::Ice: Require(material.id >= kFirstLooseMaterial && material.id < kFirstReservedMaterial, "loose ground lives in 512-1023"); break;
+        case BlockClass::Built: FAIL_CHECK("the geology catalog holds no built materials"); break;
         }
     }
     CHECK(catalog.GetMaterial(kUnspecifiedMaterial) == nullptr);
@@ -313,17 +314,12 @@ TEST_CASE("LoaderRejectsBrokenCatalogsWithAMessageNamingTheRecord")
     }
     {
         const BrokenCatalog broken("infinitesia_catalog_json");
-        std::ofstream(broken.directory / "materials.json", std::ios::trunc) << "{ \"schemaVersion\": 1, ";
+        std::ofstream(broken.directory / "materials.json", std::ios::trunc) << "{ \"materials\": [ ";
         CHECK(broken.LoadError().find("invalid JSON") != std::string::npos);
     }
     {
         const BrokenCatalog broken("infinitesia_catalog_missing");
         std::filesystem::remove(broken.directory / "rocks.json");
         CHECK(broken.LoadError().find("cannot open") != std::string::npos);
-    }
-    {
-        const BrokenCatalog broken("infinitesia_catalog_version");
-        broken.Replace("minerals.json", "\"schemaVersion\": 1", "\"schemaVersion\": 2");
-        CHECK(broken.LoadError().find("schemaVersion") != std::string::npos);
     }
 }

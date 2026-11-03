@@ -37,7 +37,6 @@ namespace Infinitesia
     {
         const Json root = ReadJson(path);
         Where where{ path.string(), "" };
-        CheckSchemaVersion(root, where);
         std::set<int> numericIds;
         for (const Json& entry : ArrayField(root, "rocks", where))
         {
