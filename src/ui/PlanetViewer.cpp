@@ -26,6 +26,7 @@ namespace Infinitesia
             Rectangle mapPanel{};
             Rectangle globePanel{};
             Rectangle mapBounds{};
+            Rectangle regionBounds{};
             Vector2 globeCenter{};
             float globeRadius = 0.0f;
         };
@@ -70,6 +71,13 @@ namespace Infinitesia
                 layout.mapPanel.y + (layout.mapPanel.height - fittedHeight) * 0.5f,
                 fittedWidth,
                 fittedHeight
+            };
+
+            layout.regionBounds = {
+                layout.mapPanel.x + (layout.mapPanel.width - mapWidth) * 0.5f,
+                layout.mapPanel.y + (layout.mapPanel.height - mapHeight) * 0.5f,
+                std::max(1.0f, mapWidth),
+                std::max(1.0f, mapHeight)
             };
 
             layout.globeCenter = {
@@ -375,6 +383,65 @@ namespace Infinitesia
             };
         }
 
+        constexpr float kRegionCameraDistance = 1.32f;
+
+        // Orientation that puts a point at the centre of the view with north up.
+        // Mesh longitude runs opposite to geographic longitude, hence the -z; the
+        // point that faces the camera sits at world (-1, 0, 0).
+        Matrix MakeFacingMatrix(GeographicCoordinates place)
+        {
+            const CartesianPoint3D unit = PlanetaryCoordinates::ToCartesian(place);
+            const Vector3 toward{ static_cast<float>(unit.x), static_cast<float>(unit.y), -static_cast<float>(unit.z) };
+
+            Vector3 up = Vector3Subtract({ 0.0f, 1.0f, 0.0f }, Vector3Scale(toward, toward.y));
+            if (Vector3Length(up) < 1e-4f)
+            {
+                // Looking straight down a pole: any horizontal direction will do.
+                up = Vector3Subtract({ 0.0f, 0.0f, 1.0f }, Vector3Scale(toward, toward.z));
+            }
+            up = Vector3Normalize(up);
+            const Vector3 side = Vector3CrossProduct(toward, up);
+
+            Matrix facing = MatrixIdentity();
+            facing.m0 = -toward.x; facing.m4 = -toward.y; facing.m8 = -toward.z;
+            facing.m1 = up.x;      facing.m5 = up.y;      facing.m9 = up.z;
+            facing.m2 = -side.x;   facing.m6 = -side.y;   facing.m10 = -side.z;
+            return facing;
+        }
+
+        const char* BiomeName(Biome biome)
+        {
+            switch (biome)
+            {
+                case Biome::DeepOcean:           return "Deep Ocean";
+                case Biome::ShallowSea:          return "Shallow Sea";
+                case Biome::CoralReef:           return "Coral Reef";
+                case Biome::PolarSea:            return "Polar Sea";
+                case Biome::IceCap:              return "Ice Cap";
+                case Biome::Glacier:             return "Glacier";
+                case Biome::Tundra:              return "Tundra";
+                case Biome::WetTundra:           return "Wet Tundra";
+                case Biome::BorealForest:        return "Boreal Forest";
+                case Biome::BorealWetland:       return "Boreal Wetland";
+                case Biome::TemperateDeciduous:  return "Temperate Deciduous";
+                case Biome::TemperateMixed:      return "Temperate Mixed";
+                case Biome::TemperateRainforest: return "Temperate Rainforest";
+                case Biome::TemperateSteppe:     return "Temperate Steppe";
+                case Biome::MediterraneanShrub:  return "Mediterranean Shrub";
+                case Biome::ColdDesert:          return "Cold Desert";
+                case Biome::HotDesert:           return "Hot Desert";
+                case Biome::SaltFlat:            return "Salt Flat";
+                case Biome::Savanna:             return "Savanna";
+                case Biome::TropicalDryForest:   return "Tropical Dry Forest";
+                case Biome::TropicalMonsoonForest: return "Tropical Monsoon Forest";
+                case Biome::TropicalRainforest:  return "Tropical Rainforest";
+                case Biome::AlpineGrassland:     return "Alpine Grassland";
+                case Biome::AlpineRock:          return "Alpine Rock";
+                case Biome::VolcanicTerrain:     return "Volcanic Terrain";
+                default:                         return "Unknown";
+            }
+        }
+
         constexpr Color kSelectedCellColor = { 255, 202, 87, 255 };
         constexpr int kColorBufferIndex = 3; // Mesh::vboId slot for vertex colors
     }
@@ -393,6 +460,18 @@ namespace Infinitesia
                   m_system.planet.ageYears,
               },
               progress),
+          m_regionMap(
+              m_planetMap,
+              [](const PlanetRegion& cell, float elevationMeters)
+              {
+                  // Tint by the local elevation, not the cell average, and skip the
+                  // cell-wide lake wash: at this scale a lake is not the whole cell.
+                  PlanetRegion local = cell;
+                  local.elevationNormalized = std::clamp(
+                      static_cast<double>(elevationMeters) / (kMaxElevationKm * 1000.0), -1.0, 1.0);
+                  local.isLake = false;
+                  return GetRegionColor(local);
+              }),
           m_selectedLatitude(m_planetMap.GetLatitudeBandCount() / 2),
           m_selectedLongitude(m_planetMap.GetLongitudeSegmentCount() / 2)
     {
@@ -603,11 +682,42 @@ namespace Infinitesia
     void PlanetViewer::Update()
     {
         EnsureSurfaceTexture();
+        m_regionMap.Update();
         HandleInput();
+
+        const float frameTime = GetFrameTime();
+        const float blendTarget = m_regionMode ? 1.0f : 0.0f;
+        m_regionBlend += (blendTarget - m_regionBlend) * std::min(1.0f, frameTime * 4.0f);
+        if (std::abs(blendTarget - m_regionBlend) < 0.002f)
+        {
+            m_regionBlend = blendTarget;
+        }
+
         if (!m_draggingGlobe)
         {
-            m_rotationDegrees = std::fmod(m_rotationDegrees + GetFrameTime() * 8.0f, 360.0f);
+            m_rotationDegrees = std::fmod(m_rotationDegrees + frameTime * 8.0f, 360.0f);
         }
+    }
+
+    void PlanetViewer::FocusRegionOnSelectedCell()
+    {
+        m_regionMap.FocusAt(PlanetaryCoordinates::ToCartesian(
+            m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
+    }
+
+    void PlanetViewer::EnterRegionMode()
+    {
+        m_regionMode = true;
+        FocusRegionOnSelectedCell();
+    }
+
+    void PlanetViewer::SyncSelectionToRegion()
+    {
+        const GeographicCoordinates center = m_regionMap.GetFocusCenter();
+        const int rows = m_planetMap.GetLatitudeBandCount();
+        const int columns = m_planetMap.GetLongitudeSegmentCount();
+        m_selectedLatitude = std::clamp(static_cast<int>((center.latitudeDegrees + 90.0) / 180.0 * rows), 0, rows - 1);
+        m_selectedLongitude = std::clamp(static_cast<int>(center.longitudeDegrees / 360.0 * columns), 0, columns - 1);
     }
 
     void PlanetViewer::WriteCellColors(Color* out, int row, int column, bool selected) const
@@ -730,6 +840,26 @@ namespace Infinitesia
             m_uploadedSelectedCell = -1;
         }
         m_surfaceTexture.Reset();
+        m_regionMap.ReleaseRenderResources();
+    }
+
+    Matrix PlanetViewer::GetGlobeTransform() const
+    {
+        const Matrix overview = MatrixMultiply(
+            MatrixRotateX(m_tiltDegrees * DEG2RAD),
+            MatrixRotateY(m_rotationDegrees * DEG2RAD));
+        if (m_regionBlend <= 0.0f)
+        {
+            return overview;
+        }
+
+        const Matrix facing = MakeFacingMatrix(m_regionMap.GetFocusCenter());
+        if (m_regionBlend >= 1.0f)
+        {
+            return facing;
+        }
+        return QuaternionToMatrix(QuaternionSlerp(
+            QuaternionFromMatrix(overview), QuaternionFromMatrix(facing), SmootherStepF(m_regionBlend)));
     }
 
     Camera3D PlanetViewer::MakeCamera() const
@@ -738,9 +868,11 @@ namespace Infinitesia
         const float fieldOfViewRadians = kCameraFieldOfView * kPi / 180.0f;
         const float focalLength = static_cast<float>(GetScreenHeight()) /
                                   (2.0f * std::tan(fieldOfViewRadians * 0.5f));
-        const float cameraDistance = std::max(
+        const float overviewDistance = std::max(
             2.4f,
             focalLength / layout.globeRadius * 1.08f) * m_zoom;
+        const float cameraDistance =
+            overviewDistance + (kRegionCameraDistance - overviewDistance) * SmootherStepF(m_regionBlend);
         const float targetZ =
             (static_cast<float>(GetScreenWidth()) * 0.5f - layout.globeCenter.x) *
             cameraDistance / focalLength;
@@ -764,9 +896,50 @@ namespace Infinitesia
         const int rows = m_planetMap.GetLatitudeBandCount();
         const int columns = m_planetMap.GetLongitudeSegmentCount();
 
+        if (IsKeyPressed(KEY_R))
+        {
+            if (m_regionMode)
+            {
+                m_regionMode = false;
+            }
+            else
+            {
+                EnterRegionMode();
+            }
+        }
+        if (m_regionMode)
+        {
+            if (IsKeyPressed(KEY_BACKSPACE))
+            {
+                m_regionMode = false;
+            }
+
+            const auto pressed = [](int primary, int secondary)
+            {
+                return IsKeyPressed(primary) || IsKeyPressedRepeat(primary) ||
+                       IsKeyPressed(secondary) || IsKeyPressedRepeat(secondary);
+            };
+            const int stepX = (pressed(KEY_RIGHT, KEY_D) ? 1 : 0) - (pressed(KEY_LEFT, KEY_A) ? 1 : 0);
+            const int stepY = (pressed(KEY_UP, KEY_W) ? 1 : 0) - (pressed(KEY_DOWN, KEY_S) ? 1 : 0);
+            if (stepX != 0 || stepY != 0)
+            {
+                m_regionMap.Focus(m_regionMap.GetLayout().Neighbor(m_regionMap.GetFocus(), stepX, stepY));
+                SyncSelectionToRegion();
+            }
+        }
+
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
-            if (Contains(layout.mapBounds, mousePosition))
+            if (m_regionMode && Contains(layout.regionBounds, mousePosition))
+            {
+                if (const auto direction = m_regionMap.DirectionAt(mousePosition, layout.regionBounds))
+                {
+                    m_regionMap.FocusAt(*direction);
+                    SyncSelectionToRegion();
+                }
+                m_draggingGlobe = false;
+            }
+            else if (!m_regionMode && Contains(layout.mapBounds, mousePosition))
             {
                 const float normalizedX = (mousePosition.x - layout.mapBounds.x) / layout.mapBounds.width;
                 const float normalizedY = (mousePosition.y - layout.mapBounds.y) / layout.mapBounds.height;
@@ -785,25 +958,19 @@ namespace Infinitesia
                 const Camera3D camera = MakeCamera();
                 const Ray ray = GetMouseRay(mousePosition, camera);
                 const RayCollision collision = GetRayCollisionSphere(ray, { 0.0f, 0.0f, 0.0f }, 1.0f);
-                m_draggingGlobe = collision.hit;
+                // In region mode the globe is locked onto the focused region.
+                m_draggingGlobe = collision.hit && !m_regionMode;
                 m_lastMousePosition = mousePosition;
 
                 if (collision.hit)
                 {
-                    const float yaw = -m_rotationDegrees * kPi / 180.0f;
-                    const float pitch = -m_tiltDegrees * kPi / 180.0f;
-                    const float cosYaw = std::cos(yaw);
-                    const float sinYaw = std::sin(yaw);
-                    const float xAfterYaw = cosYaw * collision.point.x + sinYaw * collision.point.z;
-                    const float zAfterYaw = -sinYaw * collision.point.x + cosYaw * collision.point.z;
-                    const float cosPitch = std::cos(pitch);
-                    const float sinPitch = std::sin(pitch);
-                    const float localY = cosPitch * collision.point.y - sinPitch * zAfterYaw;
-                    const float localZ = sinPitch * collision.point.y + cosPitch * zAfterYaw;
+                    // Undo the transform the globe is drawn with, then flip z back (mesh
+                    // longitude runs opposite to geographic longitude).
+                    const Vector3 local = Vector3Transform(collision.point, MatrixInvert(GetGlobeTransform()));
                     const GeographicCoordinates coordinates = PlanetaryCoordinates::ToGeographic({
-                        xAfterYaw,
-                        localY,
-                        -localZ
+                        local.x,
+                        local.y,
+                        -local.z
                     });
                     m_selectedLatitude = std::clamp(
                         static_cast<int>((coordinates.latitudeDegrees + 90.0) / 180.0 * rows),
@@ -813,6 +980,10 @@ namespace Infinitesia
                         static_cast<int>(coordinates.longitudeDegrees / 360.0 * columns),
                         0,
                         columns - 1);
+                    if (m_regionMode)
+                    {
+                        FocusRegionOnSelectedCell();
+                    }
                 }
             }
         }
@@ -866,55 +1037,62 @@ namespace Infinitesia
 
         DrawRectangleRounded(layout.mapPanel, 0.035f, 8, { 19, 28, 40, 255 });
         DrawRectangleRounded(layout.globePanel, 0.035f, 8, { 19, 28, 40, 255 });
-        DrawText("SURFACE MAP", static_cast<int>(layout.mapPanel.x + 18.0f), static_cast<int>(layout.mapPanel.y + 16.0f), 16, SKYBLUE);
+        DrawText(m_regionMode ? "REGION MAP" : "SURFACE MAP", static_cast<int>(layout.mapPanel.x + 18.0f), static_cast<int>(layout.mapPanel.y + 16.0f), 16, SKYBLUE);
         DrawText("ROTATING GLOBE", static_cast<int>(layout.globePanel.x + 18.0f), static_cast<int>(layout.globePanel.y + 16.0f), 16, SKYBLUE);
 
-        const Rectangle textureSource{
-            0.0f,
-            0.0f,
-            static_cast<float>(columns),
-            static_cast<float>(rows)
-        };
-        DrawTexturePro(
-            m_surfaceTexture.Get(),
-            textureSource,
-            layout.mapBounds,
-            { 0.0f, 0.0f },
-            0.0f,
-            WHITE);
-        const float cellWidth = layout.mapBounds.width / static_cast<float>(columns);
-        const float cellHeight = layout.mapBounds.height / static_cast<float>(rows);
-        const int selectedMapLatitude = rows - 1 - m_selectedLatitude;
-        DrawRectangle(
-            static_cast<int>(std::floor(
-                layout.mapBounds.x + m_selectedLongitude * cellWidth)),
-            static_cast<int>(std::floor(
-                layout.mapBounds.y + selectedMapLatitude * cellHeight)),
-            std::max(1, static_cast<int>(std::ceil(cellWidth))),
-            std::max(1, static_cast<int>(std::ceil(cellHeight))),
-            { 255, 202, 87, 255 });
+        if (m_regionMode)
+        {
+            m_regionMap.Draw(layout.regionBounds);
+        }
+        else
+        {
+            const Rectangle textureSource{
+                0.0f,
+                0.0f,
+                static_cast<float>(columns),
+                static_cast<float>(rows)
+            };
+            DrawTexturePro(
+                m_surfaceTexture.Get(),
+                textureSource,
+                layout.mapBounds,
+                { 0.0f, 0.0f },
+                0.0f,
+                WHITE);
+            const float cellWidth = layout.mapBounds.width / static_cast<float>(columns);
+            const float cellHeight = layout.mapBounds.height / static_cast<float>(rows);
+            const int selectedMapLatitude = rows - 1 - m_selectedLatitude;
+            DrawRectangle(
+                static_cast<int>(std::floor(
+                    layout.mapBounds.x + m_selectedLongitude * cellWidth)),
+                static_cast<int>(std::floor(
+                    layout.mapBounds.y + selectedMapLatitude * cellHeight)),
+                std::max(1, static_cast<int>(std::ceil(cellWidth))),
+                std::max(1, static_cast<int>(std::ceil(cellHeight))),
+                { 255, 202, 87, 255 });
 
-        for (int longitude = 0; longitude <= 12; ++longitude)
-        {
-            const float x = layout.mapBounds.x + layout.mapBounds.width * longitude / 12.0f;
-            DrawLine(
-                static_cast<int>(x),
-                static_cast<int>(layout.mapBounds.y),
-                static_cast<int>(x),
-                static_cast<int>(layout.mapBounds.y + layout.mapBounds.height),
-                Fade(RAYWHITE, 0.12f));
+            for (int longitude = 0; longitude <= 12; ++longitude)
+            {
+                const float x = layout.mapBounds.x + layout.mapBounds.width * longitude / 12.0f;
+                DrawLine(
+                    static_cast<int>(x),
+                    static_cast<int>(layout.mapBounds.y),
+                    static_cast<int>(x),
+                    static_cast<int>(layout.mapBounds.y + layout.mapBounds.height),
+                    Fade(RAYWHITE, 0.12f));
+            }
+            for (int latitude = 0; latitude <= 6; ++latitude)
+            {
+                const float y = layout.mapBounds.y + layout.mapBounds.height * latitude / 6.0f;
+                DrawLine(
+                    static_cast<int>(layout.mapBounds.x),
+                    static_cast<int>(y),
+                    static_cast<int>(layout.mapBounds.x + layout.mapBounds.width),
+                    static_cast<int>(y),
+                    Fade(RAYWHITE, 0.12f));
+            }
+            DrawRectangleLinesEx(layout.mapBounds, 1.0f, { 129, 158, 180, 255 });
         }
-        for (int latitude = 0; latitude <= 6; ++latitude)
-        {
-            const float y = layout.mapBounds.y + layout.mapBounds.height * latitude / 6.0f;
-            DrawLine(
-                static_cast<int>(layout.mapBounds.x),
-                static_cast<int>(y),
-                static_cast<int>(layout.mapBounds.x + layout.mapBounds.width),
-                static_cast<int>(y),
-                Fade(RAYWHITE, 0.12f));
-        }
-        DrawRectangleLinesEx(layout.mapBounds, 1.0f, { 129, 158, 180, 255 });
 
         const Camera3D camera = MakeCamera();
         BeginScissorMode(
@@ -924,10 +1102,19 @@ namespace Infinitesia
             static_cast<int>(layout.globePanel.height));
         BeginMode3D(camera);
         SyncGlobeMesh();
-        const Matrix globeTransform = MatrixMultiply(
-            MatrixRotateX(m_tiltDegrees * DEG2RAD),
-            MatrixRotateY(m_rotationDegrees * DEG2RAD));
+        const Matrix globeTransform = GetGlobeTransform();
         DrawMesh(m_globeMesh, m_globeMaterial, globeTransform);
+        if (m_regionBlend > 0.01f)
+        {
+            // Mesh longitude runs opposite to geographic longitude, hence the -z.
+            const GeographicCoordinates focus = m_regionMap.GetFocusCenter();
+            const CartesianPoint3D unit = PlanetaryCoordinates::ToCartesian(focus);
+            const Vector3 marker = Vector3Transform(
+                { static_cast<float>(unit.x) * 1.004f, static_cast<float>(unit.y) * 1.004f,
+                  -static_cast<float>(unit.z) * 1.004f },
+                globeTransform);
+            DrawSphere(marker, 0.007f, kSelectedCellColor);
+        }
         EndMode3D();
         EndScissorMode();
 
@@ -935,36 +1122,7 @@ namespace Infinitesia
         const PlanetRegion& selectedRegion =
             m_planetMap.GetRegion(m_selectedLatitude, m_selectedLongitude);
 
-        const char* biomeName = [](Biome b) -> const char* {
-            switch (b) {
-                case Biome::DeepOcean:           return "Deep Ocean";
-                case Biome::ShallowSea:          return "Shallow Sea";
-                case Biome::CoralReef:           return "Coral Reef";
-                case Biome::PolarSea:            return "Polar Sea";
-                case Biome::IceCap:              return "Ice Cap";
-                case Biome::Glacier:             return "Glacier";
-                case Biome::Tundra:              return "Tundra";
-                case Biome::WetTundra:           return "Wet Tundra";
-                case Biome::BorealForest:        return "Boreal Forest";
-                case Biome::BorealWetland:       return "Boreal Wetland";
-                case Biome::TemperateDeciduous:  return "Temperate Deciduous";
-                case Biome::TemperateMixed:      return "Temperate Mixed";
-                case Biome::TemperateRainforest: return "Temperate Rainforest";
-                case Biome::TemperateSteppe:     return "Temperate Steppe";
-                case Biome::MediterraneanShrub:  return "Mediterranean Shrub";
-                case Biome::ColdDesert:          return "Cold Desert";
-                case Biome::HotDesert:           return "Hot Desert";
-                case Biome::SaltFlat:            return "Salt Flat";
-                case Biome::Savanna:             return "Savanna";
-                case Biome::TropicalDryForest:   return "Tropical Dry Forest";
-                case Biome::TropicalMonsoonForest: return "Tropical Monsoon Forest";
-                case Biome::TropicalRainforest:  return "Tropical Rainforest";
-                case Biome::AlpineGrassland:     return "Alpine Grassland";
-                case Biome::AlpineRock:          return "Alpine Rock";
-                case Biome::VolcanicTerrain:     return "Volcanic Terrain";
-                default:                         return "Unknown";
-            }
-        }(selectedRegion.biome);
+        const char* biomeName = BiomeName(selectedRegion.biome);
 
         std::snprintf(
             selectionText,
@@ -1026,6 +1184,36 @@ namespace Infinitesia
         }
         DrawText(detailText, 30, footerY + 20, 14, { 180, 195, 210, 255 });
 
+        if (m_regionMode)
+        {
+            const RegionId focus = m_regionMap.GetFocus();
+            const GeographicCoordinates focusCenter = m_regionMap.GetFocusCenter();
+            char regionText[256];
+            const auto cursorElevation = m_regionMap.ElevationAt(GetMousePosition(), layout.regionBounds);
+            const auto cursorBiome = m_regionMap.BiomeAt(GetMousePosition(), layout.regionBounds);
+            if (cursorElevation && cursorBiome)
+            {
+                std::snprintf(
+                    regionText, sizeof(regionText),
+                    "Region face %d (%d, %d)  |  %.3f, %.3f deg  |  Cursor: %.0f m, %s",
+                    focus.face, focus.i, focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees,
+                    *cursorElevation, BiomeName(*cursorBiome));
+            }
+            else
+            {
+                std::snprintf(
+                    regionText, sizeof(regionText),
+                    "Region face %d (%d, %d)  |  %.3f, %.3f deg  |  ~%.1f km across",
+                    focus.face, focus.i, focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees,
+                    m_regionMap.GetLayout().RegionSizeMeters() / 1000.0);
+            }
+            DrawText(regionText, 30, footerY + 40, 13, kSelectedCellColor);
+            DrawText(
+                "Click the map to pick a region  |  WASD / arrows: move  |  R or Backspace: back to the planet map",
+                30, footerY + 57, 12, { 100, 118, 140, 255 });
+            return;
+        }
+
         char seasonalText[256];
         constexpr int kSeasonMonths[4] = { 0, 3, 6, 9 };
         std::snprintf(
@@ -1047,7 +1235,7 @@ namespace Infinitesia
             13,
             { 100, 118, 140, 255 });
         DrawText(
-            "Click the map or globe to select a region  |  Drag to rotate  |  Scroll to zoom",
+            "Click the map or globe to select a region  |  R: open region map  |  Drag to rotate  |  Scroll to zoom",
             30,
             footerY + 57,
             12,

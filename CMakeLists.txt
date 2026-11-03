@@ -99,4 +99,9 @@ if (BUILD_TESTING)
   # Registers every TEST_CASE as its own CTest test.
   include("${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake")
   doctest_discover_tests(PlanetGenerationTests)
+
+  add_executable(RegionTests tests/RegionTests.cpp)
+  target_link_libraries(RegionTests PRIVATE InfinitesiaPlanet doctest::doctest)
+  infinitesia_enable_warnings(RegionTests)
+  doctest_discover_tests(RegionTests)
 endif()

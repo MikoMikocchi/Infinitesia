@@ -4,6 +4,7 @@
 #include "planet/StarSystem.h"
 #include "planet/PlanetMap.h"
 #include "raylib.h"
+#include "ui/RegionMapView.h"
 #include "ui/UniqueTexture.h"
 
 #include <vector>
@@ -23,11 +24,16 @@ namespace Infinitesia
         void HandleInput();
         void EnsureSurfaceTexture();
         Camera3D MakeCamera() const;
+        Matrix GetGlobeTransform() const;
         void SyncGlobeMesh() const;
         void WriteCellColors(Color* out, int row, int column, bool selected) const;
+        void EnterRegionMode();
+        void FocusRegionOnSelectedCell();
+        void SyncSelectionToRegion();
 
         StarSystem m_system;
         PlanetMap m_planetMap;
+        RegionMapView m_regionMap;
         std::vector<Color> m_regionColors;
         std::vector<float> m_regionBrightness;
         std::vector<Vector3> m_sphereVertices;
@@ -44,6 +50,8 @@ namespace Infinitesia
         float m_rotationDegrees = 0.0f;
         float m_tiltDegrees = -12.0f;
         float m_zoom = 1.0f;
+        bool m_regionMode = false;
+        float m_regionBlend = 0.0f; // 0 = whole globe, 1 = zoomed onto the focused region
         bool m_draggingGlobe = false;
         Vector2 m_lastMousePosition{};
     };
