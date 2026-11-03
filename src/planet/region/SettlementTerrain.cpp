@@ -57,14 +57,16 @@ namespace Infinitesia
             m_originEastMeters + eastBlocks, m_originNorthMeters + northBlocks);
         const PlanetFieldSample planet = m_terrain.SamplePlanet(direction);
         const double elevation = m_terrain.ElevationMeters(direction, planet, kMinWavelengthMeters);
-        const Biome biome = m_terrain.GetPlanetMap()
-                                .GetRegion(planet.nearestLatitudeIndex, planet.nearestLongitudeIndex)
-                                .biome;
+        const PlanetRegion& cell = m_terrain.GetPlanetMap()
+                                       .GetRegion(planet.nearestLatitudeIndex, planet.nearestLongitudeIndex);
+        const Biome biome = cell.biome;
 
         SurfaceColumn column;
         column.heightBlocks = static_cast<int>(std::floor(elevation)) - m_originElevationMeters;
         column.kind = ClassifySurface(biome, elevation);
         column.underSea = elevation < 0.0;
+        column.province = cell.provinceId;
+        column.pileTopMeters = static_cast<int>(std::floor(planet.elevationMeters));
         return column;
     }
 }

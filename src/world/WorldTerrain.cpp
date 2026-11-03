@@ -71,7 +71,9 @@ namespace Infinitesia
         EnsureChunkGenerated(GetChunkCoordinate(cell));
         const ChunkCoordinate changedChunk = GetChunkCoordinate(cell);
         WorldChunk& chunk = m_chunks.at(changedChunk);
-        chunk.blocks[GetBlockIndexHelper(chunk, cell)].type = type;
+        Block& changed = chunk.blocks[GetBlockIndexHelper(chunk, cell)];
+        changed.type = type;
+        changed.material = kUnspecifiedMaterial; // the old material no longer applies
         ++m_terrainRevision;
 
         const int localX = cell.x % kChunkSize;

@@ -153,7 +153,8 @@ namespace Infinitesia
                     };
                     chunk.blocks.push_back({
                         cell,
-                        m_terrain->BlockAt(cell)
+                        m_terrain->BlockAt(cell),
+                        m_terrain->MaterialAt(cell)
                     });
                 }
             }

@@ -37,6 +37,10 @@ namespace Infinitesia
             };
 
             Color GetBlockColor(BlockType type);
+
+            // The colour of a block: the rock's own colour for a stone block whose material the
+            // catalog knows, otherwise the colour of its block type.
+            Color GetBlockColor(const Block& block, const GeologyCatalog* catalog);
         }
     }
 }

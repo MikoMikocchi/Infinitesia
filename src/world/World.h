@@ -86,6 +86,8 @@ namespace Infinitesia
         bool HasSkyAccess(GridCell cell) const;
         void SetBlockType(GridCell cell, BlockType type);
         std::uint64_t GetTerrainRevision() const;
+        // Catalog naming the blocks' materials; nullptr when the terrain has no geology.
+        const GeologyCatalog* GetCatalog() const { return m_terrain->Catalog(); }
         const std::map<ChunkCoordinate, WorldChunk>& GetChunks() const;
         std::size_t GetLoadedChunkCount() const;
         std::size_t GetTotalChunkCount() const;

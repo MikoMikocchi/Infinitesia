@@ -32,6 +32,11 @@ namespace Infinitesia
         SurfaceKind kind = SurfaceKind::Grass;
         // True where the ground lies below sea level (the sea fills the column up to it).
         bool underSea = false;
+        // Geological province of the planet cell under the column, and the elevation (whole
+        // metres above sea level) of the planet's coarse surface there: the reference level
+        // the province's rock layers are laid out from.
+        ProvinceId province = kNoProvince;
+        int pileTopMeters = 0;
     };
 
     // Turns the continuous planet terrain into block columns around an origin point of

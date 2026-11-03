@@ -2,6 +2,7 @@
 #include "raylib.h"
 #include "commands/ChopTreeCommand.h"
 #include "commands/PickUpItemCommand.h"
+#include "geology/model/GeologyModel.h"
 #include "planet/PlanetLoadSteps.h"
 #include "planet/StarSystemGenerator.h"
 #include "world/PlanetTerrainSource.h"
@@ -10,6 +11,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -63,9 +65,15 @@ namespace Infinitesia
             site.region.i * LocalGrid::kRegionSizeMeters,
             site.region.j * LocalGrid::kRegionSizeMeters);
 
+        // The rocks under the soil come from the geology catalog shipped next to the executable.
+        auto catalog = std::make_shared<const GeologyCatalog>(GeologyCatalog::LoadFromDirectory(
+            std::filesystem::path(GetApplicationDirectory()) / "assets" / "geology"));
+        auto geology = std::make_shared<const GeologyModel>(catalog, terrain.GetPlanetMap());
+
         const GridConfig gridConfig = m_config.settlementGrid;
         auto source = std::make_shared<PlanetTerrainSource>(
-            settlement, gridConfig.width, gridConfig.height, gridConfig.depth, m_config.settlementAnchorLevel);
+            settlement, gridConfig.width, gridConfig.height, gridConfig.depth, m_config.settlementAnchorLevel,
+            geology);
 
         // The worker starts on the ground of the middle column, and a tree on the same
         // level close by. Movement is still by level (a cell is walkable where there is

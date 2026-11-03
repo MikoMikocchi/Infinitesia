@@ -13,6 +13,7 @@
 //
 // See --help for all options.
 
+#include "geology/model/GeologyModel.h"
 #include "planet/PlanetMap.h"
 #include "planet/StarSystemGenerator.h"
 #include "planet/region/RegionGenerator.h"
@@ -27,6 +28,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -56,6 +58,7 @@ namespace
         std::string output = "snapshot.png";
         std::uint64_t seed = 1;
         int planetBands = 0;           // 0: the game's resolution
+        std::string assets = INFINITESIA_GEOLOGY_ASSET_DIR; // geology catalogs
     };
 
     void PrintUsage()
@@ -82,7 +85,11 @@ namespace
             "  --depth <m>            ground drawn below the lowest surface (default extent / 8)\n"
             "  --scale <px>           pixels per metre (default: about 1600 px wide)\n"
             "  --vexag <f>            vertical exaggeration (default grows with the window)\n"
-            "  --out <file.png>       output (default snapshot.png)\n");
+            "  --out <file.png>       output (default snapshot.png)\n"
+            "  --assets <dir>         geology catalogs (default: the source tree's assets/geology)\n"
+            "\n"
+            "Stone is drawn in the colour of its rock, taken from the geology catalog; the rocks\n"
+            "in view are listed with their colours after the picture is written.\n");
     }
 
     bool ParseOptions(int argc, char** argv, Options& options)
@@ -132,6 +139,7 @@ namespace
             else if (key == "--scale") { options.scale = std::atof(value()); }
             else if (key == "--vexag") { options.verticalExaggeration = std::atof(value()); }
             else if (key == "--out") { options.output = value(); }
+            else if (key == "--assets") { options.assets = value(); }
             else
             {
                 throw std::invalid_argument("Unknown option " + key);
@@ -340,6 +348,8 @@ namespace
         int ground = 0;          // top solid block level, relative to the window centre ground
         int top = 0;             // highest filled level (the sea surface over drowned ground)
         SurfaceKind kind = SurfaceKind::Grass;
+        ProvinceId province = kNoProvince;
+        int pileTop = 0;         // elevation of the province's rock pile top, metres above sea level
     };
 
     Rgb BlockColor(BlockType type)
@@ -433,6 +443,13 @@ namespace
         }
         const PlanetMap map(parameters, ClimateInputsFor(system));
         const RegionGenerator generator(map);
+        const auto catalog = std::make_shared<const GeologyCatalog>(GeologyCatalog::LoadFromDirectory(options.assets));
+        const GeologyModel geology(catalog, map);
+        const auto catalogColor = [&catalog](MaterialId id)
+        {
+            const RgbColor color = catalog->ColorOf(id);
+            return Rgb{ color.r, color.g, color.b };
+        };
 
         const CartesianPoint3D anchor = PlanetaryCoordinates::ToCartesian({ options.latitude, options.longitude });
         const LocalGrid grid = generator.MakeGrid(anchor);
@@ -470,6 +487,8 @@ namespace
                 Column& cell = at(u, v);
                 cell.ground = column.heightBlocks;
                 cell.kind = column.underSea ? SurfaceKind::Sand : column.kind;
+                cell.province = column.province;
+                cell.pileTop = column.pileTopMeters;
                 // Over drowned ground the filled column reaches the sea surface, but no more
                 // than kMaxWaterDrawn above the ground: a 3 km deep ocean would swamp the picture.
                 const int seaTop = sea - 1;
@@ -515,12 +534,47 @@ namespace
         Image image(width, height, { 24, 28, 34 });
 
         // ---- paint far to near
+        // What fills a block at `level` (relative to the window centre ground): water above the
+        // ground, topsoil and then real rock below it. Rock blocks carry their catalog material.
+        struct Layer
+        {
+            BlockType type = BlockType::Air;
+            MaterialId material = kUnspecifiedMaterial;
+
+            bool operator==(const Layer&) const = default;
+        };
+        std::map<MaterialId, long> rocksSeen;
+        const auto layerAt = [&](const Column& cell, int level) -> Layer
+        {
+            if (level > cell.ground)
+            {
+                return { BlockType::Water, kUnspecifiedMaterial };
+            }
+            const BlockType type = PlanetTerrainSource::LayerAt(cell.kind, cell.ground - level);
+            if (type != BlockType::Stone)
+            {
+                return { type, kUnspecifiedMaterial };
+            }
+            return { type, geology.BedrockAt(cell.province, terrain.OriginElevationMeters() + level, cell.pileTop) };
+        };
+        const auto layerRgb = [&](const Layer& layer) -> Rgb
+        {
+            if (layer.material != kUnspecifiedMaterial)
+            {
+                return catalogColor(layer.material);
+            }
+            return BlockColor(layer.type);
+        };
+
         const auto layerColor = [&](const Column& cell, int level) -> Rgb
         {
-            // Block at `level` of a column: water above the ground, layers below it.
-            const BlockType type = level > cell.ground ? BlockType::Water
-                                                       : PlanetTerrainSource::LayerAt(cell.kind, cell.ground - level);
-            Rgb color = BlockColor(type);
+            const Layer layer = layerAt(cell, level);
+            const BlockType type = layer.type;
+            Rgb color = layerRgb(layer);
+            if (layer.material != kUnspecifiedMaterial)
+            {
+                ++rocksSeen[layer.material];
+            }
             if (type == BlockType::Water)
             {
                 color = Mix({ 96, 170, 205 }, { 22, 56, 116 }, (cell.top - level) / 40.0);
@@ -537,15 +591,13 @@ namespace
             int level = cell.top;
             while (level > downTo)
             {
-                const BlockType type = level > cell.ground ? BlockType::Water
-                                                           : PlanetTerrainSource::LayerAt(cell.kind, cell.ground - level);
+                const Layer type = layerAt(cell, level);
                 // Merge blocks of one kind into one quad (colour varies slowly with depth).
                 int last = level;
                 while (last - 1 > downTo)
                 {
                     const int next = last - 1;
-                    const BlockType nextType = next > cell.ground ? BlockType::Water
-                                                                   : PlanetTerrainSource::LayerAt(cell.kind, cell.ground - next);
+                    const Layer nextType = layerAt(cell, next);
                     if (nextType != type || (cell.top - level) / 8 != (cell.top - next) / 8)
                     {
                         break;
@@ -596,7 +648,12 @@ namespace
                 }
                 else
                 {
-                    top = BlockColor(PlanetTerrainSource::LayerAt(cell.kind, 0));
+                    top = layerRgb(layerAt(cell, cell.ground));
+                    const Layer topLayer = layerAt(cell, cell.ground);
+                    if (topLayer.material != kUnspecifiedMaterial)
+                    {
+                        ++rocksSeen[topLayer.material];
+                    }
                 }
                 // Hillshade: the light comes from the far corner, so slopes that fall towards the
                 // camera are lit and slopes that rise towards it are dark. Slopes are stretched
@@ -641,6 +698,27 @@ namespace
         {
             std::printf("note: the sea here is deeper than %d m; water is drawn %d m thick over the sea floor\n",
                         kMaxWaterDrawn, kMaxWaterDrawn);
+        }
+
+        // ---- rocks in the picture, most visible first
+        if (!rocksSeen.empty())
+        {
+            std::vector<std::pair<MaterialId, long>> ranked(rocksSeen.begin(), rocksSeen.end());
+            std::sort(ranked.begin(), ranked.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
+            long total = 0;
+            for (const auto& entry : ranked)
+            {
+                total += entry.second;
+            }
+            std::printf("rocks in view:\n");
+            for (const auto& [material, count] : ranked)
+            {
+                const MaterialDef* info = catalog->GetMaterial(material);
+                const RgbColor color = catalog->ColorOf(material);
+                std::printf("  #%02x%02x%02x  %-26s %-22s %4.1f%%\n", color.r, color.g, color.b,
+                            info != nullptr ? info->key.c_str() : "?", info != nullptr ? info->name.c_str() : "?",
+                            100.0 * static_cast<double>(count) / static_cast<double>(total));
+            }
         }
 
         // ---- geological setting of the planet cell under the window centre

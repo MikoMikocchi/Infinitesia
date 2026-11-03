@@ -123,10 +123,8 @@ namespace Infinitesia
                         const float right = left + cellSize;
                         const float back = front + cellSize;
                         const float topY = isAir ? floorY : blockTopY;
-                        const BlockType visibleBlockType = isAir
-                            ? floorBlock->type
-                            : block.type;
-                        Color color = TerrainMeshGeometry::GetBlockColor(visibleBlockType);
+                        const Block& visibleBlock = isAir ? *floorBlock : block;
+                        Color color = TerrainMeshGeometry::GetBlockColor(visibleBlock, world.GetCatalog());
                         if (!world.HasSkyAccess(lightingCell))
                         {
                             color = BLACK;
@@ -179,7 +177,7 @@ namespace Infinitesia
                             if (upperBlock != nullptr && upperBlock->type != BlockType::Air)
                             {
                                 Color upperColor =
-                                    TerrainMeshGeometry::GetBlockColor(upperBlock->type);
+                                    TerrainMeshGeometry::GetBlockColor(*upperBlock, world.GetCatalog());
                                 if (!world.HasSkyAccess(upperCell))
                                 {
                                     upperColor = BLACK;

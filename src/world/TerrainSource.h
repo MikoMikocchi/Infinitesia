@@ -1,5 +1,6 @@
 #pragma once
 
+#include "geology/catalog/GeologyCatalog.h"
 #include "world/Block.h"
 #include "world/Grid.h"
 
@@ -14,6 +15,12 @@ namespace Infinitesia
     public:
         virtual ~TerrainSource() = default;
         virtual BlockType BlockAt(GridCell cell) const = 0;
+
+        // The material of a block when the terrain has a geology; kUnspecifiedMaterial otherwise.
+        virtual MaterialId MaterialAt(GridCell cell) const { (void)cell; return kUnspecifiedMaterial; }
+
+        // The catalog that names the materials this terrain hands out; nullptr without geology.
+        virtual const GeologyCatalog* Catalog() const { return nullptr; }
     };
 
     // The original flat world: a value-noise patchwork on a single surface layer.

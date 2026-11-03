@@ -1,0 +1,128 @@
+{
+ "schemaVersion": 1,
+ "source": "Typical sections of docs/03a_GEOLOGY_CATALOGS.md, section 7, simplified to a flat pile per province type. Thicknesses are real-world metres before the strataThicknessScale game factor. Interim model: stage G2 replaces it with structures derived from province history.",
+ "provenance": "gameplay",
+ "columns": {
+  "oceanic_ridge": [
+   {"rock": "rock.peridotite", "thicknessM": 4000},
+   {"rock": "rock.gabbro", "thicknessM": 3000},
+   {"rock": "rock.dolerite", "thicknessM": 1500},
+   {"rock": "rock.pillow_basalt", "thicknessM": 1000},
+   {"rock": "rock.claystone", "thicknessM": 100}
+  ],
+  "abyssal_plain": [
+   {"rock": "rock.peridotite", "thicknessM": 4000},
+   {"rock": "rock.gabbro", "thicknessM": 3000},
+   {"rock": "rock.dolerite", "thicknessM": 1500},
+   {"rock": "rock.pillow_basalt", "thicknessM": 1000},
+   {"rock": "rock.chert", "thicknessM": 100, "requires": "organicRichMarineSediments"},
+   {"rock": "rock.chalk", "thicknessM": 200, "requires": "calcareousPlankton"},
+   {"rock": "rock.claystone", "thicknessM": 200}
+  ],
+  "trench": [
+   {"rock": "rock.peridotite", "thicknessM": 4000},
+   {"rock": "rock.gabbro", "thicknessM": 3000},
+   {"rock": "rock.pillow_basalt", "thicknessM": 1000},
+   {"rock": "rock.chert", "thicknessM": 100},
+   {"rock": "rock.greywacke", "thicknessM": 800},
+   {"rock": "rock.mudstone", "thicknessM": 400}
+  ],
+  "island_arc": [
+   {"rock": "rock.diorite", "thicknessM": 3000},
+   {"rock": "rock.andesite", "thicknessM": 800},
+   {"rock": "rock.volcanic_breccia", "thicknessM": 300},
+   {"rock": "rock.tuff", "thicknessM": 300},
+   {"rock": "rock.andesite", "thicknessM": 300}
+  ],
+  "continental_arc": [
+   {"rock": "rock.granodiorite", "thicknessM": 3000},
+   {"rock": "rock.andesite", "thicknessM": 800},
+   {"rock": "rock.dacite", "thicknessM": 500},
+   {"rock": "rock.tuff", "thicknessM": 300},
+   {"rock": "rock.ignimbrite", "thicknessM": 200},
+   {"rock": "rock.rhyolite", "thicknessM": 200}
+  ],
+  "collision_orogen": [
+   {"rock": "rock.gneiss", "thicknessM": 4000},
+   {"rock": "rock.mica_schist", "thicknessM": 1500},
+   {"rock": "rock.amphibolite", "thicknessM": 800},
+   {"rock": "rock.marble", "thicknessM": 400},
+   {"rock": "rock.quartzite", "thicknessM": 400},
+   {"rock": "rock.phyllite", "thicknessM": 800},
+   {"rock": "rock.slate", "thicknessM": 600}
+  ],
+  "ancient_orogen": [
+   {"rock": "rock.gneiss", "thicknessM": 3000},
+   {"rock": "rock.amphibolite", "thicknessM": 800},
+   {"rock": "rock.garnet_schist", "thicknessM": 700},
+   {"rock": "rock.mica_schist", "thicknessM": 1200},
+   {"rock": "rock.quartzite", "thicknessM": 400},
+   {"rock": "rock.marble", "thicknessM": 300},
+   {"rock": "rock.greenschist", "thicknessM": 500}
+  ],
+  "rift_system": [
+   {"rock": "rock.gneiss", "thicknessM": 3000},
+   {"rock": "rock.red_beds", "thicknessM": 600, "requires": "freeOxygen"},
+   {"rock": "rock.basalt", "thicknessM": 500},
+   {"rock": "rock.shale", "thicknessM": 400},
+   {"rock": "rock.rock_salt", "thicknessM": 200},
+   {"rock": "rock.quartz_sandstone", "thicknessM": 300}
+  ],
+  "large_igneous_province": [
+   {"rock": "rock.granite", "thicknessM": 3000},
+   {"rock": "rock.quartz_sandstone", "thicknessM": 200},
+   {"rock": "rock.dolerite", "thicknessM": 150},
+   {"rock": "rock.basalt", "thicknessM": 400},
+   {"rock": "rock.scoria", "thicknessM": 30},
+   {"rock": "rock.basalt", "thicknessM": 400},
+   {"rock": "rock.tuff", "thicknessM": 40},
+   {"rock": "rock.basalt", "thicknessM": 400}
+  ],
+  "craton": [
+   {"rock": "rock.orthogneiss", "thicknessM": 5000},
+   {"rock": "rock.tonalite", "thicknessM": 3000},
+   {"rock": "rock.greenschist", "thicknessM": 700},
+   {"rock": "rock.granite", "thicknessM": 1500}
+  ],
+  "platform": [
+   {"rock": "rock.orthogneiss", "thicknessM": 4000},
+   {"rock": "rock.conglomerate", "thicknessM": 100},
+   {"rock": "rock.quartz_sandstone", "thicknessM": 300},
+   {"rock": "rock.shale", "thicknessM": 300},
+   {"rock": "rock.limestone", "thicknessM": 400},
+   {"rock": "rock.dolomite", "thicknessM": 200},
+   {"rock": "rock.gypsum_rock", "thicknessM": 100},
+   {"rock": "rock.red_beds", "thicknessM": 200, "requires": "freeOxygen"},
+   {"rock": "rock.bituminous_coal", "thicknessM": 20, "requires": "landPlants"},
+   {"rock": "rock.siltstone", "thicknessM": 150}
+  ],
+  "sedimentary_basin": [
+   {"rock": "rock.orthogneiss", "thicknessM": 4000},
+   {"rock": "rock.red_beds", "thicknessM": 500, "requires": "freeOxygen"},
+   {"rock": "rock.rock_salt", "thicknessM": 300},
+   {"rock": "rock.shale", "thicknessM": 500},
+   {"rock": "rock.quartz_sandstone", "thicknessM": 600},
+   {"rock": "rock.limestone", "thicknessM": 400},
+   {"rock": "rock.bituminous_coal", "thicknessM": 15, "requires": "landPlants"},
+   {"rock": "rock.siltstone", "thicknessM": 500},
+   {"rock": "rock.mudstone", "thicknessM": 300}
+  ],
+  "passive_margin": [
+   {"rock": "rock.orthogneiss", "thicknessM": 4000},
+   {"rock": "rock.red_beds", "thicknessM": 400, "requires": "freeOxygen"},
+   {"rock": "rock.rock_salt", "thicknessM": 200},
+   {"rock": "rock.limestone", "thicknessM": 600},
+   {"rock": "rock.quartz_sandstone", "thicknessM": 500},
+   {"rock": "rock.shale", "thicknessM": 400}
+  ],
+  "metamorphic_complex": [
+   {"rock": "rock.gneiss", "thicknessM": 4000},
+   {"rock": "rock.migmatite", "thicknessM": 800},
+   {"rock": "rock.granulite", "thicknessM": 600},
+   {"rock": "rock.amphibolite", "thicknessM": 800},
+   {"rock": "rock.mica_schist", "thicknessM": 1000},
+   {"rock": "rock.garnet_schist", "thicknessM": 400},
+   {"rock": "rock.marble", "thicknessM": 300}
+  ]
+ }
+}

@@ -37,8 +37,10 @@ namespace Infinitesia
 
     PlanetTerrainSource::PlanetTerrainSource(
         std::shared_ptr<const SettlementTerrain> terrain,
-        int gridWidth, int gridHeight, int gridDepth, int anchorLevel)
+        int gridWidth, int gridHeight, int gridDepth, int anchorLevel,
+        std::shared_ptr<const GeologyModel> geology)
         : m_terrain(std::move(terrain))
+        , m_geology(std::move(geology))
         , m_width(gridWidth)
         , m_height(gridHeight)
         , m_depth(gridDepth)
@@ -63,6 +65,8 @@ namespace Infinitesia
             const SurfaceColumn column = m_terrain->Column(x - m_width / 2, m_depth / 2 - z);
             m_columns[index].surface = std::clamp(m_anchorLevel + column.heightBlocks, 1, m_height - 2);
             m_columns[index].kind = column.underSea ? SurfaceKind::Sand : column.kind;
+            m_columns[index].province = column.province;
+            m_columns[index].pileTopMeters = column.pileTopMeters;
             m_known[index] = 1;
         }
         return m_columns[index];
@@ -97,6 +101,24 @@ namespace Infinitesia
             return cell.y <= WaterTopLevel() ? BlockType::Water : BlockType::Air;
         }
         return LayerAt(column.kind, column.surface - cell.y);
+    }
+
+    MaterialId PlanetTerrainSource::MaterialAt(GridCell cell) const
+    {
+        if (m_geology == nullptr || BlockAt(cell) != BlockType::Stone)
+        {
+            return kUnspecifiedMaterial;
+        }
+        // A level is a metre of height: the ground of the origin column is at anchorLevel
+        // and OriginElevationMeters above sea level.
+        const Column& column = ColumnAt(cell.x, cell.z);
+        const int elevation = m_terrain->OriginElevationMeters() + (cell.y - m_anchorLevel);
+        return m_geology->BedrockAt(column.province, elevation, column.pileTopMeters);
+    }
+
+    const GeologyCatalog* PlanetTerrainSource::Catalog() const
+    {
+        return m_geology == nullptr ? nullptr : &m_geology->Catalog();
     }
 
     BlockType PlanetTerrainSource::LayerAt(SurfaceKind kind, int depthBelowSurface)

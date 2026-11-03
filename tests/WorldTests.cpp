@@ -1,6 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
+#include "geology/model/GeologyModel.h"
 #include "planet/PlanetMap.h"
 #include "planet/region/RegionGenerator.h"
 #include "planet/region/SettlementTerrain.h"
@@ -9,6 +10,7 @@
 #include "world/World.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -239,4 +241,119 @@ TEST_CASE("TheOriginalNoiseWorldStillWorks")
     again.GeneratePendingChunks(100);
     Require(again.GetBlock({ 33, 31, 33 })->type == world.GetBlock({ 33, 31, 33 })->type,
             "The noise world is not deterministic.");
+}
+
+namespace
+{
+    std::shared_ptr<const GeologyModel> SharedGeology()
+    {
+        static const std::shared_ptr<const GeologyModel> model = []
+        {
+            auto catalog = std::make_shared<const GeologyCatalog>(
+                GeologyCatalog::LoadFromDirectory(std::filesystem::path(INFINITESIA_GEOLOGY_ASSET_DIR)));
+            return std::make_shared<const GeologyModel>(catalog, SharedMap());
+        }();
+        return model;
+    }
+
+    std::shared_ptr<PlanetTerrainSource> MakeGeologicalSource(CartesianPoint3D anchor)
+    {
+        const RegionGenerator& generator = SharedGenerator();
+        const LocalGrid grid = generator.MakeGrid(anchor);
+        auto terrain = std::make_shared<const SettlementTerrain>(generator.GetTerrain(), grid, 0.0, 0.0);
+        return std::make_shared<PlanetTerrainSource>(terrain, kWidth, kHeight, kDepth, kAnchorLevel, SharedGeology());
+    }
+}
+
+TEST_CASE("GeologyAddsRockMaterialsWithoutChangingBlockTypes")
+{
+    for (const CartesianPoint3D anchor : { LandAnchor(), OceanAnchor() })
+    {
+        const Settlement plain = MakeSettlement(anchor);
+        const auto geological = MakeGeologicalSource(anchor);
+        const GeologyCatalog& catalog = *geological->Catalog();
+        Require(plain.source->Catalog() == nullptr, "A terrain without geology exposes a catalog.");
+
+        int rockBlocks = 0;
+        for (int x = 0; x < kWidth; x += 11)
+        {
+            for (int z = 0; z < kDepth; z += 7)
+            {
+                for (int y = 0; y < kHeight; y += 3)
+                {
+                    const GridCell cell{ x, y, z };
+                    const BlockType type = geological->BlockAt(cell);
+                    Require(type == plain.source->BlockAt(cell), "Geology changed a block type.");
+                    Require(plain.source->MaterialAt(cell) == kUnspecifiedMaterial, "A terrain without geology names a material.");
+
+                    const MaterialId material = geological->MaterialAt(cell);
+                    if (type == BlockType::Stone)
+                    {
+                        const MaterialDef* info = catalog.GetMaterial(material);
+                        Require(info != nullptr && info->blockClass == BlockClass::Rock, "A stone block is not a catalog rock.");
+                        ++rockBlocks;
+                    }
+                    else
+                    {
+                        Require(material == kUnspecifiedMaterial, "A block that is not stone has a rock material.");
+                    }
+                }
+            }
+        }
+        Require(rockBlocks > 0, "The window has no rock to look at.");
+        Require(geological->MaterialAt({ -1, 5, 5 }) == kUnspecifiedMaterial, "A cell outside the grid has a material.");
+    }
+}
+
+TEST_CASE("RocksAreLaidOutInTheLayersOfTheProvincePile")
+{
+    const auto source = MakeGeologicalSource(LandAnchor());
+    const SettlementTerrain& terrain = *MakeSettlement(LandAnchor()).terrain;
+    const GeologyModel& model = *SharedGeology();
+
+    for (int x = 3; x < kWidth; x += 37)
+    {
+        for (int z = 5; z < kDepth; z += 41)
+        {
+            const SurfaceColumn column = terrain.Column(x - kWidth / 2, kDepth / 2 - z);
+            const int surface = source->SurfaceLevelAt(x, z);
+            // Between the topsoil and the bottom of the window the block is the rock the
+            // province's pile gives at its elevation, whichever way it is asked.
+            for (int y = 0; y + 5 < surface; y += 9)
+            {
+                const int elevation = terrain.OriginElevationMeters() + (y - kAnchorLevel);
+                Require(source->MaterialAt({ x, y, z }) == model.BedrockAt(column.province, elevation, column.pileTopMeters),
+                        "A rock block disagrees with the pile of its province.");
+            }
+        }
+    }
+}
+
+TEST_CASE("WorldChunksCarryTheRockOfEachBlock")
+{
+    const auto source = MakeGeologicalSource(LandAnchor());
+    const Grid grid(GridConfig{ kWidth, kHeight, kDepth, 1.0f });
+    const GridCell center{ kWidth / 2, kAnchorLevel, kDepth / 2 };
+    World world(grid, { { WorldObjectType::Worker, center } }, source);
+    Require(world.GetCatalog() == source->Catalog() && world.GetCatalog() != nullptr, "The world does not expose the catalog.");
+
+    world.RequestChunksAround(center, 1, 1);
+    Require(world.GeneratePendingChunks(1000) > 0, "No chunks were generated.");
+    int rock = 0;
+    for (const auto& [coordinate, chunk] : world.GetChunks())
+    {
+        for (const Block& block : chunk.blocks)
+        {
+            Require(block.material == source->MaterialAt(block.cell), "A chunk block has the wrong material.");
+            rock += block.material != kUnspecifiedMaterial ? 1 : 0;
+        }
+    }
+    Require(rock > 0, "No chunk block carries a rock.");
+
+    // A dug-out block is air again and no longer remembers its rock.
+    const GridCell below{ center.x, kAnchorLevel - 8, center.z };
+    Require(world.GetBlock(below)->material != kUnspecifiedMaterial, "The block under the ground has no rock.");
+    world.SetBlockType(below, BlockType::Air);
+    Require(world.GetBlock(below)->type == BlockType::Air && world.GetBlock(below)->material == kUnspecifiedMaterial,
+            "A dug-out block kept its rock.");
 }

@@ -24,6 +24,18 @@ set(BUILD_GAMES    OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(raylib)
 
+# JSON for the content catalogs (docs/03_GEOLOGY.md, section 4.3).
+FetchContent_Declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.3
+  GIT_SHALLOW TRUE
+)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install OFF CACHE INTERNAL "")
+set(JSON_SystemInclude ON CACHE INTERNAL "")
+FetchContent_MakeAvailable(nlohmann_json)
+
 # Warnings apply to project targets only (never to fetched dependencies).
 function(infinitesia_enable_warnings target)
   if (MSVC)
@@ -57,6 +69,23 @@ add_library(InfinitesiaChemistry STATIC ${INFINITESIA_CHEMISTRY_SOURCES} ${INFIN
 target_include_directories(InfinitesiaChemistry PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 infinitesia_enable_warnings(InfinitesiaChemistry)
 
+# Geology: content catalogs (minerals, rocks, materials, province columns) and the model
+# that tells what the ground is made of. Content is read from assets/geology/*.json.
+file(GLOB_RECURSE INFINITESIA_GEOLOGY_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/geology/*.cpp"
+)
+file(GLOB_RECURSE INFINITESIA_GEOLOGY_HEADERS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/geology/*.h"
+)
+add_library(InfinitesiaGeology STATIC ${INFINITESIA_GEOLOGY_SOURCES} ${INFINITESIA_GEOLOGY_HEADERS})
+target_include_directories(InfinitesiaGeology PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(InfinitesiaGeology PUBLIC InfinitesiaPlanet InfinitesiaChemistry PRIVATE nlohmann_json::nlohmann_json)
+infinitesia_enable_warnings(InfinitesiaGeology)
+
+# Where the source tree keeps the catalogs; tools and tests that run from a build
+# directory read them from here (the game reads the copy next to its executable).
+set(INFINITESIA_GEOLOGY_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/geology")
+
 # The block world has no raylib dependency either (rendering lives outside it), so
 # it is its own library, shared by the game and the tests.
 file(GLOB_RECURSE INFINITESIA_WORLD_SOURCES CONFIGURE_DEPENDS
@@ -67,7 +96,7 @@ file(GLOB_RECURSE INFINITESIA_WORLD_HEADERS CONFIGURE_DEPENDS
 )
 add_library(InfinitesiaWorld STATIC ${INFINITESIA_WORLD_SOURCES} ${INFINITESIA_WORLD_HEADERS})
 target_include_directories(InfinitesiaWorld PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(InfinitesiaWorld PUBLIC InfinitesiaPlanet)
+target_link_libraries(InfinitesiaWorld PUBLIC InfinitesiaPlanet InfinitesiaGeology)
 infinitesia_enable_warnings(InfinitesiaWorld)
 
 file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
@@ -75,6 +104,7 @@ file(GLOB_RECURSE INFINITESIA_SOURCES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
 list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/chemistry/")
+list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/geology/")
 list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/planet/")
 list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/world/")
 add_executable(Infinitesia ${INFINITESIA_SOURCES})
@@ -96,7 +126,7 @@ target_include_directories(Infinitesia PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaWorld InfinitesiaPlanet)
+target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet)
 
 # Treat raylib headers as system headers so their warnings do not drown ours.
 get_target_property(RAYLIB_INCLUDE_DIRS raylib INTERFACE_INCLUDE_DIRECTORIES)
@@ -110,7 +140,8 @@ endif()
 
 # Command-line tool: an isometric block diagram of the generated terrain (no window).
 add_executable(TerrainSnapshot tools/TerrainSnapshot.cpp)
-target_link_libraries(TerrainSnapshot PRIVATE InfinitesiaWorld InfinitesiaPlanet)
+target_link_libraries(TerrainSnapshot PRIVATE InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet)
+target_compile_definitions(TerrainSnapshot PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
 infinitesia_enable_warnings(TerrainSnapshot)
 
 include(CTest)
@@ -138,7 +169,8 @@ if (BUILD_TESTING)
   doctest_discover_tests(RegionTests)
 
   add_executable(WorldTests tests/WorldTests.cpp)
-  target_link_libraries(WorldTests PRIVATE InfinitesiaWorld InfinitesiaPlanet doctest::doctest)
+  target_link_libraries(WorldTests PRIVATE InfinitesiaWorld InfinitesiaGeology InfinitesiaPlanet doctest::doctest)
+  target_compile_definitions(WorldTests PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
   infinitesia_enable_warnings(WorldTests)
   doctest_discover_tests(WorldTests)
 
@@ -146,6 +178,12 @@ if (BUILD_TESTING)
   target_link_libraries(PlanetGeologyTests PRIVATE InfinitesiaPlanet doctest::doctest)
   infinitesia_enable_warnings(PlanetGeologyTests)
   doctest_discover_tests(PlanetGeologyTests)
+
+  add_executable(GeologyTests tests/GeologyTests.cpp)
+  target_link_libraries(GeologyTests PRIVATE InfinitesiaGeology InfinitesiaPlanet InfinitesiaChemistry doctest::doctest)
+  target_compile_definitions(GeologyTests PRIVATE INFINITESIA_GEOLOGY_ASSET_DIR="${INFINITESIA_GEOLOGY_ASSET_DIR}")
+  infinitesia_enable_warnings(GeologyTests)
+  doctest_discover_tests(GeologyTests)
 
   add_executable(ChemistryTests tests/ChemistryTests.cpp)
   target_link_libraries(ChemistryTests PRIVATE InfinitesiaChemistry doctest::doctest)

@@ -67,6 +67,19 @@ namespace Infinitesia
                 throw std::invalid_argument("Block has an unsupported type.");
             }
 
+            Color GetBlockColor(const Block& block, const GeologyCatalog* catalog)
+            {
+                if (catalog != nullptr && block.material != kUnspecifiedMaterial)
+                {
+                    const MaterialDef* material = catalog->GetMaterial(block.material);
+                    if (material != nullptr && material->blockClass == BlockClass::Rock)
+                    {
+                        return { material->color.r, material->color.g, material->color.b, 255 };
+                    }
+                }
+                return GetBlockColor(block.type);
+            }
+
             void MeshData::AppendFace(
                 const std::array<Vector3, 4>& corners,
                 Vector3 normal,
