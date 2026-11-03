@@ -15,3 +15,11 @@ target_include_directories(TerrainSnapshot PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 infinitesia_add_executable(GeologyInspector ASSET_DIR
   SOURCES GeologyInspector.cpp
   LINK InfinitesiaGeology)
+
+# Command-line tool: a contact sheet of the generated plants, to tune assets/biology/species.json (no window).
+infinitesia_add_executable(TreeSnapshot ASSET_DIR
+  SOURCES
+    TreeSnapshot.cpp
+    terrain_snapshot/Image.cpp
+  LINK InfinitesiaBiology)
+target_include_directories(TreeSnapshot PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
