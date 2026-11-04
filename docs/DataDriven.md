@@ -36,13 +36,13 @@ C++ отвечает за общие механизмы симуляции, об
 | Foundation | Базовые механизмы, время, координаты               |
 | Chemistry  | Состав веществ, химические формулы, молярная масса |
 | Planetary  | Конвейер генерации планет                          |
-| Materials  | `MaterialDef`, `MaterialCatalog`                   |
+| Matter     | `MatterDef`, `MatterCatalog` (единый каталог материи) |
 | Geology    | Геологические модели и провинции                   |
-| Blocks     | Формы блоков и их свойства                         |
+| Blocks     | Формы блоков и их свойства (`ShapeDef`, `BlockRegistry`) |
 | World      | `VoxelWorld`, чанки, `TerrainSource`               |
 | Simulation | Фиксированный шаг симуляции, планировщик           |
 | Gameplay   | `EntityStore`, `GameWorld`, предметы, `WorkSystem` |
-| Content    | JSON-каталоги и реестры                            |
+| Content    | XML-каталоги (`ContentRegistry<Def>`, `LoadContentTree`) |
 | Tools      | `tools/check_dependencies.py`                      |
 
 Также в проекте уже присутствуют полезные архитектурные решения:
@@ -57,18 +57,20 @@ C++ отвечает за общие механизмы симуляции, об
 
 ### Области для переработки
 
-**Материалы.** Текущий `MaterialDef` объединяет физические свойства материала с характеристиками блоков. Например, `BlockClass`, `digClass`, `walkable`, `diggable`, `opacity` и `emission` относятся к разным уровням описания объекта.
+**Материя.** Единый каталог `assets/matter/matter.xml` (`MatterDef`) описывает всё, из чего может состоять клетка: воздух, жидкости, породы, сыпучий грунт, лёд, минералы и строительную материю. Запись `MatterDef` содержит общие поля (`key`, `name`, класс, плотность, цвет, свечение, проходимость и копаемость), а редкие — вынесены в боковые таблицы по тому же `id`:
 
-Рекомендуется разделить определения:
+- `ChemistryInfo` — химия (`formula`, `composition`, `molarMass`, `mohs`), для минералов.
+- `ModalComposition` — минеральный состав породы, для пород.
 
-- `MaterialDefinition` — химические, физические и механические характеристики материала.
-- `BlockDefinition` — свойства блока в игровом мире.
+Что ещё стоит разделить:
+
+- `ShapeDef` — форма клетки (полный блок, ступень, наклон); живёт в `BlockRegistry` вместе с материей, в `assets/blocks/`.
 - `ItemDefinition` — характеристики предмета.
-- `FormDefinition` — форма и способ представления материала или объекта.
+- правила «форма сужает свойства материи» (например, ступень не копается), вместо дублирования свойств на уровень блока.
 
 **Сущности.** Текущий `EntityStore` хранит `std::vector<WorldObject>` и выполняет поиск объектов линейным проходом. Для масштабной симуляции рекомендуется миграция на ECS с использованием EnTT.
 
-**Загрузка контента.** Текущие JSON-каталоги и реестры следует постепенно перевести на единую XML-систему загрузки определений.
+**Загрузка контента.** Основной контент уже грузится из XML через `ContentRegistry<Def>` и `LoadContentTree` (pugixml, `XmlRead.h`). Осталось перевести на неё оставшиеся JSON-каталоги, чтобы у всех определений была единая схема загрузки.
 
 **Симуляция.** `SimulationRuntime` и существующий планировщик можно сохранить и интегрировать с новой ECS-архитектурой.
 
@@ -110,13 +112,13 @@ Core должен иметь минимальное количество зав�
 
 Примеры определений:
 
-- `MaterialDefinition`
+- `MatterDef` — единая материя (воздух, жидкость, порода, минерал, стройматериал)
+- `ShapeDef` — форма клетки
 - `ElementDefinition`
 - `CompoundDefinition`
 - `SpeciesDefinition`
 - `CreatureDefinition`
 - `ItemDefinition`
-- `BlockDefinition`
 - `MachineDefinition`
 - `ProcessDefinition`
 - `RecipeDefinition`
@@ -298,88 +300,103 @@ data/
 
 ### 4.2. Идентификаторы определений
 
-Каждое определение получает уникальный ID.
+У каждого определения есть стабильный строковый **ключ** (`key`). Ключ уникален и не пишется с префиксом класса: класс — это отдельное поле записи, а не часть ключа.
 
-Примеры:
+Примеры ключей:
 
 ```text
-material.iron
-material.steel
-element.iron
-compound.water
-species.human
-machine.blast_furnace
-process.iron_smelting
-technology.metallurgy
+granite        // материя, класс rock
+water          // материя, класс fluid
+quartz         // материя, класс mineral
+oak.trunk      // материя растения, класс plant
+human          // вид
+blast_furnace  // машина
+iron_smelting  // процесс
+metallurgy     // технология
 ```
 
-В C++ рекомендуется использовать типизированные Strong IDs:
+Правила:
+
+- **Строковый ключ — единственный стабильный идентификатор** в данных и в сохранениях. Ссылки между определениями и записи в мире хранят ключ, а не числовой индекс.
+- **Плотный числовой индекс** (`MatterId` = `uint16_t` и аналоги) присваивается при загрузке по порядку записей (воздух = 0, первая жидкость = 1, далее по каталогу). В данные и в сохранения он **не пишется**: при повторном запуске одни и те же ключи дают одни и те же индексы.
+- **Разрешение ссылок** — по ключу на этапе загрузки; в рантайме системы работают с плотным индексом ради скорости.
+
+В C++ ключ хранится прямо в определении (`std::string key`), а поиск идёт через `ContentRegistry<Def>`:
 
 ```cpp
-struct MaterialDefinitionId
+template <typename Def>
+class ContentRegistry
 {
-    std::string value;
-};
-
-struct SpeciesDefinitionId
-{
-    std::string value;
-};
-
-struct MachineDefinitionId
-{
-    std::string value;
+public:
+    const Def& Add(Def def);        // бросает ContentError при пустом/повторном ключе
+    const Def* Find(std::string_view key) const;
+    const Def& Require(std::string_view key) const;  // бросает, если ключа нет
+    std::span<const Def> All() const;
 };
 ```
 
-Это упрощает проверку ссылок и снижает вероятность передачи идентификатора неподходящего типа.
+Отдельный strong-id на каждый тип не нужен: тип определения уже задаёт `Def`, а ключ — строка. Это не даёт перепутать идентификаторы разных каталогов (их нельзя передать туда, где ждут другой `ContentRegistry<OtherDef>`).
 
-### 4.3. Пример XML-определения материала
+### 4.3. Пример XML-определения материи
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
+<catalog>
+  <!-- Минерал: общие поля в атрибутах, химия — во вложенном <chemistry>. -->
+  <matter id="quartz" class="mineral" name="quartz"
+         density="2650" digClass="5" color="#e8e4de" provenance="gameplay">
+    <chemistry formula="SiO2" mohs="7"/>
+  </matter>
 
-<material id="material.iron">
-    <name>Iron</name>
-    <description>Pure iron material.</description>
-
-    <composition>
-        <element id="element.iron" amount="1"/>
-    </composition>
-
-    <physical>
-        <density unit="kg/m3">7874</density>
-        <melting_point unit="K">1811</melting_point>
-        <boiling_point unit="K">3134</boiling_point>
-    </physical>
-
-    <mechanical>
-        <hardness>4</hardness>
-        <elastic_modulus unit="GPa">211</elastic_modulus>
-    </mechanical>
-
-    <thermal>
-        <specific_heat unit="J/(kg*K)">449</specific_heat>
-        <thermal_conductivity unit="W/(m*K)">80</thermal_conductivity>
-    </thermal>
-</material>
+  <!-- Порода: минеральный состав во вложенном <rock>. -->
+  <matter id="granite" class="rock" name="granite"
+         density="2650" digClass="4" color="#b8a89a" provenance="gameplay">
+    <rock class="igneous_intrusive">
+      <part mineral="quartz" fraction="0.28"/>
+      <part mineral="orthoclase" fraction="0.3"/>
+      <part mineral="plagioclase" fraction="0.27"/>
+    </rock>
+  </matter>
+</catalog>
 ```
 
-В C++ это загружается в типизированную структуру:
+В C++ это загружается в типизированные структуры:
 
 ```cpp
-struct MaterialDefinition
+struct MatterDef
 {
-    MaterialDefinitionId id;
-
+    MatterId id = 0;           // плотный индекс, назначается при загрузке
+    std::string key;           // стабильный ключ: "granite", "water", "quartz"
     std::string name;
-    std::string description;
+    BlockClass blockClass = BlockClass::Air;
+    double density = 0.0;      // kg/m3
+    int digClass = 0;
+    RgbColor color;
+    Provenance provenance = Provenance::Gameplay;
+    std::vector<std::string> tags;
+    LightRgb opacity;
+    LightRgb emission;
+    bool walkable = true;
+    bool diggable = true;
+};
+```
 
-    ChemicalComposition composition;
+Свойства, которые есть только у части материи, лежат в боковых таблицах `MatterCatalog` и находятся по тому же `id`:
 
-    PhysicalProperties physical;
-    MechanicalProperties mechanical;
-    ThermalProperties thermal;
+```cpp
+struct ChemistryInfo  // для минералов
+{
+    std::string formula;
+    Chemistry::Composition composition;
+    double molarMass = 0.0;
+    double mohs = 0.0;
+    bool solidSolution = false;
+};
+
+struct ModalComposition  // для пород
+{
+    RockClass rockClass;
+    std::vector<ModalEntry> parts;  // { mineral, fraction }
 };
 ```
 
@@ -388,7 +405,7 @@ struct MaterialDefinition
 ### 4.4. Пример определения машины
 
 ```xml
-<machine id="machine.blast_furnace">
+<machine id="blast_furnace">
     <name>Blast Furnace</name>
 
     <category>smelting</category>
@@ -409,7 +426,7 @@ struct MaterialDefinition
     </inventory>
 
     <supported_processes>
-        <process id="process.iron_smelting"/>
+        <process id="iron_smelting"/>
     </supported_processes>
 </machine>
 ```
@@ -417,21 +434,21 @@ struct MaterialDefinition
 ### 4.5. Пример производственного процесса
 
 ```xml
-<process id="process.iron_smelting">
+<process id="iron_smelting">
     <name>Iron Smelting</name>
 
     <inputs>
-        <item id="item.hematite" amount="2"/>
-        <item id="item.coke" amount="1"/>
+        <item id="hematite" amount="2"/>
+        <item id="coke" amount="1"/>
     </inputs>
 
     <outputs>
-        <item id="item.iron_ingot" amount="1"/>
+        <item id="iron_ingot" amount="1"/>
     </outputs>
 
     <requirements>
         <temperature min="1400" unit="K"/>
-        <machine id="machine.blast_furnace"/>
+        <machine id="blast_furnace"/>
     </requirements>
 
     <duration unit="s">120</duration>
@@ -456,55 +473,49 @@ struct MaterialDefinition
 Примеры ошибок:
 
 ```text
-Unknown material reference: material.unobtainium
-File: data/industry/recipes/steel.xml
+Unknown matter reference: unobtainium
+File: assets/industry/recipes/steel.xml
 Line: 18
 
-Duplicate definition ID: material.iron
-File: data/materials/metals/iron_copy.xml
+Duplicate content id 'granite'
+File: assets/matter/matter.xml
 Line: 3
 
 Invalid unit: kg/second
-File: data/materials/metals/iron.xml
+File: assets/matter/matter.xml
 Line: 14
 ```
 
 ### 4.7. Реестры определений
 
-Для каждого типа определений создаётся отдельный типизированный реестр:
+Для каждого типа определения создаётся отдельный реестр — `ContentRegistry<Def>`, типизированный только по типу определения (ключ — всегда строка):
 
 ```cpp
-template<typename Id, typename Definition>
-class DefinitionRegistry
+template<typename Def>
+class ContentRegistry
 {
 public:
-    const Definition* find(const Id& id) const;
-    bool contains(const Id& id) const;
-
-    void registerDefinition(Definition definition);
+    const Def& Add(Def def);                          // бросает ContentError при пустом/повторном ключе
+    const Def* Find(std::string_view key) const;      // nullptr, если ключа нет
+    Def* FindMutable(std::string_view key) noexcept;  // для разрешения ссылок при загрузке
+    const Def& Require(std::string_view key) const;   // бросает, если ключа нет
+    std::span<const Def> All() const;
 
 private:
-    std::unordered_map<
-        std::string,
-        Definition
-    > definitions_;
+    std::vector<Def> m_defs;
+    std::map<std::string, std::size_t, std::less<>> m_indexByKey;
 };
 ```
 
-Примеры конкретных реестров:
+Есть псевдоним `DefinitionRegistry<Def>` = `ContentRegistry<Def>` для кода, который пользуется общим именем. Примеры конкретных реестров:
 
 ```cpp
-using MaterialRegistry =
-    DefinitionRegistry<MaterialDefinitionId, MaterialDefinition>;
-
-using SpeciesRegistry =
-    DefinitionRegistry<SpeciesDefinitionId, SpeciesDefinition>;
-
-using MachineRegistry =
-    DefinitionRegistry<MachineDefinitionId, MachineDefinition>;
+using MatterRegistry = ContentRegistry<MatterDef>;
+using SpeciesRegistry = ContentRegistry<SpeciesDef>;
+using ItemRegistry = ContentRegistry<ItemDef>;
 ```
 
-Общий `ContentManager` может объединять доступ ко всем реестрам.
+Общий `ContentManager` (в коде — `GameContent`) может объединять доступ ко всем реестрам.
 
 После успешной загрузки и проверки определения становятся неизменяемыми на протяжении обычного игрового сеанса. Это обеспечивает стабильность ссылок и упрощает работу систем симуляции.
 
@@ -661,67 +672,45 @@ public:
 
 ---
 
-## 6. Разделение материалов, предметов и блоков
+## 6. Материя, предметы и блоки
 
-Для материалов и объектов рекомендуется создать несколько независимых типов определений.
+Материя, предмет и блок — разные уровни описания, и в проекте они разделены определениями, а не одной структурой.
 
-### MaterialDefinition
+### MatterDef — материя
 
-Содержит свойства самого вещества:
+Описывает вещество: то, из чего состоит клетка или предмет.
 
-- Химический состав.
+- Химический состав (`ChemistryInfo`: формула, `molarMass`, `mohs`).
 - Плотность.
-- Твёрдость.
-- Прочность.
-- Теплопроводность.
-- Электропроводность.
-- Температуру плавления.
-- Температуру кипения.
-- Теплоёмкость.
-- Другие физические и химические свойства.
+- Класс (`BlockClass`) и теги.
+- Цвет, прозрачность, свечение.
+- Проходимость и копаемость.
+- Минеральный состав породы (`ModalComposition`).
 
-### FormDefinition
+### ShapeDef — форма клетки
 
-Описывает форму и физическое состояние материала:
+Описывает, как материя представлена в воксельном мире:
 
-- Твёрдый блок.
-- Порошок.
-- Гранулы.
-- Жидкость.
-- Газ.
-- Волокно.
-- Лист.
-- Пруток.
+- Геометрическую форму (полный блок, ступень, наклон).
+- Проходимость и занятость (`FaceMask`).
+- Правила, сужающие свойства материи (например, ступень не копается).
 
-### ItemDefinition
+### ItemDefinition — предмет
 
 Описывает конкретный игровой предмет:
 
-- ID.
-- Название.
+- Ключ и название.
 - Форму.
-- Материал.
-- Массу.
-- Объём.
-- Размер.
+- Материю (`MatterDef`, по ключу).
+- Массу, объём, размер.
 - Свойства инвентаря.
 - Возможные способы использования.
 
-### BlockDefinition
+### BlockState — клетка мира
 
-Описывает объект в воксельном мире:
+Клетка не хранит определение целиком: это пара `BlockState { matter, shape }` (плотные `MatterId` и `ShapeId`). Свойства клетки берутся из `BlockRegistry` как комбинация материи и формы, поэтому одна и та же материя (например, `granite`) может быть полным блоком или ступенью, а один предмет (например, `iron_ingot`) ссылается на ту же материю.
 
-- Геометрическую форму.
-- Проходимость.
-- Прозрачность.
-- Разрушаемость.
-- Класс добычи.
-- Светоизлучение.
-- Взаимодействие с окружающими блоками.
-
-Эта структура позволяет одному материалу использоваться во множестве форм и предметов.
-
-Например, железо может существовать в виде руды, слитка, порошка, листа, прута и конструкционного блока. Все эти варианты ссылаются на общие характеристики материала.
+Например, железо может существовать в виде руды, слитка, порошка, листа, прута и конструкционного блока. Все эти варианты ссылаются на общие характеристики материи.
 
 ---
 
@@ -1040,8 +1029,8 @@ ECS-слой проекта должен предоставлять собств
 
 Задачи:
 
-1. Разделить `MaterialDefinition`, `ItemDefinition`, `BlockDefinition` и `FormDefinition`.
-2. Перевести материалы на XML.
+1. Определить `MatterDef` (единая материя), `ShapeDef` (форма клетки) и `ItemDefinition`.
+2. Держать материю в XML-каталоге `assets/matter/matter.xml`.
 3. Добавить определения химических элементов.
 4. Добавить соединения и смеси.
 5. Реализовать агрегатные состояния.
@@ -1197,11 +1186,11 @@ XML описывает свойства вида объекта, материа�
 
 1. Зафиксировать целевую архитектуру в документации.
 2. Создать Core IDs и единицы измерения.
-3. Добавить XML-парсер.
-4. Создать `DefinitionRegistry`.
-5. Создать `ContentManager`.
-6. Реализовать полный конвейер загрузки XML.
-7. Перевести небольшой набор материалов на XML.
+3. Добавить XML-парсер. *(готово: pugixml)*
+4. Создать `ContentRegistry<Def>`. *(готово)*
+5. Создать `ContentManager` (`GameContent`). *(готово)*
+6. Реализовать полный конвейер загрузки XML (`LoadContentTree`). *(готово)*
+7. Перевести материю на XML. *(готово: `assets/matter/matter.xml`)*
 8. Подключить EnTT.
 9. Создать `ECSWorld` и базовые компоненты.
 10. Интегрировать ECS с `SimulationRuntime`.

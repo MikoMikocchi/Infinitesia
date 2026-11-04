@@ -1,14 +1,14 @@
-# Блоки: материалы, формы и свет
+# Блоки: материя, формы и свет
 
 Дизайн-документ (задача 10), версия 4. **Линия блоков реализована** (шаги A-G раздела 8): один каталог
-материалов, формы, клетка мира `{material, shape}`, `BlockType` удалён. **Свет** (раздел 6) остаётся
+материи, формы, клетка мира `{matter, shape}`, `BlockType` удалён. **Свет** (раздел 6) остаётся
 проектом: код света не написан, `HasSkyAccess` пока работает по правилу «пропускает ли клетка свет».
 
-Что изменилось относительно версии 3: **минерал это такой же материал, как порода или доска.**
-Каталог один (`assets/materials/materials.json`, модуль `materials`): запись `MaterialDef` общая для
+Что изменилось относительно версии 3: **минерал это такая же материя, как порода или доска.**
+Каталог один (`assets/matter/matter.xml`, модуль `matter`): запись `MatterDef` общая для
 воздуха, жидкостей, пород, почв, льда, минералов и строительных материалов, а то, что есть не у всех
-(формула минерала, состав породы из минералов), лежит в боковых таблицах по тому же `MaterialId`
-(`ChemistryInfo`, `ModalComposition`). Версия 3 разделила материал и форму (как в Dwarf Fortress);
+(формула минерала, состав породы из минералов), лежит в боковых таблицах по тому же `MatterId`
+(`ChemistryInfo`, `ModalComposition`). Версия 3 разделила материю и форму (как в Dwarf Fortress);
 версия 2 добавила единый реестр с тегами, текстуры только в `assets/` и раздел про свет; версия 1 была
 про переход с `BlockType`.
 
@@ -16,21 +16,21 @@
 
 | Решение | Источник |
 |---|---|
-| Один реестр со всеми материалами игры, не только геологическими | вы |
-| Минерал это материал: одна запись `MaterialDef`, из минерала можно сделать блок (руда, кристалл) | вы |
-| Химия минерала и состав породы лежат в боковых таблицах по `MaterialId`, не в общей записи (запись остаётся маленькой, у воды и доски этих полей нет) | вы, по ревью |
-| Один файл `assets/materials/materials.json` вместо minerals, rocks, materials, built_materials | вы |
-| Материал и форма разделены: из материала можно делать блок, стену, пол и т. д. | вы |
-| Форма хранится в клетке (`{material, shape}`), одна форма и один материал на клетку; объекты поверх клетки отдельная тема | вы |
+| Один реестр со всей материей игры, не только геологической | вы |
+| Минерал это материя: одна запись `MatterDef`, из минерала можно сделать блок (руда, кристалл) | вы |
+| Химия минерала и состав породы лежат в боковых таблицах по `MatterId`, не в общей записи (запись остаётся маленькой, у воды и доски этих полей нет) | вы, по ревью |
+| Один файл `assets/matter/matter.xml` вместо minerals, rocks, materials, built_materials | вы |
+| Материя и форма разделены: из материи можно делать блок, стену, пол и т. д. | вы |
+| Форма хранится в клетке (`{matter, shape}`), одна форма и одна материя на клетку; объекты поверх клетки отдельная тема | вы |
 | Реализуется только форма `Full`; остальные формы отдельной задачей, но формат клетки сразу рассчитан на них | вы |
 | Все текстуры и цвета в `assets/`; в коде ни цвета, ни имени текстуры | вы |
 | Только английские имена блоков, локализации пока нет | вы |
-| Море `fluid.seawater`; `water` и `seawater` пока одно и то же по свойствам | вы |
+| Море `seawater`; `water` и `seawater` пока одно и то же по свойствам | вы |
 | Свет переделывается: тёмные блоки там, где они не должны быть, это баг модели | вы, гипотеза подтверждена |
 | Будут источники света: магма, светильники, блоки | вы |
 | Блочный свет цветной (RGB по 4 бита), небесный скалярный | вы |
 | Стекло бывает цветным: `opacity` задаётся по каналам RGB | вы |
-| Лёд слегка гасит свет (`opacity 3`); `built.glass` (стекло, `opacity 0`) добавляется в первую партию материалов | вы |
+| Лёд слегка гасит свет (`opacity 3`); `glass` (стекло, `opacity 0`) добавляется в первую партию материи | вы |
 | Сглаживание света по вершинам включено сразу | вы |
 | На время миграции вода остаётся «твёрдой» для работ и путей (как сейчас) | по умолчанию, поправьте |
 | Цвета и текстуры земли и песка берутся из каталога, внешний вид изменится | по умолчанию, поправьте |
@@ -39,11 +39,11 @@
 
 ### 1.1. Блоки (было)
 
-Раньше клетка была `{cell, BlockType, material}`: `BlockType` (шесть значений) и необязательный
+Раньше клетка была `{cell, BlockType, MaterialId}`: `BlockType` (шесть значений) и необязательный
 `MaterialId`, два источника правды, `switch` по типу в ~20 файлах (пусто, проходимость, цвет, текстура,
 допустимость). Каталог знал плотность, цвет и `digClass`, но игра из них читала только цвета пород.
 Теперь все эти правила спрашивают `BlockRegistry` про `BlockState`. Вода по-прежнему «твёрдая» для
-работ и путей (это свойство материала: `walkable` и `diggable` у жидкости истинны), решается отдельно.
+работ и путей (это свойство материи: `walkable` и `diggable` у жидкости истинны), решается отдельно.
 
 ### 1.2. Свет
 
@@ -90,75 +90,79 @@
 using ShapeId = std::uint8_t;
 inline constexpr ShapeId kShapeFull = 0;                  // единственная форма на первом этапе
 
-struct BlockState { MaterialId material; ShapeId shape; };   // что лежит в клетке
+struct BlockState { MatterId matter; ShapeId shape; };       // что лежит в клетке
 struct Block      { GridCell cell; BlockState state; };      // type исчезает
 ```
 
-- **Материал** (`MaterialId`) отвечает, из чего сделано: плотность, твёрдость, цвет, текстура,
-  `opacity`, `emission`, теги. Воздух это материал 0.
-- **Форма** (`ShapeId`) отвечает, что построено из материала: полный блок, потом стена, пол,
+- **Материя** (`MatterId`) отвечает, из чего сделано: плотность, твёрдость, цвет, текстура,
+  `opacity`, `emission`, теги. Воздух это материя 0.
+- **Форма** (`ShapeId`) отвечает, что построено из материи: полный блок, потом стена, пол,
   лестница, рампа. Свойства формы: какие стороны клетки она закрывает (`faceMask`), можно ли по
-  ней ходить, пропускает ли она свет сверх материала.
-- «Гранитная стена» это `{rock.granite, Wall}`, «деревянный пол» `{planks, Floor}`. Новый материал
-  работает во всех формах без правок кода, новая форма во всех материалах.
+  ней ходить, пропускает ли она свет сверх материи.
+- «Гранитная стена» это `{granite, Wall}`, «деревянный пол» `{planks, Floor}`. Новая материя
+  работает во всех формах без правок кода, новая форма во всей материи.
 
-Все решения про свет, проходимость и копание считаются от пары `(material, shape)`: материал даёт
-физику, форма геометрию. Пока существует только `Full`, поведение определяется материалом, как
+Все решения про свет, проходимость и копание считаются от пары `(matter, shape)`: материя даёт
+физику, форма геометрию. Пока существует только `Full`, поведение определяется материей, как
 раньше определяло `BlockType`.
 
-Ограничение выбора «форма в клетке»: клетка хранит один материал и одну форму. Пол и стена из
-разных материалов в одной клетке невозможны; такая «композитная» клетка либо получит отдельную
+Ограничение выбора «форма в клетке»: клетка хранит одну материю и одну форму. Пол и стена из
+разных материй в одной клетке невозможны; такая «композитная» клетка либо получит отдельную
 форму (`FloorAndWall`), либо потребует объекта поверх клетки (`EntityStore`). Это решается, когда
 появятся сами формы; формат клетки (`BlockState` с запасом) от этого не меняется.
 
-### 3.1. Что в каталоге материалов
+### 3.1. Что в каталоге материи
 
-Каталог содержит **каждый материал** игры, один файл `assets/materials/materials.json`:
+Каталог содержит **каждую материю** игры, один файл `assets/matter/matter.xml`. Класс записи
+(`class`) задаёт, что это, и дефолты свойств:
 
-| Диапазон `numericId` | Класс | Что |
+| Класс | Что | Примерно записей |
 |---|---|---|
-| 0-31 | `air`, `fluid` | воздух и жидкости (вода, морская вода, рассол, нефть, магма) |
-| 32-511 | `rock` | породы |
-| 512-1023 | `loose`, `ice` | рыхлый грунт, почвы, лёд |
-| 1024-2047 | `built` | строительные (доска, кирпич, стекло, лампа) и всё, что придумает геймплей |
-| 2048-4095 | `mineral` | минералы (кварц, магнетит...); блоком становятся руды и кристаллы |
-| 4096-5119 | `plant` | живые материалы растений: древесина и листва видов (`docs/07_BIOLOGY.md`) |
-| 5120+ | | зарезервировано |
+| `air` | воздух | 1 |
+| `fluid` | жидкости (вода, морская вода, рассол, нефть, магма) | 5 |
+| `rock` | породы | ~99 |
+| `loose` | рыхлый грунт, почвы | ~14 |
+| `ice` | лёд | 2 |
+| `built` | строительные (доска, кирпич, стекло, лампа) и всё, что придумает геймплей | 7 |
+| `mineral` | минералы (кварц, магнетит...); блоком становятся руды и кристаллы | ~167 |
+| `plant` | живые материи растений: древесина и листва видов (`docs/07_BIOLOGY.md`) | ~15 |
 
-`numericId` стабильны и не переиспользуются. `MaterialId` это `uint16_t`. Ключ класса имеет префикс
-(`rock.`, `built.`, `mineral.`); загрузчик проверяет диапазон и префикс, дубликаты ключа и id, ссылки
-состава породы на минералы, суммы долей. Ошибка называет файл и запись.
+`MatterId` это плотный `uint16_t`, присваиваемый при загрузке в порядке файла (воздух всегда 0,
+первая жидкость 1); в данных id не пишется и стабилен только внутри одной сборки. **Строка-ключ**
+(`key`) — стабильный идентификатор записи, без префикса класса (`granite`, `sand`, `water`, `quartz`).
+Загрузчик проверяет дубликаты ключа, ссылки состава породы на минералы, суммы долей. Ошибка
+называет файл и запись.
 
-`MaterialCatalog` (модуль `materials`) читает файл и отдаёт `MaterialDef`, боковые таблицы
+`MatterCatalog` (модуль `matter`) читает файл и отдаёт `MatterDef`, боковые таблицы
 и состав в элементах (`ElementMassFractionsOf`: для минерала по формуле, для породы по минералам с
 весом «доля по объёму × плотность»). `BlockRegistry` (модуль `blocks`) держит каталог и добавляет
 формы и плотные таблицы для горячего пути.
 
-### 3.2. Запись материала
+### 3.2. Запись материи
 
-Единая запись `MaterialDef`, общая часть для всех:
+Единая запись `MatterDef`, общая часть для всех:
 
 | Поле | Тип | Дефолт | Назначение |
 |---|---|---|---|
-| `id` (ключ) | строка | обязательно | `rock.granite`, `soil.turf`, `fluid.seawater`, `mineral.quartz`, `built.lamp` |
-| `numericId`, `name` | | | только английское имя, без локализации |
-| `class` | `air/fluid/loose/ice/rock/built/mineral` | обязательно | диапазон id, префикс ключа, дефолты |
+| `key` | строка | обязательно | стабильный id без префикса: `granite`, `turf`, `seawater`, `quartz`, `lamp` |
+| `id` | `MatterId` | при загрузке | плотный числовой id, в данных не пишется |
+| `name`, `color`, `provenance` | | обязательно | только английское имя, без локализации; цвет запасной, когда нет текстуры |
+| `class` | `air/fluid/loose/ice/rock/built/mineral/plant` | обязательно | дефолты свойств |
 | `density` | кг/м³ | обязательно | породы 500-6000, минералы 500-25000 |
 | `digClass` | 0..5 | обязательно | копание; у пород и минералов 1..5 |
-| `color`, `provenance` | | обязательно | цвет только запасной, когда нет текстуры |
 | `tags` | список строк | класс | `water`, `fluid`, `soil`, `light_source`...; тег класса есть всегда |
-| `opacity` | 0..15 или `[r, g, b]` | по классу, см. 3.3 | насколько материал гасит свет; тройка = цветное стекло |
-| `emission` | `[r, g, b]`, 0..15 | `[0,0,0]` | цветной свет, который испускает материал; магма `[14, 6, 1]` |
+| `opacity` | 0..15 или `[r, g, b]` | по классу, см. 3.3 | насколько материя гасит свет; тройка = цветное стекло |
+| `emission` | `[r, g, b]`, 0..15 | `[0,0,0]` | цветной свет, который испускает материя; магма `[14, 6, 1]` |
 | `walkable`, `diggable` | bool | `class != air` | пути, работы; форма может сузить |
 
-Необязательные части (боковые таблицы по `MaterialId`):
+Необязательные части (боковые таблицы по `MatterId`):
 
 | Часть | Для кого | Поля |
 |---|---|---|
 | `chemistry` (`ChemistryInfo`) | минералы, обязательна | `formula` (разбирается `Composition`), `mohs`, `solidSolution`; молярная масса считается |
 | `rock` (`ModalComposition`) | породы, обязательна | `class` (магматическая, осадочная...), `modal`: список `{mineral, fraction}`, пустой пока состав не заполнен |
 
-Поля геологии не раздувают общую запись: горячий путь (свет, меши, проходимость) читает не `MaterialDef`,
+Поля геологии не раздувают общую запись: горячий путь (свет, меши, проходимость) читает не `MatterDef`,
 а плотную `MaterialProps` реестра, которую тот строит при загрузке.
 
 ### 3.2a. Запись формы
@@ -170,12 +174,12 @@ struct Block      { GridCell cell; BlockState state; };      // type исчез�
 | `key`, `numericId` | | `shape.full`, 0 | |
 | `faceMask` | 6 бит | все | какие стороны клетки закрыты целиком: соседние грани скрываются, свет не проходит |
 | `walkable` | bool | да | можно ли стоять на форме / ходить |
-| `passesLight` | bool | нет | пропускает ли форма свет сверх материала (решётка, пол); для `Full` непрозрачность определяет только `opacity` материала |
+| `passesLight` | bool | нет | пропускает ли форма свет сверх материи (решётка, пол); для `Full` непрозрачность определяет только `opacity` материи |
 | `mesh` | ключ шаблона | `cube` | как строится геометрия; в данных пока только `cube` |
 
-`occupied`, `walkable`, `diggable`, `opacity` клетки: свойство материала, сужаемое формой
-(`walkable = material.walkable && shape.walkable`, `opacity` форма может обнулить через
-`passesLight`). Для `Full` результат равен свойству материала.
+`occupied`, `walkable`, `diggable`, `opacity` клетки: свойство материи, сужаемое формой
+(`walkable = matter.walkable && shape.walkable`, `opacity` форма может обнулить через
+`passesLight`). Для `Full` результат равен свойству материи.
 
 ### 3.3. Дефолты свойств по классу
 
@@ -186,11 +190,11 @@ struct Block      { GridCell cell; BlockState state; };      // type исчез�
 | `Loose` | да | 15 | |
 | `Rock` | да | 15 | |
 | `Ice` | да | 3 | свет проходит, слегка гасится (решено) |
-| `Built` | да | 15 | переопределяется данными; `built.glass` (стекло) `opacity 0`, прозрачное; цветные варианты (`built.glass_red` и т. д.) с тройкой `opacity` |
+| `Built` | да | 15 | переопределяется данными; `glass` (стекло) `opacity 0`, прозрачное; цветные варианты (`glass_red` и т. д.) с тройкой `opacity` |
 | `Mineral` | да | 15 | как порода |
 
 `emission` не выводится из класса: магма и светящиеся материалы задают цвет сами. Стекло входит в
-первую партию строительных материалов (`materials.json`) вместе с `built.planks`, `built.brick` и одним светящимся
+первую партию строительной материи (`matter.xml`) вместе с `planks`, `brick` и одним светящимся
 материалом для проверки света.
 
 ### 3.4. Теги
@@ -201,10 +205,10 @@ struct Block      { GridCell cell; BlockState state; };      // type исчез�
 // Tags the engine asks about, resolved once from names at load. Other names in the data are kept
 // as text (BlockRegistry::HasTag); a tag no code asks about is harmless.
 enum class Tag { Water, Fluid, Soil, Stone, LightSource, ... };
-bool BlockRegistry::Has(MaterialId, Tag) const;
+bool BlockRegistry::Has(MatterId, Tag) const;
 ```
 
-`fluid.water` и `fluid.seawater` оба `["water"]` плюс тег класса `fluid`, свойства (плотность, цвет, `opacity`)
+`water` и `seawater` оба `["water"]` плюс тег класса `fluid`, свойства (плотность, цвет, `opacity`)
 в данных **идентичны**, пока это решено «одним и тем же». Генерация использует `seawater` для
 моря; правила и свет теги не различают.
 
@@ -213,82 +217,82 @@ bool BlockRegistry::Has(MaterialId, Tag) const;
 
 ### 3.5. Текстуры и цвета только в `assets/`
 
-- Текстуры лежат в `assets/textures/blocks/` по ключу материала: `<key>.png`; для граней
+- Текстуры лежат в `assets/textures/blocks/` по ключу материи: `<key>.png`; для граней
   `<key>_top.png`, `<key>_side.png`, `<key>_bottom.png`. Поиск: грань → `<key>_<грань>` →
   `<key>` → однотонный тайл цвета из реестра. Форма текстур не меняет: стена и пол из гранита берут
   тайлы гранита, геометрию задаёт форма.
-- Прежних `block.*` больше нет: `block.grass_top/side` стали `soil.turf_top.png / soil.turf_side.png`,
-  остальные удалены (у земли, песка и воды есть `soil.*`, `fluid.*`). У минералов тайлов пока нет,
+- Прежних `block.*` больше нет: `block.grass_top/side` стали `turf_top.png / turf_side.png`,
+  остальные удалены (у земли, песка и воды есть `turf.*`, `sand.png`, `water.png`). У минералов тайлов пока нет,
   блок минерала рисуется плоским цветом из каталога.
 - В коде нет цветов блоков: `GetBlockColor` и `BlockDiagram::BlockColor` читают цвет из реестра.
-- `tools/GenerateBlockTextures.py` генерирует текстуры из `assets/materials/materials.json` по ключам
+- `tools/GenerateBlockTextures.py` генерирует текстуры из `assets/matter/matter.xml` по ключам
   (жидкости, грунт, лёд, породы, строительные), чтобы список файлов не расходился с данными.
 
 ### 3.6. Где живёт
 
-Два модуля. **`materials`** (`src/materials/`) владеет каталогом: `MaterialId`, `MaterialDef`,
-`ChemistryInfo`, `ModalComposition`, `MaterialCatalog`, загрузчик `materials.json` и JSON-помощники,
-общие для загрузчиков колонок и форм (`CatalogJson.h`). **`blocks`** (`src/blocks/`) владеет формами
+Два модуля. **`matter`** (`src/matter/`) владеет каталогом: `MatterId`, `MatterDef`,
+`ChemistryInfo`, `ModalComposition`, `MatterCatalog`, загрузчик `matter.xml` (через XML-помощники,
+общие для загрузчиков колонок и форм). **`blocks`** (`src/blocks/`) владеет формами
 (`shapes.json`), тегами и `BlockRegistry`. Слои:
-`foundation < chemistry, planet < materials < geology < blocks < world < gameplay < presentation < app`
-(`blocks` зависит от `materials`, не от `geology`: геология знает о породах, блоки о геологии не знают).
+`core < chemistry, planet, content < matter < geology < blocks < world < gameplay < presentation < app`
+(`blocks` зависит от `matter`, не от `geology`: геология знает о породах, блоки о геологии не знают).
 `tools/check_dependencies.py` (`MODULE_OF`, `ALLOWED`) и `CMakeLists.txt` отражают это.
 
 ```cpp
 class BlockRegistry
 {
 public:
-    static BlockRegistry Build(std::shared_ptr<const MaterialCatalog>, const std::filesystem::path& shapesFile);
+    static BlockRegistry Build(std::shared_ptr<const MatterCatalog>, const std::filesystem::path& shapesFile);
     static BlockRegistry BuiltIn();                       // минимум для тестов, без файлов
-    const MaterialCatalog& Catalog() const;
-    const MaterialDef* FindMaterial(std::string_view key) const;
-    const MaterialDef* GetMaterial(MaterialId) const;     // nullptr для неизвестного id
+    const MatterCatalog& Catalog() const;
+    const MatterDef* FindMatter(std::string_view key) const;
+    const MatterDef* GetMatter(MatterId) const;           // nullptr для неизвестного id
     const ShapeDef* FindShape(std::string_view key) const;
-    // Горячие запросы: плотные массивы по MaterialId и ShapeId, без строк и хешей.
+    // Горячие запросы: плотные массивы по MatterId и ShapeId, без строк и хешей.
     bool Occupied(BlockState) const;  bool Walkable(BlockState) const;
     bool Diggable(BlockState) const;  LightRgb Opacity(BlockState) const;
     bool LetsLightThrough(BlockState) const;              // не гасит полностью хотя бы один канал
-    LightRgb Emission(MaterialId) const;  bool Has(MaterialId, Tag) const;
+    LightRgb Emission(MatterId) const;  bool Has(MatterId, Tag) const;
     std::uint8_t FaceMask(ShapeId) const;
 };
 ```
 
-Плотная таблица материалов на 5120 записей (флаги, `digClass`, `opacity` RGB, `emission` RGB, маска
-тегов) и таблица форм на 256; неизвестный `MaterialId` считается воздухом, неизвестная форма `Full`.
-`Block` это `{cell, BlockState}`: 16 байт (клетка 12 + материал 2 + форма 1 + выравнивание).
+Плотная таблица материи на 5120 записей (флаги, `digClass`, `opacity` RGB, `emission` RGB, маска
+тегов) и таблица форм на 256; неизвестный `MatterId` считается воздухом, неизвестная форма `Full`.
+`Block` это `{cell, BlockState}`: 16 байт (клетка 12 + материя 2 + форма 1 + выравнивание).
 
 ## 4. Почвы, вода, камень
 
-Выбор материала по `SurfaceKind` идёт через структуру, разрешаемую из реестра **один раз** (форма везде
-`Full`), `world/SurfaceMaterials.h`:
+Выбор материи по `SurfaceKind` идёт через структуру, разрешаемую из реестра **один раз** (форма везде
+`Full`), `world/SurfaceMatter.h`:
 
 ```cpp
-struct SurfaceMaterials { MaterialId turf, subsoil, sand, bedrock, seawater; };
-static SurfaceMaterials SurfaceMaterials::Resolve(const BlockRegistry&);   // по ключам материалов
+struct SurfaceMatter { MatterId turf, subsoil, sand, bedrock, seawater; };
+static SurfaceMatter SurfaceMatter::Resolve(const BlockRegistry&);   // по ключам материи
 ```
 
 Нет ключа: загрузка падает с понятным сообщением (`CatalogError`).
 
 | Было | Стало | Заметки |
 |---|---|---|
-| `Grass` (поверхность) | `soil.turf` (527, дёрн), `Loose`, `digClass 1` | грани `soil.turf_top/side/bottom` |
-| `Dirt` (под травой и как поверхность) | `soil.subsoil` (513) | |
-| `Sand` | `soil.sand` (516) | |
-| `Stone` | порода из геологии; без геологии `rock.bedrock` (130) | `bedrock`: порода-заглушка, `digClass 4`, серый, пустой `modal` |
-| `Water` | `fluid.seawater` (2) | `water` и `seawater` одинаковы |
+| `Grass` (поверхность) | `turf` (дёрн), `Loose`, `digClass 1` | грани `turf_top/side/bottom` |
+| `Dirt` (под травой и как поверхность) | `subsoil` | |
+| `Sand` | `sand` | |
+| `Stone` | порода из геологии; без геологии `bedrock` | `bedrock`: порода-заглушка, `digClass 4`, серый, пустой `modal` |
+| `Water` | `seawater` | `water` и `seawater` одинаковы |
 
-`soil.turf` это «внешний вид поверхности», а `soil.humus` профиль почвы; материал с гранями для травы
-отдельный, физика каталога не ломается.
+`turf` это «внешний вид поверхности», а `humus` профиль почвы; материя с гранями для травы
+отдельная, физика каталога не ломается.
 
 `water` и `seawater` в данных выровнены (одинаковые плотность, цвет, `opacity`, теги), текстуры
-`fluid.water.png` и `fluid.seawater.png` пока совпадают визуально.
+`water.png` и `seawater.png` пока совпадают визуально.
 
 ## 5. Источники ландшафта
 
 `TerrainSource` теперь имеет одну функцию клетки и обязательный реестр:
 
 ```cpp
-virtual BlockState StateAt(GridCell) const = 0;      // {material, shape}; shape = Full для всей геологии
+virtual BlockState StateAt(GridCell) const = 0;      // {matter, shape}; shape = Full для всей геологии
 virtual const BlockRegistry& Registry() const = 0;
 ```
 
@@ -297,8 +301,8 @@ virtual const BlockRegistry& Registry() const = 0;
   геологии, иначе порода клетки стала бы воздухом.
 - `NoiseTerrainSource` и тестовые источники (`LocalGameTests`) берут `BlockRegistry::BuiltIn()`.
   Тест на согласованность: `BuiltIn()` совпадает с файлами по ключам и свойствам.
-- `VoxelWorld::SetBlock(cell, BlockState)` бросает `std::invalid_argument`, если в реестре нет такого
-  материала или формы, и `std::out_of_range` вне сетки; блок можно заменить любым материалом реестра,
+- `VoxelWorld::SetBlock(cell, BlockState)` бросает `std::invalid_argument`, если в реестре нет такой
+  материи или формы, и `std::out_of_range` вне сетки; блок можно заменить любой материей реестра,
   в том числе минералом.
 - Форма `Full` единственная, которую выдают генераторы; другие формы появляются только
   постройкой игрока, поэтому `TerrainSource` их не знает.
@@ -309,14 +313,14 @@ virtual const BlockRegistry& Registry() const = 0;
 
 Два канала по Minecraft, значения 0..15 на каждый блок мира:
 
-Эффективный `opacity` клетки берётся от пары `(material, shape)` (раздел 3.2a): форма,
-пропускающая свет (`passesLight`), пропускает его независимо от материала.
+Эффективный `opacity` клетки берётся от пары `(matter, shape)` (раздел 3.2a): форма,
+пропускающая свет (`passesLight`), пропускает его независимо от материи.
 
 - **Небесный свет** (`sky`): полный (15) на открытом небе, идёт вниз без потерь сквозь блоки с
   `opacity 0` и теряет `opacity` в блоке с большим значением; в стороны и вверх 1 единица за шаг
   плюс `opacity` блока. Так возникает полутень у входа в пещеру и под выступом.
 - **Блочный свет** (`block`) **цветной**: три независимых канала R, G, B по 0..15. Излучают
-  материалы с `emission != [0,0,0]` (магма, светящиеся блоки) и **объекты** (светильники и другое);
+  материи с `emission != [0,0,0]` (магма, светящиеся блоки) и **объекты** (светильники и другое);
   каждый канал на шаге от источника теряет 1 плюс `opacity` блока на пути. Свет двух источников в
   клетке складывается покомпонентным `max`, как в Minecraft для одного канала.
 - Небесный свет скалярный и белый; цвет неба и заката появится множителем `daylight` позже
@@ -395,12 +399,12 @@ struct WorldChunk { ...; std::vector<std::uint16_t> light; };  // sky 4 бита
 
 | Место | Что меняется | Шаг | Оценка |
 |---|---|---|---|
-| `src/blocks/` (новое): `BlockRegistry`, `BlockState`, `ShapeId`, `Tag`, загрузка `built_materials.json` и `shapes.json`; `CMakeLists.txt`, `check_dependencies.py` | реестр материалов и форм, теги, `BuiltIn()` | A | L |
-| `geology/catalog/CatalogTypes.h`, `MaterialLoader.cpp`, `CatalogJson`, `GeologyCatalog.*` | поля свойств в `materials.json` v2 (`tags`, `opacity`, `emission`, ...), дефолты | A | M |
-| `assets/geology/materials.json`, `rocks.json`, **`assets/blocks/built_materials.json`, `assets/blocks/shapes.json`** | `soil.turf`, `rock.bedrock`, выравнивание `water`/`seawater`, форма `Full`, первые светящиеся материалы | A | M |
+| `src/blocks/` (новое): `BlockRegistry`, `BlockState`, `ShapeId`, `Tag`, загрузка `matter.xml` и `shapes.json`; `CMakeLists.txt`, `check_dependencies.py` | реестр материи и форм, теги, `BuiltIn()` | A | L |
+| `matter/` (`MatterLoader.cpp`, `CatalogJson`, `MatterCatalog.*`) | поля свойств в `matter.xml` (`tags`, `opacity`, `emission`, ...), дефолты | A | M |
+| `assets/matter/matter.xml`, **`assets/blocks/shapes.json`** | `turf`, `bedrock`, выравнивание `water`/`seawater`, форма `Full`, первые светящиеся материи | A | M |
 | `world/Block.h` | убрать enum и `type`, добавить `BlockState` | G (B: `StateOf`) | S |
 | `world/TerrainSource.*`, `world/internal/WorldTerrainGen.*` | `StateAt`, реестр | E | S |
-| `world/PlanetTerrainSource.*` | `SurfaceMaterials`, `LayerAt`, `MaterialAt` | E | M |
+| `world/PlanetTerrainSource.*` | `SurfaceMatter`, `LayerAt` | E | M |
 | `world/VoxelWorld.h`, `VoxelWorldTerrain.cpp`, `VoxelWorldChunks.cpp` | `Registry()`, `SetBlock`, чанки без `type`, `light` | C, F, L | M |
 | `world/LightField.*` (новое) | распространение, очереди, границы чанков | L1-L3 | L |
 | `gameplay/work/*` (5 файлов), `StartingCells.cpp` | через реестр | C, F | S |
@@ -410,10 +414,10 @@ struct WorldChunk { ...; std::vector<std::uint16_t> light; };  // sky 4 бита
 | `presentation/rendering/terrain/internal/TerrainMeshGeometry.*` | цвет и грани из реестра, без `switch`; свет в вершину | D, L2 | M |
 | `presentation/rendering/terrain/BlockTextureAtlas.*` | поиск по `<key>_<грань>` | D | S |
 | `assets/shaders/world_lighting.fs/.vs` | свет из вершины, `daylight`, ambient floor | L2 | M |
-| `tools/terrain_snapshot/BlockDiagram.cpp` | цвет из реестра, `SurfaceMaterials` | D, E | M |
+| `tools/terrain_snapshot/BlockDiagram.cpp` | цвет из реестра, `SurfaceMatter` | D, E | M |
 | `tools/GenerateBlockTextures.py`, `assets/textures/blocks/block.*.png` | текстуры по ключам реестра, удалить `block.*` | D, G | M |
-| `tests/WorldTests.cpp` (~35 мест), `tests/LocalGameTests.cpp` (4) | переписать на материалы | C-G | M |
-| новые тесты: каталог материалов, реестр и теги, `shapes.json`, комбинации (материал, форма), согласованность `BuiltIn()`, свет (6.5), поведение воды | | A, B, L | L |
+| `tests/WorldTests.cpp` (~35 мест), `tests/LocalGameTests.cpp` (4) | переписать на материю | C-G | M |
+| новые тесты: каталог материи, реестр и теги, `shapes.json`, комбинации (материя, форма), согласованность `BuiltIn()`, свет (6.5), поведение воды | | A, B, L | L |
 | `docs/03a_GEOLOGY_CATALOGS.md`, `docs/ARCHITECTURE.md` | реестр, слой `blocks`, свет | G | S |
 
 Порядок величины: блоки и реестр 5-6 рабочих дней, свет 4-5 дней; их можно вести разными агентами.
@@ -426,17 +430,17 @@ struct WorldChunk { ...; std::vector<std::uint16_t> light; };  // sky 4 бита
 ### Линия блоков (сделана)
 
 Шаги B-G выполнены одним заходом, без переходного `StateOf(BlockType, MaterialId)`: мир сразу
-переведён на `BlockState`, `BlockType` удалён. Заодно каталог слит в один `materials.json` (минералы,
-породы, строительные материалы и прочее), а модуль `materials` вынесен ниже `geology` и `blocks`.
+переведён на `BlockState`, `BlockType` удалён. Заодно каталог слит в один `matter.xml` (минералы,
+породы, строительные материалы и прочее), а модуль `matter` вынесен ниже `geology` и `blocks`.
 
 | Шаг | Что | Статус |
 |---|---|---|
-| **A. Реестр и данные** | `BlockRegistry` (материалы и формы), теги, `shapes.json` (`Full`), `soil.turf`, `bedrock`, `water = seawater` по свойствам; `BuiltIn()`; тесты | сделано |
+| **A. Реестр и данные** | `BlockRegistry` (материи и формы), теги, `shapes.json` (`Full`), `turf`, `bedrock`, `water = seawater` по свойствам; `BuiltIn()`; тесты | сделано |
 | **B. Правила** | `VoxelWorld::Registry()` | сделано |
 | **C. Потребители** | `work/*`, `StartingCells`, `WorldInteractionController`, `TerrainMeshBuilder` на реестре | сделано |
 | **D. Внешний вид** | цвет и грани из реестра, текстуры по ключам, `BlockDiagram`; удалены `switch` по цвету | сделано |
 | **E. Источники** | `PlanetTerrainSource` и `NoiseTerrainSource` выдают `BlockState` (`StateAt`) | сделано |
-| **F. Запись блока** | `SetBlock(cell, BlockState)`; `WorkExecution` ставит `kAirMaterial` | сделано |
+| **F. Запись блока** | `SetBlock(cell, BlockState)`; `WorkExecution` ставит `kAirMatter` | сделано |
 | **G. Уборка** | удалены `BlockType`, `Block::type`, `SetBlockType`, `block.*`, отдельные `Rock`/`Mineral` | сделано |
 
 ### Линия света (после B; независима от C-G)
@@ -454,7 +458,7 @@ L1 можно начинать сразу после B (нужен только 
 
 ## 9. Как проверять
 
-- Перед E зафиксировать тестом «эффективный материал каждого блока» для нескольких планет и позиций;
+- Перед E зафиксировать тестом «эффективная материя каждого блока» для нескольких планет и позиций;
   B-D его не меняют, E меняет только `Stone` без геологии на `bedrock`.
 - Тест воды: путь и копание по воде работают как раньше (C-F).
 - Свет: тесты 6.5; визуальная проверка на сценах «выступ», «вход в пещеру», «шахта» до и после L2.
@@ -482,9 +486,9 @@ L1 можно начинать сразу после B (нужен только 
 8. **Объекты-светильники.** Свет объекта привязан к клетке (дискретно), как блок, или плавно?
    Рекомендация: к клетке, плавного нет.
 9. **Сохранения.** В коде формата сохранения мира нет (проверить перед G). Клетка в сохранении это
-   пара `numericId` материала и формы, не ключи.
+   пара `MatterId` и формы, не ключи.
 10. **Композитные клетки.** Когда появятся стены и полы: отдельные формы вроде `FloorAndWall` или
     постройки объектами поверх клетки (`EntityStore`)? Решается задачей про формы; формат клетки
     не меняется.
 11. **Воздух и форма.** Для воздуха форма игнорируется (хранится `Full`), клетка пуста по классу
-    материала. Альтернатива, отдельная форма `Empty`, отвергнута как лишняя.
+    материи. Альтернатива, отдельная форма `Empty`, отвергнута как лишняя.

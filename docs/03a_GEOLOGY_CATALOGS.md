@@ -1,6 +1,6 @@
 # Геология: справочные каталоги
 
-Стартовые списки для [03_GEOLOGY.md](./03_GEOLOGY.md). После создания JSON-данных в `assets/geology/` источником истины становятся они, а этот файл остаётся описанием замысла.
+Стартовые списки для [03_GEOLOGY.md](./03_GEOLOGY.md). Материя уже живёт в `assets/matter/matter.xml` (ключи без префиксов, модуль `matter`, [06_BLOCKS](./06_BLOCKS.md)), и он источник истины; `assets/geology/` хранит JSON геологических каталогов (`province_columns.json`). Этот файл остаётся описанием замысла.
 
 **Про числа.** Плотности, твёрдости и размеры здесь ориентировочные («типичное значение»), они нужны, чтобы исполнитель не начинал с пустого места. Перед записью в данные каждое значение проверить по источнику (раздел 19 основного документа) и поставить `source`. Если значение остаётся игровым, `provenance: gameplay`.
 
@@ -12,150 +12,150 @@
 
 | id | Порода | ρ кг/м³ | Класс копания | Примечание |
 |---|---|---|---|---|
-| rock.granite | гранит | 2650 | 4 | кислая; кварц, калиевый полевой шпат, плагиоклаз, слюды; штоки и батолиты |
-| rock.granodiorite | гранодиорит | 2700 | 4 | дуги, порфировые штоки |
-| rock.tonalite | тоналит | 2750 | 4 | основа ТТГ-гнейсов кратонов |
-| rock.syenite | сиенит | 2700 | 4 | щелочной |
-| rock.nepheline_syenite | нефелиновый сиенит | 2650 | 4 | щелочные комплексы, Nb, РЗЭ |
-| rock.monzonite | монцонит | 2750 | 4 | |
-| rock.diorite | диорит | 2850 | 4 | |
-| rock.gabbro | габбро | 3000 | 5 | основные интрузии |
-| rock.norite | норит | 3000 | 5 | расслоённые комплексы |
-| rock.anorthosite | анортозит | 2750 | 4 | массивы, ильменит |
-| rock.pyroxenite | пироксенит | 3250 | 5 | |
-| rock.peridotite | перидотит | 3300 | 5 | ультраосновная; мантия, офиолиты |
-| rock.dunite | дунит | 3300 | 5 | хромит |
-| rock.pegmatite | пегматит | 2650 | 3 | тела с зональностью, Li, Be, Ta, Nb |
-| rock.aplite | аплит | 2620 | 4 | жилы |
-| rock.dolerite | долерит (диабаз) | 2900 | 5 | дайки и силлы |
-| rock.granite_porphyry | гранит-порфир | 2650 | 4 | порфировые системы |
-| rock.carbonatite | карбонатит | 2900 | 3 | Nb, РЗЭ, фосфор |
-| rock.kimberlite | кимберлит | 2800 | 3 | трубки; выветривается в «жёлтую» и «голубую землю» |
-| rock.lamproite | лампроит | 2800 | 3 | алмазоносный вариант |
+| granite | гранит | 2650 | 4 | кислая; кварц, калиевый полевой шпат, плагиоклаз, слюды; штоки и батолиты |
+| granodiorite | гранодиорит | 2700 | 4 | дуги, порфировые штоки |
+| tonalite | тоналит | 2750 | 4 | основа ТТГ-гнейсов кратонов |
+| syenite | сиенит | 2700 | 4 | щелочной |
+| nepheline_syenite | нефелиновый сиенит | 2650 | 4 | щелочные комплексы, Nb, РЗЭ |
+| monzonite | монцонит | 2750 | 4 | |
+| diorite | диорит | 2850 | 4 | |
+| gabbro | габбро | 3000 | 5 | основные интрузии |
+| norite | норит | 3000 | 5 | расслоённые комплексы |
+| anorthosite | анортозит | 2750 | 4 | массивы, ильменит |
+| pyroxenite | пироксенит | 3250 | 5 | |
+| peridotite | перидотит | 3300 | 5 | ультраосновная; мантия, офиолиты |
+| dunite | дунит | 3300 | 5 | хромит |
+| pegmatite | пегматит | 2650 | 3 | тела с зональностью, Li, Be, Ta, Nb |
+| aplite | аплит | 2620 | 4 | жилы |
+| dolerite | долерит (диабаз) | 2900 | 5 | дайки и силлы |
+| granite_porphyry | гранит-порфир | 2650 | 4 | порфировые системы |
+| carbonatite | карбонатит | 2900 | 3 | Nb, РЗЭ, фосфор |
+| kimberlite | кимберлит | 2800 | 3 | трубки; выветривается в «жёлтую» и «голубую землю» |
+| lamproite | лампроит | 2800 | 3 | алмазоносный вариант |
 
 ### 1.2. Магматические эффузивные и вулканокластические
 
 | id | Порода | ρ кг/м³ | Класс | Примечание |
 |---|---|---|---|---|
-| rock.basalt | базальт | 2900 | 5 | покровы, столбчатая отдельность |
-| rock.pillow_basalt | подушечный базальт | 2800 | 4 | океаническая кора, VMS |
-| rock.andesite | андезит | 2650 | 4 | дуги |
-| rock.dacite | дацит | 2600 | 4 | |
-| rock.rhyolite | риолит | 2500 | 4 | кальдеры, эпитермальные системы |
-| rock.trachyte | трахит | 2550 | 4 | |
-| rock.phonolite | фонолит | 2550 | 4 | |
-| rock.komatiite | коматиит | 3000 | 5 | архейские зеленокаменные пояса, Ni-Cu |
-| rock.picrite | пикрит | 3000 | 5 | |
-| rock.obsidian | обсидиан | 2350 | 4 | вулканическое стекло |
-| rock.pumice | пумис | 700 | 2 | насыпная плотность |
-| rock.scoria | шлак | 1500 | 2 | |
-| rock.tuff | туф | 2000 | 2 | пепловый, порода слабая |
-| rock.ignimbrite | игнимбрит (спёкшийся туф) | 2300 | 3 | |
-| rock.volcanic_breccia | вулканическая брекчия | 2300 | 3 | |
-| rock.hyaloclastite | гиалокластит | 2200 | 3 | |
+| basalt | базальт | 2900 | 5 | покровы, столбчатая отдельность |
+| pillow_basalt | подушечный базальт | 2800 | 4 | океаническая кора, VMS |
+| andesite | андезит | 2650 | 4 | дуги |
+| dacite | дацит | 2600 | 4 | |
+| rhyolite | риолит | 2500 | 4 | кальдеры, эпитермальные системы |
+| trachyte | трахит | 2550 | 4 | |
+| phonolite | фонолит | 2550 | 4 | |
+| komatiite | коматиит | 3000 | 5 | архейские зеленокаменные пояса, Ni-Cu |
+| picrite | пикрит | 3000 | 5 | |
+| obsidian | обсидиан | 2350 | 4 | вулканическое стекло |
+| pumice | пумис | 700 | 2 | насыпная плотность |
+| scoria | шлак | 1500 | 2 | |
+| tuff | туф | 2000 | 2 | пепловый, порода слабая |
+| ignimbrite | игнимбрит (спёкшийся туф) | 2300 | 3 | |
+| volcanic_breccia | вулканическая брекчия | 2300 | 3 | |
+| hyaloclastite | гиалокластит | 2200 | 3 | |
 
 ### 1.3. Осадочные обломочные
 
 | id | Порода | ρ кг/м³ | Класс | Примечание |
 |---|---|---|---|---|
-| rock.conglomerate | конгломерат | 2500 | 3 | палеороссыпи Au, U |
-| rock.sedimentary_breccia | осадочная брекчия | 2450 | 3 | |
-| rock.quartz_sandstone | кварцевый песчаник | 2400 | 3 | пористый коллектор, водоносный |
-| rock.arkose | аркоз | 2450 | 3 | |
-| rock.greywacke | граувакка | 2650 | 4 | флиш, орогенное золото |
-| rock.siltstone | алевролит | 2500 | 3 | |
-| rock.mudstone | аргиллит | 2400 | 2 | |
-| rock.shale | сланцевая глина (шейл) | 2450 | 2 | нефтематеринская порода, водоупор |
-| rock.claystone | глинистая порода | 2300 | 2 | |
-| rock.marl | мергель | 2350 | 2 | |
-| rock.tillite | тиллит | 2400 | 3 | ледниковые отложения |
-| rock.red_beds | красноцветы | 2400 | 3 | песчаники и аргиллиты, окислительная среда |
+| conglomerate | конгломерат | 2500 | 3 | палеороссыпи Au, U |
+| sedimentary_breccia | осадочная брекчия | 2450 | 3 | |
+| quartz_sandstone | кварцевый песчаник | 2400 | 3 | пористый коллектор, водоносный |
+| arkose | аркоз | 2450 | 3 | |
+| greywacke | граувакка | 2650 | 4 | флиш, орогенное золото |
+| siltstone | алевролит | 2500 | 3 | |
+| mudstone | аргиллит | 2400 | 2 | |
+| shale | сланцевая глина (шейл) | 2450 | 2 | нефтематеринская порода, водоупор |
+| claystone | глинистая порода | 2300 | 2 | |
+| marl | мергель | 2350 | 2 | |
+| tillite | тиллит | 2400 | 3 | ледниковые отложения |
+| red_beds | красноцветы | 2400 | 3 | песчаники и аргиллиты, окислительная среда |
 
 ### 1.4. Осадочные химические и биогенные
 
 | id | Порода | ρ кг/м³ | Класс | Примечание |
 |---|---|---|---|---|
-| rock.limestone | известняк | 2500 | 3 | карст, MVT |
-| rock.oolitic_limestone | оолитовый известняк | 2400 | 3 | |
-| rock.chalk | мел | 1900 | 2 | планктонный известняк |
-| rock.dolomite | доломит | 2750 | 3 | |
-| rock.travertine | травертин | 2400 | 3 | у горячих источников |
-| rock.chert | кремень (кремнистая порода) | 2600 | 5 | |
-| rock.rock_salt | каменная соль | 2160 | 2 | диапиры, пластичная |
-| rock.sylvinite | сильвинит | 2000 | 2 | калийная соль |
-| rock.carnallitite | карналлитит | 1600 | 1 | |
-| rock.gypsum_rock | гипс (порода) | 2300 | 2 | |
-| rock.anhydrite_rock | ангидрит (порода) | 2950 | 3 | |
-| rock.phosphorite | фосфорит | 2700 | 3 | |
-| rock.biff | полосчатая железистая формация | 3300 | 5 | BIF; ограничение по эпохе |
-| rock.oolitic_ironstone | оолитовый железняк | 3000 | 3 | |
-| rock.manganese_rock | марганцевая порода | 3500 | 3 | |
-| rock.peat | торф (материал) | 800 | 1 | см. рыхлые |
-| rock.lignite | лигнит | 1250 | 2 | уголь |
-| rock.subbituminous_coal | суббитуминозный уголь | 1300 | 2 | |
-| rock.bituminous_coal | каменный уголь | 1350 | 2 | |
-| rock.anthracite | антрацит | 1500 | 3 | |
-| rock.oil_shale | горючий сланец | 2000 | 2 | |
-| rock.diatomite | диатомит | 1100 | 2 | |
-| rock.trona_rock | трона (порода) | 2100 | 2 | сода |
-| rock.bauxite | боксит | 2300 | 3 | латерит на глинозёмистых породах |
-| rock.laterite_crust | железистая кора (латерит) | 2800 | 4 | |
-| rock.calcrete | кальклет | 2200 | 3 | аридные коры |
-| rock.silcrete | силькрет | 2400 | 4 | |
+| limestone | известняк | 2500 | 3 | карст, MVT |
+| oolitic_limestone | оолитовый известняк | 2400 | 3 | |
+| chalk | мел | 1900 | 2 | планктонный известняк |
+| dolomite | доломит | 2750 | 3 | |
+| travertine | травертин | 2400 | 3 | у горячих источников |
+| chert | кремень (кремнистая порода) | 2600 | 5 | |
+| rock_salt | каменная соль | 2160 | 2 | диапиры, пластичная |
+| sylvinite | сильвинит | 2000 | 2 | калийная соль |
+| carnallitite | карналлитит | 1600 | 1 | |
+| gypsum_rock | гипс (порода) | 2300 | 2 | |
+| anhydrite_rock | ангидрит (порода) | 2950 | 3 | |
+| phosphorite | фосфорит | 2700 | 3 | |
+| biff | полосчатая железистая формация | 3300 | 5 | BIF; ограничение по эпохе |
+| oolitic_ironstone | оолитовый железняк | 3000 | 3 | |
+| manganese_rock | марганцевая порода | 3500 | 3 | |
+| peat | торф (материя) | 800 | 1 | см. рыхлые |
+| lignite | лигнит | 1250 | 2 | уголь |
+| subbituminous_coal | суббитуминозный уголь | 1300 | 2 | |
+| bituminous_coal | каменный уголь | 1350 | 2 | |
+| anthracite | антрацит | 1500 | 3 | |
+| oil_shale | горючий сланец | 2000 | 2 | |
+| diatomite | диатомит | 1100 | 2 | |
+| trona_rock | трона (порода) | 2100 | 2 | сода |
+| bauxite | боксит | 2300 | 3 | латерит на глинозёмистых породах |
+| laterite_crust | железистая кора (латерит) | 2800 | 4 | |
+| calcrete | кальклет | 2200 | 3 | аридные коры |
+| silcrete | силькрет | 2400 | 4 | |
 
 ### 1.5. Метаморфические
 
 | id | Порода | ρ кг/м³ | Класс | Примечание |
 |---|---|---|---|---|
-| rock.slate | кровельный сланец | 2750 | 3 | |
-| rock.phyllite | филлит | 2750 | 3 | |
-| rock.mica_schist | слюдяной сланец | 2800 | 3 | |
-| rock.chlorite_schist | хлоритовый сланец | 2900 | 3 | |
-| rock.garnet_schist | гранатовый сланец | 2950 | 4 | |
-| rock.graphite_schist | графитовый сланец | 2500 | 2 | графит |
-| rock.gneiss | гнейс | 2750 | 4 | |
-| rock.orthogneiss | ортогнейс | 2700 | 4 | |
-| rock.migmatite | мигматит | 2700 | 4 | |
-| rock.amphibolite | амфиболит | 3000 | 4 | |
-| rock.granulite | гранулит | 2900 | 4 | |
-| rock.eclogite | эклогит | 3400 | 5 | |
-| rock.greenschist | зелёный сланец | 2900 | 3 | |
-| rock.blueschist | голубой сланец | 3000 | 4 | зоны субдукции |
-| rock.quartzite | кварцит | 2650 | 5 | |
-| rock.marble | мрамор | 2700 | 3 | строительный и декоративный |
-| rock.hornfels | роговик | 2750 | 5 | контактовый |
-| rock.skarn | скарн | 3300 | 4 | гранат-пироксеновый; контакты интрузий с карбонатами |
-| rock.calc_silicate | известково-силикатная порода | 2900 | 4 | |
-| rock.serpentinite | серпентинит | 2600 | 3 | |
-| rock.talc_schist | тальковый сланец (стеатит) | 2800 | 2 | |
-| rock.mylonite | милонит | 2700 | 4 | зоны сдвига |
-| rock.fault_breccia | тектоническая брекчия | 2400 | 2 | разломы, хозяин руд |
-| rock.fault_gouge | глинка трения | 2000 | 1 | |
+| slate | кровельный сланец | 2750 | 3 | |
+| phyllite | филлит | 2750 | 3 | |
+| mica_schist | слюдяной сланец | 2800 | 3 | |
+| chlorite_schist | хлоритовый сланец | 2900 | 3 | |
+| garnet_schist | гранатовый сланец | 2950 | 4 | |
+| graphite_schist | графитовый сланец | 2500 | 2 | графит |
+| gneiss | гнейс | 2750 | 4 | |
+| orthogneiss | ортогнейс | 2700 | 4 | |
+| migmatite | мигматит | 2700 | 4 | |
+| amphibolite | амфиболит | 3000 | 4 | |
+| granulite | гранулит | 2900 | 4 | |
+| eclogite | эклогит | 3400 | 5 | |
+| greenschist | зелёный сланец | 2900 | 3 | |
+| blueschist | голубой сланец | 3000 | 4 | зоны субдукции |
+| quartzite | кварцит | 2650 | 5 | |
+| marble | мрамор | 2700 | 3 | строительный и декоративный |
+| hornfels | роговик | 2750 | 5 | контактовый |
+| skarn | скарн | 3300 | 4 | гранат-пироксеновый; контакты интрузий с карбонатами |
+| calc_silicate | известково-силикатная порода | 2900 | 4 | |
+| serpentinite | серпентинит | 2600 | 3 | |
+| talc_schist | тальковый сланец (стеатит) | 2800 | 2 | |
+| mylonite | милонит | 2700 | 4 | зоны сдвига |
+| fault_breccia | тектоническая брекчия | 2400 | 2 | разломы, хозяин руд |
+| fault_gouge | глинка трения | 2000 | 1 | |
 
 ### 1.6. Рыхлые отложения и грунты
 
-| id | Материал | ρ кг/м³ (насыпная) | Класс | Примечание |
+| id | Материя | ρ кг/м³ (насыпная) | Класс | Примечание |
 |---|---|---|---|---|
-| soil.humus | гумусовый горизонт (A) | 1300 | 1 | почвы по климату |
-| soil.subsoil | подпочва (B) | 1600 | 1 | |
-| soil.clay | глина | 1800 | 1 | |
-| soil.silt | ил (алеврит) | 1700 | 1 | |
-| soil.sand | песок | 1650 | 1 | |
-| soil.gravel | гравий | 1800 | 1 | россыпи |
-| soil.peat | торф | 800 | 1 | |
-| soil.loess | лёсс | 1500 | 1 | |
-| soil.till | ледниковый тилл | 2000 | 2 | |
-| soil.saprolite | сапролит | 1800 | 1 | основа коры выветривания |
-| soil.laterite | латерит (мягкий) | 1900 | 2 | |
-| soil.alluvium | аллювий | 1800 | 1 | русла и россыпи |
-| soil.scree | осыпь | 1700 | 2 | |
-| ice.glacier | ледник | 920 | 2 | |
-| ice.permafrost | мерзлота (грунт с льдом) | 1900 | 3 | |
-| fluid.water | вода | 1000 | | |
-| fluid.seawater | морская вода | 1025 | | |
-| fluid.brine | рассол | 1200 | | литий, калий, бор |
-| fluid.oil | нефть | 850 | | залежи, не блоки |
-| fluid.magma | магма | 2700 | | зарезервировано |
+| humus | гумусовый горизонт (A) | 1300 | 1 | почвы по климату |
+| subsoil | подпочва (B) | 1600 | 1 | |
+| clay | глина | 1800 | 1 | |
+| silt | ил (алеврит) | 1700 | 1 | |
+| sand | песок | 1650 | 1 | |
+| gravel | гравий | 1800 | 1 | россыпи |
+| peat | торф | 800 | 1 | |
+| loess | лёсс | 1500 | 1 | |
+| till | ледниковый тилл | 2000 | 2 | |
+| saprolite | сапролит | 1800 | 1 | основа коры выветривания |
+| laterite | латерит (мягкий) | 1900 | 2 | |
+| alluvium | аллювий | 1800 | 1 | русла и россыпи |
+| scree | осыпь | 1700 | 2 | |
+| glacier | ледник | 920 | 2 | |
+| permafrost | мерзлота (грунт с льдом) | 1900 | 3 | |
+| water | вода | 1000 | | |
+| seawater | морская вода | 1025 | | |
+| brine | рассол | 1200 | | литий, калий, бор |
+| oil | нефть | 850 | | залежи, не блоки |
+| magma | магма | 2700 | | зарезервировано |
 
 ## 2. Минералы
 
@@ -165,198 +165,198 @@
 
 | id | Формула | ρ | H |
 |---|---|---|---|
-| mineral.quartz | SiO₂ | 2.65 | 7 |
-| mineral.chalcedony | SiO₂ (микрокристаллический) | 2.6 | 6.5 |
-| mineral.opal | SiO₂·nH₂O | 2.1 | 5.5 |
-| mineral.orthoclase | KAlSi₃O₈ | 2.56 | 6 |
-| mineral.microcline | KAlSi₃O₈ | 2.56 | 6 |
-| mineral.albite | NaAlSi₃O₈ | 2.62 | 6 |
-| mineral.anorthite | CaAl₂Si₂O₈ | 2.76 | 6 |
-| mineral.plagioclase | (Na,Ca)(Si,Al)₄O₈ (твёрдый раствор) | 2.68 | 6 |
-| mineral.nepheline | (Na,K)AlSiO₄ | 2.6 | 5.5 |
-| mineral.leucite | KAlSi₂O₆ | 2.5 | 5.5 |
-| mineral.muscovite | KAl₂(AlSi₃O₁₀)(OH)₂ | 2.8 | 2.5 |
-| mineral.biotite | K(Mg,Fe)₃(AlSi₃O₁₀)(OH)₂ | 3.0 | 2.5 |
-| mineral.phlogopite | KMg₃(AlSi₃O₁₀)(OH)₂ | 2.8 | 2.5 |
-| mineral.lepidolite | K(Li,Al)₃(Al,Si)₄O₁₀(F,OH)₂ | 2.9 | 3 |
-| mineral.zinnwaldite | KLiFeAl(AlSi₃)O₁₀(F,OH)₂ | 3.0 | 3 |
-| mineral.chlorite | (Mg,Fe)₅Al(AlSi₃O₁₀)(OH)₈ | 2.8 | 2.5 |
-| mineral.hornblende | Ca₂(Mg,Fe)₄Al(Si₇Al)O₂₂(OH)₂ | 3.2 | 5.5 |
-| mineral.tremolite | Ca₂Mg₅Si₈O₂₂(OH)₂ | 3.0 | 5.5 |
-| mineral.actinolite | Ca₂(Mg,Fe)₅Si₈O₂₂(OH)₂ | 3.1 | 5.5 |
-| mineral.augite | (Ca,Mg,Fe)₂(Si,Al)₂O₆ | 3.4 | 5.5 |
-| mineral.diopside | CaMgSi₂O₆ | 3.3 | 6 |
-| mineral.enstatite | Mg₂Si₂O₆ | 3.2 | 5.5 |
-| mineral.jadeite | NaAlSi₂O₆ | 3.3 | 6.5 |
-| mineral.spodumene | LiAlSi₂O₆ | 3.15 | 6.5 |
-| mineral.petalite | LiAlSi₄O₁₀ | 2.4 | 6.5 |
-| mineral.olivine | (Mg,Fe)₂SiO₄ | 3.3 | 6.5 |
-| mineral.almandine | Fe₃Al₂Si₃O₁₂ | 4.3 | 7 |
-| mineral.pyrope | Mg₃Al₂Si₃O₁₂ | 3.6 | 7 |
-| mineral.grossular | Ca₃Al₂Si₃O₁₂ | 3.6 | 7 |
-| mineral.andradite | Ca₃Fe₂Si₃O₁₂ | 3.8 | 7 |
-| mineral.epidote | Ca₂(Al,Fe)₃(SiO₄)₃(OH) | 3.4 | 6.5 |
-| mineral.kyanite | Al₂SiO₅ | 3.6 | 6 |
-| mineral.andalusite | Al₂SiO₅ | 3.15 | 7.5 |
-| mineral.sillimanite | Al₂SiO₅ | 3.25 | 7 |
-| mineral.staurolite | Fe₂Al₉Si₄O₂₃(OH) | 3.7 | 7 |
-| mineral.cordierite | Mg₂Al₄Si₅O₁₈ | 2.6 | 7 |
-| mineral.tourmaline | NaFe₃Al₆(BO₃)₃Si₆O₁₈(OH)₄ | 3.2 | 7 |
-| mineral.beryl | Be₃Al₂Si₆O₁₈ | 2.7 | 7.5 |
-| mineral.topaz | Al₂SiO₄(F,OH)₂ | 3.5 | 8 |
-| mineral.zircon | ZrSiO₄ | 4.65 | 7.5 |
-| mineral.titanite | CaTiSiO₅ | 3.5 | 5.5 |
-| mineral.wollastonite | CaSiO₃ | 2.9 | 4.5 |
-| mineral.talc | Mg₃Si₄O₁₀(OH)₂ | 2.75 | 1 |
-| mineral.serpentine | Mg₃Si₂O₅(OH)₄ | 2.55 | 3.5 |
-| mineral.chrysotile | Mg₃Si₂O₅(OH)₄ (волокнистый) | 2.55 | 3 |
-| mineral.kaolinite | Al₂Si₂O₅(OH)₄ | 2.6 | 2 |
-| mineral.illite | K(Al,Mg,Fe)₂(Si,Al)₄O₁₀(OH)₂ | 2.75 | 2 |
-| mineral.smectite | (Na,Ca)₀.₃₃(Al,Mg)₂Si₄O₁₀(OH)₂·nH₂O | 2.3 | 1.5 |
-| mineral.pyrophyllite | Al₂Si₄O₁₀(OH)₂ | 2.8 | 1.5 |
-| mineral.zeolite | (Na,Ca)ₓ(AlₓSiᵧ)O₂(x+y)·nH₂O (группа) | 2.2 | 4 |
-| mineral.glauconite | (K,Na)(Fe,Al,Mg)₂(Si,Al)₄O₁₀(OH)₂ | 2.7 | 2 |
-| mineral.chrysocolla | (Cu,Al)₂H₂Si₂O₅(OH)₄·nH₂O | 2.2 | 3 |
-| mineral.garnierite | (Ni,Mg)₃Si₂O₅(OH)₄ | 2.5 | 3 |
-| mineral.willemite | Zn₂SiO₄ | 4.0 | 5.5 |
-| mineral.hemimorphite | Zn₄Si₂O₇(OH)₂·H₂O | 3.4 | 4.5 |
+| quartz | SiO₂ | 2.65 | 7 |
+| chalcedony | SiO₂ (микрокристаллический) | 2.6 | 6.5 |
+| opal | SiO₂·nH₂O | 2.1 | 5.5 |
+| orthoclase | KAlSi₃O₈ | 2.56 | 6 |
+| microcline | KAlSi₃O₈ | 2.56 | 6 |
+| albite | NaAlSi₃O₈ | 2.62 | 6 |
+| anorthite | CaAl₂Si₂O₈ | 2.76 | 6 |
+| plagioclase | (Na,Ca)(Si,Al)₄O₈ (твёрдый раствор) | 2.68 | 6 |
+| nepheline | (Na,K)AlSiO₄ | 2.6 | 5.5 |
+| leucite | KAlSi₂O₆ | 2.5 | 5.5 |
+| muscovite | KAl₂(AlSi₃O₁₀)(OH)₂ | 2.8 | 2.5 |
+| biotite | K(Mg,Fe)₃(AlSi₃O₁₀)(OH)₂ | 3.0 | 2.5 |
+| phlogopite | KMg₃(AlSi₃O₁₀)(OH)₂ | 2.8 | 2.5 |
+| lepidolite | K(Li,Al)₃(Al,Si)₄O₁₀(F,OH)₂ | 2.9 | 3 |
+| zinnwaldite | KLiFeAl(AlSi₃)O₁₀(F,OH)₂ | 3.0 | 3 |
+| chlorite | (Mg,Fe)₅Al(AlSi₃O₁₀)(OH)₈ | 2.8 | 2.5 |
+| hornblende | Ca₂(Mg,Fe)₄Al(Si₇Al)O₂₂(OH)₂ | 3.2 | 5.5 |
+| tremolite | Ca₂Mg₅Si₈O₂₂(OH)₂ | 3.0 | 5.5 |
+| actinolite | Ca₂(Mg,Fe)₅Si₈O₂₂(OH)₂ | 3.1 | 5.5 |
+| augite | (Ca,Mg,Fe)₂(Si,Al)₂O₆ | 3.4 | 5.5 |
+| diopside | CaMgSi₂O₆ | 3.3 | 6 |
+| enstatite | Mg₂Si₂O₆ | 3.2 | 5.5 |
+| jadeite | NaAlSi₂O₆ | 3.3 | 6.5 |
+| spodumene | LiAlSi₂O₆ | 3.15 | 6.5 |
+| petalite | LiAlSi₄O₁₀ | 2.4 | 6.5 |
+| olivine | (Mg,Fe)₂SiO₄ | 3.3 | 6.5 |
+| almandine | Fe₃Al₂Si₃O₁₂ | 4.3 | 7 |
+| pyrope | Mg₃Al₂Si₃O₁₂ | 3.6 | 7 |
+| grossular | Ca₃Al₂Si₃O₁₂ | 3.6 | 7 |
+| andradite | Ca₃Fe₂Si₃O₁₂ | 3.8 | 7 |
+| epidote | Ca₂(Al,Fe)₃(SiO₄)₃(OH) | 3.4 | 6.5 |
+| kyanite | Al₂SiO₅ | 3.6 | 6 |
+| andalusite | Al₂SiO₅ | 3.15 | 7.5 |
+| sillimanite | Al₂SiO₅ | 3.25 | 7 |
+| staurolite | Fe₂Al₉Si₄O₂₃(OH) | 3.7 | 7 |
+| cordierite | Mg₂Al₄Si₅O₁₈ | 2.6 | 7 |
+| tourmaline | NaFe₃Al₆(BO₃)₃Si₆O₁₈(OH)₄ | 3.2 | 7 |
+| beryl | Be₃Al₂Si₆O₁₈ | 2.7 | 7.5 |
+| topaz | Al₂SiO₄(F,OH)₂ | 3.5 | 8 |
+| zircon | ZrSiO₄ | 4.65 | 7.5 |
+| titanite | CaTiSiO₅ | 3.5 | 5.5 |
+| wollastonite | CaSiO₃ | 2.9 | 4.5 |
+| talc | Mg₃Si₄O₁₀(OH)₂ | 2.75 | 1 |
+| serpentine | Mg₃Si₂O₅(OH)₄ | 2.55 | 3.5 |
+| chrysotile | Mg₃Si₂O₅(OH)₄ (волокнистый) | 2.55 | 3 |
+| kaolinite | Al₂Si₂O₅(OH)₄ | 2.6 | 2 |
+| illite | K(Al,Mg,Fe)₂(Si,Al)₄O₁₀(OH)₂ | 2.75 | 2 |
+| smectite | (Na,Ca)₀.₃₃(Al,Mg)₂Si₄O₁₀(OH)₂·nH₂O | 2.3 | 1.5 |
+| pyrophyllite | Al₂Si₄O₁₀(OH)₂ | 2.8 | 1.5 |
+| zeolite | (Na,Ca)ₓ(AlₓSiᵧ)O₂(x+y)·nH₂O (группа) | 2.2 | 4 |
+| glauconite | (K,Na)(Fe,Al,Mg)₂(Si,Al)₄O₁₀(OH)₂ | 2.7 | 2 |
+| chrysocolla | (Cu,Al)₂H₂Si₂O₅(OH)₄·nH₂O | 2.2 | 3 |
+| garnierite | (Ni,Mg)₃Si₂O₅(OH)₄ | 2.5 | 3 |
+| willemite | Zn₂SiO₄ | 4.0 | 5.5 |
+| hemimorphite | Zn₄Si₂O₇(OH)₂·H₂O | 3.4 | 4.5 |
 
 ### 2.2. Оксиды и гидроксиды
 
 | id | Формула | ρ | H |
 |---|---|---|---|
-| mineral.hematite | Fe₂O₃ | 5.26 | 6 |
-| mineral.magnetite | Fe₃O₄ | 5.18 | 6 |
-| mineral.goethite | FeO(OH) | 4.3 | 5 |
-| mineral.limonite | FeO(OH)·nH₂O (смесь) | 3.8 | 4.5 |
-| mineral.ilmenite | FeTiO₃ | 4.7 | 5.5 |
-| mineral.rutile | TiO₂ | 4.25 | 6 |
-| mineral.chromite | FeCr₂O₄ | 4.6 | 5.5 |
-| mineral.spinel | MgAl₂O₄ | 3.6 | 8 |
-| mineral.corundum | Al₂O₃ | 4.0 | 9 |
-| mineral.cassiterite | SnO₂ | 6.95 | 6.5 |
-| mineral.uraninite | UO₂ | 10.0 | 5.5 |
-| mineral.pitchblende | UO₂ (колломорфный) | 7.5 | 5 |
-| mineral.coffinite | U(SiO₄)₁₋ₓ(OH)₄ₓ | 5.1 | 5 |
-| mineral.pyrolusite | MnO₂ | 5.0 | 6 |
-| mineral.manganite | MnO(OH) | 4.3 | 4 |
-| mineral.psilomelane | BaMn₉O₁₈·2H₂O (романешит) | 4.4 | 5.5 |
-| mineral.gibbsite | Al(OH)₃ | 2.4 | 3 |
-| mineral.boehmite | AlO(OH) | 3.0 | 3.5 |
-| mineral.diaspore | AlO(OH) | 3.4 | 6.5 |
-| mineral.columbite | (Fe,Mn)Nb₂O₆ | 5.5 | 6 |
-| mineral.tantalite | (Fe,Mn)Ta₂O₆ | 7.5 | 6 |
-| mineral.pyrochlore | (Ca,Na)₂Nb₂O₆(OH,F) | 4.5 | 5 |
-| mineral.perovskite | CaTiO₃ | 4.0 | 5.5 |
-| mineral.cuprite | Cu₂O | 6.1 | 3.5 |
-| mineral.tenorite | CuO | 6.5 | 3.5 |
-| mineral.wolframite | (Fe,Mn)WO₄ | 7.3 | 4.5 |
-| mineral.scheelite | CaWO₄ | 6.1 | 4.5 |
-| mineral.brucite | Mg(OH)₂ | 2.4 | 2.5 |
-| mineral.vanadinite | Pb₅(VO₄)₃Cl | 6.9 | 3 |
-| mineral.carnotite | K₂(UO₂)₂(VO₄)₂·3H₂O | 4.6 | 2 |
-| mineral.autunite | Ca(UO₂)₂(PO₄)₂·10H₂O | 3.1 | 2.5 |
-| mineral.ice | H₂O | 0.92 | 1.5 |
+| hematite | Fe₂O₃ | 5.26 | 6 |
+| magnetite | Fe₃O₄ | 5.18 | 6 |
+| goethite | FeO(OH) | 4.3 | 5 |
+| limonite | FeO(OH)·nH₂O (смесь) | 3.8 | 4.5 |
+| ilmenite | FeTiO₃ | 4.7 | 5.5 |
+| rutile | TiO₂ | 4.25 | 6 |
+| chromite | FeCr₂O₄ | 4.6 | 5.5 |
+| spinel | MgAl₂O₄ | 3.6 | 8 |
+| corundum | Al₂O₃ | 4.0 | 9 |
+| cassiterite | SnO₂ | 6.95 | 6.5 |
+| uraninite | UO₂ | 10.0 | 5.5 |
+| pitchblende | UO₂ (колломорфный) | 7.5 | 5 |
+| coffinite | U(SiO₄)₁₋ₓ(OH)₄ₓ | 5.1 | 5 |
+| pyrolusite | MnO₂ | 5.0 | 6 |
+| manganite | MnO(OH) | 4.3 | 4 |
+| psilomelane | BaMn₉O₁₈·2H₂O (романешит) | 4.4 | 5.5 |
+| gibbsite | Al(OH)₃ | 2.4 | 3 |
+| boehmite | AlO(OH) | 3.0 | 3.5 |
+| diaspore | AlO(OH) | 3.4 | 6.5 |
+| columbite | (Fe,Mn)Nb₂O₆ | 5.5 | 6 |
+| tantalite | (Fe,Mn)Ta₂O₆ | 7.5 | 6 |
+| pyrochlore | (Ca,Na)₂Nb₂O₆(OH,F) | 4.5 | 5 |
+| perovskite | CaTiO₃ | 4.0 | 5.5 |
+| cuprite | Cu₂O | 6.1 | 3.5 |
+| tenorite | CuO | 6.5 | 3.5 |
+| wolframite | (Fe,Mn)WO₄ | 7.3 | 4.5 |
+| scheelite | CaWO₄ | 6.1 | 4.5 |
+| brucite | Mg(OH)₂ | 2.4 | 2.5 |
+| vanadinite | Pb₅(VO₄)₃Cl | 6.9 | 3 |
+| carnotite | K₂(UO₂)₂(VO₄)₂·3H₂O | 4.6 | 2 |
+| autunite | Ca(UO₂)₂(PO₄)₂·10H₂O | 3.1 | 2.5 |
+| ice | H₂O | 0.92 | 1.5 |
 
 ### 2.3. Сульфиды, сульфосоли, арсениды
 
 | id | Формула | ρ | H |
 |---|---|---|---|
-| mineral.pyrite | FeS₂ | 5.0 | 6.2 |
-| mineral.marcasite | FeS₂ | 4.9 | 6 |
-| mineral.pyrrhotite | Fe₁₋ₓS | 4.6 | 4 |
-| mineral.chalcopyrite | CuFeS₂ | 4.2 | 3.5 |
-| mineral.bornite | Cu₅FeS₄ | 5.1 | 3 |
-| mineral.chalcocite | Cu₂S | 5.6 | 2.8 |
-| mineral.covellite | CuS | 4.7 | 1.8 |
-| mineral.digenite | Cu₉S₅ | 5.7 | 2.5 |
-| mineral.enargite | Cu₃AsS₄ | 4.4 | 3 |
-| mineral.tetrahedrite | (Cu,Fe)₁₂Sb₄S₁₃ | 4.9 | 3.5 |
-| mineral.galena | PbS | 7.5 | 2.5 |
-| mineral.sphalerite | ZnS | 4.0 | 3.8 |
-| mineral.molybdenite | MoS₂ | 4.7 | 1.2 |
-| mineral.pentlandite | (Fe,Ni)₉S₈ | 4.8 | 3.8 |
-| mineral.millerite | NiS | 5.4 | 3.5 |
-| mineral.cobaltite | CoAsS | 6.3 | 5.5 |
-| mineral.skutterudite | CoAs₃ | 6.5 | 5.8 |
-| mineral.arsenopyrite | FeAsS | 6.1 | 5.8 |
-| mineral.realgar | As₄S₄ | 3.6 | 1.8 |
-| mineral.orpiment | As₂S₃ | 3.5 | 1.8 |
-| mineral.stibnite | Sb₂S₃ | 4.6 | 2 |
-| mineral.cinnabar | HgS | 8.1 | 2.3 |
-| mineral.bismuthinite | Bi₂S₃ | 6.8 | 2 |
-| mineral.acanthite | Ag₂S | 7.2 | 2.3 |
-| mineral.pyrargyrite | Ag₃SbS₃ | 5.8 | 2.5 |
-| mineral.stannite | Cu₂FeSnS₄ | 4.4 | 4 |
-| mineral.greenockite | CdS | 4.8 | 3.3 |
-| mineral.sperrylite | PtAs₂ | 10.6 | 6.5 |
-| mineral.cooperite | PtS | 10.0 | 4.5 |
-| mineral.laurite | RuS₂ | 6.4 | 7.5 |
+| pyrite | FeS₂ | 5.0 | 6.2 |
+| marcasite | FeS₂ | 4.9 | 6 |
+| pyrrhotite | Fe₁₋ₓS | 4.6 | 4 |
+| chalcopyrite | CuFeS₂ | 4.2 | 3.5 |
+| bornite | Cu₅FeS₄ | 5.1 | 3 |
+| chalcocite | Cu₂S | 5.6 | 2.8 |
+| covellite | CuS | 4.7 | 1.8 |
+| digenite | Cu₉S₅ | 5.7 | 2.5 |
+| enargite | Cu₃AsS₄ | 4.4 | 3 |
+| tetrahedrite | (Cu,Fe)₁₂Sb₄S₁₃ | 4.9 | 3.5 |
+| galena | PbS | 7.5 | 2.5 |
+| sphalerite | ZnS | 4.0 | 3.8 |
+| molybdenite | MoS₂ | 4.7 | 1.2 |
+| pentlandite | (Fe,Ni)₉S₈ | 4.8 | 3.8 |
+| millerite | NiS | 5.4 | 3.5 |
+| cobaltite | CoAsS | 6.3 | 5.5 |
+| skutterudite | CoAs₃ | 6.5 | 5.8 |
+| arsenopyrite | FeAsS | 6.1 | 5.8 |
+| realgar | As₄S₄ | 3.6 | 1.8 |
+| orpiment | As₂S₃ | 3.5 | 1.8 |
+| stibnite | Sb₂S₃ | 4.6 | 2 |
+| cinnabar | HgS | 8.1 | 2.3 |
+| bismuthinite | Bi₂S₃ | 6.8 | 2 |
+| acanthite | Ag₂S | 7.2 | 2.3 |
+| pyrargyrite | Ag₃SbS₃ | 5.8 | 2.5 |
+| stannite | Cu₂FeSnS₄ | 4.4 | 4 |
+| greenockite | CdS | 4.8 | 3.3 |
+| sperrylite | PtAs₂ | 10.6 | 6.5 |
+| cooperite | PtS | 10.0 | 4.5 |
+| laurite | RuS₂ | 6.4 | 7.5 |
 
 ### 2.4. Самородные элементы и сплавы
 
 | id | Формула | ρ | H |
 |---|---|---|---|
-| mineral.native_gold | Au | 19.3 | 2.8 |
-| mineral.electrum | (Au,Ag) | 14.0 | 2.8 |
-| mineral.native_silver | Ag | 10.5 | 2.8 |
-| mineral.native_copper | Cu | 8.9 | 2.8 |
-| mineral.native_platinum | Pt (с примесью Fe) | 17.0 | 4.2 |
-| mineral.osmiridium | (Os,Ir) | 20.0 | 6.5 |
-| mineral.native_bismuth | Bi | 9.8 | 2.3 |
-| mineral.native_sulfur | S | 2.07 | 2 |
-| mineral.graphite | C | 2.2 | 1.5 |
-| mineral.diamond | C | 3.52 | 10 |
-| mineral.native_arsenic | As | 5.7 | 3.5 |
+| native_gold | Au | 19.3 | 2.8 |
+| electrum | (Au,Ag) | 14.0 | 2.8 |
+| native_silver | Ag | 10.5 | 2.8 |
+| native_copper | Cu | 8.9 | 2.8 |
+| native_platinum | Pt (с примесью Fe) | 17.0 | 4.2 |
+| osmiridium | (Os,Ir) | 20.0 | 6.5 |
+| native_bismuth | Bi | 9.8 | 2.3 |
+| native_sulfur | S | 2.07 | 2 |
+| graphite | C | 2.2 | 1.5 |
+| diamond | C | 3.52 | 10 |
+| native_arsenic | As | 5.7 | 3.5 |
 
 ### 2.5. Карбонаты
 
 | id | Формула | ρ | H |
 |---|---|---|---|
-| mineral.calcite | CaCO₃ | 2.71 | 3 |
-| mineral.aragonite | CaCO₃ | 2.95 | 3.8 |
-| mineral.dolomite | CaMg(CO₃)₂ | 2.85 | 3.8 |
-| mineral.ankerite | Ca(Fe,Mg)(CO₃)₂ | 3.0 | 3.8 |
-| mineral.magnesite | MgCO₃ | 3.0 | 4 |
-| mineral.siderite | FeCO₃ | 3.9 | 3.8 |
-| mineral.rhodochrosite | MnCO₃ | 3.7 | 3.8 |
-| mineral.smithsonite | ZnCO₃ | 4.4 | 4.2 |
-| mineral.cerussite | PbCO₃ | 6.5 | 3.2 |
-| mineral.malachite | Cu₂CO₃(OH)₂ | 4.0 | 3.8 |
-| mineral.azurite | Cu₃(CO₃)₂(OH)₂ | 3.8 | 3.8 |
-| mineral.strontianite | SrCO₃ | 3.7 | 3.5 |
-| mineral.witherite | BaCO₃ | 4.3 | 3.3 |
-| mineral.bastnasite | (Ce,La)CO₃F | 5.0 | 4.2 |
-| mineral.trona | Na₃(CO₃)(HCO₃)·2H₂O | 2.1 | 2.5 |
+| calcite | CaCO₃ | 2.71 | 3 |
+| aragonite | CaCO₃ | 2.95 | 3.8 |
+| dolomite | CaMg(CO₃)₂ | 2.85 | 3.8 |
+| ankerite | Ca(Fe,Mg)(CO₃)₂ | 3.0 | 3.8 |
+| magnesite | MgCO₃ | 3.0 | 4 |
+| siderite | FeCO₃ | 3.9 | 3.8 |
+| rhodochrosite | MnCO₃ | 3.7 | 3.8 |
+| smithsonite | ZnCO₃ | 4.4 | 4.2 |
+| cerussite | PbCO₃ | 6.5 | 3.2 |
+| malachite | Cu₂CO₃(OH)₂ | 4.0 | 3.8 |
+| azurite | Cu₃(CO₃)₂(OH)₂ | 3.8 | 3.8 |
+| strontianite | SrCO₃ | 3.7 | 3.5 |
+| witherite | BaCO₃ | 4.3 | 3.3 |
+| bastnasite | (Ce,La)CO₃F | 5.0 | 4.2 |
+| trona | Na₃(CO₃)(HCO₃)·2H₂O | 2.1 | 2.5 |
 
 ### 2.6. Сульфаты, галогениды, фосфаты, бораты, нитраты
 
 | id | Формула | ρ | H |
 |---|---|---|---|
-| mineral.gypsum | CaSO₄·2H₂O | 2.3 | 2 |
-| mineral.anhydrite | CaSO₄ | 2.95 | 3.5 |
-| mineral.barite | BaSO₄ | 4.5 | 3.3 |
-| mineral.celestine | SrSO₄ | 3.95 | 3.3 |
-| mineral.anglesite | PbSO₄ | 6.3 | 2.8 |
-| mineral.alunite | KAl₃(SO₄)₂(OH)₆ | 2.8 | 3.8 |
-| mineral.jarosite | KFe₃(SO₄)₂(OH)₆ | 3.2 | 3 |
-| mineral.polyhalite | K₂Ca₂Mg(SO₄)₄·2H₂O | 2.8 | 3.5 |
-| mineral.halite | NaCl | 2.17 | 2.5 |
-| mineral.sylvite | KCl | 1.99 | 2 |
-| mineral.carnallite | KMgCl₃·6H₂O | 1.6 | 2.5 |
-| mineral.fluorite | CaF₂ | 3.18 | 4 |
-| mineral.cryolite | Na₃AlF₆ | 2.97 | 2.5 |
-| mineral.atacamite | Cu₂Cl(OH)₃ | 3.75 | 3.2 |
-| mineral.apatite | Ca₅(PO₄)₃(F,OH,Cl) | 3.2 | 5 |
-| mineral.francolite | Ca₅(PO₄,CO₃)₃F (карбонат-фторапатит) | 3.1 | 5 |
-| mineral.monazite | (Ce,La,Nd,Th)PO₄ | 5.2 | 5.2 |
-| mineral.xenotime | YPO₄ | 4.8 | 4.5 |
-| mineral.turquoise | CuAl₆(PO₄)₄(OH)₈·4H₂O | 2.7 | 5.5 |
-| mineral.borax | Na₂B₄O₇·10H₂O | 1.7 | 2.3 |
-| mineral.colemanite | Ca₂B₆O₁₁·5H₂O | 2.4 | 4.5 |
-| mineral.nitratine | NaNO₃ | 2.26 | 1.8 |
-| mineral.niter | KNO₃ | 2.1 | 2 |
-| mineral.amber | C₁₀H₁₆O (ископаемая смола) | 1.1 | 2 |
+| gypsum | CaSO₄·2H₂O | 2.3 | 2 |
+| anhydrite | CaSO₄ | 2.95 | 3.5 |
+| barite | BaSO₄ | 4.5 | 3.3 |
+| celestine | SrSO₄ | 3.95 | 3.3 |
+| anglesite | PbSO₄ | 6.3 | 2.8 |
+| alunite | KAl₃(SO₄)₂(OH)₆ | 2.8 | 3.8 |
+| jarosite | KFe₃(SO₄)₂(OH)₆ | 3.2 | 3 |
+| polyhalite | K₂Ca₂Mg(SO₄)₄·2H₂O | 2.8 | 3.5 |
+| halite | NaCl | 2.17 | 2.5 |
+| sylvite | KCl | 1.99 | 2 |
+| carnallite | KMgCl₃·6H₂O | 1.6 | 2.5 |
+| fluorite | CaF₂ | 3.18 | 4 |
+| cryolite | Na₃AlF₆ | 2.97 | 2.5 |
+| atacamite | Cu₂Cl(OH)₃ | 3.75 | 3.2 |
+| apatite | Ca₅(PO₄)₃(F,OH,Cl) | 3.2 | 5 |
+| francolite | Ca₅(PO₄,CO₃)₃F (карбонат-фторапатит) | 3.1 | 5 |
+| monazite | (Ce,La,Nd,Th)PO₄ | 5.2 | 5.2 |
+| xenotime | YPO₄ | 4.8 | 4.5 |
+| turquoise | CuAl₆(PO₄)₄(OH)₈·4H₂O | 2.7 | 5.5 |
+| borax | Na₂B₄O₇·10H₂O | 1.7 | 2.3 |
+| colemanite | Ca₂B₆O₁₁·5H₂O | 2.4 | 4.5 |
+| nitratine | NaNO₃ | 2.26 | 1.8 |
+| niter | KNO₃ | 2.1 | 2 |
+| amber | C₁₀H₁₆O (ископаемая смола) | 1.1 | 2 |
 
 Дополнять каталог по ходу: минералы-индикаторы кимберлитов (пироп, хромдиопсид, пикроильменит), минералы изменений (серицит, адуляр, алунит, диккит, пирофиллит), редкие РЗЭ-минералы, радиоактивные минералы второй очереди, ювелирные разновидности (рубин и сапфир как разновидности корунда, изумруд, аквамарин и т.д.).
 
@@ -368,82 +368,82 @@
 
 | id | Модель | Обстановка и хозяин | Геометрия | Руда (минералы) | Попутно | Масштаб | Признаки | Группа |
 |---|---|---|---|---|---|---|---|---|
-| dep.chromite_podiform | Хромиты подиформные | офиолиты, дуниты и перидотиты | линзы и желваки | chromite | ЭПГ | 10 кт – 10 Мт, линзы 10–200 м | серпентинизация, ультрамафиты | 2 |
-| dep.chromite_stratiform | Хромитовые слои | расслоённые интрузии | протяжённые слои 0.3–3 м | chromite | ЭПГ | слои до 100 км | магнитные аномалии, расслоённость | 2 |
-| dep.pge_reef | ЭПГ-риф | расслоённые интрузии | тонкий слой 0.3–1 м, непрерывный | pentlandite, chalcopyrite, pyrrhotite, sperrylite, cooperite | Ni, Cu, Co | сотни Мт руды | расслоённость, сульфидные горизонты | 3 |
-| dep.magmatic_nicu | Ni-Cu сульфиды | коматииты, питающие силлы, импактные расплавы | линзы и массивные сульфиды у подошвы | pentlandite, pyrrhotite, chalcopyrite | Co, ЭПГ | 1–200 Мт, 1–3 % Ni | магнитные и электрические аномалии, госсан | 2 |
-| dep.tivmagnetite | Ti-V магнетит | габбро и анортозиты | слои | magnetite, ilmenite | V, Ti | сотни Мт | сильные магнитные аномалии | 1 |
-| dep.carbonatite | Карбонатиты (Nb, РЗЭ, P) | рифты, горячие точки | кольцевые тела и пробки 0.5–4 км | pyrochlore, bastnasite, monazite, apatite, magnetite, fluorite, barite | Nb, РЗЭ, P, Fe, Sr | 10–1000 Мт | кольцевые структуры, радиометрия | 3 |
-| dep.kimberlite | Кимберлитовые трубки | кратоны («правило Клиффорда») | трубка и диатрема, радиус 20–500 м | diamond (индикаторы: пироп, пикроильменит, хромдиопсид) | гранат | карат/тонну, 1–100 Мт | ореол индикаторных минералов в россыпях | 3 |
-| dep.pegmatite_lct | Пегматиты Li-Cs-Ta | граниты коллизионных поясов | зональные дайки и линзы 10–1000 м | spodumene, lepidolite, petalite, beryl, columbite, tantalite, cassiterite, tourmaline | Be, Cs, Rb, Ta, Nb, Sn | 0.1–100 Мт | зональность, радиометрия, турмалин | 3 |
-| dep.pegmatite_nyf | Пегматиты Nb-Y-F, керамические | гранитоиды рифтов и кратонов | дайки, линзы | xenotime, monazite, fluorite, feldspar, quartz, mica | РЗЭ, Nb, Be | 0.1–10 Мт | | 3 |
-| dep.ioa_kiruna | Кируна (магнетит-апатит) | вулканические пояса | пластообразные тела | magnetite, apatite | P, РЗЭ | 100–2000 Мт | магнитные аномалии | 1 |
+| chromite_podiform | Хромиты подиформные | офиолиты, дуниты и перидотиты | линзы и желваки | chromite | ЭПГ | 10 кт – 10 Мт, линзы 10–200 м | серпентинизация, ультрамафиты | 2 |
+| chromite_stratiform | Хромитовые слои | расслоённые интрузии | протяжённые слои 0.3–3 м | chromite | ЭПГ | слои до 100 км | магнитные аномалии, расслоённость | 2 |
+| pge_reef | ЭПГ-риф | расслоённые интрузии | тонкий слой 0.3–1 м, непрерывный | pentlandite, chalcopyrite, pyrrhotite, sperrylite, cooperite | Ni, Cu, Co | сотни Мт руды | расслоённость, сульфидные горизонты | 3 |
+| magmatic_nicu | Ni-Cu сульфиды | коматииты, питающие силлы, импактные расплавы | линзы и массивные сульфиды у подошвы | pentlandite, pyrrhotite, chalcopyrite | Co, ЭПГ | 1–200 Мт, 1–3 % Ni | магнитные и электрические аномалии, госсан | 2 |
+| tivmagnetite | Ti-V магнетит | габбро и анортозиты | слои | magnetite, ilmenite | V, Ti | сотни Мт | сильные магнитные аномалии | 1 |
+| carbonatite | Карбонатиты (Nb, РЗЭ, P) | рифты, горячие точки | кольцевые тела и пробки 0.5–4 км | pyrochlore, bastnasite, monazite, apatite, magnetite, fluorite, barite | Nb, РЗЭ, P, Fe, Sr | 10–1000 Мт | кольцевые структуры, радиометрия | 3 |
+| kimberlite | Кимберлитовые трубки | кратоны («правило Клиффорда») | трубка и диатрема, радиус 20–500 м | diamond (индикаторы: пироп, пикроильменит, хромдиопсид) | гранат | карат/тонну, 1–100 Мт | ореол индикаторных минералов в россыпях | 3 |
+| pegmatite_lct | Пегматиты Li-Cs-Ta | граниты коллизионных поясов | зональные дайки и линзы 10–1000 м | spodumene, lepidolite, petalite, beryl, columbite, tantalite, cassiterite, tourmaline | Be, Cs, Rb, Ta, Nb, Sn | 0.1–100 Мт | зональность, радиометрия, турмалин | 3 |
+| pegmatite_nyf | Пегматиты Nb-Y-F, керамические | гранитоиды рифтов и кратонов | дайки, линзы | xenotime, monazite, fluorite, feldspar, quartz, mica | РЗЭ, Nb, Be | 0.1–10 Мт | | 3 |
+| ioa_kiruna | Кируна (магнетит-апатит) | вулканические пояса | пластообразные тела | magnetite, apatite | P, РЗЭ | 100–2000 Мт | магнитные аномалии | 1 |
 
 ### 3.2. Гидротермальные и порфировые
 
 | id | Модель | Обстановка и хозяин | Геометрия | Руда | Попутно | Масштаб | Признаки | Группа |
 |---|---|---|---|---|---|---|---|---|
-| dep.porphyry_cu_mo | Порфировые Cu-Mo-Au (v1) | континентальные дуги, штоки гранодиорита и порфиров | цилиндр-шток и штокверк, километры; зональность | chalcopyrite, bornite, molybdenite, pyrite, magnetite | Au, Ag, Re, Se, Te | 100–5000 Мт, 0.3–1 % Cu | аргиллизация, филлическая зона, госсан, оксиды Cu | 1 |
-| dep.porphyry_mo | Порфировые Mo (Климакс) | рифты и растяжение | куполообразный штокверк | molybdenite | W, Re | 100–1000 Мт, 0.1–0.3 % Mo | | 2 |
-| dep.porphyry_sn | Оловянные порфиры и грейзены | граниты, купола | жилы и грейзен-купола | cassiterite, wolframite, topaz, fluorite | W, Bi, Mo, Li | 1–50 Мт | топаз, грейзенизация | 1 |
-| dep.skarn | Скарны (Cu, Fe, W, Zn-Pb, Sn, Au) (v1) | контакты интрузий с известняками и доломитами | линзы и пласты на контакте | garnet, diopside, magnetite, scheelite, chalcopyrite, sphalerite, galena | Bi, Mo, Sn | 0.1–100 Мт | гранат-пироксеновые породы | 1 |
-| dep.epithermal_hs | Эпитермальные Au-Ag высокосульфидные | вулканические дуги, риолиты и андезиты | зоны кремнистых изменений, жилы | enargite, pyrite, native_gold, tetrahedrite | Cu, Te | 5–200 Мт | «ячеистый кремнезём», алунит | 2 |
-| dep.epithermal_ls | Эпитермальные Au-Ag низкосульфидные (v1) | вулканы, горячие источники | жилы 0.5–10 м | electrum, acanthite, native_gold, pyrite, quartz, adularia | Te, Se | 1–50 Мт, 5–20 г/т | синтер, кварцевые жилы | 2 |
-| dep.orogenic_gold | Орогенное золото (v1) | зеленокаменные пояса, флиш, сдвиговые зоны | жильные системы и зоны сдвига | native_gold, pyrite, arsenopyrite, quartz, carbonate | As, Sb, W | 1–500 Мт, 2–10 г/т | кварцевые жилы вдоль сдвигов, россыпи | 2 |
-| dep.carlin | Золото типа Карлин | карбонатные алевролиты | рассеянная минерализация | native_gold (тонкое), pyrite, arsenopyrite | As, Hg, Sb, Tl | 5–200 Мт | декарбонатизация, мышьяк | 2 |
-| dep.crd | Замещения Pb-Zn-Ag-Cu | карбонаты около интрузий | манто и трубы | galena, sphalerite, chalcopyrite, pyrite | Ag, Cd, Bi | 1–50 Мт | | 1 |
-| dep.mvt | Pb-Zn типа Миссисипи (v1) | карбонатные платформы, карст и брекчии | линзы и штокверки в брекчиях | galena, sphalerite, fluorite, barite, calcite, dolomite | Cd, Ge, Ga | 5–100 Мт | доломитизация, карст | 1 |
-| dep.sedex | SEDEX Pb-Zn-Ag | рифтовые сланцевые бассейны | пласты и линзы | galena, sphalerite, barite, pyrite | Ag, Cd, Ge | 20–300 Мт | барит, сланцы | 1 |
-| dep.vms | Колчеданные (VMS) Cu-Zn-Pb-Au-Ag | задуговые бассейны, офиолиты (Кипр) | массивные сульфидные линзы над штокверком, барит | pyrite, chalcopyrite, sphalerite, galena, barite | In, Se, Te, Bi, Ga, Ge | 0.1–150 Мт | госсан, барит, железные шляпы | 1 |
-| dep.sed_cu | Осадочная медь (Купфершифер) | красноцветы под восстановленными сланцами | пласт 1–5 м | chalcocite, bornite, chalcopyrite | Co, Ag | 100–2000 Мт | зональность Cu → Pb → Zn | 1 |
-| dep.iocg | IOCG (Олимпик-Дам) | рифты, гематитовые брекчии | брекчии, километры | chalcopyrite, bornite, hematite, magnetite | Au, U, РЗЭ | 100–5000 Мт | магнитные и гравитационные аномалии | 2 |
-| dep.vein_polymetal | Жильные Pb-Zn-Ag, Cu, оловянные лоды (Корнуолл) | разломы и трещины вокруг интрузий | жилы 0.1–5 м | galena, sphalerite, chalcopyrite, cassiterite, quartz | Ag, Sb, Bi | 0.01–5 Мт | | 1 |
-| dep.hg_sb | Ртуть и сурьма | горячие источники, вулканические районы | жилы и штокверки | cinnabar, stibnite | As, Au | 0.1–10 Мт | | 2 |
-| dep.fluorite_barite | Флюорит-баритовые жилы | граниты, рифты | жилы | fluorite, barite | Pb, Zn | 0.1–5 Мт | | 1 |
-| dep.native_copper | Самородная медь (Кивино) | покровные базальты | миндалины и жилы | native_copper | Ag | 100–500 Мт | | 2 |
+| porphyry_cu_mo | Порфировые Cu-Mo-Au (v1) | континентальные дуги, штоки гранодиорита и порфиров | цилиндр-шток и штокверк, километры; зональность | chalcopyrite, bornite, molybdenite, pyrite, magnetite | Au, Ag, Re, Se, Te | 100–5000 Мт, 0.3–1 % Cu | аргиллизация, филлическая зона, госсан, оксиды Cu | 1 |
+| porphyry_mo | Порфировые Mo (Климакс) | рифты и растяжение | куполообразный штокверк | molybdenite | W, Re | 100–1000 Мт, 0.1–0.3 % Mo | | 2 |
+| porphyry_sn | Оловянные порфиры и грейзены | граниты, купола | жилы и грейзен-купола | cassiterite, wolframite, topaz, fluorite | W, Bi, Mo, Li | 1–50 Мт | топаз, грейзенизация | 1 |
+| skarn | Скарны (Cu, Fe, W, Zn-Pb, Sn, Au) (v1) | контакты интрузий с известняками и доломитами | линзы и пласты на контакте | garnet, diopside, magnetite, scheelite, chalcopyrite, sphalerite, galena | Bi, Mo, Sn | 0.1–100 Мт | гранат-пироксеновые породы | 1 |
+| epithermal_hs | Эпитермальные Au-Ag высокосульфидные | вулканические дуги, риолиты и андезиты | зоны кремнистых изменений, жилы | enargite, pyrite, native_gold, tetrahedrite | Cu, Te | 5–200 Мт | «ячеистый кремнезём», алунит | 2 |
+| epithermal_ls | Эпитермальные Au-Ag низкосульфидные (v1) | вулканы, горячие источники | жилы 0.5–10 м | electrum, acanthite, native_gold, pyrite, quartz, adularia | Te, Se | 1–50 Мт, 5–20 г/т | синтер, кварцевые жилы | 2 |
+| orogenic_gold | Орогенное золото (v1) | зеленокаменные пояса, флиш, сдвиговые зоны | жильные системы и зоны сдвига | native_gold, pyrite, arsenopyrite, quartz, carbonate | As, Sb, W | 1–500 Мт, 2–10 г/т | кварцевые жилы вдоль сдвигов, россыпи | 2 |
+| carlin | Золото типа Карлин | карбонатные алевролиты | рассеянная минерализация | native_gold (тонкое), pyrite, arsenopyrite | As, Hg, Sb, Tl | 5–200 Мт | декарбонатизация, мышьяк | 2 |
+| crd | Замещения Pb-Zn-Ag-Cu | карбонаты около интрузий | манто и трубы | galena, sphalerite, chalcopyrite, pyrite | Ag, Cd, Bi | 1–50 Мт | | 1 |
+| mvt | Pb-Zn типа Миссисипи (v1) | карбонатные платформы, карст и брекчии | линзы и штокверки в брекчиях | galena, sphalerite, fluorite, barite, calcite, dolomite | Cd, Ge, Ga | 5–100 Мт | доломитизация, карст | 1 |
+| sedex | SEDEX Pb-Zn-Ag | рифтовые сланцевые бассейны | пласты и линзы | galena, sphalerite, barite, pyrite | Ag, Cd, Ge | 20–300 Мт | барит, сланцы | 1 |
+| vms | Колчеданные (VMS) Cu-Zn-Pb-Au-Ag | задуговые бассейны, офиолиты (Кипр) | массивные сульфидные линзы над штокверком, барит | pyrite, chalcopyrite, sphalerite, galena, barite | In, Se, Te, Bi, Ga, Ge | 0.1–150 Мт | госсан, барит, железные шляпы | 1 |
+| sed_cu | Осадочная медь (Купфершифер) | красноцветы под восстановленными сланцами | пласт 1–5 м | chalcocite, bornite, chalcopyrite | Co, Ag | 100–2000 Мт | зональность Cu → Pb → Zn | 1 |
+| iocg | IOCG (Олимпик-Дам) | рифты, гематитовые брекчии | брекчии, километры | chalcopyrite, bornite, hematite, magnetite | Au, U, РЗЭ | 100–5000 Мт | магнитные и гравитационные аномалии | 2 |
+| vein_polymetal | Жильные Pb-Zn-Ag, Cu, оловянные лоды (Корнуолл) | разломы и трещины вокруг интрузий | жилы 0.1–5 м | galena, sphalerite, chalcopyrite, cassiterite, quartz | Ag, Sb, Bi | 0.01–5 Мт | | 1 |
+| hg_sb | Ртуть и сурьма | горячие источники, вулканические районы | жилы и штокверки | cinnabar, stibnite | As, Au | 0.1–10 Мт | | 2 |
+| fluorite_barite | Флюорит-баритовые жилы | граниты, рифты | жилы | fluorite, barite | Pb, Zn | 0.1–5 Мт | | 1 |
+| native_copper | Самородная медь (Кивино) | покровные базальты | миндалины и жилы | native_copper | Ag | 100–500 Мт | | 2 |
 
 ### 3.3. Осадочные, химические, выветривание, россыпи
 
 | id | Модель | Обстановка и хозяин | Геометрия | Руда | Попутно | Масштаб | Признаки | Группа |
 |---|---|---|---|---|---|---|---|---|
-| dep.biff | Полосчатые железистые формации (v1) | архей и палеопротерозой (эпоха BIF) | пласты 10–500 м, регионально | hematite, magnetite, chert | | 1000–100 000 Мт, 25–35 % Fe | линзы высококачественной гематитовой руды (обогащение) | 1 |
-| dep.oolitic_ironstone | Оолитовые железняки (v1) | палеозой и позже, мелкое море | пласты 1–10 м | goethite, siderite, chamosite | P | 100–5000 Мт | | 1 |
-| dep.sed_mn | Осадочный марганец | эпиконтинентальные моря | пласты | rhodochrosite, pyrolusite, psilomelane | Fe | 100–10 000 Мт | | 2 |
-| dep.phosphorite | Фосфориты | шельф, апвеллинг | пласты 1–30 м | francolite, apatite | U, РЗЭ, F | 100–10 000 Мт | | 1 |
-| dep.rock_salt | Каменная соль (v1) | эвапориты, лагуны и соляные купола | пласты и диапиры | halite | | эффективно неограниченно | | 1 |
-| dep.potash | Калийные соли | эвапориты | пласты | sylvite, carnallite, polyhalite | Br, Mg | 100–5000 Мт | | 2 |
-| dep.gypsum | Гипс и ангидрит (v1) | эвапориты | пласты | gypsum, anhydrite | | | | 0 |
-| dep.borate_trona | Бораты и сода | аридные озёра и playa | пласты | borax, colemanite, trona | Li | | | 2 |
-| dep.lithium_brine | Литиевые рассолы | закрытые аридные бассейны (salar) | горизонт рассола | Li в рассоле | K, B | | | 3 |
-| dep.nitrate | Нитраты | гиперарид | коры | nitratine, niter | I | | | 2 |
-| dep.coal | Угольные пласты (v1) | болотные бассейны эпох с растительностью | пласты 0.5–30 м, ранг растёт с глубиной погружения | peat→lignite→bituminous→anthracite | CH₄, Ge | | выходы пластов, самовозгорание | 1 |
-| dep.oil_shale | Горючие сланцы | озёрные и морские бассейны | пласты | | | | | 2 |
-| dep.bauxite | Бокситы (v1) | влажные тропики, глинозёмистые породы | покровы 2–15 м | gibbsite, boehmite, diaspore | Ga | 100–2000 Мт | красные коры | 1 |
-| dep.ni_laterite | Никелевые латериты | тропики, ультрамафиты | кора выветривания | garnierite, goethite | Co, Fe, Sc | 50–500 Мт | | 2 |
-| dep.laterite_fe_mn | Железные и марганцевые коры | тропики | коры | goethite, pyrolusite | | | | 1 |
-| dep.kaolin_clay | Каолин, глины, бентонит | выветривание полевошпатовых пород, вулканический пепел | залежи | kaolinite, smectite | | | | 0 |
-| dep.ree_clay | РЗЭ в глинах (ионная адсорбция) | тропические коры по гранитам | кора | сорбированные РЗЭ | Th | | | 3 |
-| dep.supergene_cu | Зоны вторичного обогащения Cu | над порфирами и VMS в аридных и умеренных зонах | горизонт «одеяла» | chalcocite, covellite, malachite, azurite, cuprite | | | госсан, оксиды Cu | 1 |
-| dep.unconformity_u | Урановые «несогласия» | под несогласием платформа/фундамент | линзы у несогласия | uraninite, pitchblende | Ni, Co | 5–100 Мт | | 3 |
-| dep.sandstone_u | Урановые «рулоны» | проницаемые пески и водоносные горизонты | роли-фронты | uraninite, coffinite, carnotite | V | | | 3 |
-| dep.placer_gold | Россыпи золота и ЭПГ (v1) | русла и террасы ниже источников | линзы в аллювии на плотике | native_gold, native_platinum | | | | 2 |
-| dep.placer_cassiterite | Россыпи олова, вольфрама | аллювий | линзы | cassiterite, wolframite | | | | 1 |
-| dep.placer_diamond | Россыпи алмазов | вниз по течению от кимберлитов | линзы | diamond | | | | 3 |
-| dep.heavy_sands | Пляжевые тяжёлые пески | береговые линии | пласты | ilmenite, rutile, zircon, monazite | Ti, Zr, РЗЭ | | | 2 |
-| dep.paleoplacer | Палеороссыпи Au-U (Витватерсранд) | архейские конгломераты | пласты в конгломератах | native_gold, uraninite, pyrite | | | | 2 |
-| dep.aggregates | Строительные материалы (v1) | везде | | песок, гравий, глина, известняк, гранит, базальт, мрамор | | | | 0 |
+| biff | Полосчатые железистые формации (v1) | архей и палеопротерозой (эпоха BIF) | пласты 10–500 м, регионально | hematite, magnetite, chert | | 1000–100 000 Мт, 25–35 % Fe | линзы высококачественной гематитовой руды (обогащение) | 1 |
+| oolitic_ironstone | Оолитовые железняки (v1) | палеозой и позже, мелкое море | пласты 1–10 м | goethite, siderite, chamosite | P | 100–5000 Мт | | 1 |
+| sed_mn | Осадочный марганец | эпиконтинентальные моря | пласты | rhodochrosite, pyrolusite, psilomelane | Fe | 100–10 000 Мт | | 2 |
+| phosphorite | Фосфориты | шельф, апвеллинг | пласты 1–30 м | francolite, apatite | U, РЗЭ, F | 100–10 000 Мт | | 1 |
+| rock_salt | Каменная соль (v1) | эвапориты, лагуны и соляные купола | пласты и диапиры | halite | | эффективно неограниченно | | 1 |
+| potash | Калийные соли | эвапориты | пласты | sylvite, carnallite, polyhalite | Br, Mg | 100–5000 Мт | | 2 |
+| gypsum | Гипс и ангидрит (v1) | эвапориты | пласты | gypsum, anhydrite | | | | 0 |
+| borate_trona | Бораты и сода | аридные озёра и playa | пласты | borax, colemanite, trona | Li | | | 2 |
+| lithium_brine | Литиевые рассолы | закрытые аридные бассейны (salar) | горизонт рассола | Li в рассоле | K, B | | | 3 |
+| nitrate | Нитраты | гиперарид | коры | nitratine, niter | I | | | 2 |
+| coal | Угольные пласты (v1) | болотные бассейны эпох с растительностью | пласты 0.5–30 м, ранг растёт с глубиной погружения | peat→lignite→bituminous→anthracite | CH₄, Ge | | выходы пластов, самовозгорание | 1 |
+| oil_shale | Горючие сланцы | озёрные и морские бассейны | пласты | | | | | 2 |
+| bauxite | Бокситы (v1) | влажные тропики, глинозёмистые породы | покровы 2–15 м | gibbsite, boehmite, diaspore | Ga | 100–2000 Мт | красные коры | 1 |
+| ni_laterite | Никелевые латериты | тропики, ультрамафиты | кора выветривания | garnierite, goethite | Co, Fe, Sc | 50–500 Мт | | 2 |
+| laterite_fe_mn | Железные и марганцевые коры | тропики | коры | goethite, pyrolusite | | | | 1 |
+| kaolin_clay | Каолин, глины, бентонит | выветривание полевошпатовых пород, вулканический пепел | залежи | kaolinite, smectite | | | | 0 |
+| ree_clay | РЗЭ в глинах (ионная адсорбция) | тропические коры по гранитам | кора | сорбированные РЗЭ | Th | | | 3 |
+| supergene_cu | Зоны вторичного обогащения Cu | над порфирами и VMS в аридных и умеренных зонах | горизонт «одеяла» | chalcocite, covellite, malachite, azurite, cuprite | | | госсан, оксиды Cu | 1 |
+| unconformity_u | Урановые «несогласия» | под несогласием платформа/фундамент | линзы у несогласия | uraninite, pitchblende | Ni, Co | 5–100 Мт | | 3 |
+| sandstone_u | Урановые «рулоны» | проницаемые пески и водоносные горизонты | роли-фронты | uraninite, coffinite, carnotite | V | | | 3 |
+| placer_gold | Россыпи золота и ЭПГ (v1) | русла и террасы ниже источников | линзы в аллювии на плотике | native_gold, native_platinum | | | | 2 |
+| placer_cassiterite | Россыпи олова, вольфрама | аллювий | линзы | cassiterite, wolframite | | | | 1 |
+| placer_diamond | Россыпи алмазов | вниз по течению от кимберлитов | линзы | diamond | | | | 3 |
+| heavy_sands | Пляжевые тяжёлые пески | береговые линии | пласты | ilmenite, rutile, zircon, monazite | Ti, Zr, РЗЭ | | | 2 |
+| paleoplacer | Палеороссыпи Au-U (Витватерсранд) | архейские конгломераты | пласты в конгломератах | native_gold, uraninite, pyrite | | | | 2 |
+| aggregates | Строительные материалы (v1) | везде | | песок, гравий, глина, известняк, гранит, базальт, мрамор | | | | 0 |
 
 ### 3.4. Метаморфические, ювелирные и прочие
 
 | id | Модель | Обстановка | Геометрия | Минералы | Группа |
 |---|---|---|---|---|---|
-| dep.graphite | Графит | метаморфические комплексы, графитовые сланцы | пласты и линзы | graphite | 2 |
-| dep.aluminosilicates | Кианит, силлиманит, андалузит, гранат | метаморфические комплексы | зоны | kyanite, sillimanite, andalusite, almandine | 1 |
-| dep.talc_serpentine | Тальк, серпентин, асбест | серпентиниты | тела | talc, chrysotile | 1 |
-| dep.dimension_stone | Декоративный камень | мрамор, гранит, кварцит | массивы | | 0 |
-| dep.gems | Ювелирные: рубин и сапфир, изумруд, топаз, турмалин, нефрит, опал | пегматиты, метаморфические комплексы, щелочные базальты, осадочные коры | зоны и россыпи | corundum, beryl, topaz, tourmaline, jadeite, opal | 3 |
-| dep.native_sulfur | Самородная сера | вулканы, фумаролы | коры, жилы | native_sulfur | 1 |
-| dep.zeolite_bentonite | Цеолиты, бентонит, перлит | измененный вулканический пепел | пласты | zeolite, smectite | 1 |
+| graphite | Графит | метаморфические комплексы, графитовые сланцы | пласты и линзы | graphite | 2 |
+| aluminosilicates | Кианит, силлиманит, андалузит, гранат | метаморфические комплексы | зоны | kyanite, sillimanite, andalusite, almandine | 1 |
+| talc_serpentine | Тальк, серпентин, асбест | серпентиниты | тела | talc, chrysotile | 1 |
+| dimension_stone | Декоративный камень | мрамор, гранит, кварцит | массивы | | 0 |
+| gems | Ювелирные: рубин и сапфир, изумруд, топаз, турмалин, нефрит, опал | пегматиты, метаморфические комплексы, щелочные базальты, осадочные коры | зоны и россыпи | corundum, beryl, topaz, tourmaline, jadeite, opal | 3 |
+| native_sulfur | Самородная сера | вулканы, фумаролы | коры, жилы | native_sulfur | 1 |
+| zeolite_bentonite | Цеолиты, бентонит, перлит | измененный вулканический пепел | пласты | zeolite, smectite | 1 |
 
 ### 3.5. Энергетика
 

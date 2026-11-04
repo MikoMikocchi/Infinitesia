@@ -1,6 +1,8 @@
 # INFINITESIA — MASTER TECHNICAL DESIGN DOCUMENT
 ## Процедурная генерация планеты, география, тектоника, геология, минералогия, химия и трёхмерный игровой мир
 
+> **Статус: архив.** Документ перенесён в `docs/archive/` как историческое видение. Он не описывает текущий код и во многом дублирует «EXTREME PLANETARY SIMULATION». Актуальную картину дают `docs/Systems.md`, `docs/DataDriven.md`, `docs/03_GEOLOGY.md` и остальные документы в `docs/`.
+
 **Тип документа:** Master Technical Specification / Development Roadmap  
 **Проект:** Infinitesia  
 **Основной язык программирования:** C++20/23  

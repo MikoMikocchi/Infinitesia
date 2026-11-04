@@ -7,14 +7,16 @@ The game is one executable built from layers. A layer may include only layers be
 app            main loop, screens, wiring                      (exe)
 presentation   rendering, ui, input, assets - raylib           (exe)
 gameplay       GameWorld, entities, items, work, commands      (lib, no raylib)
-simulation     system scheduler on the fixed tick              (lib, no raylib)
 world          grid, chunks, VoxelWorld, terrain sources       (lib, no raylib)
-blocks         shapes of a cell, dense tables over materials   (lib)
+biology        species, trees, vegetation                      (lib)
 geology        what the ground is made of: province columns    (lib)
-materials      every material of the game; JSON catalog        (lib)
+blocks         shapes of a cell, dense tables over matter      (lib)
+matter         every material of the game; XML catalog         (lib)
+simulation     system scheduler on the fixed tick              (lib, no raylib)
+content        XML definitions, registries, include tree       (lib)
 planet         planet generation pipeline                      (lib)
 chemistry      elements, compositions, reactions               (lib)
-foundation     time, simulation clock, load progress, coords   (lib)
+core           time, simulation clock, load progress, coords   (lib)
 ```
 
 Exact allowed edges are the `ALLOWED` table in `tools/check_dependencies.py`; the
@@ -28,10 +30,10 @@ in step.
 - Terrain (`VoxelWorld`) and things standing on it (`EntityStore`) are separate; `GameWorld`
   bundles them for systems that need both. Take the narrowest half you can.
 - Content is data in `assets/`, loaded into registries with stable string ids
-  (`foundation/ContentRegistry.h`). Materials are one list, `assets/materials/materials.json`
-  (`MaterialCatalog`): air, fluids, rocks, soils, minerals, built materials alike, one `MaterialDef`
+  (`core/ContentRegistry.h`). Matter is one list, `assets/matter/matter.xml`
+  (`MatterCatalog`): air, fluids, rocks, soils, minerals, built matter alike, one `MatterDef`
   each; what only some have (a mineral's formula, a rock's modal composition) is a side table by
-  the same id. A world cell is `BlockState{material, shape}`; every rule about it is a
+  the same id. A world cell is `BlockState{matter, shape}`; every rule about it is a
   `BlockRegistry` query (docs/06_BLOCKS.md). Gameplay items and object
   kinds are in `assets/gameplay/{items,objects}.json` (`GameContent`). Code asks an object
   for its *abilities* (worker, pickable), never for a particular kind. Adding a

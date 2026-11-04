@@ -1,3 +1,7 @@
+# Systems — универсальная data-driven архитектура
+
+> **Статус.** Концептуальный документ (черновик дизайна): описывает целевой набор доменов и типов определений (RAW). Часть уже в коде (материя — `MatterDef`/`MatterCatalog`, загрузка контента — `ContentRegistry<Def>`/`LoadContentTree`, формы — `ShapeDef`), большая часть — план на будущее. Фактическое устройство — в `ARCHITECTURE.md`, план перехода — в `DataDriven.md`, отдельные домены — в `01`–`07`.
+
 Я бы строил это как Dwarf Fortress RAW, доведённый до уровня универсальной научно-технологической симуляции цивилизации и планетарной системы.
 
 Причём я бы не стал просто добавлять в Dwarf Fortress новые категории. Я бы сохранил его главный архитектурный принцип:
@@ -134,14 +138,6 @@ UNIVERSE SIMULATION
 
 ## I. Cosmology — космология и астрономия
 
-[Scientists find a solar system that makes no sense: Discover evidence of ‘inside-out’ planet formation - The Economic Times](https://images.openai.com/static-rsc-4/-DAOzzRUbkz0LbM6ek093NMFQitct67cAgs84dk_SlGEvi1yOgRV_fGJBr6O2pgr54sZX_3dGs1BRbCuOzgvdxYTfd5-DLj_trdRUUJKbrR5VuyhPlUFruiwzyjf60JHLL6vCOxqMgVn0BCPAbHjSnrgDxJiAi0iwSn8QaebWSA?purpose=inline)
-
-[Astronomers can now measure newborn planet mass from dusty stellar rings - The Brighter Side of News](https://images.openai.com/static-rsc-4/4p7bgGjB4J1NUkW-01TSay0uhVJyaIhF4QwZWwDuGS2B37o0PaH5FDpOroHZcnjtbsSCoIYbFcVTlWeMWTPhsnVuvRg-rNTi-xCU7dPAHdUvHIhFJjqi7pJW0B2jZGf81d_TgHA77UEiyXs6bpIBgQJk1Gik2yu6cXH3FLNz34A?purpose=inline)
-
-[Spiral galaxy in deep space | Free Photo  - rawpixel](https://images.openai.com/static-rsc-4/x1YK7O-Mh5yhrwDTYnof5zq9hDqf4Rv_OdWSpavxund4FidAOKWtNcYIbtnXKgCFzlqngymuYGRVvGAthRaFnvGbPzWOdLBNxfPlqNXH8CoJ8LdMOs046uawZpsrVvV8tQOkxwD99CcETCmGNA5XWcBuf-fKhu8TBlGb_6l1lLk?purpose=inline)
-
-7
-
 | RAW Type                | Содержание                 | Примеры                                       |
 | ----------------------- | -------------------------- | --------------------------------------------- |
 | `STAR`                  | Звёзды                     | Красный карлик, жёлтый карлик, голубой гигант |
@@ -158,12 +154,6 @@ UNIVERSE SIMULATION
 | `SPACE_REGION`          | Пространственные области   | Межзвёздное пространство, туманности          |
 
 ## II. Planetology — формирование и устройство планет
-
-[Origin of life-forming volatile elements in the inner Solar System | Nature](https://images.openai.com/static-rsc-4/MgJsfgw1ystnfxwYVDRJ_O7Rn0BeRKeQL6GqvoIb-aPUDkPDw5SFLyx_rDwJTx-oYgBcYAHFmBB3yZS-OhHypblRSo29Jim93rMnhM_YOwr685N6ns9zbF3NKkxEnGwiGWfQ2qouCaEIFvrQKZ2aDEpB3fJxsZvzN1D2kVSnWzQ?purpose=inline)
-
-[Astronomy 104: Lecture 21 printable version](https://images.openai.com/static-rsc-4/-MW23BeO4SjWJco2OiauT_BzMfMyhIqPERu0vTzKvU-7QlF9HthyXq-CKOUwGKKMUkPD57E3QeO5c0u0JUraT4BkYHlD9wYIS-uBckPzIPCkonLs70ENZGlLMOAfmGGaSjiQiTSsZE8OoIHynDAyAO43wqf2gPy1KAsIMPaqwj0?purpose=inline)
-
-[Module 1 Origin and Structure of the Earth Planet Earth.pptx](https://images.openai.com/static-rsc-4/jn8cVyb9jW5hBJylTKcDb8WmsuIhibPy4SYFo5Phn9Yf-D6wBn9pIkXApQUD19kHnPjMl07a0FTwl7Oj0TNxO_DWJAFneDDO004gF6eRaXIpl9mWSpdDTCj1M_9zGiMrL22k085SRUNL8dcCLKm0L0ZppgNldObtPHWixqR7fjk?purpose=inline)
 
 5
 
@@ -183,14 +173,6 @@ UNIVERSE SIMULATION
 | `PLANETARY_PROPERTY`    | Параметры планет      | Масса, плотность, радиус        |
 
 ## III. Geoscience — география, климат, гидрология и геология
-
-[加拿大BC省的魅力景色都在这些小清新里！一文看遍好风景 - 加拿大乐活网](https://images.openai.com/static-rsc-4/2p-GUZOCLC1PN20CSgQKa5gdIk_BmAHnI2AxrNIpikAl3dG9P_Gg6eYVWAJzNbOrtUhmwZXYwZt28MZ4CcRLLLel84zY4FURwkKDeGeSD78kAljZU5rOv1XnUHVRsIl99vKW7cDDMXq19xa_JbVMWlrIG1JyiRmuUp2MlV68Nxk?purpose=inline)
-
-[Scientific Illustration AI Images | Morphic](https://images.openai.com/static-rsc-4/1j2jqICSJWqJSOSGZpDWErd-pBtEpn-bACdaDy2EK9vIAZxZ2QJaGQd1nedtiremNrrMnQrlLCX6uhmjIiV5vmhVIRN3znvVpW9eFTnNlqBWCWVEaP2whoAFMaY40GSC2RrU_MQvu2uLxTOBWRwjpeo5ylFv3unxmKqN2k_eg4k?purpose=inline)
-
-[File:Biomes of the World - Retouched.png - Wikimedia Commons](https://images.openai.com/static-rsc-4/uUdy4f180qdIqXrr54djRKnpt58H86r03IsPyHDqdipz6t8X6PSixmu1weDXWnQSV0fFoV9yHUYAZDnhGFVtomgHQaOABfepJpd_HxVBtxHzhuqoGSADE41O2ovCOS8xnIFZ7LF9h9xhWVNMhv2qANEgl6zZiapzdny5b5Mwcz8?purpose=inline)
-
-7
 
 | RAW Type               | Содержание               | Примеры                            |
 | ---------------------- | ------------------------ | ---------------------------------- |
@@ -212,12 +194,6 @@ UNIVERSE SIMULATION
 | `GEOMORPHOLOGY`        | Формы рельефа            | Долины, каньоны, дельты            |
 
 ## IV. Materials — материалы и вещества
-
-[Metallische Rohstoffe, Sammlung | www.der-hedinger.de](https://images.openai.com/static-rsc-4/9CznfJcn8dzbPar2czAdsvGnQ88rw4hVw0QoLD4HOi_2xm2TljxsQNkNUVBzepWS8gX3fZUj_A6d_E_Cz6Cy5BYNy9yIT-_A3to9OYL3egvdn-8vYOVnXsLD9MBKr0jz8Y8mnUi8R5F9HT5sqtScvIZWVs-KGUaF6SAy8tns034?purpose=inline)
-
-[7637 白銅 進化し続ける｢モノづくりの応援団｣ | 有力企業 | 東洋経済オンライン](https://images.openai.com/static-rsc-4/tnSPEyARs4EgJ1i31DGc9DeHC9-2gwEGYIt9v-y6K6Wt56Z8NzTJBrO-qAVsPfFNyStJI4u3BV6Eu3K1f41ryeghDVUQD_stF8J0ACznELMYaqueIYAFhbm0CqJPMVEXQTC5TrHfwkT2aMCnSiD0Pqs721naAyQsRWLgGkKXuSo?purpose=inline)
-
-[Overview exhibitions - Deutsches Museum](https://images.openai.com/static-rsc-4/Ths9xjaExCvP_F-LfvyhKMmWK7PVpB4AnbW8AOhJu57G44vl6t_AVzYc_xLcDtefwozQklnJFA-xaznNdBZanclMZO2TEGDQYGoXy6JrM3QMrTHurj4b2gtTeosszxmDzjwM0ZD15BUEDNFXv4Lrt9MbDdlNGXccqSLH5OpbaGw?purpose=inline)
 
 8
 
@@ -272,14 +248,6 @@ UNIVERSE SIMULATION
 
 ## VI. Chemistry — химия
 
-[ChemSetu | API Impurities & Custom Synthesis Solutions](https://images.openai.com/static-rsc-4/PQ30vAocsDGVan-8erJPe0JrLTLwBJCdkjlMlVslOcsNRkk4aCbtkTSp3Oo04o8IFhK5piMJr5RhV3alhUjTxjI6fowsAGwFQ02YlMYiUZl5zum4i5f3aILOcU07-TsB98OXFmTb9WfZjvWelbgG-406q0aE7jiHee48FrlqXRw?purpose=inline)
-
-[Brenntag acquires Singapore-based industrial chemicals distributor Aik Moh Group](https://images.openai.com/static-rsc-4/O9rehnN33pKUPjF3IAZy4YgkdwERJJ10zvJuKfGycdmGI6ue7bWnxm4MJc3m8MEu6cuj1Q-Ayspn6fAMPkjMKTEx8lZ_shWk33wnmE0UVbRUccLEggi-KHir12iC9xGsEgX5GQQSlJaW-HUK3rxLUl5a3pMreVlwNFq1-FEuIbw?purpose=inline)
-
-[ניטור בזקנה ובמחלות ניווניות באמצעות בינה מלאכותית ושעונים חכמים | הפקולטה למדעי הרפואה והבריאות | אוניברסיטת תל אביב](https://images.openai.com/static-rsc-4/9ulfd4p_7BlG5mMOX4f4xy6UQeCQE4cR8U2yBaW5g4gAKFSEaOYcDVGGHKp4JRT1gWqaKbmozoyhCzLmlr5CBURJGG_x9_mVhDMGywkt5Tvkk--8pbtuvTlC4_kgNVEwXB6aX5aGriEcXgpwE9ZxmdIHy0Y3FXjCkRIyCofUcDU?purpose=inline)
-
-7
-
 | RAW Type             | Содержание            | Примеры                        |
 | -------------------- | --------------------- | ------------------------------ |
 | `CHEMICAL_REACTION`  | Химические реакции    | Окисление, восстановление      |
@@ -310,12 +278,6 @@ UNIVERSE SIMULATION
 
 ## VII. Resources & Extraction — ресурсы и добыча
 
-[Core Lithium awards $274m underground mining contract to Develop Global for BP33 deposit in Northern Territory](https://images.openai.com/static-rsc-4/NDXmi9Q-X6TgXLgRw1gyJda2Oc7yMwg-eHz-PAFiExmhrgqQ59kwhxEizhjQF5eDfqALUaQymmdF3hPjVlaSyAmO1IAYoIinMIf8aw_4lXgh614pQr-3af1XPOJMsEoErDzr25DrXVPVlvJd0XQnHehbLLE-4Juwh848fjkxENM?purpose=inline)
-
-[Kazakhstan aims to boost copper output to 750,000 tons by 2029&nbsp;](https://images.openai.com/static-rsc-4/XzZJT9EQkWYrpdmDqLw5KsRNdpsZben8ycXP62MFW-BMQTUaOINjxdDwSW-8Nfx9Zd2qwaV9kRVnUyHjaWN2v6AjKjyEbXLiccIFEOuDnHuO2TXlSZWAGT4sTnnNycb-YrkU0pu0X95sPITh5zQ39kcp3grcA2XNNxJ6HJxfHQk?purpose=inline)
-
-[Underground Mining Ecosystem: Engineering Precision Beneath the Surface | Auqib Javed posted on the topic | LinkedIn](https://images.openai.com/static-rsc-4/K9Pd1Qt3dmuqO895wCQzTcqNPenc_toORhmCwlg1M-TIjQVo4aE6NT0rFzFkEl7TxfKRrVa-P2-VQhP4cw00V-QwOkDzp5823QCkFyGUckS6Qp63jY8Ml9PbZ3UCe83m1uNoC8nXkItUulxbqymfMyWD1BFDAixb2hOT_Eixju8?purpose=inline)
-
 10
 
 | RAW Type            | Содержание      | Примеры                       |
@@ -334,12 +296,6 @@ UNIVERSE SIMULATION
 Система добычи должна работать непосредственно с геологией. Месторождение не просто появляется по заранее заданным координатам: оно формируется из геологических процессов и состава слоёв.
 
 ## VIII. Industry & Engineering — промышленность и механизмы
-
-[Minecraft Is Not What You Think, or: How I Learned to Stop Worrying and Love Polybenzimidazole | A cesspit.](https://images.openai.com/static-rsc-4/vDMzbw5ibObpVaFjsevOV94LDOADF7blub_XfelFeRyBjFLAC6Jt2Hf2uawa7OUOIIN15wWI6hILeJ08VINaBsIsce0wJgqM6B1aeGFIBcW9HZYKtnjDBan6Lpp9yW2wFMGIVgzjnD5FWBn0KQQBNMB206eNeSNPRWbe2vLYA9M?purpose=inline)
-
-[Nomifactory CEu - Gallery - Minecraft Modpacks - CurseForge](https://images.openai.com/static-rsc-4/Ac9teXPpRelTA-3ARMtpvwv4yG84sZw9OmPO6AoLPWKBrtK5MEzMCbHm2__h37ZM-e9pbFpsZGNwrcum6m-PwYGIHbH93y76kbPkGyKNOtrsyeecSkHdCsSZGCT5SIf607mQ8Wj-wINm6MEzBURQogBiIdRGw5IpQ1rorYUiuHk?purpose=inline)
-
-[Mechora - Precision Mechatronics & Industrial Automation](https://images.openai.com/static-rsc-4/WKGkzgtszFbCpMYAG0xfIMOfInHwlq-cO_vt29SnOwe6MYmJ42WQkG5eyKqncIcGjrcNS1zokCMd9EpLA_4eOEHIQaVo2kR8TBNLrvlnsHTaY3P_zcDe87L1GbxF2P-KJs9cApF7-4TJ1opGkjSuLqyJrPDICKtfvBaS51Rxdrk?purpose=inline)
 
 11
 
@@ -385,12 +341,6 @@ UNIVERSE SIMULATION
 Например, центрифуга сможет работать с разными веществами, если их свойства и характеристики соответствуют требованиям процесса.
 
 ## IX. Biology — биология и организмы
-
-[The Science Inside Every Creature : Generate Your Own Anatomy Renders - Gumvue.Studio](https://images.openai.com/static-rsc-4/Kw4xaTiyEqX3hm0BAr2lN0v_x_4KBAd5UtuatEKMRy6Gh7Nh6d9PN3QJzOuBHcejZpA2ughwE_ttm5O7iybGAU1ZVkIPNS8RqTnA3QU4JHCQc8kdCRU34XIndis14ieDJ8xTZbsvyzehcs-2R2_0c7dDdRQ0opHMFb2YyyEuiKM?purpose=inline)
-
-[Bunte Bakterien und Mikroorganismen unter dem Mikroskop](https://images.openai.com/static-rsc-4/_ezGAKcXPE19DmESNy4qe6l6kfWH0IZ-I8QEZVB34yb6dXEOOqZKcQVbkE8uOMOheLYnmbJXxyGTG7aykrxEYtv_eloV8YKMtEYzQkUcIu8qxY9NbDatSCGYyntgVxRb57ylv1Yrqao9gxGkR5GWhGQICG_i0o95XcKFcdgL_dA?purpose=inline)
-
-[Human Anatomy and Physiology +](https://images.openai.com/static-rsc-4/1-l1eTEQmOsIeGYxVfC6xuQKvbmLuE15a64Ip55uhgAfkDNaUwztpZW9Nu9pYzhhD1D9nJXNoiBYZiFezQWtVVmHojmyaRUIttDApDF4XK-TxaFib8hOZdGwzU1O6AZsoh0pjlh5WVFon5V7OjRLDsdkDjNT1cfYEdwOiHmx8JI?purpose=inline)
 
 6
 
@@ -441,12 +391,6 @@ UNIVERSE SIMULATION
 | `ENVIRONMENTAL_EVENT`  | Экологические события      | Засухи, вымирания          |
 
 ## XI. Technology & Research — технологии и научные исследования
-
-[Kann Forschungstechnologie neue Entdeckungen ermöglichen 2025? | Vivo Magazin](https://images.openai.com/static-rsc-4/kNF6JQIcggy9xdVma84XqHpA7sHzZfm2eCZ48g8bxeS_z2kxH2FHc5s5DPcErXfEXszseRXJLD-WwnQ7aaCIvUrbmr57mCWumVKoasxLbZcnDyYsAIHaot8MDs8ih-jjNUvmONDHTmW8Ko7VjNv4te3V-CPL0lV7mQh7Nfik_g8?purpose=inline)
-
-[Physics : College of Natural Sciences : UMass Amherst](https://images.openai.com/static-rsc-4/onFDsTQQXkDsrZ-llTilTJXQHLfqz_FH3dbC8qCY1cZIxZinlYG0Vpo1jx1ypvigFv-6mO3UBnV3F-w1D8dmT0R6PKQSFDMz8PfxD4nzJFttZlbTIWgBqlTDUbfsjIKIgInjtYdbKp3il4j8MCoS2tbvhYqGIa42v5TnN4mJjGA?purpose=inline)
-
-[Timeline of Technology: Historical Milestones & Gadgets | AI Art Generator | Easy-Peasy.AI](https://images.openai.com/static-rsc-4/lLBGr2aiqwQmjCkyoI_2YhOmnok3w6NUbUY_48xA0MoK7tAuZWsASncIjCz0mME192e5q_6EcmdDJ104ta07LkF_9d0K4tRpPIYVpne5ruqggshMAkGB-TfAgQIZh0pkFdq1uPbLQb4QSnPKgwczzaL3Kx4wBNh2bSD_6wVxrCc?purpose=inline)
 
 8
 
@@ -503,12 +447,6 @@ UNIVERSE SIMULATION
 
 ## XIII. Politics & Governance — политика и государства
 
-[The Constitution of the Interstellar Commons — Consent, Rights, and Governance Across Species and Worlds - CyberNative.AI - Social Network with Interactive AI Agents](https://images.openai.com/static-rsc-4/sSKIw4ohVCWYuPlgVJZjaTfPNmMyXZ_Bn7ynVsn0De-udx8RnkGt2xJIgGMInNdVljS7vO8uaqlrJrN5lv7oct0_UFDpiftGU2jA81GMbs4pvDAcaYFcfRFOvoJVRqTiedxTsUh3BooOrR8B9PJAC0p0MHt5VTBgJLKCT71iyKg?purpose=inline)
-
-[Circular map with various locations](https://images.openai.com/static-rsc-4/8_NdWBQUZ6zP1jt3HrAkRQBO5FD3l1lxHVu_YWf3p4t3R9EgbXZDxSwzKqV_AAzK8r6OifIQ0_QcHiDJnRbpb4J3KVEt7N_4-1zifhJCXzNY0LrH2b-XlXaqfJ5dImsU8rg-zWBFLiDMcR36zPsRqeQcaJ1VO96eob2ViJfTcRc?purpose=inline)
-
-[Proclamation of War by King Ta'liote Myridos XIV of the Ka'yar Colonial Governance Document in The Delta Space | World Anvil](https://images.openai.com/static-rsc-4/i45gPPUOsxA0gEBwUBzN0oxy_o2ejRgcxCkaOcznoyJabwLVNpPkNC6BxXnOlatmAnBL4YM9M7o57MQwktAhPSO8SmprIODx2atzwKdv2YuK_DmIJPAbr3fsJ8rU23JNSOHlj5oudMQmJ6VfvWZhBvwUBcQVfdv6vx4cgLEubBY?purpose=inline)
-
 10
 
 | RAW Type                  | Содержание                | Примеры                  |
@@ -547,12 +485,6 @@ UNIVERSE SIMULATION
 - Население.
 
 ## XIV. Economy & Trade — экономика и торговля
-
-[Future economic globalization: multilateral or fragmented?  | World Economic Forum](https://images.openai.com/static-rsc-4/s1blAl1nNM5AADxTeRY-Wp4shUgHKNr1qq4P8_Fpc4Dk4sDiVWaWsRVy3kZ6R60FWHjJAQUvkyYMhgOqftLfjTxlhM6zloAvlUx5ECOIIgFxXwAHbkxKKiczGU6MlIYwrgC8eEbuiYaO5T_vLipnr7YcWXe3Nl6xJsGddrF0MjY?purpose=inline)
-
-[B2B Marketplace Platform for Global Suppliers](https://images.openai.com/static-rsc-4/vHHIECngM2PvyxJEEvfFDi1yR-13hy58yfC9rjMBDKyEUninv-qcA1akDc9sC5ycpaANaBXAaT_dGyMDlCKshntnqen8cxHGIQbVLPtFzjGaSDPPfvzewBIfpBoP5ntVHKL1wp_3abY-uMnpn6CwSCNwGlLt1RgVjpGfMQDIpKs?purpose=inline)
-
-[Lead & Bismuth Supply | Non-Ferrous Metals USA — Vigo Metal Trading](https://images.openai.com/static-rsc-4/2OpDuw2TOvoLn4MooMl0XUdhhN_rcIQbeAt2-_raz775fqUdztxDbCCGjB7Kxuq7jwIiwXWcTDoBm-5G_jjg0n1KdE4tTyi1l-vcEZQpSj_0brUhh846TzIMT-M35chntrFBOYySIg1OckD9c9667st8uinjwPyqjgcZHJQHTHU?purpose=inline)
 
 9
 
@@ -853,8 +785,6 @@ UNIVERSE SIMULATION
 
 Я бы сделал её отдельным крупным доменом, потому что она будет связывать практически все остальные.
 
-[Alt-F4 #14 - Exploring the Infinite](https://images.openai.com/static-rsc-4/84QGwgVVflIj5ypXQumUJSOjHAgs4RzfXJo4ZNvnFHbPSlTT-Ilo76jDnkcyge3Eg1VN0fgyGTKNod7Mt1snlMOf3msU2Ipdq0eOqE_IBc-gVZ3uD5dwGWN_v-MDv5XXuHtbtwObzeMCgTamkzGmPHi-IyZjUJmQxFFVo2exv4c?purpose=inline)
-
 [alt-f4.blog](https://alt-f4.blog/ALTF4-14/?utm_source=chatgpt.com)
 
 Предлагаемая структура:
@@ -913,12 +843,6 @@ UNIVERSE SIMULATION
 Здесь я бы позаимствовал подход Minecraft и GregTech, но сделал его более универсальным.
 
 Материал не должен быть привязан к конкретной форме.
-
-[Shera Energy Limited](https://images.openai.com/static-rsc-4/496ICTlmqMILszpjueyi08ZpJcWlbQbdOnBaynU4sYNMOx8QlkMuzIN4PzSSTBzTlRAkGHd2Y58IRYJdxM0JUXJYySXtw5f-2U6cAUiVAbX_7ffvCj5Ft8hsWEsA9t0OLYkIoySRtK3RYm0nKzEAGQsP0lFDCOYhBjVQtaE2sWs?purpose=inline)
-
-[Hydrometallurgical Recycling of Critical Raw Materials Course - Activities - Dutch Process Technologists NPT - Specialist departments - Communities - KIVI](https://images.openai.com/static-rsc-4/7q_K4bSe8cVQljZyKnJKTN-bhykOG_SXU_-WfxaNdY1Qd9VsUe_iaUXf4jkbiHVE5vVVrsmNBxN422tL8ie-OlAec875DZU7d9J9mhZ-fPlDkHbmLPt4fszya5Ub7C4-jwYNvtCcb9Wc5iMghtcA4SL-YScrm0a7r7hcyf-6cvQ?purpose=inline)
-
-[Talmech Trading | Verified Metal Marketplace in India](https://images.openai.com/static-rsc-4/KXEVq7yTJ-eWbxQht0YLT0TDU3Ax6HlNvGhdiCNO3k8dqyEBIEh3Aun56W6zioxAbut72sI1YkH9HtNXkEyrkNvbmFUvnyJGBx1PXyHC6JXkGGohQLGslxOrCnoD2zRGNfcJVbWjrUethCGhYM0QdKyqKQU7p2iyMuk5vBGxXSA?purpose=inline)
 
 10
 

@@ -1,6 +1,8 @@
 # INFINITESIA
 # EXTREME PLANETARY SIMULATION — MASTER DOCUMENTATION BLUEPRINT
 
+> **Status: archived.** Moved to `docs/archive/` as long-term vision. It does not describe the current code and largely overlaps with "MASTER TECHNICAL DESIGN DOCUMENT". For the current picture see `docs/Systems.md`, `docs/DataDriven.md` and the numbered documents in `docs/`.
+
 **Document type:** Master Documentation Architecture & Technical Specification  
 **Project:** Infinitesia  
 **Engine:** Existing custom C++ application based on C++20/C++23 and raylib  
