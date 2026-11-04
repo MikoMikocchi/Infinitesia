@@ -17,6 +17,8 @@ namespace Infinitesia
     namespace
     {
         constexpr float kDegreesToRadians = PI / 180.0f;
+        constexpr double kNearClipPlane = 0.2;
+        constexpr double kFarClipPlane = 1000.0;
 
         Camera3D CreateCamera(CameraConfig config)
         {
@@ -219,6 +221,10 @@ namespace Infinitesia
 
         SetLightingUniforms();
 
+        // raylib's default near plane (0.01) leaves a 24-bit depth buffer too coarse at the far zoom
+        // (about 0.1 units at 140): coplanar shadows and grid lines flicker. The camera never gets
+        // closer than its minimum distance to anything, so the near plane can sit much further out.
+        rlSetClipPlanes(kNearClipPlane, kFarClipPlane);
         BeginMode3D(m_camera);
         BeginShaderMode(m_worldShader);
         WorldGeometryRenderer::DrawBlocks(
@@ -272,6 +278,7 @@ namespace Infinitesia
         WorldOverlayRenderer::DrawDebugPath(grid, pathOrigin, debugPath, viewLevel, viewMode);
         WorldOverlayRenderer::DrawObjectHighlights(grid, world.entities, hoveredObject, selectedObject);
         EndMode3D();
+        rlSetClipPlanes(RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
     }
 
     Camera3D& WorldRenderer::GetCamera()

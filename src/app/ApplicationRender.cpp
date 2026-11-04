@@ -59,7 +59,7 @@ namespace Infinitesia
             24,
             RAYWHITE);
         DrawText("M: planet map", m_config.window.width - 150, 56, 16, { 139, 158, 177, 255 });
-        constexpr const char* kCameraHint = "WASD/arrows: pan   Wheel: zoom   Q/E: rotate   MMB drag: turn   F: focus";
+        constexpr const char* kCameraHint = "WASD/arrows: pan  Wheel: zoom  Q/E: rotate  MMB drag: turn  F: focus  PgUp/PgDn: level  V: slice/all";
         DrawText(
             kCameraHint,
             m_config.window.width - MeasureText(kCameraHint, 16) - 12,
