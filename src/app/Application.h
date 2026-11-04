@@ -73,7 +73,7 @@ namespace Infinitesia
         int m_chunkRenderRadius = 1;
         int m_selectedLevel = 0;
         ViewMode m_viewMode = ViewMode::CutAtLevel;
-        bool m_showPathDebug = true;
+        bool m_showPathDebug = false;
         Time m_time;
     };
 }

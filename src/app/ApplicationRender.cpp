@@ -51,7 +51,8 @@ namespace Infinitesia
             m_chunkViewCenter,
             m_chunkRenderRadius,
             m_selectedLevel,
-            m_viewMode);
+            m_viewMode,
+            m_showPathDebug);
         DrawText(
             m_config.window.title.c_str(),
             (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,

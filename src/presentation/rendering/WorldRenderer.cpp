@@ -195,7 +195,8 @@ namespace Infinitesia
         GridCell chunkViewCenter,
         int chunkRenderRadius,
         int viewLevel,
-        ViewMode viewMode) const
+        ViewMode viewMode,
+        bool showGrid) const
     {
         // Terrain fades with depth below the viewed level; objects are tinted on the CPU instead,
         // as their meshes are not in world space, so the shading is off while they draw.
@@ -269,12 +270,15 @@ namespace Infinitesia
         {
             WorldOverlayRenderer::DrawHoveredCell(grid, *hoveredCell);
         }
-        WorldOverlayRenderer::DrawGridLines(
-            grid,
-            chunkViewCenter,
-            chunkRenderRadius,
-            chunkRenderRadius <= 2,
-            viewLevel);
+        if (showGrid)
+        {
+            WorldOverlayRenderer::DrawGridLines(
+                grid,
+                chunkViewCenter,
+                chunkRenderRadius,
+                chunkRenderRadius <= 2,
+                viewLevel);
+        }
         WorldOverlayRenderer::DrawDebugPath(grid, pathOrigin, debugPath, viewLevel, viewMode);
         WorldOverlayRenderer::DrawObjectHighlights(grid, world.entities, hoveredObject, selectedObject);
         EndMode3D();

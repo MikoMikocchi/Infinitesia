@@ -29,7 +29,7 @@ namespace Infinitesia
         CameraConfig camera{ 30.0f, 45.0f, 40.0f };
         CameraControlConfig cameraControls{};
         WorkerConfig worker{ 3.0f, 4.0f, 3.0f, 7000.0f };
-        bool showPathDebug = true;
+        bool showPathDebug = false;
         float simulationTicksPerSecond = 20.0f;
         std::uint32_t worldSeed = 1;
     };

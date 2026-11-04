@@ -39,7 +39,8 @@ namespace Infinitesia
             GridCell chunkViewCenter,
             int chunkRenderRadius,
             int viewLevel,
-            ViewMode viewMode) const;
+            ViewMode viewMode,
+            bool showGrid) const;
         Camera3D& GetCamera();
         const Camera3D& GetCamera() const;
 
