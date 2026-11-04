@@ -117,6 +117,23 @@ namespace Infinitesia
         }
     }
 
+    // Centers the camera on the selected object, or on the first worker when nothing is selected.
+    void Application::FocusCamera()
+    {
+        const LocalGame& game = *m_game;
+        const std::optional<WorldObjectId> selectedId = m_worldInteraction.GetSelectedObject();
+        if (selectedId.has_value())
+        {
+            if (const WorldObject* selected = game.GetWorld().entities.FindObject(*selectedId))
+            {
+                m_cameraController.FocusOn(selected->position.x, selected->position.z);
+                return;
+            }
+        }
+        const WorldPosition worker = game.GetGrid().CellToWorld(game.GetStartingCells().worker);
+        m_cameraController.FocusOn(worker.x, worker.z);
+    }
+
     void Application::UpdateLocal()
     {
         if (IsKeyPressed(KEY_F3))
@@ -131,6 +148,10 @@ namespace Infinitesia
         LocalGame& game = *m_game;
         AppInternal::UpdateLevelSelection(m_worldRenderer, game.GetGrid(), m_selectedLevel);
 
+        if (IsKeyPressed(KEY_F))
+        {
+            FocusCamera();
+        }
         m_cameraController.Update(m_worldRenderer.GetCamera(), m_time.GetDeltaTime());
         m_chunkViewCenter = GetCameraGridCell(
             game.GetGrid(),

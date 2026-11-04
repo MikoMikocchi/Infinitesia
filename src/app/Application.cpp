@@ -40,9 +40,7 @@ namespace Infinitesia
           m_showPathDebug(m_config.showPathDebug)
     {
         if (m_config.camera.distance < m_config.cameraControls.minimumDistance ||
-            m_config.camera.distance > m_config.cameraControls.maximumDistance ||
-            m_config.camera.elevationDegrees < m_config.cameraControls.minimumElevationDegrees ||
-            m_config.camera.elevationDegrees > m_config.cameraControls.maximumElevationDegrees)
+            m_config.camera.distance > m_config.cameraControls.maximumDistance)
         {
             throw std::invalid_argument("Initial camera settings must fit within camera control limits.");
         }
@@ -83,16 +81,12 @@ namespace Infinitesia
         m_selectedLevel = level;
         m_chunkViewCenter = start;
 
-        // Look at the middle of the world from the usual distance and angle.
+        // Look at the middle of the world from the usual distance.
         Camera3D& camera = m_worldRenderer.GetCamera();
-        const float elevation = m_config.camera.elevationDegrees * PI / 180.0f;
-        const float targetY = static_cast<float>(level + 1) * m_game->GetGrid().GetCellSize();
-        camera.target = { 0.0f, targetY, 0.0f };
-        camera.position = {
-            0.0f,
-            targetY + m_config.camera.distance * std::sin(elevation),
-            m_config.camera.distance * std::cos(elevation)
-        };
+        const Grid& grid = m_game->GetGrid();
+        camera.target.y = static_cast<float>(level + 1) * grid.GetCellSize();
+        m_cameraController.SetWorldHalfExtents(grid.GetWorldWidth() * 0.5f, grid.GetWorldDepth() * 0.5f);
+        m_cameraController.Reset(camera, 0.0f, 0.0f, m_config.camera.distance);
 
         m_planetViewer->SetFoundingEnabled(false);
         m_screen = Screen::Local;

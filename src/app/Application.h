@@ -38,6 +38,7 @@ namespace Infinitesia
 
         void Update();
         void UpdateLocal();
+        void FocusCamera();
         void Render();
         void RenderLocal();
         void StartSettlement(const SettlementSite& site);
