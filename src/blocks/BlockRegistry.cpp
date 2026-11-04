@@ -7,11 +7,11 @@
 
 namespace Infinitesia {
 namespace {
-MaterialDef MakeBuiltInMaterial(MaterialId id, const char* key,
+MatterDef MakeBuiltInMaterial(MatterId id, const char* key,
                                 const char* name, BlockClass blockClass,
                                 double density, int digClass, RgbColor color,
                                 std::vector<std::string> extraTags = {}) {
-  MaterialDef material;
+  MatterDef material;
   material.id = id;
   material.key = key;
   material.name = name;
@@ -28,7 +28,7 @@ MaterialDef MakeBuiltInMaterial(MaterialId id, const char* key,
 }  // namespace
 
 BlockRegistry BlockRegistry::Build(
-    std::shared_ptr<const MaterialCatalog> materials,
+    std::shared_ptr<const MatterCatalog> materials,
     const std::filesystem::path& shapesFile) {
   std::vector<ShapeDef> shapes;
   LoadShapes(shapesFile, shapes);
@@ -36,10 +36,10 @@ BlockRegistry BlockRegistry::Build(
 }
 
 BlockRegistry BlockRegistry::BuiltIn() {
-  std::vector<MaterialDef> materials;
-  materials.push_back(MakeBuiltInMaterial(kAirMaterial, "air", "air",
+  std::vector<MatterDef> materials;
+  materials.push_back(MakeBuiltInMaterial(kAirMatter, "air", "air",
                                           BlockClass::Air, 1.2, 0, {0, 0, 0}));
-  materials.push_back(MakeBuiltInMaterial(kWaterMaterial, "fluid.water",
+  materials.push_back(MakeBuiltInMaterial(kWaterMatter, "fluid.water",
                                           "water", BlockClass::Fluid, 1000.0, 0,
                                           {0x34, 0x6e, 0xaa}, {"water"}));
   materials.push_back(MakeBuiltInMaterial(2, "fluid.seawater", "seawater",
@@ -57,19 +57,19 @@ BlockRegistry BlockRegistry::BuiltIn() {
   materials.push_back(MakeBuiltInMaterial(527, "soil.turf", "turf",
                                           BlockClass::Loose, 1300.0, 1,
                                           {0x52, 0x91, 0x42}, {"soil"}));
-  auto catalog = std::make_shared<const MaterialCatalog>(
-      MaterialCatalog::Assemble(std::move(materials), {}, {}));
+  auto catalog = std::make_shared<const MatterCatalog>(
+      MatterCatalog::Assemble(std::move(materials), {}, {}));
   return Assemble(std::move(catalog), {ShapeDef{}});
 }
 
 BlockRegistry BlockRegistry::Assemble(
-    std::shared_ptr<const MaterialCatalog> materials,
+    std::shared_ptr<const MatterCatalog> materials,
     std::vector<ShapeDef> shapes) {
   BlockRegistry registry;
   registry.m_catalog = std::move(materials);
-  registry.m_props.assign(kMaterialCapacity, MaterialProps{});
+  registry.m_props.assign(kMatterCapacity, MaterialProps{});
 
-  for (const MaterialDef& material : registry.m_catalog->Materials()) {
+  for (const MatterDef& material : registry.m_catalog->Matter()) {
     MaterialProps& props = registry.m_props[material.id];
     const bool occupied = material.blockClass != BlockClass::Air;
     props.flags = static_cast<std::uint8_t>(
@@ -123,9 +123,9 @@ const ShapeDef* BlockRegistry::GetShape(ShapeId id) const noexcept {
   return nullptr;
 }
 
-bool BlockRegistry::HasTag(MaterialId material,
+bool BlockRegistry::HasTag(MatterId material,
                            std::string_view tag) const noexcept {
-  const MaterialDef* def = GetMaterial(material);
+  const MatterDef* def = GetMatter(material);
   return def != nullptr &&
          std::find(def->tags.begin(), def->tags.end(), tag) != def->tags.end();
 }

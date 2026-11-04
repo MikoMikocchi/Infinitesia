@@ -4,16 +4,16 @@
 #include <vector>
 
 #include "domains/natural/chemistry/Composition.h"
-#include "materials/MaterialId.h"
-#include "materials/MaterialTypes.h"
+#include "matter/MatterId.h"
+#include "matter/MatterTypes.h"
 
 namespace Infinitesia {
 // The one record of everything a cell can be made of: air, a fluid, a rock,
 // loose ground, a mineral, a built material (docs/06_BLOCKS.md, section 3.2).
 // It holds what every material has; what only some have lives in side tables of
-// the MaterialCatalog, found by the same id (ChemistryInfo, ModalComposition).
-struct MaterialDef {
-  MaterialId id = 0;
+// the MatterCatalog, found by the same id (ChemistryInfo, ModalComposition).
+struct MatterDef {
+  MatterId id = 0;
   std::string
       key;  // "rock.granite", "soil.sand", "fluid.water", "mineral.quartz"
   std::string name;
@@ -44,7 +44,7 @@ struct ChemistryInfo {
 
 // Share of one mineral in a rock, by volume.
 struct ModalEntry {
-  MaterialId mineral = 0;
+  MatterId mineral = 0;
   double fraction = 0.0;
 };
 

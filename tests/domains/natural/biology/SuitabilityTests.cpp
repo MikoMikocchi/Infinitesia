@@ -2,7 +2,7 @@
 
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
 #include "domains/natural/biology/niche/Suitability.h"
-#include "support/MaterialFixtures.h"
+#include "support/MatterFixtures.h"
 #include "support/Require.h"
 
 using namespace Infinitesia;
@@ -138,7 +138,7 @@ TEST_CASE("SuitabilityIsDeterministicAndBounded") {
 
 TEST_CASE("ShippedSpeciesPreferTheirOwnClimate") {
   const SpeciesCatalog catalog = SpeciesCatalog::Load(
-      kAssets / "biology" / "species.json", *SharedMaterials());
+      kAssets / "biology" / "species.json", *SharedMatter());
   const Niche& oak = catalog.Find("species.oak")->niche;
   const Niche& spruce = catalog.Find("species.spruce")->niche;
   const Niche& palm = catalog.Find("species.palm")->niche;

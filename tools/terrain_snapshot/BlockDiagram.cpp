@@ -73,10 +73,10 @@ int RenderBlockDiagram(const Options& options, const Window& window,
   const double step = window.step;
   const int columns = window.columns;
   const BlockRegistry& registry = world.Registry();
-  const SurfaceMaterials surface = SurfaceMaterials::Resolve(registry);
+  const SurfaceMatter surface = SurfaceMatter::Resolve(registry);
   const GeologyModel& geology = world.Geology();
   const SettlementTerrain& terrain = world.Terrain();
-  const auto colorOf = [&registry](MaterialId id) {
+  const auto colorOf = [&registry](MatterId id) {
     const RgbColor color = registry.ColorOf(id);
     return Rgb{color.r, color.g, color.b};
   };
@@ -179,8 +179,8 @@ int RenderBlockDiagram(const Options& options, const Window& window,
   // ---- paint far to near
   // What fills a block at `level` (relative to the window centre ground):
   // seawater above the ground, topsoil and then real rock below it.
-  std::map<MaterialId, long> rocksSeen;
-  const auto materialAt = [&](const Column& cell, int level) -> MaterialId {
+  std::map<MatterId, long> rocksSeen;
+  const auto materialAt = [&](const Column& cell, int level) -> MatterId {
     if (level > cell.ground) {
       return surface.seawater;
     }
@@ -197,15 +197,15 @@ int RenderBlockDiagram(const Options& options, const Window& window,
     return GeologyModel::RockAt(cell.profile,
                                 terrain.OriginElevationMeters() + level);
   };
-  const auto countRock = [&](MaterialId id) {
-    const MaterialDef* material = registry.GetMaterial(id);
+  const auto countRock = [&](MatterId id) {
+    const MatterDef* material = registry.GetMatter(id);
     if (material != nullptr && material->blockClass == BlockClass::Rock) {
       ++rocksSeen[id];
     }
   };
 
   const auto layerColor = [&](const Column& cell, int level) -> Rgb {
-    const MaterialId id = materialAt(cell, level);
+    const MatterId id = materialAt(cell, level);
     Rgb color = colorOf(id);
     countRock(id);
     if (id == surface.seawater) {
@@ -224,13 +224,13 @@ int RenderBlockDiagram(const Options& options, const Window& window,
     const double faceShade = rightFront ? 0.62 : 0.8;
     int level = cell.top;
     while (level > downTo) {
-      const MaterialId type = materialAt(cell, level);
+      const MatterId type = materialAt(cell, level);
       // Merge blocks of one kind into one quad (colour varies slowly with
       // depth).
       int last = level;
       while (last - 1 > downTo) {
         const int next = last - 1;
-        const MaterialId nextType = materialAt(cell, next);
+        const MatterId nextType = materialAt(cell, next);
         if (nextType != type ||
             (cell.top - level) / 8 != (cell.top - next) / 8) {
           break;
@@ -278,7 +278,7 @@ int RenderBlockDiagram(const Options& options, const Window& window,
         top =
             Mix({96, 170, 205}, {22, 56, 116}, (cell.top - cell.ground) / 40.0);
       } else {
-        const MaterialId topMaterial = materialAt(cell, cell.ground);
+        const MatterId topMaterial = materialAt(cell, cell.ground);
         top = colorOf(topMaterial);
         countRock(topMaterial);
       }

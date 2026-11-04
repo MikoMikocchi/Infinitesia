@@ -49,30 +49,30 @@ include(cmake/Dependencies.cmake)
 include(cmake/Modules.cmake)
 
 # Layers, bottom to top:
-#   foundation                      ids, time, load progress, coordinates; no domain knowledge
+#   core                      ids, time, load progress, coordinates; no domain knowledge
 #   domains/natural/chemistry       elements, compositions, reactions
 #   domains/natural/planetary       planet generation pipeline (no raylib)
-#   materials                       every material of the game (rocks, minerals, fluids, built); assets/materials/materials.json
+#   matter                          every matter of the game (rocks, minerals, fluids, built); assets/matter/matter.json
 #   domains/natural/biology         plants, their niches and communities, trees as blocks; assets/biology/*.json
 #   domains/natural/geology         what the ground is made of: province columns of rocks; assets/geology/*.json
-#   blocks                          shapes of a world cell and the dense tables over materials; assets/blocks/*.json
+#   blocks                          shapes of a world cell and the dense tables over matter; assets/blocks/*.json
 #   world                           the block terrain: grid, chunks, terrain sources (no raylib)
-#   simulation                      system scheduler running on the fixed tick of foundation/Simulation (no raylib)
+#   simulation                      system scheduler running on the fixed tick of core/Simulation (no raylib)
 #   gameplay                        entities, items, work, commands, pathfinding (no raylib)
 #   (executable)                    presentation (rendering, ui, input, assets) and app
-infinitesia_add_module(InfinitesiaFoundation DIRS foundation)
-infinitesia_add_module(InfinitesiaChemistry DIRS domains/natural/chemistry PUBLIC InfinitesiaFoundation)
-infinitesia_add_module(InfinitesiaPlanet DIRS domains/natural/planetary PUBLIC InfinitesiaFoundation)
-infinitesia_add_module(InfinitesiaMaterials DIRS materials
+infinitesia_add_module(InfinitesiaCore DIRS core)
+infinitesia_add_module(InfinitesiaChemistry DIRS domains/natural/chemistry PUBLIC InfinitesiaCore)
+infinitesia_add_module(InfinitesiaPlanet DIRS domains/natural/planetary PUBLIC InfinitesiaCore)
+infinitesia_add_module(InfinitesiaMatter DIRS matter
   PUBLIC InfinitesiaChemistry PRIVATE nlohmann_json::nlohmann_json)
 infinitesia_add_module(InfinitesiaBiology DIRS domains/natural/biology
-  PUBLIC InfinitesiaPlanet InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
+  PUBLIC InfinitesiaPlanet InfinitesiaMatter PRIVATE nlohmann_json::nlohmann_json)
 infinitesia_add_module(InfinitesiaGeology DIRS domains/natural/geology
-  PUBLIC InfinitesiaPlanet InfinitesiaChemistry InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
+  PUBLIC InfinitesiaPlanet InfinitesiaChemistry InfinitesiaMatter PRIVATE nlohmann_json::nlohmann_json)
 infinitesia_add_module(InfinitesiaBlocks DIRS blocks
-  PUBLIC InfinitesiaMaterials PRIVATE nlohmann_json::nlohmann_json)
+  PUBLIC InfinitesiaMatter PRIVATE nlohmann_json::nlohmann_json)
 infinitesia_add_module(InfinitesiaWorld DIRS world PUBLIC InfinitesiaPlanet InfinitesiaGeology InfinitesiaBiology InfinitesiaBlocks)
-infinitesia_add_module(InfinitesiaSimulation DIRS simulation PUBLIC InfinitesiaFoundation)
+infinitesia_add_module(InfinitesiaSimulation DIRS simulation PUBLIC InfinitesiaCore)
 infinitesia_add_module(InfinitesiaGameplay DIRS gameplay
   PUBLIC InfinitesiaWorld InfinitesiaSimulation PRIVATE nlohmann_json::nlohmann_json)
 

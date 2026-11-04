@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generates the 32x32 block textures into assets/textures/blocks/.
 
-One seamless PNG per fluid, loose ground, ice, rock and built material of assets/materials/materials.json.
+One seamless PNG per fluid, loose ground, ice, rock and built material of assets/matter/matter.json.
 File name = material id (rock.granite.png); a face of its own is <id>_top, <id>_side, <id>_bottom.
 Minerals get no tile: a mineral block is drawn in its catalog colour.
 Standard library only. Colours are deliberately loud (GregTech style): the catalog
@@ -341,7 +341,7 @@ SOILS = {
     "ice.permafrost": "gravel",
 }
 
-# Built materials of assets/materials/materials.json.
+# Built materials of assets/matter/matter.json.
 BUILT = {
     "built.planks": "layered", "built.brick": "clastic", "built.glass": "ice",
     "built.glass_red": "ice", "built.glass_green": "ice", "built.glass_blue": "ice",
@@ -378,7 +378,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     textures = {}
 
-    materials = json.loads((ROOT / "assets/materials/materials.json").read_text("utf-8"))["materials"]
+    materials = json.loads((ROOT / "assets/matter/matter.json").read_text("utf-8"))["matter"]
     for m in materials:
         key, kind = m["id"], m["class"]
         if key == "soil.turf":

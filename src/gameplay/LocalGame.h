@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "foundation/Simulation.h"
+#include "core/Simulation.h"
 #include "gameplay/GameWorld.h"
 #include "gameplay/StartingCells.h"
 #include "gameplay/commands/CommandRegistry.h"

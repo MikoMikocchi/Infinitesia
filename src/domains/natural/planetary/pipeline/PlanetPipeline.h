@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "domains/natural/planetary/pipeline/PlanetData.h"
-#include "foundation/LoadProgress.h"
+#include "core/LoadProgress.h"
 
 namespace Infinitesia {
 // The pipeline is inconsistent: a stage needs something nothing provides, two

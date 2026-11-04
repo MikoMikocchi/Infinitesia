@@ -5,8 +5,8 @@
 #include <set>
 
 #include "domains/natural/biology/community/VegetationLayer.h"
-#include "foundation/PlanetaryCoordinates.h"
-#include "support/MaterialFixtures.h"
+#include "core/PlanetaryCoordinates.h"
+#include "support/MatterFixtures.h"
 #include "support/Require.h"
 
 using namespace Infinitesia;
@@ -16,7 +16,7 @@ namespace {
 std::shared_ptr<const SpeciesCatalog> Catalog() {
   static const auto catalog =
       std::make_shared<const SpeciesCatalog>(SpeciesCatalog::Load(
-          kAssets / "biology" / "species.json", *SharedMaterials()));
+          kAssets / "biology" / "species.json", *SharedMatter()));
   return catalog;
 }
 

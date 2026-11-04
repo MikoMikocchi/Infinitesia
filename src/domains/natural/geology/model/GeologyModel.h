@@ -48,7 +48,7 @@ class GeologyModel {
   // pinch out at the column are absent.
   struct ColumnProfile {
     int count = 0;
-    std::array<MaterialId, kMaxProfileLayers> rock{};
+    std::array<MatterId, kMaxProfileLayers> rock{};
     std::array<int, kMaxProfileLayers>
         bottom{};  // metres above sea level, rounded
     // The formation each layer belongs to: its place in the province's pile,
@@ -176,14 +176,14 @@ class GeologyModel {
 
   // The rock at an elevation in a profile: the layer whose bottom lies at or
   // below it.
-  static MaterialId RockAt(const ColumnProfile& profile,
+  static MatterId RockAt(const ColumnProfile& profile,
                            int elevationMeters) noexcept;
   // The formation (place in the pile, top first) of that layer.
   static std::size_t FormationAt(const ColumnProfile& profile,
                                  int elevationMeters) noexcept;
 
   // Shorthand for building the profile and asking one elevation.
-  MaterialId BedrockAt(ProvinceId province, double eastMeters,
+  MatterId BedrockAt(ProvinceId province, double eastMeters,
                        double northMeters, int elevationMeters,
                        int pileTopMeters) const;
 
@@ -193,13 +193,13 @@ class GeologyModel {
                       double northMeters) const noexcept;
 
   // The formation exposed at the top of the undeformed pile.
-  MaterialId ExposedRock(ProvinceId province) const noexcept;
+  MatterId ExposedRock(ProvinceId province) const noexcept;
 
   // Formations of a province from the exposed one down to the basement, with
   // the thickness each has after scaling (the basement's is zero: it has no
   // bottom).
   struct Layer {
-    MaterialId rock = 0;
+    MatterId rock = 0;
     int thicknessMeters = 0;
   };
   const std::vector<Layer>& PileOf(ProvinceId province) const noexcept;

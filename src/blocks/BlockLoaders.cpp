@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "materials/CatalogJson.h"
+#include "matter/CatalogJson.h"
 
 namespace Infinitesia {
 using namespace CatalogJson;

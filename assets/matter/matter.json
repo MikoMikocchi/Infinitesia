@@ -1,6 +1,6 @@
 {
     "source": "Every material of the game (docs/06_BLOCKS.md): air, fluids, rocks, loose ground, ice, minerals and built materials. Densities in kg/m3. Typical values from docs/03a_GEOLOGY_CATALOGS.md are gameplay approximations to be checked against Handbook of Mineralogy / Schon (2015).",
-    "materials": [
+    "matter": [
         {
             "id": "air",
             "numericId": 0,

@@ -3,7 +3,7 @@
 #include <cstdint>
 
 #include "domains/natural/planetary/PlanetParameters.h"
-#include "foundation/PlanetaryCoordinates.h"
+#include "core/PlanetaryCoordinates.h"
 
 namespace Infinitesia {
 class Planet {

@@ -29,8 +29,8 @@ class SnapshotWorld {
   explicit SnapshotWorld(const Options& options);
 
   const Infinitesia::PlanetMap& Map() const noexcept { return m_map; }
-  const Infinitesia::MaterialCatalog& Materials() const noexcept {
-    return *m_materials;
+  const Infinitesia::MatterCatalog& Matter() const noexcept {
+    return *m_matter;
   }
   const Infinitesia::GeologyCatalog& Catalog() const noexcept {
     return *m_catalog;
@@ -48,7 +48,7 @@ class SnapshotWorld {
  private:
   Infinitesia::PlanetMap m_map;
   Infinitesia::RegionGenerator m_generator;
-  std::shared_ptr<const Infinitesia::MaterialCatalog> m_materials;
+  std::shared_ptr<const Infinitesia::MatterCatalog> m_matter;
   std::shared_ptr<const Infinitesia::GeologyCatalog> m_catalog;
   std::shared_ptr<const Infinitesia::BlockRegistry> m_registry;
   Infinitesia::GeologyModel m_geology;

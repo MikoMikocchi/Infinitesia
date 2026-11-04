@@ -14,7 +14,7 @@ namespace {
 // empty when it loads.
 std::string LoadError(const BrokenFile& broken) {
   try {
-    GeologyCatalog::Load(SharedMaterials(), broken.Path());
+    GeologyCatalog::Load(SharedMatter(), broken.Path());
   } catch (const CatalogError& error) {
     return error.what();
   }
@@ -32,7 +32,7 @@ TEST_CASE("ProvinceColumnsCoverEveryProvinceTypeWithKnownRocks") {
     REQUIRE(!column.bottomUp.empty());
     CHECK(column.bottomUp.front().needs == BiosphereRequirement::None);
     for (const ColumnLayer& layer : column.bottomUp) {
-      const MaterialDef* material = catalog.Materials().Get(layer.rock);
+      const MatterDef* material = catalog.Matter().Get(layer.rock);
       Require(material != nullptr && material->blockClass == BlockClass::Rock,
               "a column layer is not a rock");
       Require(layer.thicknessMeters > 0.0, "a column layer has no thickness");

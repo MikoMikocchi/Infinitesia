@@ -19,7 +19,7 @@
       "branching": { "count": [5, 9], "angleDegrees": 50 },
       "rootDepthM": 2,
       "shadeTolerance": 0.35,
-      "materials": {
+      "matter": {
         "trunk": "plant.oak.trunk",
         "branch": "plant.oak.branch",
         "twig": "plant.oak.twig",
@@ -47,7 +47,7 @@
       "branching": { "count": [10, 18], "angleDegrees": 80 },
       "rootDepthM": 1,
       "shadeTolerance": 0.7,
-      "materials": {
+      "matter": {
         "trunk": "plant.spruce.trunk",
         "branch": "plant.spruce.branch",
         "twig": "plant.spruce.twig",
@@ -75,7 +75,7 @@
       "branching": { "count": [6, 10], "angleDegrees": 25 },
       "rootDepthM": 1,
       "shadeTolerance": 0.15,
-      "materials": {
+      "matter": {
         "trunk": "plant.palm.trunk",
         "branch": "plant.palm.branch",
         "twig": "plant.palm.twig",

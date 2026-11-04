@@ -1,7 +1,7 @@
 #pragma once
 
 #include "domains/natural/planetary/PlanetMap.h"
-#include "foundation/PlanetaryCoordinates.h"
+#include "core/PlanetaryCoordinates.h"
 
 namespace Infinitesia {
 // Planet-grid fields interpolated at an arbitrary direction on the sphere.

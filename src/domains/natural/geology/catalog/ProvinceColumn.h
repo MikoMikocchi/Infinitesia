@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "domains/natural/planetary/geology/Province.h"
-#include "materials/MaterialId.h"
+#include "matter/MatterId.h"
 
 namespace Infinitesia {
 // Biosphere conditions a layer of a stratigraphic column depends on.
@@ -18,7 +18,7 @@ enum class BiosphereRequirement : std::uint8_t {
 };
 
 struct ColumnLayer {
-  MaterialId rock = 0;
+  MatterId rock = 0;
   double thicknessMeters = 0.0;  // real-world thickness before the game scale
   BiosphereRequirement needs = BiosphereRequirement::None;
 };

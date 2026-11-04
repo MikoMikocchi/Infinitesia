@@ -1,10 +1,10 @@
-#include "materials/MaterialLoader.h"
+#include "matter/MatterLoader.h"
 
 #include <cmath>
 #include <set>
 #include <unordered_map>
 
-#include "materials/CatalogJson.h"
+#include "matter/CatalogJson.h"
 
 namespace Infinitesia {
 using namespace CatalogJson;
@@ -24,7 +24,7 @@ BlockClass MaterialClassField(const Json& object, const Where& where) {
   Fail(where, "unknown material class '" + text + "'");
 }
 
-// The numeric ids a class may use (MaterialId.h) and the prefix its key must
+// The numeric ids a class may use (MatterId.h) and the prefix its key must
 // have.
 struct ClassRule {
   int lowest;
@@ -37,24 +37,24 @@ ClassRule RuleOf(BlockClass blockClass) {
   switch (blockClass) {
     case BlockClass::Air:
     case BlockClass::Fluid:
-      return {0, kFirstRockMaterial - 1, nullptr, "0-31"};
+      return {0, kFirstRockMatter - 1, nullptr, "0-31"};
     case BlockClass::Rock:
-      return {kFirstRockMaterial, kFirstLooseMaterial - 1, "rock.", "32-511"};
+      return {kFirstRockMatter, kFirstLooseMatter - 1, "rock.", "32-511"};
     case BlockClass::Loose:
     case BlockClass::Ice:
-      return {kFirstLooseMaterial, kFirstBuiltMaterial - 1, nullptr,
+      return {kFirstLooseMatter, kFirstBuiltMatter - 1, nullptr,
               "512-1023"};
     case BlockClass::Built:
-      return {kFirstBuiltMaterial, kFirstMineralMaterial - 1, "built.",
+      return {kFirstBuiltMatter, kFirstMineralMatter - 1, "built.",
               "1024-2047"};
     case BlockClass::Mineral:
-      return {kFirstMineralMaterial, kFirstPlantMaterial - 1, "mineral.",
+      return {kFirstMineralMatter, kFirstPlantMatter - 1, "mineral.",
               "2048-4095"};
     case BlockClass::Plant:
-      return {kFirstPlantMaterial, kMaterialCapacity - 1, "plant.",
+      return {kFirstPlantMatter, kMatterCapacity - 1, "plant.",
               "4096-5119"};
   }
-  return {0, kMaterialCapacity - 1, nullptr, "0-4095"};
+  return {0, kMatterCapacity - 1, nullptr, "0-4095"};
 }
 
 RockClass RockClassField(const Json& object, const Where& where) {
@@ -93,12 +93,12 @@ ChemistryInfo ReadChemistry(const Json& object, const Where& where) {
 // known.
 ModalComposition ReadModal(
     const Json& object, const Where& where,
-    const std::unordered_map<std::string, MaterialId>& idByKey) {
+    const std::unordered_map<std::string, MatterId>& idByKey) {
   ModalComposition modal;
   modal.rockClass = RockClassField(object, where);
   if (!object.contains("modal")) return modal;
   double sum = 0.0;
-  std::set<MaterialId> used;
+  std::set<MatterId> used;
   for (const Json& part : ArrayField(object, "modal", where)) {
     const std::string mineralKey = StringField(part, "mineral", where);
     const auto found = idByKey.find(mineralKey);
@@ -120,24 +120,24 @@ ModalComposition ReadModal(
 }  // namespace
 
 void LoadMaterialFile(const std::filesystem::path& path,
-                      std::vector<MaterialDef>& materials,
-                      MaterialCatalog::ChemistryTable& chemistry,
-                      MaterialCatalog::ModalTable& modal) {
+                      std::vector<MatterDef>& materials,
+                      MatterCatalog::ChemistryTable& chemistry,
+                      MatterCatalog::ModalTable& modal) {
   const Json root = ReadJson(path);
   const Where where{path.string(), ""};
 
   struct PendingRock {
-    MaterialId id;
+    MatterId id;
     const Json* object;
     Where record;
   };
   std::vector<PendingRock> rocks;
-  std::unordered_map<std::string, MaterialId> idByKey;
+  std::unordered_map<std::string, MatterId> idByKey;
 
   std::size_t index = 0;
-  for (const Json& entry : ArrayField(root, "materials", where)) {
+  for (const Json& entry : ArrayField(root, "matter", where)) {
     Where record{path.string(), "materials[" + std::to_string(index++) + "]"};
-    MaterialDef material;
+    MatterDef material;
     material.key = StringField(entry, "id", record);
     record.record = material.key;
     material.blockClass = MaterialClassField(entry, record);
@@ -150,7 +150,7 @@ void LoadMaterialFile(const std::filesystem::path& path,
       Fail(record,
            std::string("numericId is outside the range of its class (") +
                rule.label + ")");
-    material.id = static_cast<MaterialId>(numericId);
+    material.id = static_cast<MatterId>(numericId);
     if (!idByKey.emplace(material.key, material.id).second)
       Fail(record, "duplicate id");
 

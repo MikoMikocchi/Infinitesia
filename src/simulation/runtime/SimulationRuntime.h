@@ -1,6 +1,6 @@
 #pragma once
 
-#include "foundation/Simulation.h"
+#include "core/Simulation.h"
 #include "simulation/runtime/SystemExecutor.h"
 #include "simulation/runtime/SystemRegistry.h"
 #include "simulation/runtime/SystemScheduler.h"

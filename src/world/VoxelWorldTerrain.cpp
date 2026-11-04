@@ -55,7 +55,7 @@ bool VoxelWorld::HasSkyAccess(GridCell cell) const {
 }
 
 void VoxelWorld::SetBlock(GridCell cell, BlockState state) {
-  if (m_terrain->Registry().GetMaterial(state.material) == nullptr ||
+  if (m_terrain->Registry().GetMatter(state.matter) == nullptr ||
       m_terrain->Registry().GetShape(state.shape) == nullptr) {
     throw std::invalid_argument(
         "The block registry does not know the material or shape of the block.");

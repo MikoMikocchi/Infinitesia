@@ -1,9 +1,9 @@
-#include "materials/CatalogJson.h"
+#include "matter/CatalogJson.h"
 
 #include <algorithm>
 #include <fstream>
 
-#include "materials/CatalogError.h"
+#include "matter/CatalogError.h"
 
 namespace Infinitesia::CatalogJson {
 [[noreturn]] void Fail(const Where& where, const std::string& what) {

@@ -4,12 +4,12 @@
 #include <vector>
 
 #include "domains/natural/geology/history/GeologicEvent.h"
-#include "materials/MaterialTypes.h"
+#include "matter/MatterTypes.h"
 
 namespace Infinitesia {
 // One formation of a province's column before erosion.
 struct HistoryFormation {
-  MaterialId rock = kUnspecifiedMaterial;
+  MatterId rock = kUnspecifiedMatter;
   RockClass rockClass = RockClass::SedimentaryClastic;
   double thicknessMeters = 0.0;  // real thickness, before the game scale
   bool erased = false;           // stripped off by erosion

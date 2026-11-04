@@ -5,7 +5,7 @@
 #include <fstream>
 #include <string>
 
-#include "foundation/ContentRegistry.h"
+#include "core/ContentRegistry.h"
 #include "gameplay/GameWorld.h"
 #include "gameplay/content/GameContent.h"
 

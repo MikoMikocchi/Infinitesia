@@ -50,14 +50,14 @@ LocalGrid BuildGrid(const Options& options, const RegionGenerator& generator) {
 SnapshotWorld::SnapshotWorld(const Options& options)
     : m_map(BuildMap(options)),
       m_generator(m_map),
-      m_materials(std::make_shared<const MaterialCatalog>(
-          MaterialCatalog::LoadFromFile(std::filesystem::path(options.assets) /
-                                        "materials" / "materials.json"))),
+      m_matter(std::make_shared<const MatterCatalog>(
+          MatterCatalog::LoadFromFile(std::filesystem::path(options.assets) /
+                                        "matter" / "matter.json"))),
       m_catalog(std::make_shared<const GeologyCatalog>(GeologyCatalog::Load(
-          m_materials, std::filesystem::path(options.assets) / "geology" /
+          m_matter, std::filesystem::path(options.assets) / "geology" /
                            "province_columns.json"))),
       m_registry(std::make_shared<const BlockRegistry>(BlockRegistry::Build(
-          m_materials,
+          m_matter,
           std::filesystem::path(options.assets) / "blocks" / "shapes.json"))),
       m_geology(m_catalog, m_map),
       m_terrain(m_generator.GetTerrain(), BuildGrid(options, m_generator),

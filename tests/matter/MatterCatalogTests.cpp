@@ -8,33 +8,33 @@
 #include <utility>
 
 #include "support/BrokenFile.h"
-#include "support/MaterialFixtures.h"
+#include "support/MatterFixtures.h"
 #include "support/Require.h"
 
 using namespace Infinitesia;
 using namespace InfinitesiaTests;
 
 namespace {
-bool HasTag(const MaterialDef& material, const char* tag) {
+bool HasTag(const MatterDef& material, const char* tag) {
   return std::find(material.tags.begin(), material.tags.end(), tag) !=
          material.tags.end();
 }
 
-// The message of the error loading a broken copy of materials.json; empty when
+// The message of the error loading a broken copy of matter.json; empty when
 // it loads.
 std::string LoadError(const BrokenFile& broken) {
   try {
-    MaterialCatalog::LoadFromFile(broken.Path());
+    MatterCatalog::LoadFromFile(broken.Path());
   } catch (const CatalogError& error) {
     return error.what();
   }
   return {};
 }
 
-std::vector<const MaterialDef*> OfClass(const MaterialCatalog& catalog,
+std::vector<const MatterDef*> OfClass(const MatterCatalog& catalog,
                                         BlockClass blockClass) {
-  std::vector<const MaterialDef*> found;
-  for (const MaterialDef& material : catalog.Materials()) {
+  std::vector<const MatterDef*> found;
+  for (const MatterDef& material : catalog.Matter()) {
     if (material.blockClass == blockClass) found.push_back(&material);
   }
   return found;
@@ -42,24 +42,24 @@ std::vector<const MaterialDef*> OfClass(const MaterialCatalog& catalog,
 }  // namespace
 
 TEST_CASE("CatalogLoadsWithStableIds") {
-  const MaterialCatalog& catalog = *SharedMaterials();
+  const MatterCatalog& catalog = *SharedMatter();
   CHECK(OfClass(catalog, BlockClass::Mineral).size() >= 160);
   CHECK(OfClass(catalog, BlockClass::Rock).size() >= 95);
-  CHECK(catalog.Materials().size() >= 290);
+  CHECK(catalog.Matter().size() >= 290);
 
   // Numeric IDs are saved with worlds: these never change.
-  CHECK(catalog.Find("air")->id == kAirMaterial);
-  CHECK(catalog.Find("fluid.water")->id == kWaterMaterial);
+  CHECK(catalog.Find("air")->id == kAirMatter);
+  CHECK(catalog.Find("fluid.water")->id == kWaterMatter);
   CHECK(catalog.Find("rock.granite")->id == 32);
   CHECK(catalog.Find("rock.bedrock")->id == 130);
-  CHECK(catalog.Find("soil.humus")->id == kFirstLooseMaterial);
+  CHECK(catalog.Find("soil.humus")->id == kFirstLooseMatter);
   CHECK(catalog.Find("soil.turf")->id == 527);
-  CHECK(catalog.Find("built.planks")->id == kFirstBuiltMaterial);
-  CHECK(catalog.Find("mineral.quartz")->id == kFirstMineralMaterial);
+  CHECK(catalog.Find("built.planks")->id == kFirstBuiltMatter);
+  CHECK(catalog.Find("mineral.quartz")->id == kFirstMineralMatter);
 
-  std::set<MaterialId> ids;
+  std::set<MatterId> ids;
   std::set<std::string> keys;
-  for (const MaterialDef& material : catalog.Materials()) {
+  for (const MatterDef& material : catalog.Matter()) {
     Require(ids.insert(material.id).second, "duplicate material id");
     Require(keys.insert(material.key).second, "duplicate material key");
     Require(catalog.Get(material.id) == &material,
@@ -69,45 +69,45 @@ TEST_CASE("CatalogLoadsWithStableIds") {
     switch (material.blockClass) {
       case BlockClass::Air:
       case BlockClass::Fluid:
-        Require(material.id < kFirstRockMaterial,
+        Require(material.id < kFirstRockMatter,
                 "air and fluids live below 32");
         break;
       case BlockClass::Rock:
-        Require(material.id >= kFirstRockMaterial &&
-                    material.id < kFirstLooseMaterial,
+        Require(material.id >= kFirstRockMatter &&
+                    material.id < kFirstLooseMatter,
                 "rocks live in 32-511");
         break;
       case BlockClass::Loose:
       case BlockClass::Ice:
-        Require(material.id >= kFirstLooseMaterial &&
-                    material.id < kFirstBuiltMaterial,
+        Require(material.id >= kFirstLooseMatter &&
+                    material.id < kFirstBuiltMatter,
                 "loose ground lives in 512-1023");
         break;
       case BlockClass::Built:
-        Require(material.id >= kFirstBuiltMaterial &&
-                    material.id < kFirstMineralMaterial,
+        Require(material.id >= kFirstBuiltMatter &&
+                    material.id < kFirstMineralMatter,
                 "built materials live in 1024-2047");
         break;
       case BlockClass::Mineral:
-        Require(material.id >= kFirstMineralMaterial &&
-                    material.id < kFirstPlantMaterial,
+        Require(material.id >= kFirstMineralMatter &&
+                    material.id < kFirstPlantMatter,
                 "minerals live in 2048-4095");
         break;
       case BlockClass::Plant:
-        Require(material.id >= kFirstPlantMaterial &&
-                    material.id < kMaterialCapacity,
+        Require(material.id >= kFirstPlantMatter &&
+                    material.id < kMatterCapacity,
                 "plants live in 4096-5119");
         break;
     }
   }
-  CHECK(catalog.Get(kUnspecifiedMaterial) == nullptr);
+  CHECK(catalog.Get(kUnspecifiedMatter) == nullptr);
   CHECK(catalog.Get(31) == nullptr);
-  CHECK(catalog.ColorOf(kUnspecifiedMaterial) == RgbColor{255, 0, 255});
+  CHECK(catalog.ColorOf(kUnspecifiedMatter) == RgbColor{255, 0, 255});
 }
 
 TEST_CASE("AMineralIsAMaterialLikeAnyOther") {
-  const MaterialCatalog& catalog = *SharedMaterials();
-  const MaterialDef& quartz = *catalog.Find("mineral.quartz");
+  const MatterCatalog& catalog = *SharedMatter();
+  const MatterDef& quartz = *catalog.Find("mineral.quartz");
 
   // The same record as granite or planks: density, colour, tags, light and
   // rules.
@@ -142,8 +142,8 @@ TEST_CASE("AMineralIsAMaterialLikeAnyOther") {
 }
 
 TEST_CASE("MaterialsCarryTagsAndLightProperties") {
-  const MaterialCatalog& catalog = *SharedMaterials();
-  for (const MaterialDef& material : catalog.Materials()) {
+  const MatterCatalog& catalog = *SharedMatter();
+  for (const MatterDef& material : catalog.Matter()) {
     Require(HasTag(material, ClassTag(material.blockClass)),
             "a material lacks the tag of its class");
     for (const std::uint8_t level :
@@ -173,11 +173,11 @@ TEST_CASE("MaterialsCarryTagsAndLightProperties") {
 
   // Grass-covered ground and the stand-in rock for terrains without geology
   // (docs/06_BLOCKS.md, section 4).
-  const MaterialDef& turf = *catalog.Find("soil.turf");
+  const MatterDef& turf = *catalog.Find("soil.turf");
   CHECK(turf.blockClass == BlockClass::Loose);
   CHECK(HasTag(turf, "soil"));
   CHECK(turf.digClass == 1);
-  const MaterialDef& bedrock = *catalog.Find("rock.bedrock");
+  const MatterDef& bedrock = *catalog.Find("rock.bedrock");
   CHECK(bedrock.blockClass == BlockClass::Rock);
   CHECK(bedrock.digClass == 4);
   CHECK(catalog.ModalOf(bedrock.id)->parts.empty());
@@ -185,8 +185,8 @@ TEST_CASE("MaterialsCarryTagsAndLightProperties") {
 
   // The sea is the same as fresh water for now (docs/06_BLOCKS.md): one tag,
   // equal properties.
-  const MaterialDef& water = *catalog.Find("fluid.water");
-  const MaterialDef& seawater = *catalog.Find("fluid.seawater");
+  const MatterDef& water = *catalog.Find("fluid.water");
+  const MatterDef& seawater = *catalog.Find("fluid.seawater");
   CHECK(HasTag(water, "water"));
   CHECK(HasTag(seawater, "water"));
   CHECK(water.density == seawater.density);
@@ -196,35 +196,35 @@ TEST_CASE("MaterialsCarryTagsAndLightProperties") {
 
 TEST_CASE("MaterialLightFieldsAreValidated") {
   {
-    const BrokenFile broken(kMaterialsFile, "infinitesia_materials_opacity");
+    const BrokenFile broken(kMatterFile, "infinitesia_materials_opacity");
     broken.Edit([](Json& root) {
-      BrokenFile::Record(root, "materials", "fluid.magma")["opacity"] = 16;
+      BrokenFile::Record(root, "matter", "fluid.magma")["opacity"] = 16;
     });
     const std::string error = LoadError(broken);
     CHECK(error.find("opacity") != std::string::npos);
     CHECK(error.find("fluid.magma") != std::string::npos);
   }
   {
-    const BrokenFile broken(kMaterialsFile, "infinitesia_materials_emission");
+    const BrokenFile broken(kMatterFile, "infinitesia_materials_emission");
     broken.Edit([](Json& root) {
-      BrokenFile::Record(root, "materials", "fluid.magma")["emission"] =
+      BrokenFile::Record(root, "matter", "fluid.magma")["emission"] =
           Json::array({14, 6});
     });
     CHECK(LoadError(broken).find("emission") != std::string::npos);
   }
   {
-    const BrokenFile broken(kMaterialsFile, "infinitesia_materials_tags");
+    const BrokenFile broken(kMatterFile, "infinitesia_materials_tags");
     broken.Edit([](Json& root) {
-      BrokenFile::Record(root, "materials", "fluid.water")["tags"] =
+      BrokenFile::Record(root, "matter", "fluid.water")["tags"] =
           Json::array({7});
     });
     CHECK(LoadError(broken).find("tags") != std::string::npos);
   }
   {
     // A tint is three numbers: red glass dims green and blue more than red.
-    const BrokenFile broken(kMaterialsFile, "infinitesia_materials_tint");
+    const BrokenFile broken(kMatterFile, "infinitesia_materials_tint");
     broken.Edit([](Json& root) {
-      BrokenFile::Record(root, "materials", "fluid.magma")["opacity"] =
+      BrokenFile::Record(root, "matter", "fluid.magma")["opacity"] =
           Json::array({1, 8, 8});
     });
     CHECK(LoadError(broken).empty());
@@ -252,8 +252,8 @@ TEST_CASE("MineralMolarMassesMatchTheReference") {
       {"mineral.zircon", 183.31},
   };
   for (const auto& [key, expected] : reference) {
-    const MaterialDef& mineral = MaterialNamed(key);
-    const ChemistryInfo* chemistry = SharedMaterials()->ChemistryOf(mineral.id);
+    const MatterDef& mineral = MatterNamed(key);
+    const ChemistryInfo* chemistry = SharedMatter()->ChemistryOf(mineral.id);
     REQUIRE_MESSAGE(chemistry != nullptr, key);
     CHECK_MESSAGE(
         chemistry->molarMass == doctest::Approx(expected).epsilon(0.001), key);
@@ -261,8 +261,8 @@ TEST_CASE("MineralMolarMassesMatchTheReference") {
 }
 
 TEST_CASE("EveryMineralIsAConsistentCompositionWithPlausibleProperties") {
-  const MaterialCatalog& catalog = *SharedMaterials();
-  for (const MaterialDef* mineral : OfClass(catalog, BlockClass::Mineral)) {
+  const MatterCatalog& catalog = *SharedMatter();
+  for (const MatterDef* mineral : OfClass(catalog, BlockClass::Mineral)) {
     const ChemistryInfo* chemistry = catalog.ChemistryOf(mineral->id);
     RequireFatal(chemistry != nullptr, "a mineral has no chemistry");
     Require(!chemistry->composition.Empty(),
@@ -287,9 +287,9 @@ TEST_CASE("EveryMineralIsAConsistentCompositionWithPlausibleProperties") {
 }
 
 TEST_CASE("RocksAreMixturesOfMinerals") {
-  const MaterialCatalog& catalog = *SharedMaterials();
+  const MatterCatalog& catalog = *SharedMatter();
   int filled = 0;
-  for (const MaterialDef* rock : OfClass(catalog, BlockClass::Rock)) {
+  for (const MatterDef* rock : OfClass(catalog, BlockClass::Rock)) {
     Require(rock->density >= 700.0 && rock->density <= 4000.0,
             "rock density out of range");
     const ModalComposition* modal = catalog.ModalOf(rock->id);
@@ -329,9 +329,9 @@ TEST_CASE("RocksAreMixturesOfMinerals") {
 }
 
 TEST_CASE("RockChemistryFollowsFromItsMinerals") {
-  const MaterialCatalog& catalog = *SharedMaterials();
+  const MatterCatalog& catalog = *SharedMatter();
   const auto elements = [&](const char* key) {
-    return catalog.ElementMassFractionsOf(MaterialNamed(key).id);
+    return catalog.ElementMassFractionsOf(MatterNamed(key).id);
   };
 
   const auto granite = elements("rock.granite");
@@ -365,7 +365,7 @@ TEST_CASE("LoaderRejectsBrokenFilesWithAMessageNamingTheRecord") {
   const auto check = [](const char* name,
                         const std::function<void(Json&)>& change,
                         const char* inError, const char* inRecord) {
-    const BrokenFile broken(kMaterialsFile, name);
+    const BrokenFile broken(kMatterFile, name);
     broken.Edit(change);
     const std::string error = LoadError(broken);
     CHECK_MESSAGE(error.find(inError) != std::string::npos, name, ": ", error);
@@ -374,7 +374,7 @@ TEST_CASE("LoaderRejectsBrokenFilesWithAMessageNamingTheRecord") {
                     error);
   };
   const auto record = [](Json& root, const char* key) -> Json& {
-    return BrokenFile::Record(root, "materials", key);
+    return BrokenFile::Record(root, "matter", key);
   };
 
   check(
@@ -382,7 +382,7 @@ TEST_CASE("LoaderRejectsBrokenFilesWithAMessageNamingTheRecord") {
       [&](Json& r) {
         record(r, "mineral.quartz")["chemistry"]["formula"] = "Si(O2";
       },
-      "materials.json", "mineral.quartz");
+      "matter.json", "mineral.quartz");
   check(
       "infinitesia_mat_duplicate",
       [&](Json& r) { record(r, "mineral.calcite")["id"] = "mineral.quartz"; },
@@ -447,17 +447,17 @@ TEST_CASE("LoaderRejectsBrokenFilesWithAMessageNamingTheRecord") {
       [&](Json& r) { record(r, "rock.granite")["digClass"] = 9; }, "digClass",
       nullptr);
   {
-    const BrokenFile broken(kMaterialsFile, "infinitesia_mat_nowater");
+    const BrokenFile broken(kMatterFile, "infinitesia_mat_nowater");
     broken.Edit([&](Json& r) { record(r, "fluid.water")["class"] = "loose"; });
     CHECK(!LoadError(broken).empty());
   }
   {
-    const BrokenFile broken(kMaterialsFile, "infinitesia_mat_json");
+    const BrokenFile broken(kMatterFile, "infinitesia_mat_json");
     broken.WriteText("{ \"materials\": [ ");
     CHECK(LoadError(broken).find("invalid JSON") != std::string::npos);
   }
   {
-    const BrokenFile broken(kMaterialsFile, "infinitesia_mat_missing");
+    const BrokenFile broken(kMatterFile, "infinitesia_mat_missing");
     broken.Remove();
     CHECK(LoadError(broken).find("cannot open") != std::string::npos);
   }

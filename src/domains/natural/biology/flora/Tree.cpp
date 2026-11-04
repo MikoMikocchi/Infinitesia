@@ -5,20 +5,19 @@ TreeVoxels GrowTree(const Species& species, std::uint64_t seed) {
   return Voxelize(GrowSkeleton(species, seed), seed);
 }
 
-MaterialId PartMaterial(const PlantMaterials& materials,
-                        TreePart part) noexcept {
+MatterId PartMatter(const PlantMatter& matter, TreePart part) noexcept {
   switch (part) {
     case TreePart::Trunk:
-      return materials.trunk;
+      return matter.trunk;
     case TreePart::Branch:
-      return materials.branch;
+      return matter.branch;
     case TreePart::Twig:
-      return materials.twig;
+      return matter.twig;
     case TreePart::Leaves:
-      return materials.leaves;
+      return matter.leaves;
     case TreePart::Root:
-      return materials.root;
+      return matter.root;
   }
-  return kUnspecifiedMaterial;
+  return kUnspecifiedMatter;
 }
 }  // namespace Infinitesia

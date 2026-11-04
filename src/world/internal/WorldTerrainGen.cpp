@@ -50,8 +50,8 @@ std::size_t GetBlockIndex(const WorldChunk& chunk, GridCell cell) {
          localX;
 }
 
-MaterialId GenerateMaterial(int gridHeight, std::uint32_t seed, GridCell cell,
-                            const SurfaceMaterials& materials) {
+MatterId GenerateMatter(int gridHeight, std::uint32_t seed, GridCell cell,
+                            const SurfaceMatter& materials) {
   if (cell.y < gridHeight - 1) {
     return cell.y >= gridHeight - 4 ? materials.subsoil : materials.bedrock;
   }

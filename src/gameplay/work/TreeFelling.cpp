@@ -13,7 +13,7 @@ constexpr int kSupportMargin = kLeafSupportSteps;
 
 bool HasTag(const VoxelWorld& terrain, GridCell cell, Tag tag) {
   const Block* block = terrain.GetBlock(cell);
-  return block != nullptr && terrain.Registry().Has(block->state.material, tag);
+  return block != nullptr && terrain.Registry().Has(block->state.matter, tag);
 }
 
 struct CellLess {
@@ -65,8 +65,8 @@ FelledTree FellTree(VoxelWorld& terrain, GridCell start) {
   int maxX = INT_MIN, maxY = INT_MIN, maxZ = INT_MIN;
   for (const GridCell& cell : felled.wood) {
     const Block* block = terrain.GetBlock(cell);
-    const MaterialDef* material =
-        terrain.Registry().GetMaterial(block->state.material);
+    const MatterDef* material =
+        terrain.Registry().GetMatter(block->state.matter);
     felled.woodKilograms += material != nullptr ? material->density : 0.0;
     terrain.SetBlock(cell, terrain.GroundStateAt(cell));
     minX = std::min(minX, cell.x);

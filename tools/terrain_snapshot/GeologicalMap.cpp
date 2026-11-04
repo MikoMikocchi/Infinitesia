@@ -18,7 +18,7 @@ int RenderGeologicalMap(const Options& options, const Window& window,
   const double extent = window.extent;
   const double step = window.step;
   const int columns = window.columns;
-  const MaterialCatalog& catalog = world.Materials();
+  const MatterCatalog& catalog = world.Matter();
   const GeologyModel& geology = world.Geology();
   const SettlementTerrain& terrain = world.Terrain();
 
@@ -27,7 +27,7 @@ int RenderGeologicalMap(const Options& options, const Window& window,
                                           ? options.scale
                                           : std::max(1.0, 1200.0 / columns))));
   std::vector<int> ground(static_cast<std::size_t>(columns) * columns);
-  std::vector<MaterialId> rockAt(ground.size(), kUnspecifiedMaterial);
+  std::vector<MatterId> rockAt(ground.size(), kUnspecifiedMatter);
   std::vector<char> drowned(ground.size(), 0);
   std::vector<char> faultTrace(
       ground.size(),
@@ -73,7 +73,7 @@ int RenderGeologicalMap(const Options& options, const Window& window,
   }
 
   Image image(columns * pixels, columns * pixels, {24, 28, 34});
-  std::map<MaterialId, long> mapped;
+  std::map<MatterId, long> mapped;
   const auto groundAt = [&](int east, int south) {
     return ground[static_cast<std::size_t>(std::clamp(south, 0, columns - 1)) *
                       columns +

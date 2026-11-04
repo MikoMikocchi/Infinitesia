@@ -47,7 +47,7 @@ void WorkSystem::Tick(GameWorld& world, const Grid& grid,
         FellAndDropLogs(world, grid, m_orders[index].targetCell);
       } else {
         world.terrain.SetBlock(m_orders[index].targetCell,
-                               BlockState{kAirMaterial, kShapeFull});
+                               BlockState{kAirMatter, kShapeFull});
       }
       m_orders.erase(m_orders.begin() + static_cast<std::ptrdiff_t>(index));
       continue;

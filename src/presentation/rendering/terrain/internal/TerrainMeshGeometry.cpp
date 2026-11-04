@@ -90,7 +90,7 @@ std::array<float, 4> ComputeCornerBrightness(
 }
 
 Color GetBlockColor(const Block& block, const BlockRegistry& registry) {
-  const RgbColor color = registry.ColorOf(block.state.material);
+  const RgbColor color = registry.ColorOf(block.state.matter);
   return {color.r, color.g, color.b, 255};
 }
 
@@ -98,7 +98,7 @@ FaceLook GetFaceLook(const Block& block, const BlockRegistry& registry,
                      const BlockTextureAtlas* atlas, FaceKind kind) {
   if (atlas != nullptr && atlas->IsLoaded()) {
     const Rectangle* tile = nullptr;
-    const MaterialDef* material = registry.GetMaterial(block.state.material);
+    const MatterDef* material = registry.GetMatter(block.state.matter);
     if (material != nullptr) {
       tile = atlas->Find(material->key +
                          (kind == FaceKind::Top ? "_top" : "_side"));

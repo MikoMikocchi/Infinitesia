@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "materials/CatalogJson.h"
+#include "matter/CatalogJson.h"
 
 namespace Infinitesia {
 using namespace CatalogJson;
@@ -80,27 +80,27 @@ Niche ReadNiche(const Json& object, const Where& where) {
   return niche;
 }
 
-bool HasTag(const MaterialDef& material, const char* tag) {
+bool HasTag(const MatterDef& material, const char* tag) {
   return std::find(material.tags.begin(), material.tags.end(), tag) !=
          material.tags.end();
 }
 
-MaterialId PlantMaterial(const Json& object, const char* key,
-                         const Where& where, const MaterialCatalog& materials,
+MatterId ReadPlantMatter(const Json& object, const char* key,
+                         const Where& where, const MatterCatalog& catalog,
                          const char* requiredTag) {
   const std::string text = StringField(object, key, where);
-  const MaterialDef* material = materials.Find(text);
-  if (material == nullptr || material->blockClass != BlockClass::Plant)
+  const MatterDef* matter = catalog.Find(text);
+  if (matter == nullptr || matter->blockClass != BlockClass::Plant)
     Fail(where, std::string("'") + key + "' names '" + text +
                     "', which is not a plant material");
-  if (!HasTag(*material, requiredTag))
+  if (!HasTag(*matter, requiredTag))
     Fail(where, std::string("material '") + text + "' of '" + key +
                     "' lacks the tag '" + requiredTag + "'");
-  return material->id;
+  return matter->id;
 }
 
 Species ReadSpecies(const Json& entry, const std::string& file,
-                    const MaterialCatalog& catalog) {
+                    const MatterCatalog& catalog) {
   Where where{file, ""};
   Species species;
   species.key = StringField(entry, "id", where);
@@ -141,13 +141,13 @@ Species ReadSpecies(const Json& entry, const std::string& file,
     Fail(where, "rootDepthM must be 0-4");
   species.shadeTolerance = UnitField(entry, "shadeTolerance", where);
 
-  const Json& materials = Field(entry, "materials", where);
-  species.materials = {
-      PlantMaterial(materials, "trunk", where, catalog, "tree_wood"),
-      PlantMaterial(materials, "branch", where, catalog, "tree_wood"),
-      PlantMaterial(materials, "twig", where, catalog, "tree_wood"),
-      PlantMaterial(materials, "leaves", where, catalog, "tree_leaves"),
-      PlantMaterial(materials, "root", where, catalog, "tree_wood")};
+  const Json& matter = Field(entry, "matter", where);
+  species.matter = {
+      ReadPlantMatter(matter, "trunk", where, catalog, "tree_wood"),
+      ReadPlantMatter(matter, "branch", where, catalog, "tree_wood"),
+      ReadPlantMatter(matter, "twig", where, catalog, "tree_wood"),
+      ReadPlantMatter(matter, "leaves", where, catalog, "tree_leaves"),
+      ReadPlantMatter(matter, "root", where, catalog, "tree_wood")};
 
   species.logsPerCubicMeter =
       NumberField(Field(entry, "yield", where), "logsPerCubicM", where);
@@ -158,12 +158,12 @@ Species ReadSpecies(const Json& entry, const std::string& file,
 }  // namespace
 
 SpeciesCatalog SpeciesCatalog::Load(const std::filesystem::path& path,
-                                    const MaterialCatalog& materials) {
+                                    const MatterCatalog& matter) {
   const Json root = ReadJson(path);
   const Where where{path.string(), ""};
   SpeciesCatalog catalog;
   for (const Json& entry : ArrayField(root, "species", where)) {
-    Species species = ReadSpecies(entry, path.string(), materials);
+    Species species = ReadSpecies(entry, path.string(), matter);
     if (catalog.Find(species.key) != nullptr)
       Fail({path.string(), species.key}, "the id is used twice");
     catalog.m_species.push_back(std::move(species));

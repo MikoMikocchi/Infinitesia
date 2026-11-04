@@ -2,13 +2,13 @@
 
 #include "domains/natural/geology/catalog/GeologyCatalog.h"
 #include "domains/natural/planetary/PlanetMap.h"
-#include "support/MaterialFixtures.h"
+#include "support/MatterFixtures.h"
 
 // Shared by the geology test files: the catalog and planet every test reads.
 namespace InfinitesiaTests {
 inline const GeologyCatalog& SharedCatalog() {
   static const GeologyCatalog catalog =
-      GeologyCatalog::Load(SharedMaterials(), kColumnsFile);
+      GeologyCatalog::Load(SharedMatter(), kColumnsFile);
   return catalog;
 }
 

@@ -11,8 +11,8 @@ int SurfaceLevelOf(const Grid& grid, const TerrainSource& terrain, int x,
     const BlockState state = terrain.StateAt({x, y, z});
     // Ground to stand on: something is there and it is neither water nor a
     // plant.
-    if (registry.Occupied(state) && !registry.Has(state.material, Tag::Water) &&
-        !registry.Has(state.material, Tag::Plant)) {
+    if (registry.Occupied(state) && !registry.Has(state.matter, Tag::Water) &&
+        !registry.Has(state.matter, Tag::Plant)) {
       return y;
     }
   }

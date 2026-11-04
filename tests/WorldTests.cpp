@@ -17,7 +17,7 @@
 #include "domains/natural/planetary/region/SettlementTerrain.h"
 #include "gameplay/GameWorld.h"
 #include "gameplay/content/GameContent.h"
-#include "materials/MaterialCatalog.h"
+#include "matter/MatterCatalog.h"
 #include "world/Grid.h"
 #include "world/PlanetTerrainSource.h"
 
@@ -38,16 +38,16 @@ constexpr int kAnchorLevel = 112;
 
 const std::filesystem::path kAssets = INFINITESIA_ASSET_DIR;
 
-std::shared_ptr<const MaterialCatalog> SharedMaterials() {
-  static const auto materials = std::make_shared<const MaterialCatalog>(
-      MaterialCatalog::LoadFromFile(kAssets / "materials" / "materials.json"));
+std::shared_ptr<const MatterCatalog> SharedMatter() {
+  static const auto materials = std::make_shared<const MatterCatalog>(
+      MatterCatalog::LoadFromFile(kAssets / "matter" / "matter.json"));
   return materials;
 }
 
 std::shared_ptr<const BlockRegistry> SharedRegistry() {
   static const auto registry =
       std::make_shared<const BlockRegistry>(BlockRegistry::Build(
-          SharedMaterials(), kAssets / "blocks" / "shapes.json"));
+          SharedMatter(), kAssets / "blocks" / "shapes.json"));
   return registry;
 }
 
@@ -57,7 +57,7 @@ bool IsAir(const TerrainSource& source, GridCell cell) {
 }
 
 bool IsWater(const TerrainSource& source, GridCell cell) {
-  return source.Registry().Has(source.StateAt(cell).material, Tag::Water);
+  return source.Registry().Has(source.StateAt(cell).matter, Tag::Water);
 }
 
 bool IsGround(const TerrainSource& source, GridCell cell) {
@@ -65,14 +65,14 @@ bool IsGround(const TerrainSource& source, GridCell cell) {
 }
 
 bool IsRock(const TerrainSource& source, GridCell cell) {
-  const MaterialDef* material =
-      source.Registry().GetMaterial(source.StateAt(cell).material);
+  const MatterDef* material =
+      source.Registry().GetMatter(source.StateAt(cell).matter);
   return material != nullptr && material->blockClass == BlockClass::Rock;
 }
 
 bool IsMade(const TerrainSource& source, GridCell cell, const char* key) {
-  const MaterialDef* material = source.Registry().FindMaterial(key);
-  return material != nullptr && source.StateAt(cell).material == material->id;
+  const MatterDef* material = source.Registry().FindMatter(key);
+  return material != nullptr && source.StateAt(cell).matter == material->id;
 }
 
 const ObjectKindDef& WorkerKind() {
@@ -254,7 +254,7 @@ TEST_CASE("ASourceNeedsARegistryThatKnowsItsRocks") {
   // geology.
   auto geology = [&] {
     auto catalog = std::make_shared<const GeologyCatalog>(GeologyCatalog::Load(
-        SharedMaterials(), kAssets / "geology" / "province_columns.json"));
+        SharedMatter(), kAssets / "geology" / "province_columns.json"));
     return std::make_shared<const GeologyModel>(catalog, SharedMap());
   }();
   CHECK_THROWS_AS(
@@ -297,27 +297,27 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain") {
   // Any material of the registry can be placed and removed.
   const BlockRegistry& registry = world.terrain.Registry();
   const GridCell target{center.x + 1, kAnchorLevel, center.z};
-  world.terrain.SetBlock(target, {kAirMaterial, kShapeFull});
+  world.terrain.SetBlock(target, {kAirMatter, kShapeFull});
   world.terrain.SetBlock(target,
-                         {registry.FindMaterial("soil.sand")->id, kShapeFull});
+                         {registry.FindMatter("soil.sand")->id, kShapeFull});
   world.terrain.SetBlock(
-      target, {registry.FindMaterial("fluid.seawater")->id, kShapeFull});
-  Require(world.terrain.GetBlock(target)->state.material ==
-              registry.FindMaterial("fluid.seawater")->id,
+      target, {registry.FindMatter("fluid.seawater")->id, kShapeFull});
+  Require(world.terrain.GetBlock(target)->state.matter ==
+              registry.FindMatter("fluid.seawater")->id,
           "A water block could not be placed.");
   world.terrain.SetBlock(
-      target, {registry.FindMaterial("mineral.quartz")->id, kShapeFull});
-  Require(world.terrain.GetBlock(target)->state.material ==
-              registry.FindMaterial("mineral.quartz")->id,
+      target, {registry.FindMatter("mineral.quartz")->id, kShapeFull});
+  Require(world.terrain.GetBlock(target)->state.matter ==
+              registry.FindMatter("mineral.quartz")->id,
           "A mineral block could not be placed.");
 
   // What the registry does not know cannot be placed.
   CHECK_THROWS_AS(world.terrain.SetBlock(target, {4000, kShapeFull}),
                   std::invalid_argument);
-  CHECK_THROWS_AS(world.terrain.SetBlock(target, {kAirMaterial, 77}),
+  CHECK_THROWS_AS(world.terrain.SetBlock(target, {kAirMatter, 77}),
                   std::invalid_argument);
   CHECK_THROWS_AS(
-      world.terrain.SetBlock({-1, 0, 0}, {kAirMaterial, kShapeFull}),
+      world.terrain.SetBlock({-1, 0, 0}, {kAirMatter, kShapeFull}),
       std::out_of_range);
 }
 
@@ -333,7 +333,7 @@ TEST_CASE("TheOriginalNoiseWorldStillWorks") {
           "The noise world has no surface.");
   const Block* deep = world.terrain.GetBlock({32, 5, 32});
   Require(deep != nullptr &&
-              deep->state.material == registry.FindMaterial("rock.bedrock")->id,
+              deep->state.matter == registry.FindMatter("rock.bedrock")->id,
           "The noise world is not bedrock below the topsoil.");
 
   GameWorld again(grid, {{&WorkerKind(), {32, 31, 32}}}, 7u);
@@ -348,7 +348,7 @@ namespace {
 std::shared_ptr<const GeologyModel> SharedGeology() {
   static const std::shared_ptr<const GeologyModel> model = [] {
     auto catalog = std::make_shared<const GeologyCatalog>(GeologyCatalog::Load(
-        SharedMaterials(), kAssets / "geology" / "province_columns.json"));
+        SharedMatter(), kAssets / "geology" / "province_columns.json"));
     return std::make_shared<const GeologyModel>(catalog, SharedMap());
   }();
   return model;
@@ -386,9 +386,9 @@ TEST_CASE("GeologyChoosesTheRockWithoutChangingWhatIsSolid") {
           if (IsRock(*plain.source, cell)) {
             // Bedrock stands in for the rock where there is no geology.
             Require(
-                without.material == registry.FindMaterial("rock.bedrock")->id,
+                without.matter == registry.FindMatter("rock.bedrock")->id,
                 "Rock without geology is not bedrock.");
-            const MaterialDef* info = registry.GetMaterial(with.material);
+            const MatterDef* info = registry.GetMatter(with.matter);
             Require(info != nullptr && info->blockClass == BlockClass::Rock,
                     "A rock block is not a catalog rock.");
             ++rockBlocks;
@@ -424,7 +424,7 @@ TEST_CASE("RocksAreLaidOutInTheLayersOfTheProvincePile") {
         const double east = terrain.OriginEastMeters() + (x - kWidth / 2) + 0.5;
         const double north =
             terrain.OriginNorthMeters() + (kDepth / 2 - z) + 0.5;
-        Require(source->StateAt({x, y, z}).material ==
+        Require(source->StateAt({x, y, z}).matter ==
                     model.BedrockAt(column.province, east, north, elevation,
                                     column.pileTopMeters),
                 "A rock block disagrees with the structure of its province.");
@@ -449,8 +449,8 @@ TEST_CASE("WorldChunksCarryTheStateOfEachBlock") {
     for (const Block& block : chunk.blocks) {
       Require(block.state == source->StateAt(block.cell),
               "A chunk block has the wrong state.");
-      const MaterialDef* material =
-          world.terrain.Registry().GetMaterial(block.state.material);
+      const MatterDef* material =
+          world.terrain.Registry().GetMatter(block.state.matter);
       rock += material != nullptr && material->blockClass == BlockClass::Rock
                   ? 1
                   : 0;
@@ -463,7 +463,7 @@ TEST_CASE("WorldChunksCarryTheStateOfEachBlock") {
   Require(
       world.terrain.Registry().Occupied(world.terrain.GetBlock(below)->state),
       "The block under the ground is empty.");
-  world.terrain.SetBlock(below, {kAirMaterial, kShapeFull});
+  world.terrain.SetBlock(below, {kAirMatter, kShapeFull});
   Require(world.terrain.GetBlock(below)->state == BlockState(),
           "A dug-out block kept its rock.");
 }
@@ -472,7 +472,7 @@ namespace {
 std::shared_ptr<const SpeciesCatalog> SharedSpecies() {
   static const auto species =
       std::make_shared<const SpeciesCatalog>(SpeciesCatalog::Load(
-          kAssets / "biology" / "species.json", *SharedMaterials()));
+          kAssets / "biology" / "species.json", *SharedMatter()));
   return species;
 }
 
@@ -497,7 +497,7 @@ CartesianPoint3D ForestAnchor() {
 }
 
 bool IsPlant(const TerrainSource& source, GridCell cell) {
-  return source.Registry().Has(source.StateAt(cell).material, Tag::Plant);
+  return source.Registry().Has(source.StateAt(cell).matter, Tag::Plant);
 }
 }  // namespace
 
@@ -523,7 +523,7 @@ TEST_CASE("TreesStandInTheAirAndRootInSoilNeverInRock") {
       const int surface = source->SurfaceLevelAt(x, z);
       for (int y = 0; y <= surface; ++y) {
         const BlockState state = source->StateAt({x, y, z});
-        if (!registry.Has(state.material, Tag::Plant)) continue;
+        if (!registry.Has(state.matter, Tag::Plant)) continue;
         Require(y >= surface - 3, "a root goes deeper than the topsoil");
         Require(!IsRock(*source, {x, y, z}), "a root is in rock");
         ++roots;
@@ -545,7 +545,7 @@ TEST_CASE("TheSettlersArriveInAClearing") {
         Require(!source->Registry().Occupied(state),
                 "a trunk stands in the clearing of the settlers: dx "
                     << dx << " dz " << dz << " up " << up << " material "
-                    << source->Registry().GetMaterial(state.material)->key);
+                    << source->Registry().GetMatter(state.matter)->key);
       }
     }
   }

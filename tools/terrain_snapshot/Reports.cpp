@@ -15,12 +15,12 @@ namespace SnapshotTool {
 using namespace Infinitesia;
 
 // The rocks that were drawn, most visible first, with their colours.
-void PrintRocks(const MaterialCatalog& catalog,
-                const std::map<MaterialId, long>& seen) {
+void PrintRocks(const MatterCatalog& catalog,
+                const std::map<MatterId, long>& seen) {
   if (seen.empty()) {
     return;
   }
-  std::vector<std::pair<MaterialId, long>> ranked(seen.begin(), seen.end());
+  std::vector<std::pair<MatterId, long>> ranked(seen.begin(), seen.end());
   std::sort(ranked.begin(), ranked.end(),
             [](const auto& a, const auto& b) { return a.second > b.second; });
   long total = 0;
@@ -29,7 +29,7 @@ void PrintRocks(const MaterialCatalog& catalog,
   }
   std::printf("rocks in view:\n");
   for (const auto& [material, count] : ranked) {
-    const MaterialDef* info = catalog.Get(material);
+    const MatterDef* info = catalog.Get(material);
     const RgbColor color = catalog.ColorOf(material);
     std::printf(
         "  #%02x%02x%02x  %-26s %-22s %4.1f%%\n", color.r, color.g, color.b,

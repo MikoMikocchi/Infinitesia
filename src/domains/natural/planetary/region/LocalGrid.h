@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <functional>
 
-#include "foundation/PlanetaryCoordinates.h"
+#include "core/PlanetaryCoordinates.h"
 
 namespace Infinitesia {
 // Address of one region inside a LocalGrid: signed grid coordinates, east and

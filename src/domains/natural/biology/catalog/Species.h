@@ -3,7 +3,7 @@
 #include <string>
 
 #include "domains/natural/biology/niche/Niche.h"
-#include "materials/MaterialId.h"
+#include "matter/MatterId.h"
 
 namespace Infinitesia {
 // The generator that grows a plant of the species (docs/07_BIOLOGY.md, section
@@ -22,13 +22,13 @@ struct DoubleRange {
   double max = 0.0;
 };
 
-// Materials of the parts of a plant (class Plant of the material catalog).
-struct PlantMaterials {
-  MaterialId trunk = kUnspecifiedMaterial;
-  MaterialId branch = kUnspecifiedMaterial;
-  MaterialId twig = kUnspecifiedMaterial;
-  MaterialId leaves = kUnspecifiedMaterial;
-  MaterialId root = kUnspecifiedMaterial;
+// Matter of the parts of a plant (class Plant of the matter catalog).
+struct PlantMatter {
+  MatterId trunk = kUnspecifiedMatter;
+  MatterId branch = kUnspecifiedMatter;
+  MatterId twig = kUnspecifiedMatter;
+  MatterId leaves = kUnspecifiedMatter;
+  MatterId root = kUnspecifiedMatter;
 };
 
 struct Species {
@@ -48,7 +48,7 @@ struct Species {
   int rootDepthMeters = 1;
   double shadeTolerance = 0.5;  // 0..1: can it grow under a canopy
 
-  PlantMaterials materials;
+  PlantMatter matter;
   double logsPerCubicMeter = 1.0;
 };
 }  // namespace Infinitesia

@@ -6,7 +6,7 @@
 #include "blocks/BlockRegistry.h"
 #include "world/Block.h"
 #include "world/Grid.h"
-#include "world/SurfaceMaterials.h"
+#include "world/SurfaceMatter.h"
 
 namespace Infinitesia {
 // Decides what a world cell is made of before anything has been dug or built.
@@ -41,6 +41,6 @@ class NoiseTerrainSource final : public TerrainSource {
   int m_gridHeight;
   std::uint32_t m_seed;
   std::shared_ptr<const BlockRegistry> m_registry;
-  SurfaceMaterials m_materials;
+  SurfaceMatter m_matter;
 };
 }  // namespace Infinitesia

@@ -7,12 +7,12 @@
 #include "app/ApplicationConfig.h"
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
-#include "foundation/LoadProgress.h"
-#include "foundation/Simulation.h"
-#include "foundation/Time.h"
+#include "core/LoadProgress.h"
+#include "core/Simulation.h"
+#include "core/Time.h"
 #include "gameplay/LocalGame.h"
 #include "gameplay/content/GameContent.h"
-#include "materials/MaterialCatalog.h"
+#include "matter/MatterCatalog.h"
 #include "presentation/assets/TextureAssetManager.h"
 #include "presentation/input/CameraController.h"
 #include "presentation/input/WorldInteractionController.h"
@@ -54,7 +54,7 @@ class Application {
   // Built on a worker thread after the window opens; null while loading.
   std::unique_ptr<PlanetViewer> m_planetViewer;
   // Read once when the planet starts loading; the settlement reuses them.
-  std::shared_ptr<const MaterialCatalog> m_materials;
+  std::shared_ptr<const MatterCatalog> m_matter;
   std::shared_ptr<const SpeciesCatalog> m_species;
   // Declared before m_planetLoad: the future's destructor joins the worker,
   // which still writes to this, so it must be destroyed after the future.

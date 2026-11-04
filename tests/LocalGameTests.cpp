@@ -26,8 +26,8 @@ const BlockRegistry& TestRegistry() {
   return registry;
 }
 
-MaterialId Material(const char* key) {
-  return TestRegistry().FindMaterial(key)->id;
+MatterId Material(const char* key) {
+  return TestRegistry().FindMatter(key)->id;
 }
 
 // Terrain made of a height function: solid up to and including height(x, z),
@@ -39,7 +39,7 @@ class HeightTerrain final : public TerrainSource {
 
   BlockState StateAt(GridCell cell) const override {
     return {cell.y <= m_height(cell.x, cell.z) ? Material("rock.bedrock")
-                                               : kAirMaterial,
+                                               : kAirMatter,
             kShapeFull};
   }
   const BlockRegistry& Registry() const override { return TestRegistry(); }
@@ -69,7 +69,7 @@ TEST_CASE("WaterIsNotGround") {
       if (cell.y <= kGround) {
         return {Material("soil.sand"), kShapeFull};
       }
-      return {cell.y <= kGround + 3 ? Material("fluid.water") : kAirMaterial,
+      return {cell.y <= kGround + 3 ? Material("fluid.water") : kAirMatter,
               kShapeFull};
     }
     const BlockRegistry& Registry() const override { return TestRegistry(); }

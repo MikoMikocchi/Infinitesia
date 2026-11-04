@@ -4,7 +4,7 @@
 #include <memory>
 #include <string_view>
 
-#include "foundation/ContentRegistry.h"
+#include "core/ContentRegistry.h"
 #include "gameplay/content/ContentTypes.h"
 
 namespace Infinitesia {

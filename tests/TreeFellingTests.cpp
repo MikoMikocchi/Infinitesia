@@ -12,7 +12,7 @@
 #include "gameplay/LocalGame.h"
 #include "gameplay/content/GameContent.h"
 #include "gameplay/work/TreeFelling.h"
-#include "materials/MaterialCatalog.h"
+#include "matter/MatterCatalog.h"
 
 #define Require(condition, message) \
   do {                              \
@@ -37,22 +37,22 @@ constexpr int kGround =
 
 const std::filesystem::path kAssets = INFINITESIA_ASSET_DIR;
 
-std::shared_ptr<const MaterialCatalog> SharedMaterials() {
-  static const auto materials = std::make_shared<const MaterialCatalog>(
-      MaterialCatalog::LoadFromFile(kAssets / "materials" / "materials.json"));
+std::shared_ptr<const MatterCatalog> SharedMatter() {
+  static const auto materials = std::make_shared<const MatterCatalog>(
+      MatterCatalog::LoadFromFile(kAssets / "matter" / "matter.json"));
   return materials;
 }
 
 std::shared_ptr<const BlockRegistry> SharedRegistry() {
   static const auto registry =
       std::make_shared<const BlockRegistry>(BlockRegistry::Build(
-          SharedMaterials(), kAssets / "blocks" / "shapes.json"));
+          SharedMatter(), kAssets / "blocks" / "shapes.json"));
   return registry;
 }
 
 const SpeciesCatalog& SpeciesOf() {
   static const SpeciesCatalog catalog = SpeciesCatalog::Load(
-      kAssets / "biology" / "species.json", *SharedMaterials());
+      kAssets / "biology" / "species.json", *SharedMatter());
   return catalog;
 }
 
@@ -86,7 +86,7 @@ class ForestTerrain final : public TerrainSource {
         continue;
       for (const TreeVoxel& voxel : voxels.cells) {
         if (voxel.x == dx && voxel.y == dy && voxel.z == dz)
-          return {PartMaterial(tree.species->materials, voxel.part),
+          return {PartMatter(tree.species->matter, voxel.part),
                   kShapeFull};
       }
     }
@@ -94,9 +94,9 @@ class ForestTerrain final : public TerrainSource {
   }
 
   BlockState GroundStateAt(GridCell cell) const override {
-    if (cell.y > kGround) return {kAirMaterial, kShapeFull};
+    if (cell.y > kGround) return {kAirMatter, kShapeFull};
     return {SharedRegistry()
-                ->FindMaterial(cell.y == kGround ? "soil.turf" : "soil.subsoil")
+                ->FindMatter(cell.y == kGround ? "soil.turf" : "soil.subsoil")
                 ->id,
             kShapeFull};
   }
@@ -194,8 +194,8 @@ TEST_CASE("FellingATreeLeavesGroundAndAirWhereItStood") {
             "a felled cell is not what the ground is there");
   }
   const Block* stump = world.GetBlock({30, kGround, 30});
-  CHECK(stump->state.material ==
-        SharedRegistry()->FindMaterial("soil.turf")->id);
+  CHECK(stump->state.matter ==
+        SharedRegistry()->FindMatter("soil.turf")->id);
   CHECK(world.Registry().Walkable(stump->state));
 
   // Felling it again finds nothing.
@@ -334,7 +334,7 @@ TEST_CASE("AWorkerWithNoGroundToStandOnCannotReachATree") {
     Island() : m_forest({{&OakSpecies(), 7, kSize / 2 + 8, kSize / 2}}) {}
     BlockState StateAt(GridCell cell) const override {
       if (IsTrench(cell.x, cell.z) && cell.y == kGround)
-        return {kAirMaterial, kShapeFull};
+        return {kAirMatter, kShapeFull};
       return m_forest.StateAt(cell);
     }
     BlockState GroundStateAt(GridCell cell) const override {

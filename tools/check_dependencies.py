@@ -19,10 +19,10 @@ SRC = Path(__file__).resolve().parent.parent / "src"
 
 # path under src/ -> module (the longest matching prefix wins)
 MODULE_OF = {
-    "foundation": "foundation",
+    "core": "core",
     "domains/natural/chemistry": "chemistry",
     "domains/natural/planetary": "planet",
-    "materials": "materials",
+    "matter": "matter",
     "domains/natural/geology": "geology",
     "domains/natural/biology": "biology",
     "blocks": "blocks",
@@ -35,23 +35,23 @@ MODULE_OF = {
 
 # module -> modules it may include. Keep in step with CMakeLists.txt.
 ALLOWED = {
-    "foundation": set(),
-    "chemistry": {"foundation"},
-    "planet": {"foundation"},
-    # materials is the one list of what things are made of (docs/06_BLOCKS.md); it also owns the JSON
+    "core": set(),
+    "chemistry": {"core"},
+    "planet": {"core"},
+    # matter is the one list of what things are made of (docs/06_BLOCKS.md); it also owns the JSON
     # helpers the catalog loaders of geology and blocks share.
-    "materials": {"foundation", "chemistry"},
+    "matter": {"core", "chemistry"},
     # geology takes from planet only the data types (planet/geology/Province.h, PlanetEpochs.h);
     # GeologyModel reads the planet through GeologyPlanetView, never planet/PlanetMap.h.
-    "geology": {"foundation", "chemistry", "planet", "materials"},
+    "geology": {"core", "chemistry", "planet", "matter"},
     # biology takes from planet only the data types it reads (climate and soil fields), like geology.
-    "biology": {"foundation", "planet", "materials"},
-    "blocks": {"foundation", "chemistry", "materials"},
-    "world": {"foundation", "planet", "materials", "geology", "biology", "blocks"},
-    "simulation": {"foundation"},
-    "gameplay": {"foundation", "planet", "materials", "geology", "blocks", "world", "simulation"},
-    "presentation": {"foundation", "chemistry", "planet", "materials", "geology", "blocks", "world", "simulation", "gameplay"},
-    "app": {"foundation", "chemistry", "planet", "materials", "geology", "biology", "blocks", "world", "simulation", "gameplay", "presentation"},
+    "biology": {"core", "planet", "matter"},
+    "blocks": {"core", "chemistry", "matter"},
+    "world": {"core", "planet", "matter", "geology", "biology", "blocks"},
+    "simulation": {"core"},
+    "gameplay": {"core", "planet", "matter", "geology", "blocks", "world", "simulation"},
+    "presentation": {"core", "chemistry", "planet", "matter", "geology", "blocks", "world", "simulation", "gameplay"},
+    "app": {"core", "chemistry", "planet", "matter", "geology", "biology", "blocks", "world", "simulation", "gameplay", "presentation"},
 }
 
 # Include prefixes that are not part of src/.

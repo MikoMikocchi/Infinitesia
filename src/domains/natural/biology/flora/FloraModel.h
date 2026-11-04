@@ -34,7 +34,7 @@ class GroundView {
 // One cell of a plant: its level in the world and what it is.
 struct FloraCell {
   int level = 0;
-  MaterialId material = kUnspecifiedMaterial;
+  MatterId matter = kUnspecifiedMatter;
   TreePart part = TreePart::Trunk;
 };
 

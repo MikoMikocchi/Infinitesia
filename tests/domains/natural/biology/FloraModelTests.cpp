@@ -7,7 +7,7 @@
 
 #include "domains/natural/biology/community/Canopy.h"
 #include "domains/natural/biology/flora/FloraModel.h"
-#include "support/MaterialFixtures.h"
+#include "support/MatterFixtures.h"
 #include "support/Require.h"
 
 using namespace Infinitesia;
@@ -20,7 +20,7 @@ constexpr int kGround = 100;
 std::shared_ptr<const SpeciesCatalog> Catalog() {
   static const auto catalog =
       std::make_shared<const SpeciesCatalog>(SpeciesCatalog::Load(
-          kAssets / "biology" / "species.json", *SharedMaterials()));
+          kAssets / "biology" / "species.json", *SharedMatter()));
   return catalog;
 }
 
@@ -151,7 +151,7 @@ TEST_CASE("TheSameSeedGrowsTheSameForestInAnyOrder") {
       same = same && other.size() == mine.size();
       for (std::size_t i = 0; same && i < other.size(); ++i)
         same = other[i].level == mine[i].level &&
-               other[i].material == mine[i].material;
+               other[i].matter == mine[i].matter;
     }
   }
   CHECK(same);
@@ -234,7 +234,7 @@ TEST_CASE("ATreeStandsOnItsGroundWithRootsBelow") {
       RequireFatal(
           trunk != column.end() && trunk->part == TreePart::Trunk,
           "the first cell of a trunk is missing at the base of the tree");
-      Require(trunk->material == tree->species->materials.trunk,
+      Require(trunk->matter == tree->species->matter.trunk,
               "a trunk is of the wrong material");
       ++checked;
     }

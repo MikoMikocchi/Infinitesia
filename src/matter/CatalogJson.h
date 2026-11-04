@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 
-#include "materials/CatalogError.h"
-#include "materials/MaterialTypes.h"
+#include "matter/CatalogError.h"
+#include "matter/MatterTypes.h"
 
 // JSON helpers shared by the catalog loaders (materials, geology columns, block
 // shapes): reading a file, required fields, and errors that name the file and

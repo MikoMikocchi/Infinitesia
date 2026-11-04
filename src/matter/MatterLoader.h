@@ -3,12 +3,12 @@
 #include <filesystem>
 #include <vector>
 
-#include "materials/MaterialCatalog.h"
+#include "matter/MatterCatalog.h"
 
 namespace Infinitesia {
-// Reads materials.json into the three tables. Throws CatalogError.
+// Reads matter.json into the three tables. Throws CatalogError.
 void LoadMaterialFile(const std::filesystem::path& path,
-                      std::vector<MaterialDef>& materials,
-                      MaterialCatalog::ChemistryTable& chemistry,
-                      MaterialCatalog::ModalTable& modal);
+                      std::vector<MatterDef>& materials,
+                      MatterCatalog::ChemistryTable& chemistry,
+                      MatterCatalog::ModalTable& modal);
 }  // namespace Infinitesia

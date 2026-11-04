@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "materials/MaterialId.h"
+#include "matter/MatterId.h"
 
 namespace Infinitesia {
 // What is built of a material: the shape of the thing in the cell
@@ -14,7 +14,7 @@ inline constexpr ShapeId kShapeFull = 0;
 // Everything the registry knows about a world cell: what it is made of and what
 // was made of it.
 struct BlockState {
-  MaterialId material = kAirMaterial;
+  MatterId matter = kAirMatter;
   ShapeId shape = kShapeFull;
 
   friend bool operator==(const BlockState&, const BlockState&) = default;

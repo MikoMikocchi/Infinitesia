@@ -4,7 +4,7 @@
 // assets/biology/species.json without starting the game.
 //
 // Every cell is drawn as an isometric cube in the colour of the material the
-// species gives its part (assets/materials/materials.json). Roots (below the
+// species gives its part (assets/matter/matter.json). Roots (below the
 // ground) are darkened.
 //
 //   TreeSnapshot                                    every species, 6 seeds,
@@ -26,7 +26,7 @@
 
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
 #include "domains/natural/biology/flora/Tree.h"
-#include "materials/MaterialCatalog.h"
+#include "matter/MatterCatalog.h"
 #include "terrain_snapshot/Image.h"
 
 using namespace Infinitesia;
@@ -196,8 +196,8 @@ std::vector<const Species*> ChooseSpecies(
 
 int Run(const Options& options) {
   const std::string assets = INFINITESIA_ASSET_DIR;
-  const MaterialCatalog materials =
-      MaterialCatalog::LoadFromFile(assets + "/materials/materials.json");
+  const MatterCatalog materials =
+      MatterCatalog::LoadFromFile(assets + "/matter/matter.json");
   const SpeciesCatalog catalog =
       SpeciesCatalog::Load(assets + "/biology/species.json", materials);
   const std::vector<const Species*> species =
@@ -239,10 +239,10 @@ int Run(const Options& options) {
       const Point origin{
           column * tileWidth + kPadding - extent.minX,
           static_cast<double>(row) * tileHeight + kPadding - extent.minY};
-      const PlantMaterials& parts = species[row]->materials;
+      const PlantMatter& parts = species[row]->matter;
       for (const Placed& cell : sheet[row][static_cast<std::size_t>(column)]) {
-        const MaterialDef* material =
-            materials.Get(PartMaterial(parts, cell.part));
+        const MatterDef* material =
+            materials.Get(PartMatter(parts, cell.part));
         const Rgb color =
             material != nullptr
                 ? Rgb{material->color.r, material->color.g, material->color.b}

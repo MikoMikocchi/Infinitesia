@@ -164,7 +164,7 @@ const std::vector<FloraCell>& FloraModel::Column(int x, int z) const {
            tree->columns[static_cast<std::size_t>(dz) * tree->width + dx]) {
         cells.push_back(
             {tree->placement.baseY + cell.dy,
-             PartMaterial(tree->placement.species->materials, cell.part),
+             PartMatter(tree->placement.species->matter, cell.part),
              cell.part});
       }
     }

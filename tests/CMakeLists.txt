@@ -37,9 +37,9 @@ infinitesia_add_test(ChemistryTests
   SOURCES domains/natural/chemistry/ChemistryTests.cpp
   LINK InfinitesiaChemistry)
 
-infinitesia_add_test(MaterialsTests MAIN ASSET_DIR
-  SOURCES materials/MaterialCatalogTests.cpp
-  LINK InfinitesiaMaterials nlohmann_json::nlohmann_json)
+infinitesia_add_test(MatterTests MAIN ASSET_DIR
+  SOURCES matter/MatterCatalogTests.cpp
+  LINK InfinitesiaMatter nlohmann_json::nlohmann_json)
 
 infinitesia_add_test(BiologyTests MAIN ASSET_DIR
   SOURCES

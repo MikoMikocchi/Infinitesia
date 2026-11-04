@@ -4,9 +4,9 @@
 #include <string>
 
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
-#include "materials/CatalogError.h"
+#include "matter/CatalogError.h"
 #include "support/BrokenFile.h"
-#include "support/MaterialFixtures.h"
+#include "support/MatterFixtures.h"
 #include "support/Require.h"
 
 using namespace Infinitesia;
@@ -19,7 +19,7 @@ const std::filesystem::path kSpeciesFile = kAssets / "biology" / "species.json";
 // loads.
 std::string LoadError(const BrokenFile& broken) {
   try {
-    SpeciesCatalog::Load(broken.Path(), *SharedMaterials());
+    SpeciesCatalog::Load(broken.Path(), *SharedMatter());
   } catch (const CatalogError& error) {
     return error.what();
   }
@@ -37,41 +37,41 @@ std::string ErrorAfter(const char* name,
 
 TEST_CASE("SpeciesCatalogLoadsTheShippedSpecies") {
   const SpeciesCatalog catalog =
-      SpeciesCatalog::Load(kSpeciesFile, *SharedMaterials());
+      SpeciesCatalog::Load(kSpeciesFile, *SharedMatter());
   REQUIRE(catalog.All().size() >= 3);
 
   const Species* oak = catalog.Find("species.oak");
   RequireFatal(oak != nullptr, "species.oak is missing");
   CHECK(oak->form == PlantForm::Broadleaf);
   CHECK(oak->heightMeters.min <= oak->heightMeters.max);
-  CHECK(oak->materials.trunk == MaterialNamed("plant.oak.trunk").id);
-  CHECK(oak->materials.leaves == MaterialNamed("plant.oak.leaves").id);
+  CHECK(oak->matter.trunk == MatterNamed("plant.oak.trunk").id);
+  CHECK(oak->matter.leaves == MatterNamed("plant.oak.leaves").id);
 
   CHECK(catalog.Find("species.spruce")->form == PlantForm::Conifer);
   CHECK(catalog.Find("species.palm")->crownShape == CrownShape::Umbrella);
   CHECK(catalog.Find("species.nothing") == nullptr);
 }
 
-TEST_CASE("PlantMaterialsCarryTheTagsTheGameAsksFor") {
-  const MaterialCatalog& materials = *SharedMaterials();
+TEST_CASE("PlantMatterCarryTheTagsTheGameAsksFor") {
+  const MatterCatalog& materials = *SharedMatter();
   for (const char* name : {"oak", "spruce", "palm"}) {
     const std::string prefix = std::string("plant.") + name + ".";
     for (const char* part : {"trunk", "branch", "twig", "root"}) {
-      const MaterialDef& wood = MaterialNamed(prefix + part);
+      const MatterDef& wood = MatterNamed(prefix + part);
       CHECK(wood.blockClass == BlockClass::Plant);
       CHECK(!wood.walkable);
       CHECK(wood.opacity ==
             LightRgb{kMaxLightLevel, kMaxLightLevel, kMaxLightLevel});
     }
-    const MaterialDef& leaves = MaterialNamed(prefix + "leaves");
+    const MatterDef& leaves = MatterNamed(prefix + "leaves");
     CHECK(leaves.opacity.r < kMaxLightLevel);
-    CHECK(materials.Find(prefix + "leaves")->id >= kFirstPlantMaterial);
+    CHECK(materials.Find(prefix + "leaves")->id >= kFirstPlantMatter);
   }
 }
 
 TEST_CASE("EverySpeciesHasASaneNiche") {
   const SpeciesCatalog catalog =
-      SpeciesCatalog::Load(kSpeciesFile, *SharedMaterials());
+      SpeciesCatalog::Load(kSpeciesFile, *SharedMatter());
   for (const Species& species : catalog.All()) {
     const Trapezoid& temperature = species.niche.temperatureCelsius;
     CHECK_MESSAGE(temperature.lowest < temperature.optimumFrom, species.key);
@@ -98,13 +98,13 @@ TEST_CASE("SpeciesCatalogRejectsBrokenRecords") {
           s.erase("niche");
         }).find("missing field 'niche'") != std::string::npos);
   CHECK(ErrorAfter("species_bad_material", [](Json& s) {
-          s["materials"]["leaves"] = "rock.granite";
+          s["matter"]["leaves"] = "rock.granite";
         }).find("not a plant material") != std::string::npos);
   CHECK(ErrorAfter("species_unknown_material", [](Json& s) {
-          s["materials"]["trunk"] = "plant.oak.nothing";
+          s["matter"]["trunk"] = "plant.oak.nothing";
         }).find("not a plant material") != std::string::npos);
   CHECK(ErrorAfter("species_wrong_part", [](Json& s) {
-          s["materials"]["leaves"] = "plant.oak.trunk";
+          s["matter"]["leaves"] = "plant.oak.trunk";
         }).find("lacks the tag 'tree_leaves'") != std::string::npos);
   CHECK(ErrorAfter("species_bad_yield", [](Json& s) {
           s["yield"]["logsPerCubicM"] = 0;

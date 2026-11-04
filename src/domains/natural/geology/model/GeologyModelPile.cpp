@@ -68,8 +68,8 @@ GeologyModel::GeologyModel(std::shared_ptr<const GeologyCatalog> catalog,
     throw std::invalid_argument(
         "The geology model needs a catalog and a positive strata scale.");
   }
-  const MaterialDef* granite = m_catalog->Materials().Find("rock.granite");
-  m_fallbackPile = {{granite != nullptr ? granite->id : kFirstRockMaterial, 0}};
+  const MatterDef* granite = m_catalog->Matter().Find("rock.granite");
+  m_fallbackPile = {{granite != nullptr ? granite->id : kFirstRockMatter, 0}};
   m_fallbackStructure.layers = {LayerShape{}};
 
   const std::uint64_t seed = map.GetSeed();
@@ -204,7 +204,7 @@ GeologyModel::GeologyModel(std::shared_ptr<const GeologyCatalog> catalog,
       HistoryFormation formation;
       formation.rock = layers[topDown].rock;
       const ModalComposition* info =
-          m_catalog->Materials().ModalOf(formation.rock);
+          m_catalog->Matter().ModalOf(formation.rock);
       formation.rockClass =
           info != nullptr ? info->rockClass : RockClass::SedimentaryClastic;
       formation.thicknessMeters = layers[topDown].thicknessMeters;
@@ -241,7 +241,7 @@ const GeologyModel::Structure& GeologyModel::StructureOf(
   return m_structures[province - 1];
 }
 
-MaterialId GeologyModel::ExposedRock(ProvinceId province) const noexcept {
+MatterId GeologyModel::ExposedRock(ProvinceId province) const noexcept {
   return PileOf(province).front().rock;
 }
 }  // namespace Infinitesia

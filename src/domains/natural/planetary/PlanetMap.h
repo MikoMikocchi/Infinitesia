@@ -5,7 +5,7 @@
 #include "domains/natural/planetary/PlanetRegion.h"
 #include "domains/natural/planetary/pipeline/PlanetData.h"
 #include "domains/natural/planetary/pipeline/PlanetPipeline.h"
-#include "foundation/LoadProgress.h"
+#include "core/LoadProgress.h"
 
 namespace Infinitesia {
 // -----------------------------------------------------------------------

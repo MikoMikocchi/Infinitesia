@@ -9,9 +9,8 @@ namespace Infinitesia {
 // base.
 TreeVoxels GrowTree(const Species& species, std::uint64_t seed);
 
-// The material a part of a plant is made of.
-MaterialId PartMaterial(const PlantMaterials& materials,
-                        TreePart part) noexcept;
+// The matter a part of a plant is made of.
+MatterId PartMatter(const PlantMatter& matter, TreePart part) noexcept;
 
 // Parts that are wood: they hold the plant together and give logs.
 constexpr bool IsWood(TreePart part) noexcept {

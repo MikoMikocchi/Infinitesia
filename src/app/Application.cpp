@@ -53,11 +53,11 @@ void Application::StartSettlement(const SettlementSite& site) {
   // the executable.
   const std::filesystem::path assets =
       std::filesystem::path(GetApplicationDirectory()) / "assets";
-  auto materials = m_materials != nullptr
-                       ? m_materials
-                       : std::make_shared<const MaterialCatalog>(
-                             MaterialCatalog::LoadFromFile(
-                                 assets / "materials" / "materials.json"));
+  auto materials = m_matter != nullptr
+                       ? m_matter
+                       : std::make_shared<const MatterCatalog>(
+                             MatterCatalog::LoadFromFile(
+                                 assets / "matter" / "matter.json"));
   auto catalog = std::make_shared<const GeologyCatalog>(GeologyCatalog::Load(
       materials, assets / "geology" / "province_columns.json"));
   auto registry = std::make_shared<const BlockRegistry>(
@@ -119,10 +119,10 @@ void Application::StartPlanetLoad() {
   // settlement reads again later.
   const std::filesystem::path assets =
       std::filesystem::path(GetApplicationDirectory()) / "assets";
-  m_materials = std::make_shared<const MaterialCatalog>(
-      MaterialCatalog::LoadFromFile(assets / "materials" / "materials.json"));
+  m_matter = std::make_shared<const MatterCatalog>(
+      MatterCatalog::LoadFromFile(assets / "matter" / "matter.json"));
   m_species = std::make_shared<const SpeciesCatalog>(
-      SpeciesCatalog::Load(assets / "biology" / "species.json", *m_materials));
+      SpeciesCatalog::Load(assets / "biology" / "species.json", *m_matter));
   PlanetPipeline pipeline = MakeDefaultPlanetPipeline();
   AddVegetationStages(pipeline, m_species);
 

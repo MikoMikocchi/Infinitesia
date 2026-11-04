@@ -91,7 +91,7 @@ class PlanetTerrainSource final : public TerrainSource {
 
   std::shared_ptr<const SettlementTerrain> m_terrain;
   std::shared_ptr<const BlockRegistry> m_registry;
-  SurfaceMaterials m_materials;
+  SurfaceMatter m_matter;
   std::shared_ptr<const GeologyModel> m_geology;
   int m_width;
   int m_height;

@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "foundation/Simulation.h"
+#include "core/Simulation.h"
 #include "simulation/SimulationFixtures.h"
 #include "simulation/runtime/SimulationRuntime.h"
 

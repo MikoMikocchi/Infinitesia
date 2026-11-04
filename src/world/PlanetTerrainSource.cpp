@@ -57,14 +57,14 @@ PlanetTerrainSource::PlanetTerrainSource(
     throw std::invalid_argument(
         "Planet terrain source needs a terrain, a registry and a valid grid.");
   }
-  m_materials = SurfaceMaterials::Resolve(*m_registry);
+  m_matter = SurfaceMatter::Resolve(*m_registry);
   if (m_geology != nullptr) {
     for (int type = 0; type < kProvinceTypeCount; ++type) {
       for (const ColumnLayer& layer :
            m_geology->Catalog()
                .ColumnFor(static_cast<ProvinceType>(type))
                .bottomUp) {
-        if (m_registry->GetMaterial(layer.rock) == nullptr)
+        if (m_registry->GetMatter(layer.rock) == nullptr)
           throw std::invalid_argument(
               "The registry does not know a rock of the geology.");
       }
@@ -75,7 +75,7 @@ PlanetTerrainSource::PlanetTerrainSource(
       for (const TreePart part :
            {TreePart::Trunk, TreePart::Branch, TreePart::Twig, TreePart::Leaves,
             TreePart::Root}) {
-        if (m_registry->GetMaterial(PartMaterial(species.materials, part)) ==
+        if (m_registry->GetMatter(PartMatter(species.matter, part)) ==
             nullptr)
           throw std::invalid_argument(
               "The registry does not know a material of " + species.key + ".");
@@ -196,25 +196,25 @@ BlockState PlanetTerrainSource::StateOf(GridCell cell, bool withPlants) const {
   const Column& column = ColumnAt(cell.x, cell.z);
   const FloraCell* plant = withPlants ? FloraAt(cell) : nullptr;
   if (cell.y > column.surface) {
-    if (cell.y <= WaterTopLevel()) return {m_materials.seawater, kShapeFull};
-    return {plant != nullptr ? plant->material : kAirMaterial, kShapeFull};
+    if (cell.y <= WaterTopLevel()) return {m_matter.seawater, kShapeFull};
+    return {plant != nullptr ? plant->matter : kAirMatter, kShapeFull};
   }
   const Layer layer = LayerAt(column.kind, column.surface - cell.y);
   // Roots grow into the soil; rock stops them.
   if (plant != nullptr && plant->part == TreePart::Root && layer != Layer::Rock)
-    return {plant->material, kShapeFull};
+    return {plant->matter, kShapeFull};
   switch (layer) {
     case Layer::Turf:
-      return {m_materials.turf, kShapeFull};
+      return {m_matter.turf, kShapeFull};
     case Layer::Subsoil:
-      return {m_materials.subsoil, kShapeFull};
+      return {m_matter.subsoil, kShapeFull};
     case Layer::Sand:
-      return {m_materials.sand, kShapeFull};
+      return {m_matter.sand, kShapeFull};
     case Layer::Rock:
       break;
   }
   if (m_geology == nullptr) {
-    return {m_materials.bedrock, kShapeFull};
+    return {m_matter.bedrock, kShapeFull};
   }
   // A level is a metre of height: the ground of the origin column is at
   // anchorLevel and OriginElevationMeters above sea level.

@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "domains/natural/planetary/geology/Province.h"
-#include "materials/MaterialId.h"
+#include "matter/MatterId.h"
 
 namespace Infinitesia {
 // Stable identifier of an event: a hash of the planet seed, the province and
@@ -49,9 +49,9 @@ struct GeologicEvent {
   // parent.
   double startMyr = 0.0;
   double endMyr = 0.0;
-  // Formation events: the rock that resulted. kUnspecifiedMaterial for the
+  // Formation events: the rock that resulted. kUnspecifiedMatter for the
   // others.
-  MaterialId rock = kUnspecifiedMaterial;
+  MatterId rock = kUnspecifiedMatter;
   // Type-dependent size: real thickness in metres for a formation, dip in
   // degrees for folding, the largest slip in metres for faulting, depth in
   // kilometres for erosion.

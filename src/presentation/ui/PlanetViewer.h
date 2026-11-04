@@ -8,7 +8,7 @@
 #include "domains/natural/planetary/StarSystem.h"
 #include "domains/natural/planetary/pipeline/PlanetPipeline.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
-#include "foundation/LoadProgress.h"
+#include "core/LoadProgress.h"
 #include "presentation/ui/RegionMapView.h"
 #include "presentation/ui/UniqueTexture.h"
 #include "raylib.h"

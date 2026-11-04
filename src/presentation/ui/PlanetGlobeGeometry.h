@@ -1,6 +1,6 @@
 #pragma once
 
-#include "foundation/PlanetaryCoordinates.h"
+#include "core/PlanetaryCoordinates.h"
 #include "raylib.h"
 
 // Placing the planet's globe: vertices on the sphere and the facing of a chosen

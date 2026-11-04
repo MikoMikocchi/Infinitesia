@@ -9,7 +9,7 @@
 
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
 #include "domains/natural/biology/flora/Tree.h"
-#include "support/MaterialFixtures.h"
+#include "support/MatterFixtures.h"
 #include "support/Require.h"
 
 using namespace Infinitesia;
@@ -20,7 +20,7 @@ constexpr int kSeedsPerSpecies = 60;
 
 const SpeciesCatalog& Catalog() {
   static const SpeciesCatalog catalog = SpeciesCatalog::Load(
-      kAssets / "biology" / "species.json", *SharedMaterials());
+      kAssets / "biology" / "species.json", *SharedMatter());
   return catalog;
 }
 
@@ -259,18 +259,18 @@ TEST_CASE("TheFormsLookAlike") {
   }
 }
 
-TEST_CASE("EveryPartMapsToTheMaterialOfTheSpecies") {
+TEST_CASE("EveryPartMapsToTheMatterOfTheSpecies") {
   const Species& oak = SpeciesNamed("species.oak");
-  CHECK(PartMaterial(oak.materials, TreePart::Trunk) ==
-        MaterialNamed("plant.oak.trunk").id);
-  CHECK(PartMaterial(oak.materials, TreePart::Branch) ==
-        MaterialNamed("plant.oak.branch").id);
-  CHECK(PartMaterial(oak.materials, TreePart::Twig) ==
-        MaterialNamed("plant.oak.twig").id);
-  CHECK(PartMaterial(oak.materials, TreePart::Leaves) ==
-        MaterialNamed("plant.oak.leaves").id);
-  CHECK(PartMaterial(oak.materials, TreePart::Root) ==
-        MaterialNamed("plant.oak.root").id);
+  CHECK(PartMatter(oak.matter, TreePart::Trunk) ==
+        MatterNamed("plant.oak.trunk").id);
+  CHECK(PartMatter(oak.matter, TreePart::Branch) ==
+        MatterNamed("plant.oak.branch").id);
+  CHECK(PartMatter(oak.matter, TreePart::Twig) ==
+        MatterNamed("plant.oak.twig").id);
+  CHECK(PartMatter(oak.matter, TreePart::Leaves) ==
+        MatterNamed("plant.oak.leaves").id);
+  CHECK(PartMatter(oak.matter, TreePart::Root) ==
+        MatterNamed("plant.oak.root").id);
   CHECK(IsWood(TreePart::Root));
   CHECK(!IsWood(TreePart::Leaves));
 }

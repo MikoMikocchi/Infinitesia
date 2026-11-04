@@ -1,6 +1,6 @@
 #include "presentation/ui/PlanetGlobeGeometry.h"
 
-#include "foundation/PlanetaryCoordinates.h"
+#include "core/PlanetaryCoordinates.h"
 #include "raymath.h"
 
 namespace Infinitesia {

@@ -6,7 +6,7 @@
 #include "domains/natural/biology/community/Canopy.h"
 #include "domains/natural/biology/niche/Suitability.h"
 #include "domains/natural/planetary/PlanetLoadSteps.h"
-#include "foundation/PlanetaryCoordinates.h"
+#include "core/PlanetaryCoordinates.h"
 
 namespace Infinitesia {
 namespace {

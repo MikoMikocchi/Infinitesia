@@ -1,6 +1,6 @@
 #include "domains/natural/geology/catalog/ColumnLoader.h"
 
-#include "materials/CatalogJson.h"
+#include "matter/CatalogJson.h"
 
 namespace Infinitesia {
 using namespace CatalogJson;
@@ -24,7 +24,7 @@ BiosphereRequirement RequirementFromName(const std::string& text,
 }  // namespace
 
 void LoadColumns(const std::filesystem::path& path,
-                 const MaterialCatalog& materials,
+                 const MatterCatalog& materials,
                  std::array<ProvinceColumn, kProvinceTypeCount>& columns) {
   const Json root = ReadJson(path);
   Where where{path.string(), ""};
@@ -79,7 +79,7 @@ void LoadColumns(const std::filesystem::path& path,
            "most 1");
     for (const Json& layer : layers) {
       const std::string rockKey = StringField(layer, "rock", record);
-      const MaterialDef* rock = materials.Find(rockKey);
+      const MatterDef* rock = materials.Find(rockKey);
       if (rock == nullptr || rock->blockClass != BlockClass::Rock)
         Fail(record, "unknown rock '" + rockKey + "'");
       ColumnLayer parsed;

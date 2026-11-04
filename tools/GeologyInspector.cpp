@@ -117,8 +117,8 @@ bool ParseOptions(int argc, char** argv, Options& options) {
   return true;
 }
 
-std::string RockName(const MaterialCatalog& catalog, MaterialId id) {
-  const MaterialDef* material = catalog.Get(id);
+std::string RockName(const MatterCatalog& catalog, MatterId id) {
+  const MatterDef* material = catalog.Get(id);
   return material == nullptr ? "?" : material->key;
 }
 
@@ -135,12 +135,12 @@ std::string AgeText(const PlanetEpochTable& epochs, double ageMyr) {
   return text;
 }
 
-void PrintEvent(const MaterialCatalog& catalog, const PlanetEpochTable& epochs,
+void PrintEvent(const MatterCatalog& catalog, const PlanetEpochTable& epochs,
                 const GeologicEvent& event, const char* prefix) {
   std::printf("%s%-22s %7.0f .. %-7.0f Myr", prefix,
               std::string(EventTypeName(event.type)).c_str(), event.startMyr,
               event.endMyr);
-  if (event.rock != kUnspecifiedMaterial) {
+  if (event.rock != kUnspecifiedMatter) {
     std::printf("  %s (%.0f m%s)", RockName(catalog, event.rock).c_str(),
                 event.magnitude, event.erased ? ", eroded away" : "");
   } else if (event.type == EventType::Folding) {
@@ -172,8 +172,8 @@ int Run(const Options& options) {
   const PlanetMap map(parameters, ClimateInputsFor(system));
   const RegionGenerator generator(map);
   const std::filesystem::path assets = options.assets;
-  const auto materials = std::make_shared<const MaterialCatalog>(
-      MaterialCatalog::LoadFromFile(assets / "materials" / "materials.json"));
+  const auto materials = std::make_shared<const MatterCatalog>(
+      MatterCatalog::LoadFromFile(assets / "matter" / "matter.json"));
   const auto catalog =
       std::make_shared<const GeologyCatalog>(GeologyCatalog::Load(
           materials, assets / "geology" / "province_columns.json"));
@@ -236,8 +236,8 @@ int Run(const Options& options) {
   // ---- the point
   const GeologyModel::ColumnProfile profile = geology.ProfileAt(
       province->id, eastMeters, northMeters, column.pileTopMeters);
-  const MaterialId rock = GeologyModel::RockAt(profile, elevation);
-  const MaterialDef* material = materials->Get(rock);
+  const MatterId rock = GeologyModel::RockAt(profile, elevation);
+  const MatterDef* material = materials->Get(rock);
   std::printf("\n");
   if (elevation > ground) {
     std::printf("the point is above the ground: %s\n",

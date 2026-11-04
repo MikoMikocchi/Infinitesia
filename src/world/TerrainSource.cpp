@@ -11,11 +11,11 @@ NoiseTerrainSource::NoiseTerrainSource(
       m_registry(registry != nullptr ? std::move(registry)
                                      : std::make_shared<const BlockRegistry>(
                                            BlockRegistry::BuiltIn())),
-      m_materials(SurfaceMaterials::Resolve(*m_registry)) {}
+      m_matter(SurfaceMatter::Resolve(*m_registry)) {}
 
 BlockState NoiseTerrainSource::StateAt(GridCell cell) const {
   return {
-      WorldInternal::GenerateMaterial(m_gridHeight, m_seed, cell, m_materials),
+      WorldInternal::GenerateMatter(m_gridHeight, m_seed, cell, m_matter),
       kShapeFull};
 }
 }  // namespace Infinitesia

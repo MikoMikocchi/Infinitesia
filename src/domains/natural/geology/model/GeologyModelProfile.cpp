@@ -13,7 +13,7 @@ constexpr int kBasementBottom = std::numeric_limits<int>::min();
 // Rocks above `cut` from `upper` and rocks below it from `lower`.
 Profile Compose(const Profile& upper, const Profile& lower, int cut) {
   struct Piece {
-    MaterialId rock;
+    MatterId rock;
     int bottom;
     std::uint8_t formation;
   };
@@ -125,7 +125,7 @@ std::size_t GeologyModel::FormationAt(const ColumnProfile& profile,
   return profile.formation[static_cast<std::size_t>(profile.count - 1)];
 }
 
-MaterialId GeologyModel::RockAt(const ColumnProfile& profile,
+MatterId GeologyModel::RockAt(const ColumnProfile& profile,
                                 int elevationMeters) noexcept {
   for (int i = 0; i < profile.count; ++i) {
     if (elevationMeters >= profile.bottom[static_cast<std::size_t>(i)]) {
@@ -135,7 +135,7 @@ MaterialId GeologyModel::RockAt(const ColumnProfile& profile,
   return profile.rock[static_cast<std::size_t>(profile.count - 1)];
 }
 
-MaterialId GeologyModel::BedrockAt(ProvinceId province, double eastMeters,
+MatterId GeologyModel::BedrockAt(ProvinceId province, double eastMeters,
                                    double northMeters, int elevationMeters,
                                    int pileTopMeters) const {
   return RockAt(ProfileAt(province, eastMeters, northMeters, pileTopMeters),

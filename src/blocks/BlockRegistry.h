@@ -12,11 +12,11 @@
 #include "blocks/BlockState.h"
 #include "blocks/ShapeDef.h"
 #include "blocks/Tag.h"
-#include "materials/MaterialCatalog.h"
+#include "matter/MatterCatalog.h"
 
 namespace Infinitesia {
 // What a world cell can hold (docs/06_BLOCKS.md, section 3): the materials of
-// the game (the MaterialCatalog) and the shapes (assets/blocks/shapes.json).
+// the game (the MatterCatalog) and the shapes (assets/blocks/shapes.json).
 // The registry adds to the catalog the dense tables the hot paths read.
 // Immutable after loading, so it can be shared freely between threads.
 //
@@ -26,32 +26,32 @@ namespace Infinitesia {
 class BlockRegistry {
  public:
   // Reads the shapes from `shapesFile`. Throws CatalogError.
-  static BlockRegistry Build(std::shared_ptr<const MaterialCatalog> materials,
+  static BlockRegistry Build(std::shared_ptr<const MatterCatalog> materials,
                              const std::filesystem::path& shapesFile);
 
   // A minimum without files, for terrains and tests that have no catalog: air,
   // water, seawater, turf, subsoil, sand and bedrock, and the full cube.
   static BlockRegistry BuiltIn();
 
-  const MaterialCatalog& Catalog() const noexcept { return *m_catalog; }
-  std::shared_ptr<const MaterialCatalog> CatalogPointer() const noexcept {
+  const MatterCatalog& Catalog() const noexcept { return *m_catalog; }
+  std::shared_ptr<const MatterCatalog> CatalogPointer() const noexcept {
     return m_catalog;
   }
 
   // Every material, sorted by id.
-  std::span<const MaterialDef> Materials() const noexcept {
-    return m_catalog->Materials();
+  std::span<const MatterDef> Matter() const noexcept {
+    return m_catalog->Matter();
   }
   std::span<const ShapeDef> Shapes() const noexcept { return m_shapes; }
 
-  const MaterialDef* FindMaterial(std::string_view key) const noexcept {
+  const MatterDef* FindMatter(std::string_view key) const noexcept {
     return m_catalog->Find(key);
   }
   // nullptr for an id that is not registered.
-  const MaterialDef* GetMaterial(MaterialId id) const noexcept {
+  const MatterDef* GetMatter(MatterId id) const noexcept {
     return m_catalog->Get(id);
   }
-  RgbColor ColorOf(MaterialId id) const noexcept {
+  RgbColor ColorOf(MatterId id) const noexcept {
     return m_catalog->ColorOf(id);
   }
   const ShapeDef* FindShape(std::string_view key) const noexcept;
@@ -59,23 +59,23 @@ class BlockRegistry {
 
   // The cell holds something (air is empty whatever its shape).
   bool Occupied(BlockState state) const noexcept {
-    return Props(state.material).flags & kOccupied;
+    return Props(state.matter).flags & kOccupied;
   }
   // A worker can stand on it: the material and the shape both allow it.
   bool Walkable(BlockState state) const noexcept {
-    return (Props(state.material).flags & kWalkable) != 0 &&
+    return (Props(state.matter).flags & kWalkable) != 0 &&
            ShapeProps(state.shape).walkable;
   }
   bool Diggable(BlockState state) const noexcept {
-    return Props(state.material).flags & kDiggable;
+    return Props(state.matter).flags & kDiggable;
   }
-  int DigClass(MaterialId material) const noexcept {
+  int DigClass(MatterId material) const noexcept {
     return Props(material).digClass;
   }
   // How much the cell dims each channel of the light that passes through it.
   LightRgb Opacity(BlockState state) const noexcept {
     return ShapeProps(state.shape).passesLight ? LightRgb{}
-                                               : Props(state.material).opacity;
+                                               : Props(state.matter).opacity;
   }
   // Some light gets through the cell: it stops a channel only when it dims it
   // fully.
@@ -84,7 +84,7 @@ class BlockRegistry {
     return dimming.r < kMaxLightLevel || dimming.g < kMaxLightLevel ||
            dimming.b < kMaxLightLevel;
   }
-  LightRgb Emission(MaterialId material) const noexcept {
+  LightRgb Emission(MatterId material) const noexcept {
     return Props(material).emission;
   }
   // Sides of the cell the shape covers completely.
@@ -92,11 +92,11 @@ class BlockRegistry {
     return ShapeProps(shape).faceMask;
   }
 
-  bool Has(MaterialId material, Tag tag) const noexcept {
+  bool Has(MatterId material, Tag tag) const noexcept {
     return (Props(material).tags >> static_cast<unsigned>(tag)) & 1u;
   }
   // Any tag, including those only the data knows; slower than Has.
-  bool HasTag(MaterialId material, std::string_view tag) const noexcept;
+  bool HasTag(MatterId material, std::string_view tag) const noexcept;
 
  private:
   static constexpr std::uint8_t kOccupied = 1 << 0;
@@ -119,20 +119,20 @@ class BlockRegistry {
 
   // Builds the dense tables and checks and indexes the shapes handed in.
   static BlockRegistry Assemble(
-      std::shared_ptr<const MaterialCatalog> materials,
+      std::shared_ptr<const MatterCatalog> materials,
       std::vector<ShapeDef> shapes);
 
-  const MaterialProps& Props(MaterialId material) const noexcept {
+  const MaterialProps& Props(MatterId material) const noexcept {
     return material < m_props.size() ? m_props[material]
-                                     : m_props[kAirMaterial];
+                                     : m_props[kAirMatter];
   }
   const ShapeProperties& ShapeProps(ShapeId shape) const noexcept {
     return m_shapeProps[m_shapeKnown[shape] ? shape : kShapeFull];
   }
 
-  std::shared_ptr<const MaterialCatalog> m_catalog;
+  std::shared_ptr<const MatterCatalog> m_catalog;
   std::vector<ShapeDef> m_shapes;
-  std::vector<MaterialProps> m_props;  // by MaterialId
+  std::vector<MaterialProps> m_props;  // by MatterId
   std::array<ShapeProperties, kShapeCapacity> m_shapeProps{};
   std::array<bool, kShapeCapacity> m_shapeKnown{};
   std::unordered_map<std::string, int> m_shapeByKey;

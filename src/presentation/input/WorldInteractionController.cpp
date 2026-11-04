@@ -77,10 +77,10 @@ void WorldInteractionController::Update(WorldInteractionInput input,
         block != nullptr && world.terrain.Registry().Occupied(block->state);
     const bool treeWood =
         block != nullptr &&
-        world.terrain.Registry().Has(block->state.material, Tag::TreeWood);
+        world.terrain.Registry().Has(block->state.matter, Tag::TreeWood);
     const bool foliage =
         block != nullptr &&
-        world.terrain.Registry().Has(block->state.material, Tag::TreeLeaves);
+        world.terrain.Registry().Has(block->state.matter, Tag::TreeLeaves);
     if (treeWood) {
       // A tree is felled whole, from any cell of its wood.
       cellCommands.push_back({"chop_tree", "Chop tree",

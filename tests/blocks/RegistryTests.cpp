@@ -6,7 +6,7 @@
 
 #include "blocks/BlockRegistry.h"
 #include "support/BrokenFile.h"
-#include "support/MaterialFixtures.h"
+#include "support/MatterFixtures.h"
 #include "support/Require.h"
 
 using namespace Infinitesia;
@@ -15,12 +15,12 @@ using namespace InfinitesiaTests;
 namespace {
 const BlockRegistry& SharedRegistry() {
   static const BlockRegistry registry =
-      BlockRegistry::Build(SharedMaterials(), kShapesFile);
+      BlockRegistry::Build(SharedMatter(), kShapesFile);
   return registry;
 }
 
-MaterialId IdOf(const char* key) {
-  const MaterialDef* material = SharedRegistry().FindMaterial(key);
+MatterId IdOf(const char* key) {
+  const MatterDef* material = SharedRegistry().FindMatter(key);
   REQUIRE_MESSAGE(material != nullptr, "no material ", key);
   return material->id;
 }
@@ -31,7 +31,7 @@ BlockState Full(const char* key) { return {IdOf(key), kShapeFull}; }
 // loads.
 std::string LoadError(const BrokenFile& broken) {
   try {
-    BlockRegistry::Build(SharedMaterials(), broken.Path());
+    BlockRegistry::Build(SharedMatter(), broken.Path());
   } catch (const CatalogError& error) {
     return error.what();
   }
@@ -41,22 +41,22 @@ std::string LoadError(const BrokenFile& broken) {
 
 TEST_CASE("RegistryHoldsEveryMaterialOfTheCatalog") {
   const BlockRegistry& registry = SharedRegistry();
-  const MaterialCatalog& catalog = *SharedMaterials();
-  REQUIRE(registry.Materials().size() == catalog.Materials().size());
+  const MatterCatalog& catalog = *SharedMatter();
+  REQUIRE(registry.Matter().size() == catalog.Matter().size());
 
-  std::set<MaterialId> ids;
-  for (const MaterialDef& material : registry.Materials()) {
+  std::set<MatterId> ids;
+  for (const MatterDef& material : registry.Matter()) {
     Require(ids.insert(material.id).second, "duplicate material id");
-    Require(registry.GetMaterial(material.id) == &material,
+    Require(registry.GetMatter(material.id) == &material,
             "lookup by id is wrong");
-    Require(registry.FindMaterial(material.key) == &material,
+    Require(registry.FindMatter(material.key) == &material,
             "lookup by key is wrong");
   }
-  CHECK(registry.FindMaterial("built.lamp")->id == 1030);
-  CHECK(registry.FindMaterial("rock.granite")->id == 32);
-  CHECK(registry.FindMaterial("mineral.quartz")->id == kFirstMineralMaterial);
-  CHECK(registry.GetMaterial(4000) == nullptr);
-  CHECK(&registry.Catalog() == SharedMaterials().get());
+  CHECK(registry.FindMatter("built.lamp")->id == 1030);
+  CHECK(registry.FindMatter("rock.granite")->id == 32);
+  CHECK(registry.FindMatter("mineral.quartz")->id == kFirstMineralMatter);
+  CHECK(registry.GetMatter(4000) == nullptr);
+  CHECK(&registry.Catalog() == SharedMatter().get());
 
   REQUIRE(registry.Shapes().size() == 1);
   CHECK(registry.FindShape("shape.full")->id == kShapeFull);
@@ -67,7 +67,7 @@ TEST_CASE("RegistryHoldsEveryMaterialOfTheCatalog") {
 TEST_CASE("CellQueriesFollowTheMaterial") {
   const BlockRegistry& registry = SharedRegistry();
 
-  const BlockState air{kAirMaterial, kShapeFull};
+  const BlockState air{kAirMatter, kShapeFull};
   CHECK_FALSE(registry.Occupied(air));
   CHECK_FALSE(registry.Walkable(air));
   CHECK_FALSE(registry.Diggable(air));
@@ -78,7 +78,7 @@ TEST_CASE("CellQueriesFollowTheMaterial") {
   CHECK(registry.Walkable(granite));
   CHECK(registry.Diggable(granite));
   CHECK(registry.Opacity(granite) == LightRgb{15, 15, 15});
-  CHECK(registry.DigClass(granite.material) == 4);
+  CHECK(registry.DigClass(granite.matter) == 4);
 
   // Water is still ground for workers (docs/06_BLOCKS.md, section 0), but dims
   // light a little.
@@ -121,7 +121,7 @@ TEST_CASE("TagsLetRulesAskWhatAMaterialIsInsteadOfWhichId") {
   CHECK(registry.Has(IdOf("soil.sand"), Tag::Soil));
   CHECK(registry.Has(IdOf("rock.granite"), Tag::Rock));
   CHECK(registry.Has(IdOf("ice.glacier"), Tag::Ice));
-  CHECK(registry.Has(kAirMaterial, Tag::Air));
+  CHECK(registry.Has(kAirMatter, Tag::Air));
   CHECK(registry.Has(IdOf("built.glass_blue"), Tag::Glass));
   CHECK(registry.Has(IdOf("built.glass_blue"), Tag::Built));
   // Anything that gives off light is a light source, whatever the data says.
@@ -140,9 +140,9 @@ TEST_CASE("TagsLetRulesAskWhatAMaterialIsInsteadOfWhichId") {
 TEST_CASE("BuiltInRegistryAgreesWithTheFiles") {
   const BlockRegistry builtIn = BlockRegistry::BuiltIn();
   const BlockRegistry& files = SharedRegistry();
-  CHECK(builtIn.Materials().size() == 7);
-  for (const MaterialDef& material : builtIn.Materials()) {
-    const MaterialDef* other = files.FindMaterial(material.key);
+  CHECK(builtIn.Matter().size() == 7);
+  for (const MatterDef& material : builtIn.Matter()) {
+    const MatterDef* other = files.FindMatter(material.key);
     REQUIRE_MESSAGE(other != nullptr, material.key, " is not in the files");
     CHECK_MESSAGE(material.id == other->id, material.key);
     CHECK_MESSAGE(material.blockClass == other->blockClass, material.key);
@@ -171,8 +171,8 @@ TEST_CASE("AShapeNarrowsWhatTheMaterialAllows") {
             { "id": "shape.grate", "numericId": 1, "faces": ["top", "bottom"], "walkable": false, "passesLight": true, "mesh": "cube" }
         ] })");
   const BlockRegistry registry =
-      BlockRegistry::Build(SharedMaterials(), blocks.Path());
-  const MaterialId granite = registry.FindMaterial("rock.granite")->id;
+      BlockRegistry::Build(SharedMatter(), blocks.Path());
+  const MatterId granite = registry.FindMatter("rock.granite")->id;
   const ShapeId grate = registry.FindShape("shape.grate")->id;
 
   CHECK(registry.Occupied({granite, grate}));
@@ -182,7 +182,7 @@ TEST_CASE("AShapeNarrowsWhatTheMaterialAllows") {
   CHECK(registry.FaceMask(grate) == (kFaceTop | kFaceBottom));
   CHECK(registry.FaceMask(kShapeFull) == kFaceAll);
   // Air stays empty whatever shape it is given.
-  CHECK_FALSE(registry.Occupied({kAirMaterial, grate}));
+  CHECK_FALSE(registry.Occupied({kAirMatter, grate}));
 }
 
 TEST_CASE("LoaderRejectsBrokenShapeFilesWithAMessageNamingTheRecord") {
@@ -231,7 +231,7 @@ TEST_CASE("LoaderRejectsBrokenShapeFilesWithAMessageNamingTheRecord") {
 
 TEST_CASE("LightPassesACellThatDoesNotStopEveryChannel") {
   const BlockRegistry& registry = SharedRegistry();
-  CHECK(registry.LetsLightThrough({kAirMaterial, kShapeFull}));
+  CHECK(registry.LetsLightThrough({kAirMatter, kShapeFull}));
   CHECK(registry.LetsLightThrough(Full("fluid.water")));
   CHECK(registry.LetsLightThrough(Full("ice.glacier")));
   CHECK(registry.LetsLightThrough(Full("built.glass")));
