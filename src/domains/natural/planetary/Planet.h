@@ -1,27 +1,28 @@
 #pragma once
 
-#include "foundation/PlanetaryCoordinates.h"
-#include "domains/natural/planetary/PlanetParameters.h"
-
 #include <cstdint>
 
-namespace Infinitesia
-{
-    class Planet
-    {
-    public:
-        explicit Planet(PlanetParameters parameters = {});
+#include "domains/natural/planetary/PlanetParameters.h"
+#include "foundation/PlanetaryCoordinates.h"
 
-        const PlanetParameters& GetParameters() const noexcept;
-        std::uint32_t GetSeed() const noexcept;
-        double GetRadius() const noexcept;
-        bool IsValid() const noexcept;
+namespace Infinitesia {
+class Planet {
+ public:
+  explicit Planet(PlanetParameters parameters = {});
 
-        GeographicCoordinates GetRegionCenter(int latitudeIndex, int longitudeIndex) const noexcept;
-        CartesianPoint3D GetSurfacePoint(int latitudeIndex, int longitudeIndex) const noexcept;
-        std::uint32_t DeriveRegionSeed(int latitudeIndex, int longitudeIndex) const noexcept;
+  const PlanetParameters& GetParameters() const noexcept;
+  std::uint32_t GetSeed() const noexcept;
+  double GetRadius() const noexcept;
+  bool IsValid() const noexcept;
 
-    private:
-        PlanetParameters m_parameters;
-    };
-}
+  GeographicCoordinates GetRegionCenter(int latitudeIndex,
+                                        int longitudeIndex) const noexcept;
+  CartesianPoint3D GetSurfacePoint(int latitudeIndex,
+                                   int longitudeIndex) const noexcept;
+  std::uint32_t DeriveRegionSeed(int latitudeIndex,
+                                 int longitudeIndex) const noexcept;
+
+ private:
+  PlanetParameters m_parameters;
+};
+}  // namespace Infinitesia

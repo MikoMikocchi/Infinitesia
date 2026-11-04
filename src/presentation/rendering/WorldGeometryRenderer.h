@@ -1,55 +1,35 @@
 #pragma once
 
-#include "raylib.h"
-#include "world/Grid.h"
-#include "gameplay/entities/EntityStore.h"
-#include "world/VoxelWorld.h"
-#include "presentation/rendering/ViewMode.h"
-#include "presentation/rendering/terrain/BlockTextureAtlas.h"
-
 #include <cstdint>
 #include <map>
 #include <utility>
 
-namespace Infinitesia
-{
-    namespace WorldGeometryRenderer
-    {
-        struct ChunkMeshCacheEntry
-        {
-            Mesh mesh{};
-            std::uint64_t terrainRevision = 0;
-        };
+#include "gameplay/entities/EntityStore.h"
+#include "presentation/rendering/ViewMode.h"
+#include "presentation/rendering/terrain/BlockTextureAtlas.h"
+#include "raylib.h"
+#include "world/Grid.h"
+#include "world/VoxelWorld.h"
 
-        using ChunkMeshKey = std::pair<ChunkCoordinate, int>;
-        using ChunkMeshCache = std::map<ChunkMeshKey, ChunkMeshCacheEntry>;
+namespace Infinitesia {
+namespace WorldGeometryRenderer {
+struct ChunkMeshCacheEntry {
+  Mesh mesh{};
+  std::uint64_t terrainRevision = 0;
+};
 
-        void DrawBlocks(
-            const Grid& grid,
-            const VoxelWorld& world,
-            GridCell viewCenter,
-            int chunkRadius,
-            int viewLevel,
-            ViewMode mode,
-            Material material,
-            const BlockTextureAtlas& atlas,
-            ChunkMeshCache& meshCache);
-        void DrawObjectShadows(
-            const Grid& grid,
-            const EntityStore& world,
-            GridCell viewCenter,
-            int chunkRadius,
-            int viewLevel,
-            ViewMode mode);
-        void DrawObjects(
-            const Grid& grid,
-            const EntityStore& world,
-            Mesh cylinderMesh,
-            Mesh sphereMesh,
-            Material material,
-            GridCell viewCenter,
-            int chunkRadius,
-            int viewLevel,
-            ViewMode mode);
-    }
-}
+using ChunkMeshKey = std::pair<ChunkCoordinate, int>;
+using ChunkMeshCache = std::map<ChunkMeshKey, ChunkMeshCacheEntry>;
+
+void DrawBlocks(const Grid& grid, const VoxelWorld& world, GridCell viewCenter,
+                int chunkRadius, int viewLevel, ViewMode mode,
+                Material material, const BlockTextureAtlas& atlas,
+                ChunkMeshCache& meshCache);
+void DrawObjectShadows(const Grid& grid, const EntityStore& world,
+                       GridCell viewCenter, int chunkRadius, int viewLevel,
+                       ViewMode mode);
+void DrawObjects(const Grid& grid, const EntityStore& world, Mesh cylinderMesh,
+                 Mesh sphereMesh, Material material, GridCell viewCenter,
+                 int chunkRadius, int viewLevel, ViewMode mode);
+}  // namespace WorldGeometryRenderer
+}  // namespace Infinitesia

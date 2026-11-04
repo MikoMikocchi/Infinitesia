@@ -1,33 +1,28 @@
 #pragma once
 
-#include "gameplay/commands/Command.h"
-
 #include <memory>
 #include <optional>
 #include <string_view>
 #include <vector>
 
-namespace Infinitesia
-{
-    class CommandRegistry
-    {
-    public:
-        void Register(std::unique_ptr<Command> command);
+#include "gameplay/commands/Command.h"
 
-        std::vector<CommandOption> GetOptions(
-            WorldObjectId target,
-            std::optional<WorldObjectId> actor,
-            const EntityStore& world) const;
+namespace Infinitesia {
+class CommandRegistry {
+ public:
+  void Register(std::unique_ptr<Command> command);
 
-        CommandResult Execute(
-            std::string_view commandId,
-            std::optional<WorldObjectId> actor,
-            WorldObjectId target,
-            GameWorld& world) const;
+  std::vector<CommandOption> GetOptions(WorldObjectId target,
+                                        std::optional<WorldObjectId> actor,
+                                        const EntityStore& world) const;
 
-    private:
-        const Command* FindCommand(std::string_view commandId) const;
+  CommandResult Execute(std::string_view commandId,
+                        std::optional<WorldObjectId> actor,
+                        WorldObjectId target, GameWorld& world) const;
 
-        std::vector<std::unique_ptr<Command>> m_commands;
-    };
-}
+ private:
+  const Command* FindCommand(std::string_view commandId) const;
+
+  std::vector<std::unique_ptr<Command>> m_commands;
+};
+}  // namespace Infinitesia

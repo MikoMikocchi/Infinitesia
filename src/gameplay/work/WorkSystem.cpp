@@ -1,64 +1,55 @@
 ﻿#include "gameplay/work/WorkSystem.h"
-#include "gameplay/work/WorkPathfinding.h"
-#include "gameplay/work/WorkUtils.h"
 
 #include <cmath>
 #include <stdexcept>
 
-namespace Infinitesia
-{
-    WorkSystem::WorkSystem(WorkerConfig config, GameWorld& world, const Grid& grid, WoodDrop drop)
-        : m_config(config),
-          m_drop(drop),
-          m_world(world),
-          m_grid(grid)
-    {
-        if (!std::isfinite(config.movementSpeed) || config.movementSpeed <= 0.0f ||
-            !std::isfinite(config.choppingDuration) || config.choppingDuration <= 0.0f ||
-            !std::isfinite(config.diggingDuration) || config.diggingDuration <= 0.0f ||
-            !std::isfinite(config.kilogramsPerLog) || config.kilogramsPerLog <= 0.0f)
-        {
-            throw std::invalid_argument("Worker configuration contains invalid values.");
-        }
-    }
+#include "gameplay/work/WorkPathfinding.h"
+#include "gameplay/work/WorkUtils.h"
 
-    void WorkSystem::Update(const SystemContext& context)
-    {
-        Tick(m_world, m_grid, context.fixedDeltaTime);
-    }
-
-    bool WorkSystem::HasOrderForWorker(WorldObjectId worker) const
-    {
-        return WorkInternal::HasOrderForWorker(m_orders, worker);
-    }
-
-    bool WorkSystem::HasOrderForTree(const std::vector<GridCell>& wood) const
-    {
-        return WorkInternal::HasOrderForTree(m_orders, wood);
-    }
-
-    bool WorkSystem::HasOrderForDigCell(GridCell cell) const
-    {
-        return WorkInternal::HasOrderForDigCell(m_orders, cell);
-    }
-
-    bool WorkSystem::IsReserved(GridCell cell) const
-    {
-        return WorkInternal::IsReserved(m_orders, cell);
-    }
-
-    std::optional<std::vector<GridCell>> WorkSystem::FindPath(
-        GridCell start,
-        GridCell goal,
-        WorldObjectId worker,
-        const GameWorld& world,
-        const Grid& grid) const
-    {
-        return WorkInternal::FindPath(const_cast<GridPathfinder&>(m_pathfinder), start, goal, worker, world, grid, m_orders);
-    }
-
-    float WorkSystem::GetWorkDuration(const WorkOrder& order) const
-    {
-        return WorkInternal::GetWorkDuration(m_config, order);
-    }
+namespace Infinitesia {
+WorkSystem::WorkSystem(WorkerConfig config, GameWorld& world, const Grid& grid,
+                       WoodDrop drop)
+    : m_config(config), m_drop(drop), m_world(world), m_grid(grid) {
+  if (!std::isfinite(config.movementSpeed) || config.movementSpeed <= 0.0f ||
+      !std::isfinite(config.choppingDuration) ||
+      config.choppingDuration <= 0.0f ||
+      !std::isfinite(config.diggingDuration) ||
+      config.diggingDuration <= 0.0f ||
+      !std::isfinite(config.kilogramsPerLog) ||
+      config.kilogramsPerLog <= 0.0f) {
+    throw std::invalid_argument(
+        "Worker configuration contains invalid values.");
+  }
 }
+
+void WorkSystem::Update(const SystemContext& context) {
+  Tick(m_world, m_grid, context.fixedDeltaTime);
+}
+
+bool WorkSystem::HasOrderForWorker(WorldObjectId worker) const {
+  return WorkInternal::HasOrderForWorker(m_orders, worker);
+}
+
+bool WorkSystem::HasOrderForTree(const std::vector<GridCell>& wood) const {
+  return WorkInternal::HasOrderForTree(m_orders, wood);
+}
+
+bool WorkSystem::HasOrderForDigCell(GridCell cell) const {
+  return WorkInternal::HasOrderForDigCell(m_orders, cell);
+}
+
+bool WorkSystem::IsReserved(GridCell cell) const {
+  return WorkInternal::IsReserved(m_orders, cell);
+}
+
+std::optional<std::vector<GridCell>> WorkSystem::FindPath(
+    GridCell start, GridCell goal, WorldObjectId worker, const GameWorld& world,
+    const Grid& grid) const {
+  return WorkInternal::FindPath(const_cast<GridPathfinder&>(m_pathfinder),
+                                start, goal, worker, world, grid, m_orders);
+}
+
+float WorkSystem::GetWorkDuration(const WorkOrder& order) const {
+  return WorkInternal::GetWorkDuration(m_config, order);
+}
+}  // namespace Infinitesia

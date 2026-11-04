@@ -1,51 +1,43 @@
 #pragma once
 
-#include "raylib.h"
-
 #include <utility>
 
-namespace Infinitesia
-{
-    // Move-only owner of a GPU texture. Must be reset (or destroyed) while the
-    // GL context is still alive.
-    class UniqueTexture
-    {
-    public:
-        UniqueTexture() noexcept = default;
-        explicit UniqueTexture(Texture2D texture) noexcept : m_texture(texture) {}
-        ~UniqueTexture() { Reset(); }
+#include "raylib.h"
 
-        UniqueTexture(const UniqueTexture&) = delete;
-        UniqueTexture& operator=(const UniqueTexture&) = delete;
+namespace Infinitesia {
+// Move-only owner of a GPU texture. Must be reset (or destroyed) while the
+// GL context is still alive.
+class UniqueTexture {
+ public:
+  UniqueTexture() noexcept = default;
+  explicit UniqueTexture(Texture2D texture) noexcept : m_texture(texture) {}
+  ~UniqueTexture() { Reset(); }
 
-        UniqueTexture(UniqueTexture&& other) noexcept
-            : m_texture(std::exchange(other.m_texture, Texture2D{}))
-        {
-        }
+  UniqueTexture(const UniqueTexture&) = delete;
+  UniqueTexture& operator=(const UniqueTexture&) = delete;
 
-        UniqueTexture& operator=(UniqueTexture&& other) noexcept
-        {
-            if (this != &other)
-            {
-                Reset();
-                m_texture = std::exchange(other.m_texture, Texture2D{});
-            }
-            return *this;
-        }
+  UniqueTexture(UniqueTexture&& other) noexcept
+      : m_texture(std::exchange(other.m_texture, Texture2D{})) {}
 
-        void Reset() noexcept
-        {
-            if (m_texture.id != 0)
-            {
-                UnloadTexture(m_texture);
-                m_texture = {};
-            }
-        }
+  UniqueTexture& operator=(UniqueTexture&& other) noexcept {
+    if (this != &other) {
+      Reset();
+      m_texture = std::exchange(other.m_texture, Texture2D{});
+    }
+    return *this;
+  }
 
-        bool IsValid() const noexcept { return m_texture.id != 0; }
-        const Texture2D& Get() const noexcept { return m_texture; }
+  void Reset() noexcept {
+    if (m_texture.id != 0) {
+      UnloadTexture(m_texture);
+      m_texture = {};
+    }
+  }
 
-    private:
-        Texture2D m_texture{};
-    };
-}
+  bool IsValid() const noexcept { return m_texture.id != 0; }
+  const Texture2D& Get() const noexcept { return m_texture; }
+
+ private:
+  Texture2D m_texture{};
+};
+}  // namespace Infinitesia
