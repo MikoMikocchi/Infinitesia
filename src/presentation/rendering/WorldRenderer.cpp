@@ -3,6 +3,8 @@
 #include "presentation/rendering/DepthShading.h"
 #include "presentation/rendering/WorldGeometryRenderer.h"
 #include "presentation/rendering/WorldOverlayRenderer.h"
+#include "presentation/rendering/LightingStyle.h"
+#include "raymath.h"
 #include "rlgl.h"
 
 #include <cmath>
@@ -154,6 +156,32 @@ namespace Infinitesia
         }
     }
 
+    void WorldRenderer::SetLightingUniforms() const
+    {
+        const auto setVec3 = [&](const char* name, const float (&value)[3])
+        {
+            SetShaderValue(m_worldShader, GetShaderLocation(m_worldShader, name), value, SHADER_UNIFORM_VEC3);
+        };
+        setVec3("lightDirection", LightingStyle::kSunDirection);
+        setVec3("sunColor", LightingStyle::kSunColor);
+        setVec3("ambientSky", LightingStyle::kAmbientSky);
+        setVec3("ambientGround", LightingStyle::kAmbientGround);
+        setVec3("fogColor", LightingStyle::kFogColor);
+
+        // The fog is measured in multiples of the distance to what the camera looks at, so it
+        // does not wash the view out when zoomed far away.
+        const float focusDistance = Vector3Distance(m_camera.position, m_camera.target);
+        const float fogParams[4]{
+            focusDistance * LightingStyle::kFogStartRatio,
+            focusDistance * LightingStyle::kFogEndRatio,
+            LightingStyle::kFogStrength,
+            LightingStyle::kFogDesaturation
+        };
+        SetShaderValue(m_worldShader, GetShaderLocation(m_worldShader, "fogParams"), fogParams, SHADER_UNIFORM_VEC4);
+        const float cameraPosition[3]{ m_camera.position.x, m_camera.position.y, m_camera.position.z };
+        setVec3("cameraPosition", cameraPosition);
+    }
+
     void WorldRenderer::Draw(
         const Grid& grid,
         const GameWorld& world,
@@ -188,6 +216,8 @@ namespace Infinitesia
         const int depthShadeLocB = GetShaderLocation(m_worldShader, "depthShadeB");
         SetShaderValue(m_worldShader, depthShadeLocA, depthShadeA, SHADER_UNIFORM_VEC4);
         SetShaderValue(m_worldShader, depthShadeLocB, depthShadeB, SHADER_UNIFORM_VEC4);
+
+        SetLightingUniforms();
 
         BeginMode3D(m_camera);
         BeginShaderMode(m_worldShader);

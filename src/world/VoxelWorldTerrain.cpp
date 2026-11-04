@@ -1,6 +1,7 @@
 #include "world/VoxelWorld.h"
 #include "world/internal/WorldTerrainGen.h"
 
+#include <set>
 #include <stdexcept>
 
 namespace Infinitesia
@@ -85,38 +86,34 @@ namespace Infinitesia
         changed.state = state;
         ++m_terrainRevision;
 
-        const int localX = cell.x % kChunkSize;
-        const int localZ = cell.z % kChunkSize;
-        const int lowerMeshChunkY = cell.y > 0
-            ? (cell.y - 1) / kChunkSize
-            : changedChunk.y;
-        const int upperMeshChunkY = cell.y + 1 < m_gridHeight
-            ? (cell.y + 1) / kChunkSize
-            : changedChunk.y;
+        // A mesh depends on the blocks one cell around its own (hidden faces and the ambient
+        // occlusion of their corners, diagonals included), so every chunk holding a cell of the
+        // 3x3x3 block around the changed one is stale.
+        std::set<ChunkCoordinate> meshNeighbors;
+        for (int dy = -1; dy <= 1; ++dy)
+        {
+            for (int dz = -1; dz <= 1; ++dz)
+            {
+                for (int dx = -1; dx <= 1; ++dx)
+                {
+                    const GridCell around{ cell.x + dx, cell.y + dy, cell.z + dz };
+                    if (Contains(around))
+                    {
+                        meshNeighbors.insert(GetChunkCoordinate(around));
+                    }
+                }
+            }
+        }
 
         for (auto& [coordinate, affectedChunk] : m_chunks)
         {
+            // Light from the sky: the chunks below in the same column.
             const bool affectedByLighting =
                 coordinate.x == changedChunk.x &&
                 coordinate.z == changedChunk.z &&
                 coordinate.y <= changedChunk.y;
-            const bool affectedByUpperSurface =
-                coordinate.x == changedChunk.x &&
-                coordinate.z == changedChunk.z &&
-                coordinate.y == upperMeshChunkY;
-            const bool affectedByNeighborGeometry =
-                ((localX == 0 && coordinate.x == changedChunk.x - 1 &&
-                  coordinate.z == changedChunk.z) ||
-                 (localX == kChunkSize - 1 && coordinate.x == changedChunk.x + 1 &&
-                  coordinate.z == changedChunk.z) ||
-                 (localZ == 0 && coordinate.x == changedChunk.x &&
-                  coordinate.z == changedChunk.z - 1) ||
-                 (localZ == kChunkSize - 1 && coordinate.x == changedChunk.x &&
-                  coordinate.z == changedChunk.z + 1)) &&
-                (coordinate.y == changedChunk.y ||
-                 (cell.y > 0 && coordinate.y == lowerMeshChunkY));
 
-            if (affectedByLighting || affectedByUpperSurface || affectedByNeighborGeometry)
+            if (affectedByLighting || meshNeighbors.count(coordinate) != 0)
             {
                 ++affectedChunk.terrainRevision;
             }

@@ -1,6 +1,8 @@
 #include "presentation/rendering/terrain/TerrainMeshBuilder.h"
 #include "presentation/rendering/terrain/internal/TerrainMeshGeometry.h"
 
+#include "presentation/rendering/LightingStyle.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -17,9 +19,6 @@ namespace Infinitesia
         {
             namespace
             {
-                // The top of a cut in the ground that no sky reaches.
-                constexpr float kCutFaceShade = 0.6f;
-
                 template<typename T>
                 T* CopyMeshData(const std::vector<T>& data)
                 {
@@ -90,7 +89,19 @@ namespace Infinitesia
                     (lit ? light.litFrom : light.shadedUpTo) = block.cell.y;
                     return lit;
                 };
-                const auto shade = [](TerrainMeshGeometry::FaceLook& look, float factor)
+                // Occlusion must not depend on the cut level for chunks wholly below it (their
+                // meshes are shared by all cut levels), so only the cells above the cut, which
+                // exist only in the chunk the cut passes through, count as open.
+                const TerrainMeshGeometry::SolidQuery isSolid = [&](GridCell cell)
+                {
+                    if (isCut && cell.y > cutLevel)
+                    {
+                        return false;
+                    }
+                    const Block* neighbor = world.GetBlock(cell);
+                    return neighbor != nullptr && registry.Occupied(neighbor->state);
+                };
+                const auto shade =[](TerrainMeshGeometry::FaceLook& look, float factor)
                 {
                     look.tint = {
                         static_cast<unsigned char>(look.tint.r * factor),
@@ -146,33 +157,38 @@ namespace Infinitesia
                                 block, registry, atlas, TerrainMeshGeometry::FaceKind::Side);
                             if (!lit)
                             {
-                                // The face of a cut is dimmed rather than black: it is what
-                                // the section looks like, not a dark place.
-                                if (isCutTop)
-                                {
-                                    shade(topLook, kCutFaceShade);
-                                }
-                                else
-                                {
-                                    topLook.tint = BLACK;
-                                }
-                                sideLook.tint = BLACK;
+                                // Covered ground is dimmed, never black, so a trunk under its own
+                                // crown stays readable. The face of a cut is what the section
+                                // looks like, not a dark place, so it is dimmed less.
+                                shade(topLook, isCutTop
+                                    ? LightingStyle::kEnclosedCutFaceBrightness
+                                    : LightingStyle::kEnclosedBrightness);
+                                shade(sideLook, LightingStyle::kEnclosedBrightness);
                             }
 
                             if (topExposed)
                             {
+                                const std::array<Vector3, 4> topCorners{
+                                    Vector3{ left, topY, front },
+                                    Vector3{ right, topY, front },
+                                    Vector3{ right, topY, back },
+                                    Vector3{ left, topY, back }
+                                };
+                                const Vector3 normal{ 0.0f, 1.0f, 0.0f };
                                 meshData.AppendFace(
-                                    {
-                                        Vector3{ left, topY, front },
-                                        Vector3{ right, topY, front },
-                                        Vector3{ right, topY, back },
-                                        Vector3{ left, topY, back }
-                                    },
-                                    { 0.0f, 1.0f, 0.0f },
-                                    topLook);
+                                    topCorners,
+                                    normal,
+                                    topLook,
+                                    TerrainMeshGeometry::ComputeCornerBrightness(
+                                        isSolid,
+                                        block.cell,
+                                        normal,
+                                        { (left + right) * 0.5f, (bottomY + topY) * 0.5f, (front + back) * 0.5f },
+                                        topCorners));
                             }
                             meshData.AppendExposedSideFaces(
                                 world,
+                                isSolid,
                                 block.cell,
                                 left,
                                 right,

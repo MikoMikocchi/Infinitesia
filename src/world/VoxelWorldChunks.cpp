@@ -157,6 +157,23 @@ namespace Infinitesia
         }
 
         m_chunks.emplace(coordinate, std::move(chunk));
+
+        // The meshes of the loaded neighbours were built with this chunk counted as open air;
+        // their border faces and ambient occlusion are stale now.
+        for (const ChunkCoordinate& next : {
+                 ChunkCoordinate{ coordinate.x - 1, coordinate.y, coordinate.z },
+                 ChunkCoordinate{ coordinate.x + 1, coordinate.y, coordinate.z },
+                 ChunkCoordinate{ coordinate.x, coordinate.y - 1, coordinate.z },
+                 ChunkCoordinate{ coordinate.x, coordinate.y + 1, coordinate.z },
+                 ChunkCoordinate{ coordinate.x, coordinate.y, coordinate.z - 1 },
+                 ChunkCoordinate{ coordinate.x, coordinate.y, coordinate.z + 1 } })
+        {
+            const auto neighbor = m_chunks.find(next);
+            if (neighbor != m_chunks.end())
+            {
+                ++neighbor->second.terrainRevision;
+            }
+        }
     }
 
     ChunkCoordinate VoxelWorld::GetChunkCoordinate(GridCell cell) const

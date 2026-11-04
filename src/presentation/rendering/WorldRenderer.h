@@ -44,6 +44,9 @@ namespace Infinitesia
         const Camera3D& GetCamera() const;
 
     private:
+        // Sun, ambient, fog and camera position for the world shader.
+        void SetLightingUniforms() const;
+
         Camera3D m_camera;
         Shader m_worldShader{};
         Shader m_shadowShader{};

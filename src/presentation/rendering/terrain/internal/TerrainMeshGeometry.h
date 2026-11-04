@@ -6,6 +6,7 @@
 #include "presentation/rendering/terrain/BlockTextureAtlas.h"
 
 #include <array>
+#include <functional>
 #include <vector>
 
 namespace Infinitesia
@@ -29,6 +30,20 @@ namespace Infinitesia
                 Rectangle uv;   // normalised atlas coordinates
             };
 
+            // Whether a cell blocks light at a corner of a face (ambient occlusion). Cells that are
+            // not loaded, outside the grid, or hidden by the cut count as open.
+            using SolidQuery = std::function<bool(GridCell)>;
+
+            // Brightness (0..1) of the four corners of a face of the block in `cell`, from the blocks
+            // around the corner (the classic scheme: two sides and the diagonal between them).
+            // `normal` is an axis; `blockCenter` is the world position of the middle of the block.
+            std::array<float, 4> ComputeCornerBrightness(
+                const SolidQuery& isSolid,
+                GridCell cell,
+                Vector3 normal,
+                Vector3 blockCenter,
+                const std::array<Vector3, 4>& corners);
+
             struct MeshData
             {
                 std::vector<float> vertices;
@@ -37,10 +52,17 @@ namespace Infinitesia
                 std::vector<unsigned char> colors;
                 std::vector<unsigned short> indices;
 
-                void AppendFace(const std::array<Vector3, 4>& corners, Vector3 normal, const FaceLook& look);
+                // `cornerBrightness` multiplies the tint per corner; the quad is split along the
+                // diagonal whose corners differ least, so the shading does not show a seam.
+                void AppendFace(
+                    const std::array<Vector3, 4>& corners,
+                    Vector3 normal,
+                    const FaceLook& look,
+                    const std::array<float, 4>& cornerBrightness = { 1.0f, 1.0f, 1.0f, 1.0f });
                 // The side faces of the block in the cell that no solid neighbour covers.
                 void AppendExposedSideFaces(
                     const VoxelWorld& world,
+                    const SolidQuery& isSolid,
                     GridCell cell,
                     float left,
                     float right,
