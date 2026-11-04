@@ -20,6 +20,7 @@ SRC = Path(__file__).resolve().parent.parent / "src"
 # path under src/ -> module (the longest matching prefix wins)
 MODULE_OF = {
     "core": "core",
+    "content": "content",
     "domains/natural/chemistry": "chemistry",
     "domains/natural/planetary": "planet",
     "matter": "matter",
@@ -36,6 +37,9 @@ MODULE_OF = {
 # module -> modules it may include. Keep in step with CMakeLists.txt.
 ALLOWED = {
     "core": set(),
+    # content reads XML definitions into typed registries; it owns pugixml, so
+    # no other module includes it (docs/DataDriven.md, sections 4.6 and 9).
+    "content": {"core"},
     "chemistry": {"core"},
     "planet": {"core"},
     # matter is the one list of what things are made of (docs/06_BLOCKS.md); it also owns the JSON

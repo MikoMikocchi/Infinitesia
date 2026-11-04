@@ -28,7 +28,21 @@ FetchContent_Declare(
   FIND_PACKAGE_ARGS 3.11 NAMES nlohmann_json
 )
 
-FetchContent_MakeAvailable(raylib nlohmann_json)
+# XML for the content definitions (docs/DataDriven.md, section 4.8) and the
+# loaders that read them.
+set(PUGIXML_BUILD_TESTS OFF CACHE INTERNAL "")
+set(PUGIXML_INSTALL OFF CACHE INTERNAL "")
+FetchContent_Declare(
+  pugixml
+  GIT_REPOSITORY https://github.com/zeux/pugixml.git
+  GIT_TAG v1.14
+  GIT_SHALLOW TRUE
+  SYSTEM
+  EXCLUDE_FROM_ALL
+  FIND_PACKAGE_ARGS NAMES pugixml
+)
+
+FetchContent_MakeAvailable(raylib nlohmann_json pugixml)
 
 if (INFINITESIA_BUILD_TESTS)
   # doctest's own CMakeLists predates the minimum policy version of CMake 4.

@@ -33,6 +33,10 @@ infinitesia_add_test(PlanetGeologyTests MAIN
     domains/natural/planetary/EpochTests.cpp
   LINK InfinitesiaPlanet)
 
+infinitesia_add_test(ContentLayerTests MAIN
+  SOURCES content/ContentTests.cpp
+  LINK InfinitesiaContent)
+
 infinitesia_add_test(ChemistryTests
   SOURCES domains/natural/chemistry/ChemistryTests.cpp
   LINK InfinitesiaChemistry)

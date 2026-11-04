@@ -50,6 +50,7 @@ include(cmake/Modules.cmake)
 
 # Layers, bottom to top:
 #   core                      ids, time, load progress, coordinates; no domain knowledge
+#   content                   XML definitions, the loaders that read them and the registries that hold them
 #   domains/natural/chemistry       elements, compositions, reactions
 #   domains/natural/planetary       planet generation pipeline (no raylib)
 #   matter                          every matter of the game (rocks, minerals, fluids, built); assets/matter/matter.json
@@ -61,6 +62,8 @@ include(cmake/Modules.cmake)
 #   gameplay                        entities, items, work, commands, pathfinding (no raylib)
 #   (executable)                    presentation (rendering, ui, input, assets) and app
 infinitesia_add_module(InfinitesiaCore DIRS core)
+infinitesia_add_module(InfinitesiaContent DIRS content
+  PUBLIC InfinitesiaCore pugixml)
 infinitesia_add_module(InfinitesiaChemistry DIRS domains/natural/chemistry PUBLIC InfinitesiaCore)
 infinitesia_add_module(InfinitesiaPlanet DIRS domains/natural/planetary PUBLIC InfinitesiaCore)
 infinitesia_add_module(InfinitesiaMatter DIRS matter
