@@ -53,12 +53,6 @@ namespace Infinitesia
             m_selectedLevel,
             m_viewMode,
             m_showPathDebug);
-        DrawText(
-            m_config.window.title.c_str(),
-            (m_config.window.width - MeasureText(m_config.window.title.c_str(), 24)) / 2,
-            12,
-            24,
-            RAYWHITE);
         DrawText("M: planet map", m_config.window.width - 150, 56, 16, { 139, 158, 177, 255 });
         constexpr const char* kCameraHint = "WASD/arrows: pan  Wheel: zoom  Q/E: rotate  MMB drag: turn  F: focus  PgUp/PgDn: level  V: slice/all";
         DrawText(
