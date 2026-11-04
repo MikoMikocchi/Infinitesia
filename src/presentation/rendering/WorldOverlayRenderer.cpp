@@ -126,7 +126,12 @@ namespace Infinitesia
             DrawLine3D({ left, outlineY, bottom }, { left, outlineY, top }, kHoveredCellOutlineColor);
         }
 
-        void DrawDebugPath(const Grid& grid, WorldPosition origin, const std::vector<GridCell>& path)
+        void DrawDebugPath(
+            const Grid& grid,
+            WorldPosition origin,
+            const std::vector<GridCell>& path,
+            int viewLevel,
+            ViewMode mode)
         {
             if (path.empty())
             {
@@ -134,11 +139,17 @@ namespace Infinitesia
             }
 
             const float bendRadius = grid.GetCellSize() * 0.12f;
+            // Parts of the path above the cut are not drawn: they would hang in empty air.
             std::vector<Vector3> points;
+            std::vector<bool> shown;
             points.reserve(path.size() + 1);
+            shown.reserve(path.size() + 1);
             points.push_back({ origin.x, origin.y + kDebugPathHeight, origin.z });
+            shown.push_back(mode == ViewMode::ShowAll ||
+                            origin.y < static_cast<float>(viewLevel + 1) * grid.GetCellSize());
             for (const GridCell cell : path)
             {
+                shown.push_back(IsLevelShown(mode, cell.y, viewLevel));
                 const WorldPosition position = grid.CellToSurface(cell);
                 points.push_back({
                     position.x,
@@ -149,7 +160,10 @@ namespace Infinitesia
 
             for (std::size_t index = 1; index < points.size(); ++index)
             {
-                DrawLine3D(points[index - 1], points[index], kDebugPathColor);
+                if (shown[index - 1] && shown[index])
+                {
+                    DrawLine3D(points[index - 1], points[index], kDebugPathColor);
+                }
             }
 
             for (std::size_t index = 1; index + 1 < points.size(); ++index)
@@ -164,7 +178,8 @@ namespace Infinitesia
                     0.0f,
                     points[index + 1].z - points[index].z
                 };
-                if (std::abs(incoming.x * outgoing.z - incoming.z * outgoing.x) > 1.0e-5f)
+                if (shown[index] &&
+                    std::abs(incoming.x * outgoing.z - incoming.z * outgoing.x) > 1.0e-5f)
                 {
                     DrawSphere(
                         { points[index].x, kDebugPathHeight + bendRadius, points[index].z },

@@ -3,6 +3,7 @@
 #include "raylib.h"
 #include "world/Grid.h"
 #include "gameplay/entities/EntityStore.h"
+#include "presentation/rendering/ViewMode.h"
 
 #include <optional>
 #include <vector>
@@ -18,7 +19,12 @@ namespace Infinitesia
             bool showCellGrid,
             int viewLevel);
         void DrawHoveredCell(const Grid& grid, GridCell cell);
-        void DrawDebugPath(const Grid& grid, WorldPosition origin, const std::vector<GridCell>& path);
+        void DrawDebugPath(
+            const Grid& grid,
+            WorldPosition origin,
+            const std::vector<GridCell>& path,
+            int viewLevel,
+            ViewMode mode);
         void DrawObjectHighlights(
             const Grid& grid,
             const EntityStore& world,

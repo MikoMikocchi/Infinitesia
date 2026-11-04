@@ -1,5 +1,6 @@
 #include "presentation/rendering/WorldRenderer.h"
 
+#include "presentation/rendering/DepthShading.h"
 #include "presentation/rendering/WorldGeometryRenderer.h"
 #include "presentation/rendering/WorldOverlayRenderer.h"
 #include "rlgl.h"
@@ -166,6 +167,28 @@ namespace Infinitesia
         int viewLevel,
         ViewMode viewMode) const
     {
+        // Terrain fades with depth below the viewed level; objects are tinted on the CPU instead,
+        // as their meshes are not in world space, so the shading is off while they draw.
+        const bool shadeDepth = viewMode == ViewMode::CutAtLevel;
+        const float cellSize = grid.GetCellSize();
+        const float depthShadeA[4]{
+            static_cast<float>(viewLevel + 1) * cellSize,
+            1.0f / cellSize,
+            shadeDepth ? DepthShading::kDarkenPerLevel : 0.0f,
+            DepthShading::kMinBrightness
+        };
+        const float depthShadeB[4]{
+            DepthShading::kDesaturatePerLevel,
+            DepthShading::kMaxDesaturation,
+            0.0f,
+            0.0f
+        };
+        const float noDepthShadeA[4]{ 0.0f, 1.0f, 0.0f, 1.0f };
+        const int depthShadeLocA = GetShaderLocation(m_worldShader, "depthShadeA");
+        const int depthShadeLocB = GetShaderLocation(m_worldShader, "depthShadeB");
+        SetShaderValue(m_worldShader, depthShadeLocA, depthShadeA, SHADER_UNIFORM_VEC4);
+        SetShaderValue(m_worldShader, depthShadeLocB, depthShadeB, SHADER_UNIFORM_VEC4);
+
         BeginMode3D(m_camera);
         BeginShaderMode(m_worldShader);
         WorldGeometryRenderer::DrawBlocks(
@@ -192,6 +215,7 @@ namespace Infinitesia
         EndShaderMode();
         rlEnableDepthMask();
 
+        SetShaderValue(m_worldShader, depthShadeLocA, noDepthShadeA, SHADER_UNIFORM_VEC4);
         BeginShaderMode(m_worldShader);
         WorldGeometryRenderer::DrawObjects(
             grid,
@@ -215,7 +239,7 @@ namespace Infinitesia
             chunkRenderRadius,
             chunkRenderRadius <= 2,
             viewLevel);
-        WorldOverlayRenderer::DrawDebugPath(grid, pathOrigin, debugPath);
+        WorldOverlayRenderer::DrawDebugPath(grid, pathOrigin, debugPath, viewLevel, viewMode);
         WorldOverlayRenderer::DrawObjectHighlights(grid, world.entities, hoveredObject, selectedObject);
         EndMode3D();
     }

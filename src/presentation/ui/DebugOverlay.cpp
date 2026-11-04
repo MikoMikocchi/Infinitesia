@@ -54,7 +54,7 @@ namespace Infinitesia
             sizeof(buffer),
             "Level: %d (Page Up/Down)  View: %s (V)",
             data.selectedLevel,
-            data.showAllLevels ? "all" : "cut");
+            data.showAllLevels ? "all levels" : "slice (this level and below)");
         DrawText(buffer, padding, padding + 5 * lineHeight, fontSize, GOLD);
 
         if (data.hoveredCell.has_value())

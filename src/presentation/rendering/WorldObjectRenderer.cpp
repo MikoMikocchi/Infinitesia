@@ -1,5 +1,7 @@
 #include "presentation/rendering/WorldGeometryRenderer.h"
 
+#include "presentation/rendering/DepthShading.h"
+
 #include "raymath.h"
 #include "rlgl.h"
 
@@ -60,7 +62,8 @@ namespace Infinitesia
                 const Grid& grid,
                 const WorldObject& object,
                 Mesh cylinderMesh,
-                Material material)
+                Material material,
+                int levelsBelow)
             {
                 if (!object.item.has_value())
                 {
@@ -76,7 +79,7 @@ namespace Infinitesia
                         cellSize * 0.3f,
                         cellSize * 0.3f,
                         cellSize * 0.3f,
-                        { 190, 170, 125, 255 });
+                        DepthShading::Apply({ 190, 170, 125, 255 }, levelsBelow));
                     return;
                 }
 
@@ -109,7 +112,7 @@ namespace Infinitesia
                                 center.z + offset
                             },
                             { logRadius, logLength, logRadius },
-                            { 145, 95, 55, 255 },
+                            DepthShading::Apply({ 145, 95, 55, 255 }, levelsBelow),
                             90.0f);
                     }
                     remainingLogs -= rowCount;
@@ -122,7 +125,8 @@ namespace Infinitesia
                 const WorldObject& object,
                 Mesh cylinderMesh,
                 Mesh sphereMesh,
-                Material material)
+                Material material,
+                int levelsBelow)
             {
                 const WorldPosition cellCenter = object.position;
                 const float cellSize = grid.GetCellSize();
@@ -134,17 +138,17 @@ namespace Infinitesia
                         material,
                         cellCenter,
                         { cellSize * 0.24f, cellSize * 0.76f, cellSize * 0.24f },
-                        { 75, 135, 220, 255 });
+                        DepthShading::Apply({ 75, 135, 220, 255 }, levelsBelow));
                     DrawLitMesh(
                         sphereMesh,
                         material,
                         { cellCenter.x, cellCenter.y + cellSize * 0.93f, cellCenter.z },
                         { cellSize * 0.20f, cellSize * 0.20f, cellSize * 0.20f },
-                        { 225, 190, 150, 255 });
+                        DepthShading::Apply({ 225, 190, 150, 255 }, levelsBelow));
                     return;
                 }
 
-                DrawItem(grid, object, cylinderMesh, material);
+                DrawItem(grid, object, cylinderMesh, material, levelsBelow);
             }
 
             void DrawObjectShadow(const Grid& grid, const WorldObject& object)
@@ -207,7 +211,10 @@ namespace Infinitesia
             {
                 if (IsChunkVisible(object.cell, viewCenter, chunkRadius, viewLevel, mode))
                 {
-                    DrawWorldObject(grid, object, cylinderMesh, sphereMesh, material);
+                    const int levelsBelow = mode == ViewMode::CutAtLevel
+                        ? std::max(viewLevel - object.cell.y, 0)
+                        : 0;
+                    DrawWorldObject(grid, object, cylinderMesh, sphereMesh, material, levelsBelow);
                 }
             }
         }
