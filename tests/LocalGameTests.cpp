@@ -38,7 +38,7 @@ class HeightTerrain final : public TerrainSource {
       : m_height(std::move(height)) {}
 
   BlockState StateAt(GridCell cell) const override {
-    return {cell.y <= m_height(cell.x, cell.z) ? Material("rock.bedrock")
+    return {cell.y <= m_height(cell.x, cell.z) ? Material("bedrock")
                                                : kAirMatter,
             kShapeFull};
   }
@@ -67,9 +67,9 @@ TEST_CASE("WaterIsNotGround") {
    public:
     BlockState StateAt(GridCell cell) const override {
       if (cell.y <= kGround) {
-        return {Material("soil.sand"), kShapeFull};
+        return {Material("sand"), kShapeFull};
       }
-      return {cell.y <= kGround + 3 ? Material("fluid.water") : kAirMatter,
+      return {cell.y <= kGround + 3 ? Material("water") : kAirMatter,
               kShapeFull};
     }
     const BlockRegistry& Registry() const override { return TestRegistry(); }

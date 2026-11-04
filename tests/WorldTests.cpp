@@ -40,7 +40,7 @@ const std::filesystem::path kAssets = INFINITESIA_ASSET_DIR;
 
 std::shared_ptr<const MatterCatalog> SharedMatter() {
   static const auto materials = std::make_shared<const MatterCatalog>(
-      MatterCatalog::LoadFromFile(kAssets / "matter" / "matter.json"));
+      MatterCatalog::LoadFromFile(kAssets / "matter" / "matter.xml"));
   return materials;
 }
 
@@ -177,7 +177,7 @@ TEST_CASE("ColumnsAreGroundWithSoilAndRockBelowAndAirAbove") {
 
         for (int y = surface + 1; y < kHeight; ++y) {
           const GridCell cell{x, y, z};
-          Require(y <= waterTop ? IsMade(source, cell, "fluid.seawater")
+          Require(y <= waterTop ? IsMade(source, cell, "seawater")
                                 : IsAir(source, cell),
                   "The column above the ground is neither air nor sea.");
         }
@@ -192,13 +192,13 @@ TEST_CASE("TheSeaFillsLowGroundOnlyBelowSeaLevel") {
           "Sea level is not above an ocean anchor.");
   Require(IsMade(*ocean.source,
                  {kWidth / 2, ocean.source->WaterTopLevel(), kDepth / 2},
-                 "fluid.seawater"),
+                 "seawater"),
           "There is no seawater above the ocean floor.");
   Require(IsAir(*ocean.source,
                 {kWidth / 2, ocean.source->WaterTopLevel() + 1, kDepth / 2}),
           "The water does not stop at the waterline.");
   Require(IsMade(*ocean.source, {kWidth / 2, kAnchorLevel, kDepth / 2},
-                 "soil.sand"),
+                 "sand"),
           "The sea floor is not sand.");
 
   const Settlement land = MakeSettlement(LandAnchor());
@@ -299,16 +299,16 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain") {
   const GridCell target{center.x + 1, kAnchorLevel, center.z};
   world.terrain.SetBlock(target, {kAirMatter, kShapeFull});
   world.terrain.SetBlock(target,
-                         {registry.FindMatter("soil.sand")->id, kShapeFull});
+                         {registry.FindMatter("sand")->id, kShapeFull});
   world.terrain.SetBlock(
-      target, {registry.FindMatter("fluid.seawater")->id, kShapeFull});
+      target, {registry.FindMatter("seawater")->id, kShapeFull});
   Require(world.terrain.GetBlock(target)->state.matter ==
-              registry.FindMatter("fluid.seawater")->id,
+              registry.FindMatter("seawater")->id,
           "A water block could not be placed.");
   world.terrain.SetBlock(
-      target, {registry.FindMatter("mineral.quartz")->id, kShapeFull});
+      target, {registry.FindMatter("quartz")->id, kShapeFull});
   Require(world.terrain.GetBlock(target)->state.matter ==
-              registry.FindMatter("mineral.quartz")->id,
+              registry.FindMatter("quartz")->id,
           "A mineral block could not be placed.");
 
   // What the registry does not know cannot be placed.
@@ -333,7 +333,7 @@ TEST_CASE("TheOriginalNoiseWorldStillWorks") {
           "The noise world has no surface.");
   const Block* deep = world.terrain.GetBlock({32, 5, 32});
   Require(deep != nullptr &&
-              deep->state.matter == registry.FindMatter("rock.bedrock")->id,
+              deep->state.matter == registry.FindMatter("bedrock")->id,
           "The noise world is not bedrock below the topsoil.");
 
   GameWorld again(grid, {{&WorkerKind(), {32, 31, 32}}}, 7u);
@@ -386,7 +386,7 @@ TEST_CASE("GeologyChoosesTheRockWithoutChangingWhatIsSolid") {
           if (IsRock(*plain.source, cell)) {
             // Bedrock stands in for the rock where there is no geology.
             Require(
-                without.matter == registry.FindMatter("rock.bedrock")->id,
+                without.matter == registry.FindMatter("bedrock")->id,
                 "Rock without geology is not bedrock.");
             const MatterDef* info = registry.GetMatter(with.matter);
             Require(info != nullptr && info->blockClass == BlockClass::Rock,

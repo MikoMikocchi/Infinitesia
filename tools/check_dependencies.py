@@ -42,9 +42,10 @@ ALLOWED = {
     "content": {"core"},
     "chemistry": {"core"},
     "planet": {"core"},
-    # matter is the one list of what things are made of (docs/06_BLOCKS.md); it also owns the JSON
-    # helpers the catalog loaders of geology and blocks share.
-    "matter": {"core", "chemistry"},
+    # matter is the one list of what things are made of (docs/06_BLOCKS.md); it reads its
+    # XML through the content layer and also owns the JSON helpers the catalog loaders of
+    # geology and blocks share.
+    "matter": {"core", "content", "chemistry"},
     # geology takes from planet only the data types (planet/geology/Province.h, PlanetEpochs.h);
     # GeologyModel reads the planet through GeologyPlanetView, never planet/PlanetMap.h.
     "geology": {"core", "chemistry", "planet", "matter"},

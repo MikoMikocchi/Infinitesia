@@ -57,7 +57,7 @@ void Application::StartSettlement(const SettlementSite& site) {
                        ? m_matter
                        : std::make_shared<const MatterCatalog>(
                              MatterCatalog::LoadFromFile(
-                                 assets / "matter" / "matter.json"));
+                                 assets / "matter" / "matter.xml"));
   auto catalog = std::make_shared<const GeologyCatalog>(GeologyCatalog::Load(
       materials, assets / "geology" / "province_columns.json"));
   auto registry = std::make_shared<const BlockRegistry>(
@@ -120,7 +120,7 @@ void Application::StartPlanetLoad() {
   const std::filesystem::path assets =
       std::filesystem::path(GetApplicationDirectory()) / "assets";
   m_matter = std::make_shared<const MatterCatalog>(
-      MatterCatalog::LoadFromFile(assets / "matter" / "matter.json"));
+      MatterCatalog::LoadFromFile(assets / "matter" / "matter.xml"));
   m_species = std::make_shared<const SpeciesCatalog>(
       SpeciesCatalog::Load(assets / "biology" / "species.json", *m_matter));
   PlanetPipeline pipeline = MakeDefaultPlanetPipeline();

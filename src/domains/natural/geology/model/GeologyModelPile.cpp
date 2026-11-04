@@ -68,8 +68,20 @@ GeologyModel::GeologyModel(std::shared_ptr<const GeologyCatalog> catalog,
     throw std::invalid_argument(
         "The geology model needs a catalog and a positive strata scale.");
   }
-  const MatterDef* granite = m_catalog->Matter().Find("rock.granite");
-  m_fallbackPile = {{granite != nullptr ? granite->id : kFirstRockMatter, 0}};
+  // The pile a place with no province gets: granite, or the first rock of the
+  // catalog when there is no granite; kUnspecifiedMatter when there is no rock
+  // at all.
+  const MatterDef* granite = m_catalog->Matter().Find("granite");
+  if (granite == nullptr) {
+    for (const MatterDef& material : m_catalog->Matter().Matter()) {
+      if (material.blockClass == BlockClass::Rock) {
+        granite = &material;
+        break;
+      }
+    }
+  }
+  m_fallbackPile = {
+      {granite != nullptr ? granite->id : kUnspecifiedMatter, 0}};
   m_fallbackStructure.layers = {LayerShape{}};
 
   const std::uint64_t seed = map.GetSeed();

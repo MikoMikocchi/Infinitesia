@@ -3,20 +3,21 @@
 #include <cstdint>
 
 namespace Infinitesia {
-// Dense index of a material: what a block of the world is made of. Ranges
-// (docs/06_BLOCKS.md, section 3.1): 0-31 air and fluids, 32-511 rocks, 512-1023
-// loose sediments, soils and ice, 1024-2047 built materials, 2048-4095
-// minerals, 4096-5119 plants. The numbers are the stable numeric IDs of the
-// catalog records and are never reused.
+// Dense index of a material: what a block of the world is made of. The catalog
+// assigns it while loading, in the order the records are written (air first,
+// then the fluids), so it is 0, 1, 2, ... and is the material's place in the
+// catalog (docs/DataDriven.md, section 4.2). The data never writes these
+// numbers: a definition is named by its stable string id, and only the runtime
+// keeps the index.
 using MatterId = std::uint16_t;
 
+// The two indices the game names directly: air is the empty cell, water the
+// first fluid. Both hold as long as the catalog keeps air first and a fluid
+// second.
 inline constexpr MatterId kAirMatter = 0;
 inline constexpr MatterId kWaterMatter = 1;
-inline constexpr MatterId kFirstRockMatter = 32;
-inline constexpr MatterId kFirstLooseMatter = 512;
-inline constexpr MatterId kFirstBuiltMatter = 1024;
-inline constexpr MatterId kFirstMineralMatter = 2048;
-inline constexpr MatterId kFirstPlantMatter = 4096;
+
+// The most materials a catalog can hold (the index is 16-bit).
 inline constexpr int kMatterCapacity = 5120;
 
 // "No material": what a record holds when it names none (an event that formed

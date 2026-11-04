@@ -173,7 +173,7 @@ int Run(const Options& options) {
   const RegionGenerator generator(map);
   const std::filesystem::path assets = options.assets;
   const auto materials = std::make_shared<const MatterCatalog>(
-      MatterCatalog::LoadFromFile(assets / "matter" / "matter.json"));
+      MatterCatalog::LoadFromFile(assets / "matter" / "matter.xml"));
   const auto catalog =
       std::make_shared<const GeologyCatalog>(GeologyCatalog::Load(
           materials, assets / "geology" / "province_columns.json"));

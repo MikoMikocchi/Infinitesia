@@ -3,7 +3,7 @@ include("${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake")
 # Shared test helpers (tests/support/) are included as "support/...".
 add_library(TestSupport INTERFACE)
 target_include_directories(TestSupport INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(TestSupport INTERFACE doctest::doctest)
+target_link_libraries(TestSupport INTERFACE doctest::doctest pugixml)
 
 infinitesia_add_test(PlanetGenerationTests MAIN
   SOURCES

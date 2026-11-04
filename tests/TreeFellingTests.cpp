@@ -39,7 +39,7 @@ const std::filesystem::path kAssets = INFINITESIA_ASSET_DIR;
 
 std::shared_ptr<const MatterCatalog> SharedMatter() {
   static const auto materials = std::make_shared<const MatterCatalog>(
-      MatterCatalog::LoadFromFile(kAssets / "matter" / "matter.json"));
+      MatterCatalog::LoadFromFile(kAssets / "matter" / "matter.xml"));
   return materials;
 }
 
@@ -96,7 +96,7 @@ class ForestTerrain final : public TerrainSource {
   BlockState GroundStateAt(GridCell cell) const override {
     if (cell.y > kGround) return {kAirMatter, kShapeFull};
     return {SharedRegistry()
-                ->FindMatter(cell.y == kGround ? "soil.turf" : "soil.subsoil")
+                ->FindMatter(cell.y == kGround ? "turf" : "subsoil")
                 ->id,
             kShapeFull};
   }
@@ -195,7 +195,7 @@ TEST_CASE("FellingATreeLeavesGroundAndAirWhereItStood") {
   }
   const Block* stump = world.GetBlock({30, kGround, 30});
   CHECK(stump->state.matter ==
-        SharedRegistry()->FindMatter("soil.turf")->id);
+        SharedRegistry()->FindMatter("turf")->id);
   CHECK(world.Registry().Walkable(stump->state));
 
   // Felling it again finds nothing.

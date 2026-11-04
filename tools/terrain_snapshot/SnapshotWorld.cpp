@@ -52,7 +52,7 @@ SnapshotWorld::SnapshotWorld(const Options& options)
       m_generator(m_map),
       m_matter(std::make_shared<const MatterCatalog>(
           MatterCatalog::LoadFromFile(std::filesystem::path(options.assets) /
-                                        "matter" / "matter.json"))),
+                                        "matter" / "matter.xml"))),
       m_catalog(std::make_shared<const GeologyCatalog>(GeologyCatalog::Load(
           m_matter, std::filesystem::path(options.assets) / "geology" /
                            "province_columns.json"))),

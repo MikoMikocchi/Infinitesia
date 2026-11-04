@@ -1,0 +1,1395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Every kind of matter (docs/06_BLOCKS.md, section 3): air, fluids,
+     rocks, loose ground, ice, minerals and built materials. An id is a
+     stable string; the numeric index is assigned at load time (air first,
+     then the fluids), never written down. Densities are in kg/m3. -->
+<catalog>
+  <matter id="air" class="air" name="air" density="1.2" digClass="0" color="#000000" provenance="gameplay"/>
+  <matter id="water" class="fluid" name="water" density="1000" digClass="0" color="#346eaa" provenance="gameplay">
+  <tags>
+    <tag>water</tag>
+  </tags>
+  </matter>
+  <matter id="seawater" class="fluid" name="seawater" density="1000" digClass="0" color="#346eaa" provenance="gameplay">
+  <tags>
+    <tag>water</tag>
+  </tags>
+  </matter>
+  <matter id="brine" class="fluid" name="brine" density="1200" digClass="0" color="#5a8a8a" provenance="gameplay"/>
+  <matter id="oil" class="fluid" name="oil" density="850" digClass="0" color="#1a1410" provenance="gameplay"/>
+  <matter id="magma" class="fluid" name="magma" density="2700" digClass="0" color="#e0501a" provenance="gameplay" opacity="15" emission="14,6,1"/>
+  <matter id="granite" class="rock" name="granite" density="2650" digClass="4" color="#b8a89a" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="quartz" fraction="0.28"/>
+    <part mineral="orthoclase" fraction="0.3"/>
+    <part mineral="plagioclase" fraction="0.27"/>
+    <part mineral="biotite" fraction="0.08"/>
+    <part mineral="muscovite" fraction="0.05"/>
+    <part mineral="hornblende" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="granodiorite" class="rock" name="granodiorite" density="2700" digClass="4" color="#a9a9a3" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="quartz" fraction="0.22"/>
+    <part mineral="plagioclase" fraction="0.45"/>
+    <part mineral="orthoclase" fraction="0.13"/>
+    <part mineral="biotite" fraction="0.1"/>
+    <part mineral="hornblende" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="tonalite" class="rock" name="tonalite" density="2750" digClass="4" color="#9fa3a6" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="quartz" fraction="0.25"/>
+    <part mineral="plagioclase" fraction="0.55"/>
+    <part mineral="biotite" fraction="0.1"/>
+    <part mineral="hornblende" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="syenite" class="rock" name="syenite" density="2700" digClass="4" color="#b58a7a" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="orthoclase" fraction="0.65"/>
+    <part mineral="plagioclase" fraction="0.1"/>
+    <part mineral="hornblende" fraction="0.12"/>
+    <part mineral="biotite" fraction="0.05"/>
+    <part mineral="augite" fraction="0.08"/>
+  </rock>
+  </matter>
+  <matter id="nepheline_syenite" class="rock" name="nepheline syenite" density="2650" digClass="4" color="#a39c8c" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="orthoclase" fraction="0.5"/>
+    <part mineral="nepheline" fraction="0.25"/>
+    <part mineral="augite" fraction="0.1"/>
+    <part mineral="biotite" fraction="0.05"/>
+    <part mineral="hornblende" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="monzonite" class="rock" name="monzonite" density="2750" digClass="4" color="#a8958c" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="orthoclase" fraction="0.3"/>
+    <part mineral="plagioclase" fraction="0.35"/>
+    <part mineral="augite" fraction="0.1"/>
+    <part mineral="hornblende" fraction="0.15"/>
+    <part mineral="biotite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="diorite" class="rock" name="diorite" density="2850" digClass="4" color="#7f8588" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="plagioclase" fraction="0.6"/>
+    <part mineral="hornblende" fraction="0.25"/>
+    <part mineral="biotite" fraction="0.08"/>
+    <part mineral="quartz" fraction="0.05"/>
+    <part mineral="augite" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="gabbro" class="rock" name="gabbro" density="3000" digClass="5" color="#4a4f52" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="plagioclase" fraction="0.5"/>
+    <part mineral="augite" fraction="0.35"/>
+    <part mineral="olivine" fraction="0.1"/>
+    <part mineral="magnetite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="norite" class="rock" name="norite" density="3000" digClass="5" color="#484a4d" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="plagioclase" fraction="0.5"/>
+    <part mineral="enstatite" fraction="0.4"/>
+    <part mineral="augite" fraction="0.05"/>
+    <part mineral="magnetite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="anorthosite" class="rock" name="anorthosite" density="2750" digClass="4" color="#c9ccd0" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="plagioclase" fraction="0.9"/>
+    <part mineral="augite" fraction="0.05"/>
+    <part mineral="ilmenite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="pyroxenite" class="rock" name="pyroxenite" density="3250" digClass="5" color="#3f4a3f" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="augite" fraction="0.8"/>
+    <part mineral="enstatite" fraction="0.1"/>
+    <part mineral="olivine" fraction="0.05"/>
+    <part mineral="chromite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="peridotite" class="rock" name="peridotite" density="3300" digClass="5" color="#4f6b3f" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="olivine" fraction="0.6"/>
+    <part mineral="enstatite" fraction="0.2"/>
+    <part mineral="augite" fraction="0.15"/>
+    <part mineral="chromite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="dunite" class="rock" name="dunite" density="3300" digClass="5" color="#5d7a3a" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="olivine" fraction="0.95"/>
+    <part mineral="chromite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="pegmatite" class="rock" name="pegmatite" density="2650" digClass="3" color="#d9c7b0" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="orthoclase" fraction="0.4"/>
+    <part mineral="quartz" fraction="0.35"/>
+    <part mineral="albite" fraction="0.15"/>
+    <part mineral="muscovite" fraction="0.08"/>
+    <part mineral="tourmaline" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="aplite" class="rock" name="aplite" density="2620" digClass="4" color="#cbb3a2" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="quartz" fraction="0.35"/>
+    <part mineral="orthoclase" fraction="0.35"/>
+    <part mineral="albite" fraction="0.25"/>
+    <part mineral="muscovite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="dolerite" class="rock" name="dolerite" density="2900" digClass="5" color="#3c4144" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="plagioclase" fraction="0.5"/>
+    <part mineral="augite" fraction="0.38"/>
+    <part mineral="magnetite" fraction="0.06"/>
+    <part mineral="olivine" fraction="0.06"/>
+  </rock>
+  </matter>
+  <matter id="granite_porphyry" class="rock" name="granite porphyry" density="2650" digClass="4" color="#a08a80" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="quartz" fraction="0.28"/>
+    <part mineral="orthoclase" fraction="0.3"/>
+    <part mineral="plagioclase" fraction="0.27"/>
+    <part mineral="biotite" fraction="0.08"/>
+    <part mineral="muscovite" fraction="0.05"/>
+    <part mineral="hornblende" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="carbonatite" class="rock" name="carbonatite" density="2900" digClass="3" color="#c2b8a0" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="calcite" fraction="0.7"/>
+    <part mineral="apatite" fraction="0.1"/>
+    <part mineral="magnetite" fraction="0.08"/>
+    <part mineral="pyrochlore" fraction="0.02"/>
+    <part mineral="biotite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="kimberlite" class="rock" name="kimberlite" density="2800" digClass="3" color="#4a5a4a" provenance="gameplay">
+  <rock class="igneous_intrusive">
+    <part mineral="olivine" fraction="0.4"/>
+    <part mineral="serpentine" fraction="0.3"/>
+    <part mineral="phlogopite" fraction="0.15"/>
+    <part mineral="calcite" fraction="0.1"/>
+    <part mineral="ilmenite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="lamproite" class="rock" name="lamproite" density="2800" digClass="3" color="#5a5248" provenance="gameplay">
+  <rock class="igneous_intrusive"/>
+  </matter>
+  <matter id="basalt" class="rock" name="basalt" density="2900" digClass="5" color="#3a3d40" provenance="gameplay">
+  <rock class="igneous_extrusive">
+    <part mineral="plagioclase" fraction="0.5"/>
+    <part mineral="augite" fraction="0.38"/>
+    <part mineral="olivine" fraction="0.07"/>
+    <part mineral="magnetite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="pillow_basalt" class="rock" name="pillow basalt" density="2800" digClass="4" color="#44484a" provenance="gameplay">
+  <rock class="igneous_extrusive">
+    <part mineral="plagioclase" fraction="0.5"/>
+    <part mineral="augite" fraction="0.38"/>
+    <part mineral="olivine" fraction="0.07"/>
+    <part mineral="magnetite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="andesite" class="rock" name="andesite" density="2650" digClass="4" color="#7a7570" provenance="gameplay">
+  <rock class="igneous_extrusive">
+    <part mineral="plagioclase" fraction="0.62"/>
+    <part mineral="quartz" fraction="0.08"/>
+    <part mineral="orthoclase" fraction="0.08"/>
+    <part mineral="hornblende" fraction="0.12"/>
+    <part mineral="biotite" fraction="0.05"/>
+    <part mineral="magnetite" fraction="0.03"/>
+    <part mineral="augite" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="dacite" class="rock" name="dacite" density="2600" digClass="4" color="#8a8480" provenance="gameplay">
+  <rock class="igneous_extrusive">
+    <part mineral="plagioclase" fraction="0.5"/>
+    <part mineral="quartz" fraction="0.2"/>
+    <part mineral="orthoclase" fraction="0.1"/>
+    <part mineral="hornblende" fraction="0.1"/>
+    <part mineral="biotite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="rhyolite" class="rock" name="rhyolite" density="2500" digClass="4" color="#b09a8f" provenance="gameplay">
+  <rock class="igneous_extrusive">
+    <part mineral="orthoclase" fraction="0.35"/>
+    <part mineral="quartz" fraction="0.35"/>
+    <part mineral="plagioclase" fraction="0.2"/>
+    <part mineral="biotite" fraction="0.07"/>
+    <part mineral="magnetite" fraction="0.03"/>
+  </rock>
+  </matter>
+  <matter id="trachyte" class="rock" name="trachyte" density="2550" digClass="4" color="#a39a8e" provenance="gameplay">
+  <rock class="igneous_extrusive">
+    <part mineral="orthoclase" fraction="0.75"/>
+    <part mineral="plagioclase" fraction="0.1"/>
+    <part mineral="hornblende" fraction="0.1"/>
+    <part mineral="augite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="phonolite" class="rock" name="phonolite" density="2550" digClass="4" color="#8f9694" provenance="gameplay">
+  <rock class="igneous_extrusive">
+    <part mineral="orthoclase" fraction="0.6"/>
+    <part mineral="nepheline" fraction="0.28"/>
+    <part mineral="augite" fraction="0.1"/>
+    <part mineral="magnetite" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="komatiite" class="rock" name="komatiite" density="3000" digClass="5" color="#3f4d3a" provenance="gameplay">
+  <rock class="igneous_extrusive"/>
+  </matter>
+  <matter id="picrite" class="rock" name="picrite" density="3000" digClass="5" color="#3e4540" provenance="gameplay">
+  <rock class="igneous_extrusive"/>
+  </matter>
+  <matter id="obsidian" class="rock" name="obsidian" density="2350" digClass="4" color="#1c1c20" provenance="gameplay">
+  <rock class="igneous_extrusive"/>
+  </matter>
+  <matter id="pumice" class="rock" name="pumice" density="700" digClass="2" color="#cfc8bd" provenance="gameplay">
+  <rock class="volcaniclastic"/>
+  </matter>
+  <matter id="scoria" class="rock" name="scoria" density="1500" digClass="2" color="#6e4338" provenance="gameplay">
+  <rock class="volcaniclastic"/>
+  </matter>
+  <matter id="tuff" class="rock" name="tuff" density="2000" digClass="2" color="#b9a58c" provenance="gameplay">
+  <rock class="volcaniclastic"/>
+  </matter>
+  <matter id="ignimbrite" class="rock" name="ignimbrite" density="2300" digClass="3" color="#a88f7a" provenance="gameplay">
+  <rock class="volcaniclastic"/>
+  </matter>
+  <matter id="volcanic_breccia" class="rock" name="volcanic breccia" density="2300" digClass="3" color="#7d6a5e" provenance="gameplay">
+  <rock class="volcaniclastic"/>
+  </matter>
+  <matter id="hyaloclastite" class="rock" name="hyaloclastite" density="2200" digClass="3" color="#6d6a52" provenance="gameplay">
+  <rock class="volcaniclastic"/>
+  </matter>
+  <matter id="conglomerate" class="rock" name="conglomerate" density="2500" digClass="3" color="#9c7f66" provenance="gameplay">
+  <rock class="sedimentary_clastic"/>
+  </matter>
+  <matter id="sedimentary_breccia" class="rock" name="sedimentary breccia" density="2450" digClass="3" color="#8d7260" provenance="gameplay">
+  <rock class="sedimentary_clastic"/>
+  </matter>
+  <matter id="quartz_sandstone" class="rock" name="quartz sandstone" density="2400" digClass="3" color="#d8c08a" provenance="gameplay">
+  <rock class="sedimentary_clastic">
+    <part mineral="quartz" fraction="0.9"/>
+    <part mineral="orthoclase" fraction="0.04"/>
+    <part mineral="muscovite" fraction="0.03"/>
+    <part mineral="hematite" fraction="0.03"/>
+  </rock>
+  </matter>
+  <matter id="arkose" class="rock" name="arkose" density="2450" digClass="3" color="#c9926f" provenance="gameplay">
+  <rock class="sedimentary_clastic">
+    <part mineral="quartz" fraction="0.5"/>
+    <part mineral="orthoclase" fraction="0.3"/>
+    <part mineral="plagioclase" fraction="0.1"/>
+    <part mineral="muscovite" fraction="0.05"/>
+    <part mineral="hematite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="greywacke" class="rock" name="greywacke" density="2650" digClass="4" color="#6e7378" provenance="gameplay">
+  <rock class="sedimentary_clastic">
+    <part mineral="quartz" fraction="0.35"/>
+    <part mineral="plagioclase" fraction="0.25"/>
+    <part mineral="chlorite" fraction="0.2"/>
+    <part mineral="muscovite" fraction="0.1"/>
+    <part mineral="illite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="siltstone" class="rock" name="siltstone" density="2500" digClass="3" color="#a68b6e" provenance="gameplay">
+  <rock class="sedimentary_clastic">
+    <part mineral="quartz" fraction="0.55"/>
+    <part mineral="illite" fraction="0.25"/>
+    <part mineral="muscovite" fraction="0.1"/>
+    <part mineral="orthoclase" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="mudstone" class="rock" name="mudstone" density="2400" digClass="2" color="#8a7060" provenance="gameplay">
+  <rock class="sedimentary_clastic">
+    <part mineral="illite" fraction="0.45"/>
+    <part mineral="quartz" fraction="0.3"/>
+    <part mineral="kaolinite" fraction="0.15"/>
+    <part mineral="chlorite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="shale" class="rock" name="shale" density="2450" digClass="2" color="#5c5f66" provenance="gameplay">
+  <rock class="sedimentary_clastic">
+    <part mineral="illite" fraction="0.45"/>
+    <part mineral="quartz" fraction="0.28"/>
+    <part mineral="kaolinite" fraction="0.12"/>
+    <part mineral="chlorite" fraction="0.08"/>
+    <part mineral="pyrite" fraction="0.02"/>
+    <part mineral="calcite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="claystone" class="rock" name="claystone" density="2300" digClass="2" color="#8e7b6e" provenance="gameplay">
+  <rock class="sedimentary_clastic">
+    <part mineral="kaolinite" fraction="0.4"/>
+    <part mineral="illite" fraction="0.35"/>
+    <part mineral="smectite" fraction="0.15"/>
+    <part mineral="quartz" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="marl" class="rock" name="marl" density="2350" digClass="2" color="#b5b09a" provenance="gameplay">
+  <rock class="sedimentary_clastic">
+    <part mineral="calcite" fraction="0.5"/>
+    <part mineral="illite" fraction="0.25"/>
+    <part mineral="quartz" fraction="0.15"/>
+    <part mineral="kaolinite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="tillite" class="rock" name="tillite" density="2400" digClass="3" color="#7a7468" provenance="gameplay">
+  <rock class="sedimentary_clastic"/>
+  </matter>
+  <matter id="red_beds" class="rock" name="red beds" density="2400" digClass="3" color="#a04a35" provenance="gameplay">
+  <rock class="sedimentary_clastic"/>
+  </matter>
+  <matter id="limestone" class="rock" name="limestone" density="2500" digClass="3" color="#c9c4b0" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="calcite" fraction="0.95"/>
+    <part mineral="quartz" fraction="0.03"/>
+    <part mineral="illite" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="oolitic_limestone" class="rock" name="oolitic limestone" density="2400" digClass="3" color="#cfc7ad" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="calcite" fraction="0.95"/>
+    <part mineral="quartz" fraction="0.03"/>
+    <part mineral="illite" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="chalk" class="rock" name="chalk" density="1900" digClass="2" color="#eeeadb" provenance="gameplay">
+  <rock class="sedimentary_biogenic">
+    <part mineral="calcite" fraction="0.97"/>
+    <part mineral="quartz" fraction="0.02"/>
+    <part mineral="illite" fraction="0.01"/>
+  </rock>
+  </matter>
+  <matter id="dolomite" class="rock" name="dolomite" density="2750" digClass="3" color="#d8cdb4" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="dolomite_mineral" fraction="0.93"/>
+    <part mineral="calcite" fraction="0.04"/>
+    <part mineral="quartz" fraction="0.03"/>
+  </rock>
+  </matter>
+  <matter id="travertine" class="rock" name="travertine" density="2400" digClass="3" color="#e0d3b8" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="calcite" fraction="0.85"/>
+    <part mineral="aragonite" fraction="0.15"/>
+  </rock>
+  </matter>
+  <matter id="chert" class="rock" name="chert" density="2600" digClass="5" color="#6a6a70" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="quartz" fraction="0.85"/>
+    <part mineral="chalcedony" fraction="0.12"/>
+    <part mineral="hematite" fraction="0.03"/>
+  </rock>
+  </matter>
+  <matter id="rock_salt" class="rock" name="rock salt" density="2160" digClass="2" color="#e8d9d0" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="halite" fraction="0.95"/>
+    <part mineral="anhydrite" fraction="0.03"/>
+    <part mineral="gypsum" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="sylvinite" class="rock" name="sylvinite" density="2000" digClass="2" color="#d9604f" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="halite" fraction="0.5"/>
+    <part mineral="sylvite" fraction="0.45"/>
+    <part mineral="anhydrite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="carnallitite" class="rock" name="carnallitite" density="1600" digClass="1" color="#e8cfc0" provenance="gameplay">
+  <rock class="sedimentary_chemical"/>
+  </matter>
+  <matter id="gypsum_rock" class="rock" name="gypsum rock" density="2300" digClass="2" color="#f0f0ea" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="gypsum" fraction="0.95"/>
+    <part mineral="calcite" fraction="0.03"/>
+    <part mineral="quartz" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="anhydrite_rock" class="rock" name="anhydrite rock" density="2950" digClass="3" color="#cdd2d6" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="anhydrite" fraction="0.95"/>
+    <part mineral="gypsum" fraction="0.03"/>
+    <part mineral="calcite" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="phosphorite" class="rock" name="phosphorite" density="2700" digClass="3" color="#5b5448" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="francolite" fraction="0.6"/>
+    <part mineral="quartz" fraction="0.15"/>
+    <part mineral="calcite" fraction="0.15"/>
+    <part mineral="illite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="biff" class="rock" name="biff" density="3300" digClass="5" color="#4a2f2c" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="hematite" fraction="0.35"/>
+    <part mineral="magnetite" fraction="0.15"/>
+    <part mineral="quartz" fraction="0.5"/>
+  </rock>
+  </matter>
+  <matter id="oolitic_ironstone" class="rock" name="oolitic ironstone" density="3000" digClass="3" color="#7a4a38" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="goethite" fraction="0.5"/>
+    <part mineral="siderite" fraction="0.2"/>
+    <part mineral="chlorite" fraction="0.1"/>
+    <part mineral="calcite" fraction="0.1"/>
+    <part mineral="quartz" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="manganese_rock" class="rock" name="manganese rock" density="3500" digClass="3" color="#2f2a30" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="pyrolusite" fraction="0.4"/>
+    <part mineral="rhodochrosite" fraction="0.3"/>
+    <part mineral="psilomelane" fraction="0.2"/>
+    <part mineral="quartz" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="lignite" class="rock" name="lignite" density="1250" digClass="2" color="#5a4632" provenance="gameplay">
+  <rock class="sedimentary_biogenic"/>
+  </matter>
+  <matter id="subbituminous_coal" class="rock" name="subbituminous coal" density="1300" digClass="2" color="#3c3228" provenance="gameplay">
+  <rock class="sedimentary_biogenic"/>
+  </matter>
+  <matter id="bituminous_coal" class="rock" name="bituminous coal" density="1350" digClass="2" color="#1f1c1c" provenance="gameplay">
+  <rock class="sedimentary_biogenic"/>
+  </matter>
+  <matter id="anthracite" class="rock" name="anthracite" density="1500" digClass="3" color="#101014" provenance="gameplay">
+  <rock class="sedimentary_biogenic"/>
+  </matter>
+  <matter id="oil_shale" class="rock" name="oil shale" density="2000" digClass="2" color="#3a342d" provenance="gameplay">
+  <rock class="sedimentary_biogenic"/>
+  </matter>
+  <matter id="diatomite" class="rock" name="diatomite" density="1100" digClass="2" color="#e6e0cc" provenance="gameplay">
+  <rock class="sedimentary_biogenic">
+    <part mineral="opal" fraction="0.9"/>
+    <part mineral="illite" fraction="0.05"/>
+    <part mineral="quartz" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="trona_rock" class="rock" name="trona rock" density="2100" digClass="2" color="#d6d0c0" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="trona" fraction="0.85"/>
+    <part mineral="halite" fraction="0.1"/>
+    <part mineral="quartz" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="bauxite" class="rock" name="bauxite" density="2300" digClass="3" color="#b0553a" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="gibbsite" fraction="0.55"/>
+    <part mineral="boehmite" fraction="0.1"/>
+    <part mineral="hematite" fraction="0.15"/>
+    <part mineral="goethite" fraction="0.1"/>
+    <part mineral="kaolinite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="laterite_crust" class="rock" name="laterite crust" density="2800" digClass="4" color="#8e3f2c" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="goethite" fraction="0.55"/>
+    <part mineral="hematite" fraction="0.25"/>
+    <part mineral="kaolinite" fraction="0.1"/>
+    <part mineral="quartz" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="calcrete" class="rock" name="calcrete" density="2200" digClass="3" color="#e3d9c0" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="calcite" fraction="0.85"/>
+    <part mineral="quartz" fraction="0.1"/>
+    <part mineral="illite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="silcrete" class="rock" name="silcrete" density="2400" digClass="4" color="#b9ab92" provenance="gameplay">
+  <rock class="sedimentary_chemical">
+    <part mineral="quartz" fraction="0.92"/>
+    <part mineral="opal" fraction="0.05"/>
+    <part mineral="hematite" fraction="0.03"/>
+  </rock>
+  </matter>
+  <matter id="slate" class="rock" name="slate" density="2750" digClass="3" color="#4d5560" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="illite" fraction="0.35"/>
+    <part mineral="quartz" fraction="0.3"/>
+    <part mineral="chlorite" fraction="0.2"/>
+    <part mineral="muscovite" fraction="0.15"/>
+  </rock>
+  </matter>
+  <matter id="phyllite" class="rock" name="phyllite" density="2750" digClass="3" color="#6a737a" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="muscovite" fraction="0.35"/>
+    <part mineral="quartz" fraction="0.3"/>
+    <part mineral="chlorite" fraction="0.25"/>
+    <part mineral="albite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="mica_schist" class="rock" name="mica schist" density="2800" digClass="3" color="#7a7f86" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="muscovite" fraction="0.35"/>
+    <part mineral="biotite" fraction="0.15"/>
+    <part mineral="quartz" fraction="0.3"/>
+    <part mineral="albite" fraction="0.1"/>
+    <part mineral="almandine" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="chlorite_schist" class="rock" name="chlorite schist" density="2900" digClass="3" color="#5c7a5c" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="chlorite" fraction="0.55"/>
+    <part mineral="quartz" fraction="0.2"/>
+    <part mineral="albite" fraction="0.1"/>
+    <part mineral="epidote" fraction="0.1"/>
+    <part mineral="magnetite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="garnet_schist" class="rock" name="garnet schist" density="2950" digClass="4" color="#7a5a5a" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="almandine" fraction="0.25"/>
+    <part mineral="muscovite" fraction="0.25"/>
+    <part mineral="biotite" fraction="0.15"/>
+    <part mineral="quartz" fraction="0.3"/>
+    <part mineral="staurolite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="graphite_schist" class="rock" name="graphite schist" density="2500" digClass="2" color="#3a3b3f" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="graphite" fraction="0.2"/>
+    <part mineral="quartz" fraction="0.38"/>
+    <part mineral="muscovite" fraction="0.38"/>
+    <part mineral="pyrite" fraction="0.04"/>
+  </rock>
+  </matter>
+  <matter id="gneiss" class="rock" name="gneiss" density="2750" digClass="4" color="#8e8f92" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="quartz" fraction="0.3"/>
+    <part mineral="orthoclase" fraction="0.25"/>
+    <part mineral="plagioclase" fraction="0.25"/>
+    <part mineral="biotite" fraction="0.15"/>
+    <part mineral="muscovite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="orthogneiss" class="rock" name="orthogneiss" density="2700" digClass="4" color="#a09a98" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="quartz" fraction="0.3"/>
+    <part mineral="orthoclase" fraction="0.3"/>
+    <part mineral="plagioclase" fraction="0.25"/>
+    <part mineral="biotite" fraction="0.1"/>
+    <part mineral="muscovite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="migmatite" class="rock" name="migmatite" density="2700" digClass="4" color="#9a8c88" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="quartz" fraction="0.3"/>
+    <part mineral="orthoclase" fraction="0.25"/>
+    <part mineral="plagioclase" fraction="0.25"/>
+    <part mineral="biotite" fraction="0.15"/>
+    <part mineral="muscovite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="amphibolite" class="rock" name="amphibolite" density="3000" digClass="4" color="#3d4a45" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="hornblende" fraction="0.55"/>
+    <part mineral="plagioclase" fraction="0.35"/>
+    <part mineral="quartz" fraction="0.05"/>
+    <part mineral="epidote" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="granulite" class="rock" name="granulite" density="2900" digClass="4" color="#6d7478" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="plagioclase" fraction="0.45"/>
+    <part mineral="augite" fraction="0.25"/>
+    <part mineral="orthoclase" fraction="0.15"/>
+    <part mineral="almandine" fraction="0.1"/>
+    <part mineral="quartz" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="eclogite" class="rock" name="eclogite" density="3400" digClass="5" color="#4f6a4a" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="pyrope" fraction="0.4"/>
+    <part mineral="jadeite" fraction="0.45"/>
+    <part mineral="quartz" fraction="0.1"/>
+    <part mineral="rutile" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="greenschist" class="rock" name="greenschist" density="2900" digClass="3" color="#5f7f5a" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="chlorite" fraction="0.3"/>
+    <part mineral="actinolite" fraction="0.25"/>
+    <part mineral="albite" fraction="0.25"/>
+    <part mineral="epidote" fraction="0.15"/>
+    <part mineral="quartz" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="blueschist" class="rock" name="blueschist" density="3000" digClass="4" color="#4a5f7a" provenance="gameplay">
+  <rock class="metamorphic"/>
+  </matter>
+  <matter id="quartzite" class="rock" name="quartzite" density="2650" digClass="5" color="#d8d4cc" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="quartz" fraction="0.95"/>
+    <part mineral="muscovite" fraction="0.03"/>
+    <part mineral="hematite" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="marble" class="rock" name="marble" density="2700" digClass="3" color="#ece8e2" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="calcite" fraction="0.95"/>
+    <part mineral="dolomite_mineral" fraction="0.03"/>
+    <part mineral="quartz" fraction="0.02"/>
+  </rock>
+  </matter>
+  <matter id="hornfels" class="rock" name="hornfels" density="2750" digClass="5" color="#4a4a52" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="quartz" fraction="0.35"/>
+    <part mineral="biotite" fraction="0.25"/>
+    <part mineral="cordierite" fraction="0.2"/>
+    <part mineral="andalusite" fraction="0.1"/>
+    <part mineral="plagioclase" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="skarn" class="rock" name="skarn" density="3300" digClass="4" color="#7a6a4a" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="grossular" fraction="0.4"/>
+    <part mineral="diopside" fraction="0.3"/>
+    <part mineral="wollastonite" fraction="0.15"/>
+    <part mineral="calcite" fraction="0.1"/>
+    <part mineral="magnetite" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="calc_silicate" class="rock" name="calc silicate" density="2900" digClass="4" color="#8a9078" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="diopside" fraction="0.4"/>
+    <part mineral="calcite" fraction="0.25"/>
+    <part mineral="grossular" fraction="0.15"/>
+    <part mineral="wollastonite" fraction="0.1"/>
+    <part mineral="quartz" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="serpentinite" class="rock" name="serpentinite" density="2600" digClass="3" color="#3f6a50" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="serpentine" fraction="0.85"/>
+    <part mineral="magnetite" fraction="0.05"/>
+    <part mineral="brucite" fraction="0.05"/>
+    <part mineral="talc" fraction="0.05"/>
+  </rock>
+  </matter>
+  <matter id="talc_schist" class="rock" name="talc schist" density="2800" digClass="2" color="#a5b8a0" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="talc" fraction="0.8"/>
+    <part mineral="serpentine" fraction="0.1"/>
+    <part mineral="magnesite" fraction="0.1"/>
+  </rock>
+  </matter>
+  <matter id="mylonite" class="rock" name="mylonite" density="2700" digClass="4" color="#6a6a6a" provenance="gameplay">
+  <rock class="metamorphic">
+    <part mineral="quartz" fraction="0.4"/>
+    <part mineral="orthoclase" fraction="0.25"/>
+    <part mineral="muscovite" fraction="0.2"/>
+    <part mineral="albite" fraction="0.15"/>
+  </rock>
+  </matter>
+  <matter id="fault_breccia" class="rock" name="fault breccia" density="2400" digClass="2" color="#7a6a5a" provenance="gameplay">
+  <rock class="metamorphic"/>
+  </matter>
+  <matter id="fault_gouge" class="rock" name="fault gouge" density="2000" digClass="1" color="#8a7a6a" provenance="gameplay">
+  <rock class="metamorphic"/>
+  </matter>
+  <matter id="bedrock" class="rock" name="bedrock" density="2700" digClass="4" color="#84898e" provenance="gameplay">
+  <rock class="igneous_intrusive"/>
+  </matter>
+  <matter id="humus" class="loose" name="humus" density="1300" digClass="1" color="#4a3a2a" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="subsoil" class="loose" name="subsoil" density="1600" digClass="1" color="#7a5a3a" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="clay" class="loose" name="clay" density="1800" digClass="1" color="#9a6a4a" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="silt" class="loose" name="silt" density="1700" digClass="1" color="#a8957a" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="sand" class="loose" name="sand" density="1650" digClass="1" color="#dbcb8c" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="gravel" class="loose" name="gravel" density="1800" digClass="1" color="#8f8a80" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="peat" class="loose" name="peat" density="800" digClass="1" color="#3a2c20" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="loess" class="loose" name="loess" density="1500" digClass="1" color="#c4a97a" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="till" class="loose" name="till" density="2000" digClass="2" color="#837a6c" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="saprolite" class="loose" name="saprolite" density="1800" digClass="1" color="#b07a50" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="laterite" class="loose" name="laterite" density="1900" digClass="2" color="#a0522d" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="alluvium" class="loose" name="alluvium" density="1800" digClass="1" color="#9a8a6a" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="scree" class="loose" name="scree" density="1700" digClass="2" color="#8a8a8a" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="glacier" class="ice" name="glacier ice" density="920" digClass="2" color="#d6ecf5" provenance="gameplay"/>
+  <matter id="permafrost" class="ice" name="permafrost" density="1900" digClass="3" color="#8a9aa5" provenance="gameplay"/>
+  <matter id="turf" class="loose" name="turf" density="1300" digClass="1" color="#529142" provenance="gameplay">
+  <tags>
+    <tag>soil</tag>
+  </tags>
+  </matter>
+  <matter id="planks" class="built" name="planks" density="600" digClass="2" color="#b08a55" provenance="gameplay">
+  <tags>
+    <tag>wood</tag>
+  </tags>
+  </matter>
+  <matter id="brick" class="built" name="brick" density="1800" digClass="3" color="#a8523a" provenance="gameplay"/>
+  <matter id="glass" class="built" name="glass" density="2500" digClass="1" color="#bfe3ea" provenance="gameplay" opacity="0">
+  <tags>
+    <tag>glass</tag>
+  </tags>
+  </matter>
+  <matter id="glass_red" class="built" name="red glass" density="2500" digClass="1" color="#d94a4a" provenance="gameplay" opacity="1,8,8">
+  <tags>
+    <tag>glass</tag>
+  </tags>
+  </matter>
+  <matter id="glass_green" class="built" name="green glass" density="2500" digClass="1" color="#4ad96a" provenance="gameplay" opacity="8,1,8">
+  <tags>
+    <tag>glass</tag>
+  </tags>
+  </matter>
+  <matter id="glass_blue" class="built" name="blue glass" density="2500" digClass="1" color="#4a7ad9" provenance="gameplay" opacity="8,8,1">
+  <tags>
+    <tag>glass</tag>
+  </tags>
+  </matter>
+  <matter id="lamp" class="built" name="lamp" density="1200" digClass="1" color="#f5e08a" provenance="gameplay" emission="15,14,10"/>
+  <matter id="quartz" class="mineral" name="quartz" density="2650" digClass="5" color="#e8e4de" provenance="gameplay">
+  <chemistry formula="SiO2" mohs="7"/>
+  </matter>
+  <matter id="chalcedony" class="mineral" name="chalcedony" density="2600" digClass="4" color="#b9c4cc" provenance="gameplay">
+  <chemistry formula="SiO2" mohs="6.5"/>
+  </matter>
+  <matter id="opal" class="mineral" name="opal" density="2100" digClass="4" color="#e9e4d6" provenance="gameplay">
+  <chemistry formula="SiO2*0.5H2O" mohs="5.5" solidSolution="true"/>
+  </matter>
+  <matter id="orthoclase" class="mineral" name="orthoclase" density="2560" digClass="4" color="#d9a58a" provenance="gameplay">
+  <chemistry formula="KAlSi3O8" mohs="6"/>
+  </matter>
+  <matter id="microcline" class="mineral" name="microcline" density="2560" digClass="4" color="#a9c9b0" provenance="gameplay">
+  <chemistry formula="KAlSi3O8" mohs="6"/>
+  </matter>
+  <matter id="albite" class="mineral" name="albite" density="2620" digClass="4" color="#eeeeee" provenance="gameplay">
+  <chemistry formula="NaAlSi3O8" mohs="6"/>
+  </matter>
+  <matter id="anorthite" class="mineral" name="anorthite" density="2760" digClass="4" color="#d8d8dc" provenance="gameplay">
+  <chemistry formula="CaAl2Si2O8" mohs="6"/>
+  </matter>
+  <matter id="plagioclase" class="mineral" name="plagioclase" density="2680" digClass="4" color="#d0d0d4" provenance="gameplay">
+  <chemistry formula="Na0.6Ca0.4Al1.4Si2.6O8" mohs="6" solidSolution="true"/>
+  </matter>
+  <matter id="nepheline" class="mineral" name="nepheline" density="2600" digClass="4" color="#c9c4bc" provenance="gameplay">
+  <chemistry formula="Na0.75K0.25AlSiO4" mohs="5.5" solidSolution="true"/>
+  </matter>
+  <matter id="leucite" class="mineral" name="leucite" density="2500" digClass="4" color="#d4d0c8" provenance="gameplay">
+  <chemistry formula="KAlSi2O6" mohs="5.5"/>
+  </matter>
+  <matter id="muscovite" class="mineral" name="muscovite" density="2800" digClass="2" color="#d8d0b0" provenance="gameplay">
+  <chemistry formula="KAl2(AlSi3O10)(OH)2" mohs="2.5"/>
+  </matter>
+  <matter id="biotite" class="mineral" name="biotite" density="3000" digClass="2" color="#3a2f2a" provenance="gameplay">
+  <chemistry formula="KMg1.5Fe1.5(AlSi3O10)(OH)2" mohs="2.5" solidSolution="true"/>
+  </matter>
+  <matter id="phlogopite" class="mineral" name="phlogopite" density="2800" digClass="2" color="#8a6a3a" provenance="gameplay">
+  <chemistry formula="KMg3(AlSi3O10)(OH)2" mohs="2.5"/>
+  </matter>
+  <matter id="lepidolite" class="mineral" name="lepidolite" density="2900" digClass="2" color="#c9a0c0" provenance="gameplay">
+  <chemistry formula="KLi1.5Al1.5(AlSi3)O10F(OH)" mohs="3" solidSolution="true"/>
+  </matter>
+  <matter id="zinnwaldite" class="mineral" name="zinnwaldite" density="3000" digClass="2" color="#8a7a6a" provenance="gameplay">
+  <chemistry formula="KLiFeAl(AlSi3)O10F(OH)" mohs="3" solidSolution="true"/>
+  </matter>
+  <matter id="chlorite" class="mineral" name="chlorite" density="2800" digClass="2" color="#4a6a4a" provenance="gameplay">
+  <chemistry formula="Mg3Fe2Al(AlSi3O10)(OH)8" mohs="2.5" solidSolution="true"/>
+  </matter>
+  <matter id="hornblende" class="mineral" name="hornblende" density="3200" digClass="4" color="#2f3a30" provenance="gameplay">
+  <chemistry formula="Ca2Mg2.5Fe1.5Al(Si7Al)O22(OH)2" mohs="5.5" solidSolution="true"/>
+  </matter>
+  <matter id="tremolite" class="mineral" name="tremolite" density="3000" digClass="4" color="#d8e0d4" provenance="gameplay">
+  <chemistry formula="Ca2Mg5Si8O22(OH)2" mohs="5.5"/>
+  </matter>
+  <matter id="actinolite" class="mineral" name="actinolite" density="3100" digClass="4" color="#4f7a4f" provenance="gameplay">
+  <chemistry formula="Ca2Mg4FeSi8O22(OH)2" mohs="5.5" solidSolution="true"/>
+  </matter>
+  <matter id="augite" class="mineral" name="augite" density="3400" digClass="4" color="#2f352f" provenance="gameplay">
+  <chemistry formula="Ca0.9Mg0.7Fe0.4Si1.9Al0.1O6" mohs="5.5" solidSolution="true"/>
+  </matter>
+  <matter id="diopside" class="mineral" name="diopside" density="3300" digClass="4" color="#7a9a6a" provenance="gameplay">
+  <chemistry formula="CaMgSi2O6" mohs="6"/>
+  </matter>
+  <matter id="enstatite" class="mineral" name="enstatite" density="3200" digClass="4" color="#8a8a50" provenance="gameplay">
+  <chemistry formula="Mg2Si2O6" mohs="5.5"/>
+  </matter>
+  <matter id="jadeite" class="mineral" name="jadeite" density="3300" digClass="4" color="#5aaa7a" provenance="gameplay">
+  <chemistry formula="NaAlSi2O6" mohs="6.5"/>
+  </matter>
+  <matter id="spodumene" class="mineral" name="spodumene" density="3150" digClass="4" color="#d8c0c8" provenance="gameplay">
+  <chemistry formula="LiAlSi2O6" mohs="6.5"/>
+  </matter>
+  <matter id="petalite" class="mineral" name="petalite" density="2400" digClass="4" color="#e8e4e0" provenance="gameplay">
+  <chemistry formula="LiAlSi4O10" mohs="6.5"/>
+  </matter>
+  <matter id="olivine" class="mineral" name="olivine" density="3300" digClass="4" color="#6f8f3a" provenance="gameplay">
+  <chemistry formula="(Mg1.8Fe0.2)SiO4" mohs="6.5" solidSolution="true"/>
+  </matter>
+  <matter id="almandine" class="mineral" name="almandine" density="4300" digClass="5" color="#8a2b3a" provenance="gameplay">
+  <chemistry formula="Fe3Al2Si3O12" mohs="7"/>
+  </matter>
+  <matter id="pyrope" class="mineral" name="pyrope" density="3600" digClass="5" color="#a01a2a" provenance="gameplay">
+  <chemistry formula="Mg3Al2Si3O12" mohs="7"/>
+  </matter>
+  <matter id="grossular" class="mineral" name="grossular" density="3600" digClass="5" color="#7a8a3a" provenance="gameplay">
+  <chemistry formula="Ca3Al2Si3O12" mohs="7"/>
+  </matter>
+  <matter id="andradite" class="mineral" name="andradite" density="3800" digClass="5" color="#5a6a2a" provenance="gameplay">
+  <chemistry formula="Ca3Fe2Si3O12" mohs="7"/>
+  </matter>
+  <matter id="epidote" class="mineral" name="epidote" density="3400" digClass="4" color="#7a8a30" provenance="gameplay">
+  <chemistry formula="Ca2Al2.3Fe0.7(SiO4)3(OH)" mohs="6.5" solidSolution="true"/>
+  </matter>
+  <matter id="kyanite" class="mineral" name="kyanite" density="3600" digClass="4" color="#4a7ab0" provenance="gameplay">
+  <chemistry formula="Al2SiO5" mohs="6"/>
+  </matter>
+  <matter id="andalusite" class="mineral" name="andalusite" density="3150" digClass="5" color="#b08a7a" provenance="gameplay">
+  <chemistry formula="Al2SiO5" mohs="7.5"/>
+  </matter>
+  <matter id="sillimanite" class="mineral" name="sillimanite" density="3250" digClass="5" color="#cfc8b8" provenance="gameplay">
+  <chemistry formula="Al2SiO5" mohs="7"/>
+  </matter>
+  <matter id="staurolite" class="mineral" name="staurolite" density="3700" digClass="5" color="#7a5a3a" provenance="gameplay">
+  <chemistry formula="Fe2Al9Si4O23(OH)" mohs="7"/>
+  </matter>
+  <matter id="cordierite" class="mineral" name="cordierite" density="2600" digClass="5" color="#6a7aa0" provenance="gameplay">
+  <chemistry formula="Mg2Al4Si5O18" mohs="7"/>
+  </matter>
+  <matter id="tourmaline" class="mineral" name="tourmaline" density="3200" digClass="5" color="#1f1f24" provenance="gameplay">
+  <chemistry formula="NaFe3Al6(BO3)3Si6O18(OH)4" mohs="7"/>
+  </matter>
+  <matter id="beryl" class="mineral" name="beryl" density="2700" digClass="5" color="#9ad0b0" provenance="gameplay">
+  <chemistry formula="Be3Al2Si6O18" mohs="7.5"/>
+  </matter>
+  <matter id="topaz" class="mineral" name="topaz" density="3500" digClass="5" color="#e8c880" provenance="gameplay">
+  <chemistry formula="Al2SiO4F(OH)" mohs="8" solidSolution="true"/>
+  </matter>
+  <matter id="zircon" class="mineral" name="zircon" density="4650" digClass="5" color="#b07a4a" provenance="gameplay">
+  <chemistry formula="ZrSiO4" mohs="7.5"/>
+  </matter>
+  <matter id="titanite" class="mineral" name="titanite" density="3500" digClass="4" color="#a08a2a" provenance="gameplay">
+  <chemistry formula="CaTiSiO5" mohs="5.5"/>
+  </matter>
+  <matter id="wollastonite" class="mineral" name="wollastonite" density="2900" digClass="3" color="#f0ece4" provenance="gameplay">
+  <chemistry formula="CaSiO3" mohs="4.5"/>
+  </matter>
+  <matter id="talc" class="mineral" name="talc" density="2750" digClass="1" color="#d8e8d4" provenance="gameplay">
+  <chemistry formula="Mg3Si4O10(OH)2" mohs="1"/>
+  </matter>
+  <matter id="serpentine" class="mineral" name="serpentine" density="2550" digClass="2" color="#4a8a5a" provenance="gameplay">
+  <chemistry formula="Mg3Si2O5(OH)4" mohs="3.5"/>
+  </matter>
+  <matter id="chrysotile" class="mineral" name="chrysotile" density="2550" digClass="2" color="#7aaa80" provenance="gameplay">
+  <chemistry formula="Mg3Si2O5(OH)4" mohs="3"/>
+  </matter>
+  <matter id="kaolinite" class="mineral" name="kaolinite" density="2600" digClass="1" color="#f0ece6" provenance="gameplay">
+  <chemistry formula="Al2Si2O5(OH)4" mohs="2"/>
+  </matter>
+  <matter id="illite" class="mineral" name="illite" density="2750" digClass="1" color="#bdb8a8" provenance="gameplay">
+  <chemistry formula="K(Al1.8Mg0.1Fe0.1)(Si3.5Al0.5)O10(OH)2" mohs="2" solidSolution="true"/>
+  </matter>
+  <matter id="smectite" class="mineral" name="smectite" density="2300" digClass="1" color="#c8c0a8" provenance="gameplay">
+  <chemistry formula="Na0.33(Al1.67Mg0.33)Si4O10(OH)2*2H2O" mohs="1.5" solidSolution="true"/>
+  </matter>
+  <matter id="pyrophyllite" class="mineral" name="pyrophyllite" density="2800" digClass="1" color="#e8e4d8" provenance="gameplay">
+  <chemistry formula="Al2Si4O10(OH)2" mohs="1.5"/>
+  </matter>
+  <matter id="zeolite" class="mineral" name="zeolite" density="2200" digClass="3" color="#eae6e0" provenance="gameplay">
+  <chemistry formula="Na2Al2Si3O10*2H2O" mohs="4" solidSolution="true"/>
+  </matter>
+  <matter id="glauconite" class="mineral" name="glauconite" density="2700" digClass="1" color="#4a6a3a" provenance="gameplay">
+  <chemistry formula="K(Fe1Al0.6Mg0.4)(Si3.7Al0.3)O10(OH)2" mohs="2" solidSolution="true"/>
+  </matter>
+  <matter id="chrysocolla" class="mineral" name="chrysocolla" density="2200" digClass="2" color="#40b0a0" provenance="gameplay">
+  <chemistry formula="Cu1.6Al0.4H2Si2O5(OH)4" mohs="3" solidSolution="true"/>
+  </matter>
+  <matter id="garnierite" class="mineral" name="garnierite" density="2500" digClass="2" color="#60b070" provenance="gameplay">
+  <chemistry formula="Ni1.5Mg1.5Si2O5(OH)4" mohs="3" solidSolution="true"/>
+  </matter>
+  <matter id="willemite" class="mineral" name="willemite" density="4000" digClass="4" color="#a8c8a8" provenance="gameplay">
+  <chemistry formula="Zn2SiO4" mohs="5.5"/>
+  </matter>
+  <matter id="hemimorphite" class="mineral" name="hemimorphite" density="3400" digClass="3" color="#a8c0d8" provenance="gameplay">
+  <chemistry formula="Zn4Si2O7(OH)2*H2O" mohs="4.5"/>
+  </matter>
+  <matter id="hematite" class="mineral" name="hematite" density="5260" digClass="4" color="#7a2a24" provenance="gameplay">
+  <chemistry formula="Fe2O3" mohs="6"/>
+  </matter>
+  <matter id="magnetite" class="mineral" name="magnetite" density="5180" digClass="4" color="#25252a" provenance="gameplay">
+  <chemistry formula="Fe3O4" mohs="6"/>
+  </matter>
+  <matter id="goethite" class="mineral" name="goethite" density="4300" digClass="3" color="#8a5a2a" provenance="gameplay">
+  <chemistry formula="FeO(OH)" mohs="5"/>
+  </matter>
+  <matter id="limonite" class="mineral" name="limonite" density="3800" digClass="3" color="#a8782a" provenance="gameplay">
+  <chemistry formula="FeO(OH)*0.5H2O" mohs="4.5" solidSolution="true"/>
+  </matter>
+  <matter id="ilmenite" class="mineral" name="ilmenite" density="4700" digClass="4" color="#2a2a30" provenance="gameplay">
+  <chemistry formula="FeTiO3" mohs="5.5"/>
+  </matter>
+  <matter id="rutile" class="mineral" name="rutile" density="4250" digClass="4" color="#8a3a2a" provenance="gameplay">
+  <chemistry formula="TiO2" mohs="6"/>
+  </matter>
+  <matter id="chromite" class="mineral" name="chromite" density="4600" digClass="4" color="#2a2a2e" provenance="gameplay">
+  <chemistry formula="FeCr2O4" mohs="5.5"/>
+  </matter>
+  <matter id="spinel" class="mineral" name="spinel" density="3600" digClass="5" color="#9a3a5a" provenance="gameplay">
+  <chemistry formula="MgAl2O4" mohs="8"/>
+  </matter>
+  <matter id="corundum" class="mineral" name="corundum" density="4000" digClass="5" color="#b8c0d0" provenance="gameplay">
+  <chemistry formula="Al2O3" mohs="9"/>
+  </matter>
+  <matter id="cassiterite" class="mineral" name="cassiterite" density="6950" digClass="4" color="#4a3a30" provenance="gameplay">
+  <chemistry formula="SnO2" mohs="6.5"/>
+  </matter>
+  <matter id="uraninite" class="mineral" name="uraninite" density="10000" digClass="4" color="#1a1a1c" provenance="gameplay">
+  <chemistry formula="UO2" mohs="5.5"/>
+  </matter>
+  <matter id="pitchblende" class="mineral" name="pitchblende" density="7500" digClass="3" color="#222224" provenance="gameplay">
+  <chemistry formula="UO2" mohs="5"/>
+  </matter>
+  <matter id="coffinite" class="mineral" name="coffinite" density="5100" digClass="3" color="#2a2a2c" provenance="gameplay">
+  <chemistry formula="U(SiO4)0.9(OH)0.4" mohs="5" solidSolution="true"/>
+  </matter>
+  <matter id="pyrolusite" class="mineral" name="pyrolusite" density="5000" digClass="4" color="#222226" provenance="gameplay">
+  <chemistry formula="MnO2" mohs="6"/>
+  </matter>
+  <matter id="manganite" class="mineral" name="manganite" density="4300" digClass="3" color="#2a2a30" provenance="gameplay">
+  <chemistry formula="MnO(OH)" mohs="4"/>
+  </matter>
+  <matter id="psilomelane" class="mineral" name="psilomelane" density="4400" digClass="4" color="#2a2a2e" provenance="gameplay">
+  <chemistry formula="BaMn9O18*2H2O" mohs="5.5" solidSolution="true"/>
+  </matter>
+  <matter id="gibbsite" class="mineral" name="gibbsite" density="2400" digClass="2" color="#e8e4e0" provenance="gameplay">
+  <chemistry formula="Al(OH)3" mohs="3"/>
+  </matter>
+  <matter id="boehmite" class="mineral" name="boehmite" density="3000" digClass="2" color="#e0dcd6" provenance="gameplay">
+  <chemistry formula="AlO(OH)" mohs="3.5"/>
+  </matter>
+  <matter id="diaspore" class="mineral" name="diaspore" density="3400" digClass="4" color="#d8d4cc" provenance="gameplay">
+  <chemistry formula="AlO(OH)" mohs="6.5"/>
+  </matter>
+  <matter id="columbite" class="mineral" name="columbite" density="5500" digClass="4" color="#1f1f24" provenance="gameplay">
+  <chemistry formula="Fe0.5Mn0.5Nb2O6" mohs="6" solidSolution="true"/>
+  </matter>
+  <matter id="tantalite" class="mineral" name="tantalite" density="7500" digClass="4" color="#2a2024" provenance="gameplay">
+  <chemistry formula="Fe0.5Mn0.5Ta2O6" mohs="6" solidSolution="true"/>
+  </matter>
+  <matter id="pyrochlore" class="mineral" name="pyrochlore" density="4500" digClass="3" color="#6a4a2a" provenance="gameplay">
+  <chemistry formula="CaNaNb2O6F" mohs="5" solidSolution="true"/>
+  </matter>
+  <matter id="perovskite" class="mineral" name="perovskite" density="4000" digClass="4" color="#5a4a3a" provenance="gameplay">
+  <chemistry formula="CaTiO3" mohs="5.5"/>
+  </matter>
+  <matter id="cuprite" class="mineral" name="cuprite" density="6100" digClass="2" color="#a02a2a" provenance="gameplay">
+  <chemistry formula="Cu2O" mohs="3.5"/>
+  </matter>
+  <matter id="tenorite" class="mineral" name="tenorite" density="6500" digClass="2" color="#1f1f24" provenance="gameplay">
+  <chemistry formula="CuO" mohs="3.5"/>
+  </matter>
+  <matter id="wolframite" class="mineral" name="wolframite" density="7300" digClass="3" color="#2a2420" provenance="gameplay">
+  <chemistry formula="Fe0.5Mn0.5WO4" mohs="4.5" solidSolution="true"/>
+  </matter>
+  <matter id="scheelite" class="mineral" name="scheelite" density="6100" digClass="3" color="#e8dcc0" provenance="gameplay">
+  <chemistry formula="CaWO4" mohs="4.5"/>
+  </matter>
+  <matter id="brucite" class="mineral" name="brucite" density="2400" digClass="2" color="#e8f0e8" provenance="gameplay">
+  <chemistry formula="Mg(OH)2" mohs="2.5"/>
+  </matter>
+  <matter id="vanadinite" class="mineral" name="vanadinite" density="6900" digClass="2" color="#c04a2a" provenance="gameplay">
+  <chemistry formula="Pb5(VO4)3Cl" mohs="3"/>
+  </matter>
+  <matter id="carnotite" class="mineral" name="carnotite" density="4600" digClass="1" color="#e0d020" provenance="gameplay">
+  <chemistry formula="K2(UO2)2(VO4)2*3H2O" mohs="2"/>
+  </matter>
+  <matter id="autunite" class="mineral" name="autunite" density="3100" digClass="2" color="#d0e030" provenance="gameplay">
+  <chemistry formula="Ca(UO2)2(PO4)2*10H2O" mohs="2.5"/>
+  </matter>
+  <matter id="ice" class="mineral" name="ice" density="920" digClass="1" color="#d6ecf5" provenance="gameplay">
+  <chemistry formula="H2O" mohs="1.5"/>
+  </matter>
+  <matter id="pyrite" class="mineral" name="pyrite" density="5000" digClass="4" color="#cdbb55" provenance="gameplay">
+  <chemistry formula="FeS2" mohs="6.2"/>
+  </matter>
+  <matter id="marcasite" class="mineral" name="marcasite" density="4900" digClass="4" color="#c0b050" provenance="gameplay">
+  <chemistry formula="FeS2" mohs="6"/>
+  </matter>
+  <matter id="pyrrhotite" class="mineral" name="pyrrhotite" density="4600" digClass="3" color="#9a7a4a" provenance="gameplay">
+  <chemistry formula="Fe0.875S" mohs="4" solidSolution="true"/>
+  </matter>
+  <matter id="chalcopyrite" class="mineral" name="chalcopyrite" density="4200" digClass="2" color="#b79a34" provenance="gameplay">
+  <chemistry formula="CuFeS2" mohs="3.5"/>
+  </matter>
+  <matter id="bornite" class="mineral" name="bornite" density="5100" digClass="2" color="#7a4a6a" provenance="gameplay">
+  <chemistry formula="Cu5FeS4" mohs="3"/>
+  </matter>
+  <matter id="chalcocite" class="mineral" name="chalcocite" density="5600" digClass="2" color="#4a4f58" provenance="gameplay">
+  <chemistry formula="Cu2S" mohs="2.8"/>
+  </matter>
+  <matter id="covellite" class="mineral" name="covellite" density="4700" digClass="1" color="#2a2a70" provenance="gameplay">
+  <chemistry formula="CuS" mohs="1.8"/>
+  </matter>
+  <matter id="digenite" class="mineral" name="digenite" density="5700" digClass="2" color="#3a3f58" provenance="gameplay">
+  <chemistry formula="Cu9S5" mohs="2.5"/>
+  </matter>
+  <matter id="enargite" class="mineral" name="enargite" density="4400" digClass="2" color="#3a3a40" provenance="gameplay">
+  <chemistry formula="Cu3AsS4" mohs="3"/>
+  </matter>
+  <matter id="tetrahedrite" class="mineral" name="tetrahedrite" density="4900" digClass="2" color="#4a4a50" provenance="gameplay">
+  <chemistry formula="Cu10Fe2Sb4S13" mohs="3.5" solidSolution="true"/>
+  </matter>
+  <matter id="galena" class="mineral" name="galena" density="7500" digClass="2" color="#7d818a" provenance="gameplay">
+  <chemistry formula="PbS" mohs="2.5"/>
+  </matter>
+  <matter id="sphalerite" class="mineral" name="sphalerite" density="4000" digClass="3" color="#5a4a2a" provenance="gameplay">
+  <chemistry formula="ZnS" mohs="3.8"/>
+  </matter>
+  <matter id="molybdenite" class="mineral" name="molybdenite" density="4700" digClass="1" color="#8a8f98" provenance="gameplay">
+  <chemistry formula="MoS2" mohs="1.2"/>
+  </matter>
+  <matter id="pentlandite" class="mineral" name="pentlandite" density="4800" digClass="3" color="#c8b46a" provenance="gameplay">
+  <chemistry formula="Fe4.5Ni4.5S8" mohs="3.8" solidSolution="true"/>
+  </matter>
+  <matter id="millerite" class="mineral" name="millerite" density="5400" digClass="2" color="#c8c070" provenance="gameplay">
+  <chemistry formula="NiS" mohs="3.5"/>
+  </matter>
+  <matter id="cobaltite" class="mineral" name="cobaltite" density="6300" digClass="4" color="#b0b4b8" provenance="gameplay">
+  <chemistry formula="CoAsS" mohs="5.5"/>
+  </matter>
+  <matter id="skutterudite" class="mineral" name="skutterudite" density="6500" digClass="4" color="#b8bcc0" provenance="gameplay">
+  <chemistry formula="CoAs3" mohs="5.8"/>
+  </matter>
+  <matter id="arsenopyrite" class="mineral" name="arsenopyrite" density="6100" digClass="4" color="#a8acb0" provenance="gameplay">
+  <chemistry formula="FeAsS" mohs="5.8"/>
+  </matter>
+  <matter id="realgar" class="mineral" name="realgar" density="3600" digClass="1" color="#d84a2a" provenance="gameplay">
+  <chemistry formula="As4S4" mohs="1.8"/>
+  </matter>
+  <matter id="orpiment" class="mineral" name="orpiment" density="3500" digClass="1" color="#e8c030" provenance="gameplay">
+  <chemistry formula="As2S3" mohs="1.8"/>
+  </matter>
+  <matter id="stibnite" class="mineral" name="stibnite" density="4600" digClass="1" color="#6a6e78" provenance="gameplay">
+  <chemistry formula="Sb2S3" mohs="2"/>
+  </matter>
+  <matter id="cinnabar" class="mineral" name="cinnabar" density="8100" digClass="2" color="#b02a2a" provenance="gameplay">
+  <chemistry formula="HgS" mohs="2.3"/>
+  </matter>
+  <matter id="bismuthinite" class="mineral" name="bismuthinite" density="6800" digClass="1" color="#8a8e98" provenance="gameplay">
+  <chemistry formula="Bi2S3" mohs="2"/>
+  </matter>
+  <matter id="acanthite" class="mineral" name="acanthite" density="7200" digClass="2" color="#3a3a40" provenance="gameplay">
+  <chemistry formula="Ag2S" mohs="2.3"/>
+  </matter>
+  <matter id="pyrargyrite" class="mineral" name="pyrargyrite" density="5800" digClass="2" color="#6a1a2a" provenance="gameplay">
+  <chemistry formula="Ag3SbS3" mohs="2.5"/>
+  </matter>
+  <matter id="stannite" class="mineral" name="stannite" density="4400" digClass="3" color="#7a7a70" provenance="gameplay">
+  <chemistry formula="Cu2FeSnS4" mohs="4"/>
+  </matter>
+  <matter id="greenockite" class="mineral" name="greenockite" density="4800" digClass="2" color="#e0b020" provenance="gameplay">
+  <chemistry formula="CdS" mohs="3.3"/>
+  </matter>
+  <matter id="sperrylite" class="mineral" name="sperrylite" density="10600" digClass="4" color="#c0c4c8" provenance="gameplay">
+  <chemistry formula="PtAs2" mohs="6.5"/>
+  </matter>
+  <matter id="cooperite" class="mineral" name="cooperite" density="10000" digClass="3" color="#b0b4b8" provenance="gameplay">
+  <chemistry formula="PtS" mohs="4.5"/>
+  </matter>
+  <matter id="laurite" class="mineral" name="laurite" density="6400" digClass="5" color="#5a5a60" provenance="gameplay">
+  <chemistry formula="RuS2" mohs="7.5"/>
+  </matter>
+  <matter id="native_gold" class="mineral" name="native gold" density="19300" digClass="2" color="#f0c020" provenance="gameplay">
+  <chemistry formula="Au" mohs="2.8"/>
+  </matter>
+  <matter id="electrum" class="mineral" name="electrum" density="14000" digClass="2" color="#e0c860" provenance="gameplay">
+  <chemistry formula="Au0.6Ag0.4" mohs="2.8" solidSolution="true"/>
+  </matter>
+  <matter id="native_silver" class="mineral" name="native silver" density="10500" digClass="2" color="#d0d4d8" provenance="gameplay">
+  <chemistry formula="Ag" mohs="2.8"/>
+  </matter>
+  <matter id="native_copper" class="mineral" name="native copper" density="8900" digClass="2" color="#c06a3a" provenance="gameplay">
+  <chemistry formula="Cu" mohs="2.8"/>
+  </matter>
+  <matter id="native_platinum" class="mineral" name="native platinum" density="17000" digClass="3" color="#c8ccd0" provenance="gameplay">
+  <chemistry formula="Pt" mohs="4.2"/>
+  </matter>
+  <matter id="osmiridium" class="mineral" name="osmiridium" density="20000" digClass="4" color="#a8acb0" provenance="gameplay">
+  <chemistry formula="Os0.5Ir0.5" mohs="6.5" solidSolution="true"/>
+  </matter>
+  <matter id="native_bismuth" class="mineral" name="native bismuth" density="9800" digClass="2" color="#d8c8c0" provenance="gameplay">
+  <chemistry formula="Bi" mohs="2.3"/>
+  </matter>
+  <matter id="native_sulfur" class="mineral" name="native sulfur" density="2070" digClass="1" color="#e8d820" provenance="gameplay">
+  <chemistry formula="S" mohs="2"/>
+  </matter>
+  <matter id="graphite" class="mineral" name="graphite" density="2200" digClass="1" color="#2a2a2e" provenance="gameplay">
+  <chemistry formula="C" mohs="1.5"/>
+  </matter>
+  <matter id="diamond" class="mineral" name="diamond" density="3520" digClass="5" color="#e8f4f8" provenance="gameplay">
+  <chemistry formula="C" mohs="10"/>
+  </matter>
+  <matter id="native_arsenic" class="mineral" name="native arsenic" density="5700" digClass="2" color="#8a8a8e" provenance="gameplay">
+  <chemistry formula="As" mohs="3.5"/>
+  </matter>
+  <matter id="calcite" class="mineral" name="calcite" density="2710" digClass="2" color="#f0ece0" provenance="gameplay">
+  <chemistry formula="CaCO3" mohs="3"/>
+  </matter>
+  <matter id="aragonite" class="mineral" name="aragonite" density="2950" digClass="3" color="#ece4d4" provenance="gameplay">
+  <chemistry formula="CaCO3" mohs="3.8"/>
+  </matter>
+  <matter id="dolomite_mineral" class="mineral" name="dolomite" density="2850" digClass="3" color="#e4d8c8" provenance="gameplay">
+  <chemistry formula="CaMg(CO3)2" mohs="3.8"/>
+  </matter>
+  <matter id="ankerite" class="mineral" name="ankerite" density="3000" digClass="3" color="#d8c8a8" provenance="gameplay">
+  <chemistry formula="CaFe0.5Mg0.5(CO3)2" mohs="3.8" solidSolution="true"/>
+  </matter>
+  <matter id="magnesite" class="mineral" name="magnesite" density="3000" digClass="3" color="#f0ece8" provenance="gameplay">
+  <chemistry formula="MgCO3" mohs="4"/>
+  </matter>
+  <matter id="siderite" class="mineral" name="siderite" density="3900" digClass="3" color="#a88a5a" provenance="gameplay">
+  <chemistry formula="FeCO3" mohs="3.8"/>
+  </matter>
+  <matter id="rhodochrosite" class="mineral" name="rhodochrosite" density="3700" digClass="3" color="#d8607a" provenance="gameplay">
+  <chemistry formula="MnCO3" mohs="3.8"/>
+  </matter>
+  <matter id="smithsonite" class="mineral" name="smithsonite" density="4400" digClass="3" color="#a8d0c0" provenance="gameplay">
+  <chemistry formula="ZnCO3" mohs="4.2"/>
+  </matter>
+  <matter id="cerussite" class="mineral" name="cerussite" density="6500" digClass="2" color="#e8e8ea" provenance="gameplay">
+  <chemistry formula="PbCO3" mohs="3.2"/>
+  </matter>
+  <matter id="malachite" class="mineral" name="malachite" density="4000" digClass="3" color="#2fa070" provenance="gameplay">
+  <chemistry formula="Cu2CO3(OH)2" mohs="3.8"/>
+  </matter>
+  <matter id="azurite" class="mineral" name="azurite" density="3800" digClass="3" color="#2f4fa0" provenance="gameplay">
+  <chemistry formula="Cu3(CO3)2(OH)2" mohs="3.8"/>
+  </matter>
+  <matter id="strontianite" class="mineral" name="strontianite" density="3700" digClass="2" color="#e0e8d8" provenance="gameplay">
+  <chemistry formula="SrCO3" mohs="3.5"/>
+  </matter>
+  <matter id="witherite" class="mineral" name="witherite" density="4300" digClass="2" color="#e4e4e0" provenance="gameplay">
+  <chemistry formula="BaCO3" mohs="3.3"/>
+  </matter>
+  <matter id="bastnasite" class="mineral" name="bastnasite" density="5000" digClass="3" color="#c8a860" provenance="gameplay">
+  <chemistry formula="(Ce0.5La0.5)CO3F" mohs="4.2" solidSolution="true"/>
+  </matter>
+  <matter id="trona" class="mineral" name="trona" density="2100" digClass="2" color="#e8e4d8" provenance="gameplay">
+  <chemistry formula="Na3(CO3)(HCO3)*2H2O" mohs="2.5"/>
+  </matter>
+  <matter id="gypsum" class="mineral" name="gypsum" density="2300" digClass="1" color="#f4f4ee" provenance="gameplay">
+  <chemistry formula="CaSO4*2H2O" mohs="2"/>
+  </matter>
+  <matter id="anhydrite" class="mineral" name="anhydrite" density="2950" digClass="2" color="#d4d8dc" provenance="gameplay">
+  <chemistry formula="CaSO4" mohs="3.5"/>
+  </matter>
+  <matter id="barite" class="mineral" name="barite" density="4500" digClass="2" color="#e8e8ec" provenance="gameplay">
+  <chemistry formula="BaSO4" mohs="3.3"/>
+  </matter>
+  <matter id="celestine" class="mineral" name="celestine" density="3950" digClass="2" color="#b8d0e8" provenance="gameplay">
+  <chemistry formula="SrSO4" mohs="3.3"/>
+  </matter>
+  <matter id="anglesite" class="mineral" name="anglesite" density="6300" digClass="2" color="#e8e8e0" provenance="gameplay">
+  <chemistry formula="PbSO4" mohs="2.8"/>
+  </matter>
+  <matter id="alunite" class="mineral" name="alunite" density="2800" digClass="3" color="#ece4d8" provenance="gameplay">
+  <chemistry formula="KAl3(SO4)2(OH)6" mohs="3.8"/>
+  </matter>
+  <matter id="jarosite" class="mineral" name="jarosite" density="3200" digClass="2" color="#c0902a" provenance="gameplay">
+  <chemistry formula="KFe3(SO4)2(OH)6" mohs="3"/>
+  </matter>
+  <matter id="polyhalite" class="mineral" name="polyhalite" density="2800" digClass="2" color="#e8c0b0" provenance="gameplay">
+  <chemistry formula="K2Ca2Mg(SO4)4*2H2O" mohs="3.5"/>
+  </matter>
+  <matter id="halite" class="mineral" name="halite" density="2170" digClass="2" color="#efe4dc" provenance="gameplay">
+  <chemistry formula="NaCl" mohs="2.5"/>
+  </matter>
+  <matter id="sylvite" class="mineral" name="sylvite" density="1990" digClass="1" color="#e8d0c8" provenance="gameplay">
+  <chemistry formula="KCl" mohs="2"/>
+  </matter>
+  <matter id="carnallite" class="mineral" name="carnallite" density="1600" digClass="2" color="#e8c8b0" provenance="gameplay">
+  <chemistry formula="KMgCl3*6H2O" mohs="2.5"/>
+  </matter>
+  <matter id="fluorite" class="mineral" name="fluorite" density="3180" digClass="3" color="#8a5ac8" provenance="gameplay">
+  <chemistry formula="CaF2" mohs="4"/>
+  </matter>
+  <matter id="cryolite" class="mineral" name="cryolite" density="2970" digClass="2" color="#f0f0f0" provenance="gameplay">
+  <chemistry formula="Na3AlF6" mohs="2.5"/>
+  </matter>
+  <matter id="atacamite" class="mineral" name="atacamite" density="3750" digClass="2" color="#2a8a50" provenance="gameplay">
+  <chemistry formula="Cu2Cl(OH)3" mohs="3.2"/>
+  </matter>
+  <matter id="apatite" class="mineral" name="apatite" density="3200" digClass="3" color="#4aa090" provenance="gameplay">
+  <chemistry formula="Ca5(PO4)3F" mohs="5" solidSolution="true"/>
+  </matter>
+  <matter id="francolite" class="mineral" name="francolite" density="3100" digClass="3" color="#7a7060" provenance="gameplay">
+  <chemistry formula="Ca5(PO4)2.5(CO3)0.5F" mohs="5" solidSolution="true"/>
+  </matter>
+  <matter id="monazite" class="mineral" name="monazite" density="5200" digClass="4" color="#b0803a" provenance="gameplay">
+  <chemistry formula="(Ce0.5La0.25Nd0.2Th0.05)PO4" mohs="5.2" solidSolution="true"/>
+  </matter>
+  <matter id="xenotime" class="mineral" name="xenotime" density="4800" digClass="3" color="#a07a4a" provenance="gameplay">
+  <chemistry formula="YPO4" mohs="4.5"/>
+  </matter>
+  <matter id="turquoise" class="mineral" name="turquoise" density="2700" digClass="4" color="#40c0c8" provenance="gameplay">
+  <chemistry formula="CuAl6(PO4)4(OH)8*4H2O" mohs="5.5"/>
+  </matter>
+  <matter id="borax" class="mineral" name="borax" density="1700" digClass="2" color="#f0f0f4" provenance="gameplay">
+  <chemistry formula="Na2B4O7*10H2O" mohs="2.3"/>
+  </matter>
+  <matter id="colemanite" class="mineral" name="colemanite" density="2400" digClass="3" color="#f0ece8" provenance="gameplay">
+  <chemistry formula="Ca2B6O11*5H2O" mohs="4.5"/>
+  </matter>
+  <matter id="nitratine" class="mineral" name="nitratine" density="2260" digClass="1" color="#f0eee8" provenance="gameplay">
+  <chemistry formula="NaNO3" mohs="1.8"/>
+  </matter>
+  <matter id="niter" class="mineral" name="niter" density="2100" digClass="1" color="#eeeee8" provenance="gameplay">
+  <chemistry formula="KNO3" mohs="2"/>
+  </matter>
+  <matter id="amber" class="mineral" name="amber" density="1100" digClass="1" color="#d89a20" provenance="gameplay">
+  <chemistry formula="C10H16O" mohs="2"/>
+  </matter>
+  <matter id="oak.trunk" class="plant" name="oak trunk" density="700" digClass="2" color="#6b4a2c" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="oak.branch" class="plant" name="oak branch" density="700" digClass="2" color="#6f4f31" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="oak.twig" class="plant" name="oak twig" density="700" digClass="2" color="#7a5a38" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="oak.leaves" class="plant" name="oak leaves" density="100" digClass="1" color="#4e7f35" provenance="gameplay" opacity="4" walkable="false" diggable="false">
+  <tags>
+    <tag>leaves</tag>
+    <tag>tree_leaves</tag>
+  </tags>
+  </matter>
+  <matter id="oak.root" class="plant" name="oak root" density="700" digClass="2" color="#5a3f26" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="spruce.trunk" class="plant" name="spruce trunk" density="450" digClass="2" color="#5e4630" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="spruce.branch" class="plant" name="spruce branch" density="450" digClass="2" color="#614a33" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="spruce.twig" class="plant" name="spruce twig" density="450" digClass="2" color="#6a523a" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="spruce.leaves" class="plant" name="spruce leaves" density="100" digClass="1" color="#2f5a3a" provenance="gameplay" opacity="4" walkable="false" diggable="false">
+  <tags>
+    <tag>leaves</tag>
+    <tag>tree_leaves</tag>
+  </tags>
+  </matter>
+  <matter id="spruce.root" class="plant" name="spruce root" density="450" digClass="2" color="#52402c" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="palm.trunk" class="plant" name="palm trunk" density="400" digClass="2" color="#8a7350" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="palm.branch" class="plant" name="palm branch" density="400" digClass="2" color="#8e7753" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="palm.twig" class="plant" name="palm twig" density="400" digClass="2" color="#94805a" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+  <matter id="palm.leaves" class="plant" name="palm leaves" density="100" digClass="1" color="#5f9a3c" provenance="gameplay" opacity="4" walkable="false" diggable="false">
+  <tags>
+    <tag>leaves</tag>
+    <tag>tree_leaves</tag>
+  </tags>
+  </matter>
+  <matter id="palm.root" class="plant" name="palm root" density="400" digClass="2" color="#6e5a3e" provenance="gameplay" walkable="false" diggable="false">
+  <tags>
+    <tag>wood</tag>
+    <tag>tree_wood</tag>
+  </tags>
+  </matter>
+</catalog>

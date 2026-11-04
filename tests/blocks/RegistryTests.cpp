@@ -52,9 +52,12 @@ TEST_CASE("RegistryHoldsEveryMaterialOfTheCatalog") {
     Require(registry.FindMatter(material.key) == &material,
             "lookup by key is wrong");
   }
-  CHECK(registry.FindMatter("built.lamp")->id == 1030);
-  CHECK(registry.FindMatter("rock.granite")->id == 32);
-  CHECK(registry.FindMatter("mineral.quartz")->id == kFirstMineralMatter);
+  // A MatterId is the record's place in the catalog (docs/DataDriven.md, 4.2):
+  // air first, a fluid second, the rest in file order.
+  CHECK(registry.FindMatter("air")->id == kAirMatter);
+  CHECK(registry.FindMatter("water")->id == kWaterMatter);
+  CHECK(registry.FindMatter("granite")->id > kWaterMatter);
+  CHECK(registry.FindMatter("quartz")->id > kWaterMatter);
   CHECK(registry.GetMatter(4000) == nullptr);
   CHECK(&registry.Catalog() == SharedMatter().get());
 
@@ -73,7 +76,7 @@ TEST_CASE("CellQueriesFollowTheMaterial") {
   CHECK_FALSE(registry.Diggable(air));
   CHECK(registry.Opacity(air) == LightRgb{0, 0, 0});
 
-  const BlockState granite = Full("rock.granite");
+  const BlockState granite = Full("granite");
   CHECK(registry.Occupied(granite));
   CHECK(registry.Walkable(granite));
   CHECK(registry.Diggable(granite));
@@ -82,20 +85,20 @@ TEST_CASE("CellQueriesFollowTheMaterial") {
 
   // Water is still ground for workers (docs/06_BLOCKS.md, section 0), but dims
   // light a little.
-  const BlockState water = Full("fluid.water");
+  const BlockState water = Full("water");
   CHECK(registry.Occupied(water));
   CHECK(registry.Walkable(water));
   CHECK(registry.Opacity(water) == LightRgb{2, 2, 2});
 
-  CHECK(registry.Opacity(Full("built.glass")) == LightRgb{0, 0, 0});
+  CHECK(registry.Opacity(Full("glass")) == LightRgb{0, 0, 0});
   // Red glass lets red through and stops green and blue.
-  CHECK(registry.Opacity(Full("built.glass_red")) == LightRgb{1, 8, 8});
-  CHECK(registry.Opacity(Full("ice.glacier")) == LightRgb{3, 3, 3});
+  CHECK(registry.Opacity(Full("glass_red")) == LightRgb{1, 8, 8});
+  CHECK(registry.Opacity(Full("glacier")) == LightRgb{3, 3, 3});
 
-  CHECK(registry.Emission(IdOf("built.lamp")) == LightRgb{15, 14, 10});
-  CHECK(registry.Emission(IdOf("fluid.magma")) == LightRgb{14, 6, 1});
-  CHECK(registry.Emission(IdOf("rock.granite")) == LightRgb{});
-  CHECK(registry.Opacity(Full("fluid.magma")) == LightRgb{15, 15, 15});
+  CHECK(registry.Emission(IdOf("lamp")) == LightRgb{15, 14, 10});
+  CHECK(registry.Emission(IdOf("magma")) == LightRgb{14, 6, 1});
+  CHECK(registry.Emission(IdOf("granite")) == LightRgb{});
+  CHECK(registry.Opacity(Full("magma")) == LightRgb{15, 15, 15});
 }
 
 TEST_CASE("UnknownIdsBehaveLikeAirAndLikeAFullCube") {
@@ -106,7 +109,7 @@ TEST_CASE("UnknownIdsBehaveLikeAirAndLikeAFullCube") {
   CHECK_FALSE(registry.Has(4000, Tag::Water));
   CHECK_FALSE(registry.Occupied({65535, kShapeFull}));
 
-  const BlockState unknownShape{IdOf("rock.granite"), 77};
+  const BlockState unknownShape{IdOf("granite"), 77};
   CHECK(registry.Occupied(unknownShape));
   CHECK(registry.Walkable(unknownShape));
   CHECK(registry.FaceMask(77) == kFaceAll);
@@ -114,23 +117,23 @@ TEST_CASE("UnknownIdsBehaveLikeAirAndLikeAFullCube") {
 
 TEST_CASE("TagsLetRulesAskWhatAMaterialIsInsteadOfWhichId") {
   const BlockRegistry& registry = SharedRegistry();
-  CHECK(registry.Has(IdOf("fluid.water"), Tag::Water));
-  CHECK(registry.Has(IdOf("fluid.seawater"), Tag::Water));
-  CHECK(registry.Has(IdOf("fluid.seawater"), Tag::Fluid));
-  CHECK_FALSE(registry.Has(IdOf("fluid.brine"), Tag::Water));
-  CHECK(registry.Has(IdOf("soil.sand"), Tag::Soil));
-  CHECK(registry.Has(IdOf("rock.granite"), Tag::Rock));
-  CHECK(registry.Has(IdOf("ice.glacier"), Tag::Ice));
+  CHECK(registry.Has(IdOf("water"), Tag::Water));
+  CHECK(registry.Has(IdOf("seawater"), Tag::Water));
+  CHECK(registry.Has(IdOf("seawater"), Tag::Fluid));
+  CHECK_FALSE(registry.Has(IdOf("brine"), Tag::Water));
+  CHECK(registry.Has(IdOf("sand"), Tag::Soil));
+  CHECK(registry.Has(IdOf("granite"), Tag::Rock));
+  CHECK(registry.Has(IdOf("glacier"), Tag::Ice));
   CHECK(registry.Has(kAirMatter, Tag::Air));
-  CHECK(registry.Has(IdOf("built.glass_blue"), Tag::Glass));
-  CHECK(registry.Has(IdOf("built.glass_blue"), Tag::Built));
+  CHECK(registry.Has(IdOf("glass_blue"), Tag::Glass));
+  CHECK(registry.Has(IdOf("glass_blue"), Tag::Built));
   // Anything that gives off light is a light source, whatever the data says.
-  CHECK(registry.Has(IdOf("built.lamp"), Tag::LightSource));
-  CHECK(registry.Has(IdOf("fluid.magma"), Tag::LightSource));
-  CHECK_FALSE(registry.Has(IdOf("rock.granite"), Tag::LightSource));
+  CHECK(registry.Has(IdOf("lamp"), Tag::LightSource));
+  CHECK(registry.Has(IdOf("magma"), Tag::LightSource));
+  CHECK_FALSE(registry.Has(IdOf("granite"), Tag::LightSource));
 
-  CHECK(registry.HasTag(IdOf("built.planks"), "wood"));
-  CHECK_FALSE(registry.HasTag(IdOf("built.brick"), "wood"));
+  CHECK(registry.HasTag(IdOf("planks"), "wood"));
+  CHECK_FALSE(registry.HasTag(IdOf("brick"), "wood"));
   CHECK(TagFromName("light_source") == Tag::LightSource);
   CHECK_FALSE(TagFromName("wood").has_value());
   for (int i = 0; i < kEngineTagCount; ++i)
@@ -144,7 +147,10 @@ TEST_CASE("BuiltInRegistryAgreesWithTheFiles") {
   for (const MatterDef& material : builtIn.Matter()) {
     const MatterDef* other = files.FindMatter(material.key);
     REQUIRE_MESSAGE(other != nullptr, material.key, " is not in the files");
-    CHECK_MESSAGE(material.id == other->id, material.key);
+    // Each catalog assigns its own dense ids (docs/DataDriven.md, section 4.2),
+    // so only air and water, the two the game names directly, keep the same id.
+    if (material.key == "air" || material.key == "water")
+      CHECK_MESSAGE(material.id == other->id, material.key);
     CHECK_MESSAGE(material.blockClass == other->blockClass, material.key);
     CHECK_MESSAGE(material.color == other->color, material.key);
     CHECK_MESSAGE(material.digClass == other->digClass, material.key);
@@ -172,7 +178,7 @@ TEST_CASE("AShapeNarrowsWhatTheMaterialAllows") {
         ] })");
   const BlockRegistry registry =
       BlockRegistry::Build(SharedMatter(), blocks.Path());
-  const MatterId granite = registry.FindMatter("rock.granite")->id;
+  const MatterId granite = registry.FindMatter("granite")->id;
   const ShapeId grate = registry.FindShape("shape.grate")->id;
 
   CHECK(registry.Occupied({granite, grate}));
@@ -232,11 +238,11 @@ TEST_CASE("LoaderRejectsBrokenShapeFilesWithAMessageNamingTheRecord") {
 TEST_CASE("LightPassesACellThatDoesNotStopEveryChannel") {
   const BlockRegistry& registry = SharedRegistry();
   CHECK(registry.LetsLightThrough({kAirMatter, kShapeFull}));
-  CHECK(registry.LetsLightThrough(Full("fluid.water")));
-  CHECK(registry.LetsLightThrough(Full("ice.glacier")));
-  CHECK(registry.LetsLightThrough(Full("built.glass")));
-  CHECK(registry.LetsLightThrough(Full("built.glass_red")));
-  CHECK_FALSE(registry.LetsLightThrough(Full("rock.granite")));
-  CHECK_FALSE(registry.LetsLightThrough(Full("soil.sand")));
-  CHECK_FALSE(registry.LetsLightThrough(Full("fluid.magma")));
+  CHECK(registry.LetsLightThrough(Full("water")));
+  CHECK(registry.LetsLightThrough(Full("glacier")));
+  CHECK(registry.LetsLightThrough(Full("glass")));
+  CHECK(registry.LetsLightThrough(Full("glass_red")));
+  CHECK_FALSE(registry.LetsLightThrough(Full("granite")));
+  CHECK_FALSE(registry.LetsLightThrough(Full("sand")));
+  CHECK_FALSE(registry.LetsLightThrough(Full("magma")));
 }

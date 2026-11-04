@@ -20,11 +20,11 @@
       "rootDepthM": 2,
       "shadeTolerance": 0.35,
       "matter": {
-        "trunk": "plant.oak.trunk",
-        "branch": "plant.oak.branch",
-        "twig": "plant.oak.twig",
-        "leaves": "plant.oak.leaves",
-        "root": "plant.oak.root"
+        "trunk": "oak.trunk",
+        "branch": "oak.branch",
+        "twig": "oak.twig",
+        "leaves": "oak.leaves",
+        "root": "oak.root"
       },
       "yield": { "logsPerCubicM": 1.0 }
     },
@@ -48,11 +48,11 @@
       "rootDepthM": 1,
       "shadeTolerance": 0.7,
       "matter": {
-        "trunk": "plant.spruce.trunk",
-        "branch": "plant.spruce.branch",
-        "twig": "plant.spruce.twig",
-        "leaves": "plant.spruce.leaves",
-        "root": "plant.spruce.root"
+        "trunk": "spruce.trunk",
+        "branch": "spruce.branch",
+        "twig": "spruce.twig",
+        "leaves": "spruce.leaves",
+        "root": "spruce.root"
       },
       "yield": { "logsPerCubicM": 0.9 }
     },
@@ -76,11 +76,11 @@
       "rootDepthM": 1,
       "shadeTolerance": 0.15,
       "matter": {
-        "trunk": "plant.palm.trunk",
-        "branch": "plant.palm.branch",
-        "twig": "plant.palm.twig",
-        "leaves": "plant.palm.leaves",
-        "root": "plant.palm.root"
+        "trunk": "palm.trunk",
+        "branch": "palm.branch",
+        "twig": "palm.twig",
+        "leaves": "palm.leaves",
+        "root": "palm.root"
       },
       "yield": { "logsPerCubicM": 0.5 }
     }

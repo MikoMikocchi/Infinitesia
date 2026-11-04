@@ -10,9 +10,9 @@
 namespace Infinitesia {
 // Packs every PNG of a folder (one square tile each, all the same size) into a
 // single texture when the game starts. A tile is found by its file name without
-// the extension: "rock.granite.png" -> "rock.granite", "block.grass_top.png" ->
-// "block.grass_top". Adding a texture means dropping a PNG into the folder -
-// nothing is listed in code.
+// the extension: "granite.png" -> "granite", "turf_top.png" -> "turf_top".
+// Adding a texture means dropping a PNG into the folder - nothing is listed in
+// code.
 class BlockTextureAtlas {
  public:
   BlockTextureAtlas() = default;

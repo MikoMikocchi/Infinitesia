@@ -14,8 +14,7 @@ namespace Infinitesia {
 // the MatterCatalog, found by the same id (ChemistryInfo, ModalComposition).
 struct MatterDef {
   MatterId id = 0;
-  std::string
-      key;  // "rock.granite", "soil.sand", "fluid.water", "mineral.quartz"
+  std::string key;  // the stable string id: "granite", "sand", "water", "quartz"
   std::string name;
   BlockClass blockClass = BlockClass::Air;
   double density = 0.0;  // kg/m3

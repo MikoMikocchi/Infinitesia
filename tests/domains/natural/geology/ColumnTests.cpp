@@ -46,7 +46,7 @@ TEST_CASE("ColumnLoaderRejectsBrokenFilesWithAMessageNamingTheRecord") {
   };
   {
     const BrokenFile broken(kColumnsFile, "infinitesia_columns_unknown");
-    broken.Edit([&](Json& root) { firstLayer(root)["rock"] = "rock.cheese"; });
+    broken.Edit([&](Json& root) { firstLayer(root)["rock"] = "cheese"; });
     const std::string error = LoadError(broken);
     CHECK(error.find("unknown rock") != std::string::npos);
     CHECK(error.find("province_columns.json") != std::string::npos);
@@ -55,7 +55,7 @@ TEST_CASE("ColumnLoaderRejectsBrokenFilesWithAMessageNamingTheRecord") {
     // A layer must be a rock: a mineral, though a material, is not.
     const BrokenFile broken(kColumnsFile, "infinitesia_columns_mineral");
     broken.Edit(
-        [&](Json& root) { firstLayer(root)["rock"] = "mineral.quartz"; });
+        [&](Json& root) { firstLayer(root)["rock"] = "quartz"; });
     CHECK(LoadError(broken).find("unknown rock") != std::string::npos);
   }
   {

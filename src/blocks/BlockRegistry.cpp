@@ -7,12 +7,11 @@
 
 namespace Infinitesia {
 namespace {
-MatterDef MakeBuiltInMaterial(MatterId id, const char* key,
-                                const char* name, BlockClass blockClass,
-                                double density, int digClass, RgbColor color,
-                                std::vector<std::string> extraTags = {}) {
+MatterDef MakeBuiltInMaterial(const char* key, const char* name,
+                              BlockClass blockClass, double density,
+                              int digClass, RgbColor color,
+                              std::vector<std::string> extraTags = {}) {
   MatterDef material;
-  material.id = id;
   material.key = key;
   material.name = name;
   material.blockClass = blockClass;
@@ -36,27 +35,27 @@ BlockRegistry BlockRegistry::Build(
 }
 
 BlockRegistry BlockRegistry::BuiltIn() {
+  // The catalog gives these their dense ids in this order: air 0, water 1.
   std::vector<MatterDef> materials;
-  materials.push_back(MakeBuiltInMaterial(kAirMatter, "air", "air",
-                                          BlockClass::Air, 1.2, 0, {0, 0, 0}));
-  materials.push_back(MakeBuiltInMaterial(kWaterMatter, "fluid.water",
-                                          "water", BlockClass::Fluid, 1000.0, 0,
-                                          {0x34, 0x6e, 0xaa}, {"water"}));
-  materials.push_back(MakeBuiltInMaterial(2, "fluid.seawater", "seawater",
+  materials.push_back(
+      MakeBuiltInMaterial("air", "air", BlockClass::Air, 1.2, 0, {0, 0, 0}));
+  materials.push_back(MakeBuiltInMaterial("water", "water", BlockClass::Fluid,
+                                          1000.0, 0, {0x34, 0x6e, 0xaa},
+                                          {"water"}));
+  materials.push_back(MakeBuiltInMaterial("seawater", "seawater",
                                           BlockClass::Fluid, 1000.0, 0,
                                           {0x34, 0x6e, 0xaa}, {"water"}));
-  materials.push_back(MakeBuiltInMaterial(130, "rock.bedrock", "bedrock",
-                                          BlockClass::Rock, 2700.0, 4,
-                                          {0x84, 0x89, 0x8e}));
-  materials.push_back(MakeBuiltInMaterial(513, "soil.subsoil", "subsoil",
-                                          BlockClass::Loose, 1600.0, 1,
-                                          {0x7a, 0x5a, 0x3a}, {"soil"}));
-  materials.push_back(MakeBuiltInMaterial(516, "soil.sand", "sand",
-                                          BlockClass::Loose, 1600.0, 1,
-                                          {0xdb, 0xcb, 0x8c}, {"soil"}));
-  materials.push_back(MakeBuiltInMaterial(527, "soil.turf", "turf",
-                                          BlockClass::Loose, 1300.0, 1,
-                                          {0x52, 0x91, 0x42}, {"soil"}));
+  materials.push_back(MakeBuiltInMaterial("bedrock", "bedrock", BlockClass::Rock,
+                                          2700.0, 4, {0x84, 0x89, 0x8e}));
+  materials.push_back(MakeBuiltInMaterial("subsoil", "subsoil", BlockClass::Loose,
+                                          1600.0, 1, {0x7a, 0x5a, 0x3a},
+                                          {"soil"}));
+  materials.push_back(MakeBuiltInMaterial("sand", "sand", BlockClass::Loose,
+                                          1600.0, 1, {0xdb, 0xcb, 0x8c},
+                                          {"soil"}));
+  materials.push_back(MakeBuiltInMaterial("turf", "turf", BlockClass::Loose,
+                                          1300.0, 1, {0x52, 0x91, 0x42},
+                                          {"soil"}));
   auto catalog = std::make_shared<const MatterCatalog>(
       MatterCatalog::Assemble(std::move(materials), {}, {}));
   return Assemble(std::move(catalog), {ShapeDef{}});

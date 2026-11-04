@@ -177,9 +177,9 @@ TEST_CASE("PilesRespectTheBiosphereOfTheirTime") {
   const PlanetMap& map = SharedMap();
   const auto catalog = std::make_shared<const GeologyCatalog>(SharedCatalog());
   const GeologyModel model(catalog, map);
-  const MatterId coal = MatterNamed("rock.bituminous_coal").id;
-  const MatterId redBeds = MatterNamed("rock.red_beds").id;
-  const MatterId chalk = MatterNamed("rock.chalk").id;
+  const MatterId coal = MatterNamed("bituminous_coal").id;
+  const MatterId redBeds = MatterNamed("red_beds").id;
+  const MatterId chalk = MatterNamed("chalk").id;
 
   int withCoal = 0;
   for (const Province& province : map.GetProvinces()) {

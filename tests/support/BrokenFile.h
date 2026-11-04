@@ -6,11 +6,12 @@
 #include <fstream>
 #include <functional>
 #include <nlohmann/json.hpp>
+#include <pugixml.hpp>
 #include <string>
 
 // A copy of a data file in a fresh temporary directory, to be broken on
-// purpose. Edits go through the parsed JSON, so they do not depend on how the
-// file happens to be formatted.
+// purpose. Edits go through the parsed tree (JSON or XML), so they do not
+// depend on how the file happens to be formatted.
 namespace InfinitesiaTests {
 using Json = nlohmann::json;
 
@@ -37,6 +38,17 @@ class BrokenFile {
     std::ofstream(m_path, std::ios::trunc) << root.dump(2);
   }
 
+  // The XML counterpart of Edit: parses the file, lets `change` rewrite the
+  // tree and writes it back.
+  void EditXml(const std::function<void(pugi::xml_node)>& change) const {
+    pugi::xml_document document;
+    const pugi::xml_parse_result result = document.load_file(m_path.c_str());
+    REQUIRE_MESSAGE(result, "cannot parse ", m_path.string(),
+                    ": ", result.description());
+    change(document.document_element());
+    document.save_file(m_path.c_str());
+  }
+
   void WriteText(const std::string& text) const {
     std::ofstream(m_path, std::ios::trunc) << text;
   }
@@ -49,6 +61,16 @@ class BrokenFile {
     }
     FAIL("test record not found: " << key);
     return root;
+  }
+
+  // The <element> of `root` whose "id" attribute is `key`.
+  static pugi::xml_node RecordXml(pugi::xml_node root, const char* element,
+                                  const std::string& key) {
+    for (pugi::xml_node record : root.children(element)) {
+      if (key == record.attribute("id").value()) return record;
+    }
+    FAIL("test record not found: " << key);
+    return {};
   }
 
  private:

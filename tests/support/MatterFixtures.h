@@ -15,7 +15,7 @@ using namespace Infinitesia;
 
 inline const std::filesystem::path kAssets = INFINITESIA_ASSET_DIR;
 inline const std::filesystem::path kMatterFile =
-    kAssets / "matter" / "matter.json";
+    kAssets / "matter" / "matter.xml";
 inline const std::filesystem::path kColumnsFile =
     kAssets / "geology" / "province_columns.json";
 inline const std::filesystem::path kShapesFile =

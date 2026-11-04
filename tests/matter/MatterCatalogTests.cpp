@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <functional>
 #include <set>
 #include <string>
 #include <utility>
@@ -20,8 +21,8 @@ bool HasTag(const MatterDef& material, const char* tag) {
          material.tags.end();
 }
 
-// The message of the error loading a broken copy of matter.json; empty when
-// it loads.
+// The message of the error loading a broken copy of matter.xml; empty when it
+// loads.
 std::string LoadError(const BrokenFile& broken) {
   try {
     MatterCatalog::LoadFromFile(broken.Path());
@@ -41,21 +42,23 @@ std::vector<const MatterDef*> OfClass(const MatterCatalog& catalog,
 }
 }  // namespace
 
-TEST_CASE("CatalogLoadsWithStableIds") {
+TEST_CASE("CatalogAssignsEachMaterialItsPlaceAsTheId") {
   const MatterCatalog& catalog = *SharedMatter();
   CHECK(OfClass(catalog, BlockClass::Mineral).size() >= 160);
   CHECK(OfClass(catalog, BlockClass::Rock).size() >= 95);
   CHECK(catalog.Matter().size() >= 290);
 
-  // Numeric IDs are saved with worlds: these never change.
+  // The id is the record's place in the file (docs/DataDriven.md, section 4.2):
+  // air first, then the fluids, then the rest in the order they are written.
+  // The data names a material by its stable string id, never by this number.
   CHECK(catalog.Find("air")->id == kAirMatter);
-  CHECK(catalog.Find("fluid.water")->id == kWaterMatter);
-  CHECK(catalog.Find("rock.granite")->id == 32);
-  CHECK(catalog.Find("rock.bedrock")->id == 130);
-  CHECK(catalog.Find("soil.humus")->id == kFirstLooseMatter);
-  CHECK(catalog.Find("soil.turf")->id == 527);
-  CHECK(catalog.Find("built.planks")->id == kFirstBuiltMatter);
-  CHECK(catalog.Find("mineral.quartz")->id == kFirstMineralMatter);
+  CHECK(catalog.Find("water")->id == kWaterMatter);
+  for (std::size_t i = 0; i < catalog.Matter().size(); ++i) {
+    Require(catalog.Matter()[i].id == static_cast<MatterId>(i),
+            "the ids are not dense");
+  }
+  CHECK(catalog.Find("granite")->id > kWaterMatter);
+  CHECK(catalog.Find("quartz")->id > kWaterMatter);
 
   std::set<MatterId> ids;
   std::set<std::string> keys;
@@ -66,48 +69,14 @@ TEST_CASE("CatalogLoadsWithStableIds") {
             "material lookup by id is wrong");
     Require(catalog.Find(material.key) == &material,
             "material lookup by key is wrong");
-    switch (material.blockClass) {
-      case BlockClass::Air:
-      case BlockClass::Fluid:
-        Require(material.id < kFirstRockMatter,
-                "air and fluids live below 32");
-        break;
-      case BlockClass::Rock:
-        Require(material.id >= kFirstRockMatter &&
-                    material.id < kFirstLooseMatter,
-                "rocks live in 32-511");
-        break;
-      case BlockClass::Loose:
-      case BlockClass::Ice:
-        Require(material.id >= kFirstLooseMatter &&
-                    material.id < kFirstBuiltMatter,
-                "loose ground lives in 512-1023");
-        break;
-      case BlockClass::Built:
-        Require(material.id >= kFirstBuiltMatter &&
-                    material.id < kFirstMineralMatter,
-                "built materials live in 1024-2047");
-        break;
-      case BlockClass::Mineral:
-        Require(material.id >= kFirstMineralMatter &&
-                    material.id < kFirstPlantMatter,
-                "minerals live in 2048-4095");
-        break;
-      case BlockClass::Plant:
-        Require(material.id >= kFirstPlantMatter &&
-                    material.id < kMatterCapacity,
-                "plants live in 4096-5119");
-        break;
-    }
   }
   CHECK(catalog.Get(kUnspecifiedMatter) == nullptr);
-  CHECK(catalog.Get(31) == nullptr);
   CHECK(catalog.ColorOf(kUnspecifiedMatter) == RgbColor{255, 0, 255});
 }
 
 TEST_CASE("AMineralIsAMaterialLikeAnyOther") {
   const MatterCatalog& catalog = *SharedMatter();
-  const MatterDef& quartz = *catalog.Find("mineral.quartz");
+  const MatterDef& quartz = *catalog.Find("quartz");
 
   // The same record as granite or planks: density, colour, tags, light and
   // rules.
@@ -122,10 +91,9 @@ TEST_CASE("AMineralIsAMaterialLikeAnyOther") {
   // What only some materials have lives in side tables, found by the same id.
   CHECK(catalog.ChemistryOf(quartz.id) != nullptr);
   CHECK(catalog.ModalOf(quartz.id) == nullptr);
-  CHECK(catalog.ModalOf(catalog.Find("rock.granite")->id) != nullptr);
-  CHECK(catalog.ChemistryOf(catalog.Find("rock.granite")->id) == nullptr);
-  for (const char* plain :
-       {"air", "fluid.water", "soil.sand", "ice.glacier", "built.planks"}) {
+  CHECK(catalog.ModalOf(catalog.Find("granite")->id) != nullptr);
+  CHECK(catalog.ChemistryOf(catalog.Find("granite")->id) == nullptr);
+  for (const char* plain : {"air", "water", "sand", "glacier", "planks"}) {
     CHECK_MESSAGE(catalog.ChemistryOf(catalog.Find(plain)->id) == nullptr,
                   plain);
     CHECK_MESSAGE(catalog.ModalOf(catalog.Find(plain)->id) == nullptr, plain);
@@ -137,8 +105,7 @@ TEST_CASE("AMineralIsAMaterialLikeAnyOther") {
         doctest::Approx(0.4674).epsilon(0.002));
   CHECK(Fraction(quartzElements, "O") ==
         doctest::Approx(0.5326).epsilon(0.002));
-  CHECK(
-      catalog.ElementMassFractionsOf(catalog.Find("fluid.water")->id).Empty());
+  CHECK(catalog.ElementMassFractionsOf(catalog.Find("water")->id).Empty());
 }
 
 TEST_CASE("MaterialsCarryTagsAndLightProperties") {
@@ -156,37 +123,37 @@ TEST_CASE("MaterialsCarryTagsAndLightProperties") {
   // Defaults follow the class: air passes light, water and ice dim it a little,
   // ground and rock stop it.
   CHECK(catalog.Find("air")->opacity == LightRgb{0, 0, 0});
-  CHECK(catalog.Find("fluid.water")->opacity == LightRgb{2, 2, 2});
-  CHECK(catalog.Find("ice.glacier")->opacity == LightRgb{3, 3, 3});
-  CHECK(catalog.Find("soil.sand")->opacity == LightRgb{15, 15, 15});
-  CHECK(catalog.Find("rock.granite")->opacity == LightRgb{15, 15, 15});
+  CHECK(catalog.Find("water")->opacity == LightRgb{2, 2, 2});
+  CHECK(catalog.Find("glacier")->opacity == LightRgb{3, 3, 3});
+  CHECK(catalog.Find("sand")->opacity == LightRgb{15, 15, 15});
+  CHECK(catalog.Find("granite")->opacity == LightRgb{15, 15, 15});
 
   // Magma gives off orange light and blocks it like rock; the lamp glows
   // white-yellow.
-  CHECK(catalog.Find("fluid.magma")->emission == LightRgb{14, 6, 1});
-  CHECK(catalog.Find("fluid.magma")->opacity == LightRgb{15, 15, 15});
-  CHECK(catalog.Find("fluid.oil")->emission == LightRgb{});
-  CHECK(catalog.Find("built.lamp")->emission != LightRgb{});
-  CHECK(catalog.Find("built.glass")->opacity == LightRgb{0, 0, 0});
-  CHECK(catalog.Find("built.glass_red")->opacity.r <
-        catalog.Find("built.glass_red")->opacity.g);
+  CHECK(catalog.Find("magma")->emission == LightRgb{14, 6, 1});
+  CHECK(catalog.Find("magma")->opacity == LightRgb{15, 15, 15});
+  CHECK(catalog.Find("oil")->emission == LightRgb{});
+  CHECK(catalog.Find("lamp")->emission != LightRgb{});
+  CHECK(catalog.Find("glass")->opacity == LightRgb{0, 0, 0});
+  CHECK(catalog.Find("glass_red")->opacity.r <
+        catalog.Find("glass_red")->opacity.g);
 
   // Grass-covered ground and the stand-in rock for terrains without geology
   // (docs/06_BLOCKS.md, section 4).
-  const MatterDef& turf = *catalog.Find("soil.turf");
+  const MatterDef& turf = *catalog.Find("turf");
   CHECK(turf.blockClass == BlockClass::Loose);
   CHECK(HasTag(turf, "soil"));
   CHECK(turf.digClass == 1);
-  const MatterDef& bedrock = *catalog.Find("rock.bedrock");
+  const MatterDef& bedrock = *catalog.Find("bedrock");
   CHECK(bedrock.blockClass == BlockClass::Rock);
   CHECK(bedrock.digClass == 4);
   CHECK(catalog.ModalOf(bedrock.id)->parts.empty());
-  CHECK(catalog.Find("soil.sand")->tags.size() == 2);
+  CHECK(catalog.Find("sand")->tags.size() == 2);
 
   // The sea is the same as fresh water for now (docs/06_BLOCKS.md): one tag,
   // equal properties.
-  const MatterDef& water = *catalog.Find("fluid.water");
-  const MatterDef& seawater = *catalog.Find("fluid.seawater");
+  const MatterDef& water = *catalog.Find("water");
+  const MatterDef& seawater = *catalog.Find("seawater");
   CHECK(HasTag(water, "water"));
   CHECK(HasTag(seawater, "water"));
   CHECK(water.density == seawater.density);
@@ -197,35 +164,41 @@ TEST_CASE("MaterialsCarryTagsAndLightProperties") {
 TEST_CASE("MaterialLightFieldsAreValidated") {
   {
     const BrokenFile broken(kMatterFile, "infinitesia_materials_opacity");
-    broken.Edit([](Json& root) {
-      BrokenFile::Record(root, "matter", "fluid.magma")["opacity"] = 16;
+    broken.EditXml([](pugi::xml_node root) {
+      BrokenFile::RecordXml(root, "matter", "magma")
+          .attribute("opacity")
+          .set_value(16);
     });
     const std::string error = LoadError(broken);
     CHECK(error.find("opacity") != std::string::npos);
-    CHECK(error.find("fluid.magma") != std::string::npos);
+    CHECK(error.find("magma") != std::string::npos);
   }
   {
+    // A tint is either one level or "r,g,b"; a two-part value is malformed.
     const BrokenFile broken(kMatterFile, "infinitesia_materials_emission");
-    broken.Edit([](Json& root) {
-      BrokenFile::Record(root, "matter", "fluid.magma")["emission"] =
-          Json::array({14, 6});
+    broken.EditXml([](pugi::xml_node root) {
+      BrokenFile::RecordXml(root, "matter", "magma")
+          .attribute("emission")
+          .set_value("14,6");
     });
     CHECK(LoadError(broken).find("emission") != std::string::npos);
   }
   {
-    const BrokenFile broken(kMatterFile, "infinitesia_materials_tags");
-    broken.Edit([](Json& root) {
-      BrokenFile::Record(root, "matter", "fluid.water")["tags"] =
-          Json::array({7});
+    const BrokenFile broken(kMatterFile, "infinitesia_materials_empty_tag");
+    broken.EditXml([](pugi::xml_node root) {
+      BrokenFile::RecordXml(root, "matter", "water")
+          .child("tags")
+          .append_child("tag");
     });
-    CHECK(LoadError(broken).find("tags") != std::string::npos);
+    CHECK(LoadError(broken).find("tag") != std::string::npos);
   }
   {
-    // A tint is three numbers: red glass dims green and blue more than red.
+    // Red glass lets red through and stops green and blue.
     const BrokenFile broken(kMatterFile, "infinitesia_materials_tint");
-    broken.Edit([](Json& root) {
-      BrokenFile::Record(root, "matter", "fluid.magma")["opacity"] =
-          Json::array({1, 8, 8});
+    broken.EditXml([](pugi::xml_node root) {
+      BrokenFile::RecordXml(root, "matter", "magma")
+          .attribute("opacity")
+          .set_value("1,8,8");
     });
     CHECK(LoadError(broken).empty());
   }
@@ -236,20 +209,20 @@ TEST_CASE("MineralMolarMassesMatchTheReference") {
   // its own from the formula and must agree within 0.1% (docs/03_GEOLOGY.md,
   // section 16).
   const std::pair<const char*, double> reference[] = {
-      {"mineral.quartz", 60.084},       {"mineral.calcite", 100.087},
-      {"mineral.hematite", 159.688},    {"mineral.magnetite", 231.533},
-      {"mineral.pyrite", 119.98},       {"mineral.halite", 58.443},
-      {"mineral.gypsum", 172.168},      {"mineral.galena", 239.27},
-      {"mineral.chalcopyrite", 183.54}, {"mineral.corundum", 101.961},
-      {"mineral.fluorite", 78.075},     {"mineral.graphite", 12.011},
-      {"mineral.native_gold", 196.967}, {"mineral.kaolinite", 258.16},
-      {"mineral.muscovite", 398.31},    {"mineral.orthoclase", 278.33},
-      {"mineral.albite", 262.22},       {"mineral.anorthite", 278.21},
-      {"mineral.sphalerite", 97.47},    {"mineral.cassiterite", 150.71},
-      {"mineral.malachite", 221.12},    {"mineral.dolomite", 184.40},
-      {"mineral.barite", 233.39},       {"mineral.rutile", 79.866},
-      {"mineral.diopside", 216.55},     {"mineral.spodumene", 186.09},
-      {"mineral.zircon", 183.31},
+      {"quartz", 60.084},       {"calcite", 100.087},
+      {"hematite", 159.688},    {"magnetite", 231.533},
+      {"pyrite", 119.98},       {"halite", 58.443},
+      {"gypsum", 172.168},      {"galena", 239.27},
+      {"chalcopyrite", 183.54}, {"corundum", 101.961},
+      {"fluorite", 78.075},     {"graphite", 12.011},
+      {"native_gold", 196.967}, {"kaolinite", 258.16},
+      {"muscovite", 398.31},    {"orthoclase", 278.33},
+      {"albite", 262.22},       {"anorthite", 278.21},
+      {"sphalerite", 97.47},    {"cassiterite", 150.71},
+      {"malachite", 221.12},    {"dolomite_mineral", 184.40},
+      {"barite", 233.39},       {"rutile", 79.866},
+      {"diopside", 216.55},     {"spodumene", 186.09},
+      {"zircon", 183.31},
   };
   for (const auto& [key, expected] : reference) {
     const MatterDef& mineral = MatterNamed(key);
@@ -334,12 +307,12 @@ TEST_CASE("RockChemistryFollowsFromItsMinerals") {
     return catalog.ElementMassFractionsOf(MatterNamed(key).id);
   };
 
-  const auto granite = elements("rock.granite");
-  const auto basalt = elements("rock.basalt");
-  const auto peridotite = elements("rock.peridotite");
-  const auto limestone = elements("rock.limestone");
-  const auto quartzite = elements("rock.quartzite");
-  const auto rockSalt = elements("rock.rock_salt");
+  const auto granite = elements("granite");
+  const auto basalt = elements("basalt");
+  const auto peridotite = elements("peridotite");
+  const auto limestone = elements("limestone");
+  const auto quartzite = elements("quartzite");
+  const auto rockSalt = elements("rock_salt");
 
   // Silica-rich to silica-poor, and the mafic elements the other way round.
   CHECK(Fraction(granite, "Si") > Fraction(basalt, "Si"));
@@ -358,107 +331,125 @@ TEST_CASE("RockChemistryFollowsFromItsMinerals") {
   CHECK(Fraction(rockSalt, "Cl") == doctest::Approx(0.58).epsilon(0.05));
 
   // A rock without a filled modal composition has no element fractions yet.
-  CHECK(elements("rock.anthracite").Empty());
+  CHECK(elements("anthracite").Empty());
 }
 
 TEST_CASE("LoaderRejectsBrokenFilesWithAMessageNamingTheRecord") {
   const auto check = [](const char* name,
-                        const std::function<void(Json&)>& change,
+                        const std::function<void(pugi::xml_node)>& change,
                         const char* inError, const char* inRecord) {
     const BrokenFile broken(kMatterFile, name);
-    broken.Edit(change);
+    broken.EditXml(change);
     const std::string error = LoadError(broken);
     CHECK_MESSAGE(error.find(inError) != std::string::npos, name, ": ", error);
     if (inRecord != nullptr)
       CHECK_MESSAGE(error.find(inRecord) != std::string::npos, name, ": ",
                     error);
   };
-  const auto record = [](Json& root, const char* key) -> Json& {
-    return BrokenFile::Record(root, "matter", key);
+  const auto record = [](pugi::xml_node root, const char* key) {
+    return BrokenFile::RecordXml(root, "matter", key);
+  };
+  const auto part = [](pugi::xml_node rock, int index) {
+    pugi::xml_node node = rock.child("part");
+    for (int i = 0; i < index; ++i) node = node.next_sibling("part");
+    return node;
   };
 
   check(
       "infinitesia_mat_formula",
-      [&](Json& r) {
-        record(r, "mineral.quartz")["chemistry"]["formula"] = "Si(O2";
+      [&](pugi::xml_node r) {
+        record(r, "quartz")
+            .child("chemistry")
+            .attribute("formula")
+            .set_value("Si(O2");
       },
-      "matter.json", "mineral.quartz");
+      "Invalid formula", "quartz");
   check(
       "infinitesia_mat_duplicate",
-      [&](Json& r) { record(r, "mineral.calcite")["id"] = "mineral.quartz"; },
-      "duplicate id", nullptr);
+      [&](pugi::xml_node r) {
+        record(r, "calcite").attribute("id").set_value("quartz");
+      },
+      "duplicate id", "quartz");
   check(
-      "infinitesia_mat_numeric",
-      [&](Json& r) { record(r, "rock.granodiorite")["numericId"] = 32; },
-      "numeric id", "rock.granite");
-  check(
-      "infinitesia_mat_range",
-      [&](Json& r) { record(r, "rock.granite")["numericId"] = 600; }, "range",
-      "rock.granite");
-  check(
-      "infinitesia_mat_prefix",
-      [&](Json& r) { record(r, "mineral.quartz")["id"] = "rock.quartz"; },
-      "must start with", nullptr);
+      "infinitesia_mat_density",
+      [&](pugi::xml_node r) {
+        record(r, "granite").attribute("density").set_value(100);
+      },
+      "density", "granite");
   check(
       "infinitesia_mat_modal",
-      [&](Json& r) {
-        record(r, "rock.granite")["rock"]["modal"][1]["mineral"] =
-            "mineral.nothing";
+      [&](pugi::xml_node r) {
+        part(record(r, "granite").child("rock"), 1)
+            .attribute("mineral")
+            .set_value("nothing");
       },
-      "unknown mineral", "rock.granite");
+      "unknown mineral", "granite");
   check(
       "infinitesia_mat_modal_rock",
-      [&](Json& r) {
-        record(r, "rock.granite")["rock"]["modal"][1]["mineral"] =
-            "rock.basalt";
+      [&](pugi::xml_node r) {
+        part(record(r, "granite").child("rock"), 1)
+            .attribute("mineral")
+            .set_value("basalt");
       },
-      "not a mineral", "rock.granite");
+      "not a mineral", "granite");
   check(
       "infinitesia_mat_sum",
-      [&](Json& r) {
-        record(r, "rock.granite")["rock"]["modal"][0]["fraction"] = 0.5;
+      [&](pugi::xml_node r) {
+        part(record(r, "granite").child("rock"), 0)
+            .attribute("fraction")
+            .set_value("0.5");
       },
-      "sum", "rock.granite");
+      "sum", "granite");
   check(
       "infinitesia_mat_color",
-      [&](Json& r) { record(r, "rock.granite")["color"] = "granite"; },
+      [&](pugi::xml_node r) {
+        record(r, "granite").attribute("color").set_value("granite");
+      },
       "colour", nullptr);
   check(
       "infinitesia_mat_nochem",
-      [&](Json& r) { record(r, "mineral.quartz").erase("chemistry"); },
-      "chemistry", "mineral.quartz");
+      [&](pugi::xml_node r) { record(r, "quartz").remove_child("chemistry"); },
+      "chemistry", "quartz");
   check(
       "infinitesia_mat_norock",
-      [&](Json& r) { record(r, "rock.granite").erase("rock"); }, "rock",
-      "rock.granite");
+      [&](pugi::xml_node r) { record(r, "granite").remove_child("rock"); },
+      "rock", "granite");
   check(
       "infinitesia_mat_rockpart",
-      [&](Json& r) {
-        record(r, "mineral.quartz")["rock"] =
-            Json::object({{"class", "metamorphic"}});
+      [&](pugi::xml_node r) {
+        record(r, "quartz")
+            .append_child("rock")
+            .append_attribute("class")
+            .set_value("metamorphic");
       },
-      "rock", "mineral.quartz");
+      "rock", "quartz");
   check(
       "infinitesia_mat_class",
-      [&](Json& r) { record(r, "rock.granite")["class"] = "plasma"; },
+      [&](pugi::xml_node r) {
+        record(r, "granite").attribute("class").set_value("plasma");
+      },
       "unknown material class", nullptr);
   check(
       "infinitesia_mat_digclass",
-      [&](Json& r) { record(r, "rock.granite")["digClass"] = 9; }, "digClass",
-      nullptr);
+      [&](pugi::xml_node r) {
+        record(r, "granite").attribute("digClass").set_value(9);
+      },
+      "digClass", nullptr);
   {
     const BrokenFile broken(kMatterFile, "infinitesia_mat_nowater");
-    broken.Edit([&](Json& r) { record(r, "fluid.water")["class"] = "loose"; });
+    broken.EditXml([&](pugi::xml_node r) {
+      record(r, "water").attribute("class").set_value("loose");
+    });
     CHECK(!LoadError(broken).empty());
   }
   {
-    const BrokenFile broken(kMatterFile, "infinitesia_mat_json");
-    broken.WriteText("{ \"materials\": [ ");
-    CHECK(LoadError(broken).find("invalid JSON") != std::string::npos);
+    const BrokenFile broken(kMatterFile, "infinitesia_mat_xml");
+    broken.WriteText("<catalog><matter id=\"quartz\"");
+    CHECK(LoadError(broken).find("matter.xml") != std::string::npos);
   }
   {
     const BrokenFile broken(kMatterFile, "infinitesia_mat_missing");
     broken.Remove();
-    CHECK(LoadError(broken).find("cannot open") != std::string::npos);
+    CHECK(LoadError(broken).find("Cannot open") != std::string::npos);
   }
 }

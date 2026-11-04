@@ -13,11 +13,11 @@ MatterId Find(const BlockRegistry& registry, const char* key) {
 
 SurfaceMatter SurfaceMatter::Resolve(const BlockRegistry& registry) {
   SurfaceMatter materials;
-  materials.turf = Find(registry, "soil.turf");
-  materials.subsoil = Find(registry, "soil.subsoil");
-  materials.sand = Find(registry, "soil.sand");
-  materials.bedrock = Find(registry, "rock.bedrock");
-  materials.seawater = Find(registry, "fluid.seawater");
+  materials.turf = Find(registry, "turf");
+  materials.subsoil = Find(registry, "subsoil");
+  materials.sand = Find(registry, "sand");
+  materials.bedrock = Find(registry, "bedrock");
+  materials.seawater = Find(registry, "seawater");
   return materials;
 }
 }  // namespace Infinitesia

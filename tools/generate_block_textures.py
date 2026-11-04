@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generates the 32x32 block textures into assets/textures/blocks/.
 
-One seamless PNG per fluid, loose ground, ice, rock and built material of assets/matter/matter.json.
-File name = material id (rock.granite.png); a face of its own is <id>_top, <id>_side, <id>_bottom.
+One seamless PNG per fluid, loose ground, ice, rock and built material of assets/matter/matter.xml.
+File name = material id (granite.png); a face of its own is <id>_top, <id>_side, <id>_bottom.
 Minerals get no tile: a mineral block is drawn in its catalog colour.
 Standard library only. Colours are deliberately loud (GregTech style): the catalog
 colour is saturated, and near-grey rocks get a hue derived from their id so that every
@@ -11,11 +11,11 @@ rock is recognisable at a glance. Output is deterministic.
 Usage: python tools/GenerateBlockTextures.py [--sheet preview.png]
 """
 import colorsys
-import json
 import math
 import random
 import struct
 import sys
+import xml.etree.ElementTree as ET
 import zlib
 from pathlib import Path
 
@@ -310,46 +310,46 @@ BY_CLASS = {
 }
 
 BY_ROCK = {
-    "rock.obsidian": "coal", "rock.volcanic_breccia": "clastic",
-    "rock.hyaloclastite": "clastic", "rock.conglomerate": "clastic",
-    "rock.sedimentary_breccia": "clastic", "rock.tillite": "clastic",
-    "rock.fault_breccia": "clastic", "rock.fault_gouge": "soil",
-    "rock.rock_salt": "crystal", "rock.sylvinite": "crystal", "rock.carnallitite": "crystal",
-    "rock.trona_rock": "crystal", "rock.gypsum_rock": "crystal",
-    "rock.anhydrite_rock": "crystal", "rock.travertine": "layered",
-    "rock.oolitic_limestone": "porous", "rock.chert": "dense", "rock.phosphorite": "clastic",
-    "rock.biff": "banded", "rock.oolitic_ironstone": "porous", "rock.manganese_rock": "dense",
-    "rock.lignite": "coal", "rock.subbituminous_coal": "coal", "rock.bituminous_coal": "coal",
-    "rock.anthracite": "coal", "rock.oil_shale": "layered", "rock.diatomite": "soft",
-    "rock.bauxite": "porous", "rock.laterite_crust": "porous", "rock.calcrete": "soft",
-    "rock.silcrete": "dense", "rock.slate": "layered", "rock.phyllite": "layered",
-    "rock.mica_schist": "schist", "rock.chlorite_schist": "schist",
-    "rock.garnet_schist": "schist", "rock.graphite_schist": "schist",
-    "rock.greenschist": "schist", "rock.blueschist": "schist", "rock.talc_schist": "schist",
-    "rock.marble": "crystal", "rock.quartzite": "crystal", "rock.skarn": "crystal",
-    "rock.calc_silicate": "crystal", "rock.hornfels": "dense", "rock.serpentinite": "dense",
-    "rock.eclogite": "crystal", "rock.carbonatite": "crystal", "rock.pegmatite": "crystal",
-    "rock.kimberlite": "clastic", "rock.pillow_basalt": "clastic",
-    "rock.marl": "soft", "rock.chalk": "soft",
+    "obsidian": "coal", "volcanic_breccia": "clastic",
+    "hyaloclastite": "clastic", "conglomerate": "clastic",
+    "sedimentary_breccia": "clastic", "tillite": "clastic",
+    "fault_breccia": "clastic", "fault_gouge": "soil",
+    "rock_salt": "crystal", "sylvinite": "crystal", "carnallitite": "crystal",
+    "trona_rock": "crystal", "gypsum_rock": "crystal",
+    "anhydrite_rock": "crystal", "travertine": "layered",
+    "oolitic_limestone": "porous", "chert": "dense", "phosphorite": "clastic",
+    "biff": "banded", "oolitic_ironstone": "porous", "manganese_rock": "dense",
+    "lignite": "coal", "subbituminous_coal": "coal", "bituminous_coal": "coal",
+    "anthracite": "coal", "oil_shale": "layered", "diatomite": "soft",
+    "bauxite": "porous", "laterite_crust": "porous", "calcrete": "soft",
+    "silcrete": "dense", "slate": "layered", "phyllite": "layered",
+    "mica_schist": "schist", "chlorite_schist": "schist",
+    "garnet_schist": "schist", "graphite_schist": "schist",
+    "greenschist": "schist", "blueschist": "schist", "talc_schist": "schist",
+    "marble": "crystal", "quartzite": "crystal", "skarn": "crystal",
+    "calc_silicate": "crystal", "hornfels": "dense", "serpentinite": "dense",
+    "eclogite": "crystal", "carbonatite": "crystal", "pegmatite": "crystal",
+    "kimberlite": "clastic", "pillow_basalt": "clastic",
+    "marl": "soft", "chalk": "soft",
 }
 
 SOILS = {
-    "soil.humus": "soil", "soil.subsoil": "soil", "soil.clay": "soil", "soil.silt": "soil",
-    "soil.sand": "sand", "soil.gravel": "gravel", "soil.peat": "fibre", "soil.loess": "soil",
-    "soil.till": "gravel", "soil.saprolite": "soil", "soil.laterite": "soil",
-    "soil.alluvium": "sand", "soil.scree": "gravel", "ice.glacier": "ice",
-    "ice.permafrost": "gravel",
+    "humus": "soil", "subsoil": "soil", "clay": "soil", "silt": "soil",
+    "sand": "sand", "gravel": "gravel", "peat": "fibre", "loess": "soil",
+    "till": "gravel", "saprolite": "soil", "laterite": "soil",
+    "alluvium": "sand", "scree": "gravel", "glacier": "ice",
+    "permafrost": "gravel",
 }
 
-# Built materials of assets/matter/matter.json.
+# Built materials of assets/matter/matter.xml.
 BUILT = {
-    "built.planks": "layered", "built.brick": "clastic", "built.glass": "ice",
-    "built.glass_red": "ice", "built.glass_green": "ice", "built.glass_blue": "ice",
-    "built.lamp": "crystal",
+    "planks": "layered", "brick": "clastic", "glass": "ice",
+    "glass_red": "ice", "glass_green": "ice", "glass_blue": "ice",
+    "lamp": "crystal",
 }
 
-FLUIDS = {"fluid.water": "wave", "fluid.seawater": "wave", "fluid.brine": "wave",
-          "fluid.oil": "wave", "fluid.magma": "magma"}
+FLUIDS = {"water": "wave", "seawater": "wave", "brine": "wave",
+          "oil": "wave", "magma": "magma"}
 
 
 def render(material_id, family, rgb, keep_dark=False):
@@ -378,26 +378,27 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     textures = {}
 
-    materials = json.loads((ROOT / "assets/matter/matter.json").read_text("utf-8"))["matter"]
-    for m in materials:
-        key, kind = m["id"], m["class"]
-        if key == "soil.turf":
+    materials = ET.parse(ROOT / "assets/matter/matter.xml").getroot()
+    for m in materials.findall("matter"):
+        key, kind = m.get("id"), m.get("class")
+        color = m.get("color")
+        if key == "turf":
             # Grass-covered ground: one tile per face (docs/06_BLOCKS.md, section 3.5).
-            green = hex_rgb(m["color"])
-            top = Canvas(green, "soil.turf_top")
+            green = hex_rgb(color)
+            top = Canvas(green, "turf_top")
             f_grass_top(top)
-            textures["soil.turf_top"] = top.px
-            textures["soil.turf_side"] = grass_side("soil.turf_side", green)
-            textures["soil.turf_bottom"] = render("soil.turf_bottom", "soil", (139, 94, 60))
+            textures["turf_top"] = top.px
+            textures["turf_side"] = grass_side("turf_side", green)
+            textures["turf_bottom"] = render("turf_bottom", "soil", (139, 94, 60))
         elif kind == "rock":
-            family = BY_ROCK.get(key, BY_CLASS[m["rock"]["class"]])
-            textures[key] = render(key, family, hex_rgb(m["color"]), keep_dark=family == "coal")
+            family = BY_ROCK.get(key, BY_CLASS[m.find("rock").get("class")])
+            textures[key] = render(key, family, hex_rgb(color), keep_dark=family == "coal")
         elif kind == "built":
-            textures[key] = render(key, BUILT.get(key, "dense"), hex_rgb(m["color"]))
+            textures[key] = render(key, BUILT.get(key, "dense"), hex_rgb(color))
         elif kind in ("loose", "ice", "fluid"):
             family = SOILS.get(key) or FLUIDS.get(key)
             if family:
-                textures[key] = render(key, family, hex_rgb(m["color"]), keep_dark=key == "fluid.oil")
+                textures[key] = render(key, family, hex_rgb(color), keep_dark=key == "oil")
 
     for name, pixels in textures.items():
         write_png(OUT / f"{name}.png", pixels)

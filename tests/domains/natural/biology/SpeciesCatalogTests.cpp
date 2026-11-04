@@ -44,8 +44,8 @@ TEST_CASE("SpeciesCatalogLoadsTheShippedSpecies") {
   RequireFatal(oak != nullptr, "species.oak is missing");
   CHECK(oak->form == PlantForm::Broadleaf);
   CHECK(oak->heightMeters.min <= oak->heightMeters.max);
-  CHECK(oak->matter.trunk == MatterNamed("plant.oak.trunk").id);
-  CHECK(oak->matter.leaves == MatterNamed("plant.oak.leaves").id);
+  CHECK(oak->matter.trunk == MatterNamed("oak.trunk").id);
+  CHECK(oak->matter.leaves == MatterNamed("oak.leaves").id);
 
   CHECK(catalog.Find("species.spruce")->form == PlantForm::Conifer);
   CHECK(catalog.Find("species.palm")->crownShape == CrownShape::Umbrella);
@@ -53,9 +53,8 @@ TEST_CASE("SpeciesCatalogLoadsTheShippedSpecies") {
 }
 
 TEST_CASE("PlantMatterCarryTheTagsTheGameAsksFor") {
-  const MatterCatalog& materials = *SharedMatter();
   for (const char* name : {"oak", "spruce", "palm"}) {
-    const std::string prefix = std::string("plant.") + name + ".";
+    const std::string prefix = std::string(name) + ".";
     for (const char* part : {"trunk", "branch", "twig", "root"}) {
       const MatterDef& wood = MatterNamed(prefix + part);
       CHECK(wood.blockClass == BlockClass::Plant);
@@ -65,7 +64,7 @@ TEST_CASE("PlantMatterCarryTheTagsTheGameAsksFor") {
     }
     const MatterDef& leaves = MatterNamed(prefix + "leaves");
     CHECK(leaves.opacity.r < kMaxLightLevel);
-    CHECK(materials.Find(prefix + "leaves")->id >= kFirstPlantMatter);
+    CHECK(leaves.blockClass == BlockClass::Plant);
   }
 }
 
@@ -98,13 +97,13 @@ TEST_CASE("SpeciesCatalogRejectsBrokenRecords") {
           s.erase("niche");
         }).find("missing field 'niche'") != std::string::npos);
   CHECK(ErrorAfter("species_bad_material", [](Json& s) {
-          s["matter"]["leaves"] = "rock.granite";
+          s["matter"]["leaves"] = "granite";
         }).find("not a plant material") != std::string::npos);
   CHECK(ErrorAfter("species_unknown_material", [](Json& s) {
           s["matter"]["trunk"] = "plant.oak.nothing";
         }).find("not a plant material") != std::string::npos);
   CHECK(ErrorAfter("species_wrong_part", [](Json& s) {
-          s["matter"]["leaves"] = "plant.oak.trunk";
+          s["matter"]["leaves"] = "oak.trunk";
         }).find("lacks the tag 'tree_leaves'") != std::string::npos);
   CHECK(ErrorAfter("species_bad_yield", [](Json& s) {
           s["yield"]["logsPerCubicM"] = 0;

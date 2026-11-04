@@ -44,7 +44,7 @@ TEST_CASE("EveryProvinceGetsAPileOfFormations") {
   }
   // Unknown provinces fall back to granite basement.
   CHECK(model.BedrockAt(kNoProvince, 0.0, 0.0, -100, 0) ==
-        MatterNamed("rock.granite").id);
+        MatterNamed("granite").id);
 }
 
 TEST_CASE("ProfilesFollowThePileOrderFromTopToBasement") {

@@ -4,7 +4,7 @@
 // assets/biology/species.json without starting the game.
 //
 // Every cell is drawn as an isometric cube in the colour of the material the
-// species gives its part (assets/matter/matter.json). Roots (below the
+// species gives its part (assets/matter/matter.xml). Roots (below the
 // ground) are darkened.
 //
 //   TreeSnapshot                                    every species, 6 seeds,
@@ -197,7 +197,7 @@ std::vector<const Species*> ChooseSpecies(
 int Run(const Options& options) {
   const std::string assets = INFINITESIA_ASSET_DIR;
   const MatterCatalog materials =
-      MatterCatalog::LoadFromFile(assets + "/matter/matter.json");
+      MatterCatalog::LoadFromFile(assets + "/matter/matter.xml");
   const SpeciesCatalog catalog =
       SpeciesCatalog::Load(assets + "/biology/species.json", materials);
   const std::vector<const Species*> species =

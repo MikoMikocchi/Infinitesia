@@ -1,79 +1,84 @@
 #include "matter/MatterCatalog.h"
 
-#include <algorithm>
-#include <set>
-
 #include "matter/MatterLoader.h"
 
 namespace Infinitesia {
-MatterCatalog MatterCatalog::LoadFromFile(
-    const std::filesystem::path& path) {
+MatterCatalog MatterCatalog::LoadFromFile(const std::filesystem::path& path) {
   std::vector<MatterDef> materials;
-  ChemistryTable chemistry;
-  ModalTable modal;
+  ChemistryByKey chemistry;
+  ModalByKey modal;
   LoadMaterialFile(path, materials, chemistry, modal);
   return Assemble(std::move(materials), std::move(chemistry), std::move(modal));
 }
 
 MatterCatalog MatterCatalog::Assemble(std::vector<MatterDef> materials,
-                                          ChemistryTable chemistry,
-                                          ModalTable modal) {
+                                      ChemistryByKey chemistry,
+                                      ModalByKey modal) {
   MatterCatalog catalog;
-  std::sort(
-      materials.begin(), materials.end(),
-      [](const MatterDef& a, const MatterDef& b) { return a.id < b.id; });
-  catalog.m_matter = std::move(materials);
-  catalog.m_chemistry = std::move(chemistry);
-  catalog.m_modal = std::move(modal);
-
-  catalog.m_index.assign(kMatterCapacity, -1);
-  std::set<std::string> keys;
-  for (std::size_t i = 0; i < catalog.m_matter.size(); ++i) {
-    const MatterDef& material = catalog.m_matter[i];
-    if (material.id >= kMatterCapacity)
-      throw CatalogError("materials: '" + material.key + "' has an id above " +
-                         std::to_string(kMatterCapacity - 1));
-    if (catalog.m_index[material.id] >= 0) {
-      throw CatalogError("materials: numeric id " +
-                         std::to_string(material.id) + " is used by both '" +
-                         catalog
-                             .m_matter[static_cast<std::size_t>(
-                                 catalog.m_index[material.id])]
-                             .key +
-                         "' and '" + material.key + "'");
+  if (materials.size() > static_cast<std::size_t>(kMatterCapacity)) {
+    throw CatalogError("materials: more than " + std::to_string(kMatterCapacity) +
+                       " records");
+  }
+  // The dense id is the record's place in the list (docs/DataDriven.md, 4.2):
+  // the data names a material by its string id, the runtime by this number.
+  for (std::size_t i = 0; i < materials.size(); ++i) {
+    materials[i].id = static_cast<MatterId>(i);
+    if (!catalog.m_byKey.emplace(materials[i].key, static_cast<MatterId>(i))
+             .second) {
+      throw CatalogError("materials: duplicate id '" + materials[i].key + "'");
     }
-    if (!keys.insert(material.key).second)
-      throw CatalogError("materials: duplicate id '" + material.key + "'");
-    catalog.m_index[material.id] = static_cast<int>(i);
-    catalog.m_byKey.emplace(material.key, static_cast<int>(i));
   }
-  if (catalog.Get(kAirMatter) == nullptr ||
-      catalog.Get(kAirMatter)->blockClass != BlockClass::Air)
-    throw CatalogError("materials: material 0 must be air");
-  if (catalog.Get(kWaterMatter) == nullptr ||
-      catalog.Get(kWaterMatter)->blockClass != BlockClass::Fluid)
-    throw CatalogError("materials: material 1 must be a fluid (water)");
+  catalog.m_matter = std::move(materials);
 
-  for (const auto& [id, info] : catalog.m_chemistry) {
-    if (catalog.Get(id) == nullptr)
-      throw CatalogError("materials: chemistry given for unknown material " +
-                         std::to_string(id));
+  if (catalog.m_matter.size() <= kAirMatter ||
+      catalog.m_matter[kAirMatter].blockClass != BlockClass::Air)
+    throw CatalogError("materials: the first material must be air");
+  if (catalog.m_matter.size() <= kWaterMatter ||
+      catalog.m_matter[kWaterMatter].blockClass != BlockClass::Fluid)
+    throw CatalogError("materials: the second material must be a fluid (water)");
+
+  const auto indexOf = [&catalog](const std::string& key) -> int {
+    const auto found = catalog.m_byKey.find(key);
+    return found == catalog.m_byKey.end() ? -1
+                                          : static_cast<int>(found->second);
+  };
+
+  for (auto& [key, info] : chemistry) {
+    const int index = indexOf(key);
+    if (index < 0)
+      throw CatalogError("materials: chemistry given for unknown material '" +
+                         key + "'");
+    catalog.m_chemistry.emplace(static_cast<MatterId>(index), std::move(info));
   }
-  for (const auto& [id, composition] : catalog.m_modal) {
-    const MatterDef* rock = catalog.Get(id);
-    if (rock == nullptr)
+  for (auto& [key, pending] : modal) {
+    const int index = indexOf(key);
+    if (index < 0)
       throw CatalogError(
-          "materials: modal composition given for unknown material " +
-          std::to_string(id));
-    for (const ModalEntry& part : composition.parts) {
-      const MatterDef* mineral = catalog.Get(part.mineral);
-      if (mineral == nullptr || mineral->blockClass != BlockClass::Mineral) {
-        throw CatalogError("materials: modal composition of '" + rock->key +
-                           "' names material " + std::to_string(part.mineral) +
-                           ", which is not a mineral");
-      }
-      if (catalog.ChemistryOf(part.mineral) == nullptr)
-        throw CatalogError("materials: mineral '" + mineral->key +
+          "materials: modal composition given for unknown material '" + key +
+          "'");
+    ModalComposition composition;
+    composition.rockClass = pending.rockClass;
+    for (const auto& [mineralKey, fraction] : pending.parts) {
+      const int mineralIndex = indexOf(mineralKey);
+      if (mineralIndex < 0)
+        throw CatalogError("materials: modal composition of '" + key +
+                           "' names unknown mineral '" + mineralKey + "'");
+      const MatterDef& mineral = catalog.m_matter[mineralIndex];
+      if (mineral.blockClass != BlockClass::Mineral)
+        throw CatalogError("materials: modal composition of '" + key +
+                           "' names '" + mineralKey +
+                           "', which is not a mineral");
+      composition.parts.push_back({static_cast<MatterId>(mineralIndex),
+                                   fraction});
+    }
+    catalog.m_modal.emplace(static_cast<MatterId>(index),
+                            std::move(composition));
+  }
+  for (const auto& entry : catalog.m_modal) {
+    for (const ModalEntry& part : entry.second.parts) {
+      if (!catalog.m_chemistry.contains(part.mineral))
+        throw CatalogError("materials: mineral '" +
+                           catalog.m_matter[part.mineral].key +
                            "' has no chemistry");
     }
   }
@@ -88,8 +93,8 @@ const MatterDef* MatterCatalog::Find(std::string_view key) const noexcept {
 }
 
 const MatterDef* MatterCatalog::Get(MatterId id) const noexcept {
-  if (id >= m_index.size() || m_index[id] < 0) return nullptr;
-  return &m_matter[static_cast<std::size_t>(m_index[id])];
+  return id < m_matter.size() ? &m_matter[static_cast<std::size_t>(id)]
+                              : nullptr;
 }
 
 const ChemistryInfo* MatterCatalog::ChemistryOf(

@@ -27,23 +27,23 @@
             },
             "layers": [
                 {
-                    "rock": "rock.peridotite",
+                    "rock": "peridotite",
                     "thicknessM": 4000
                 },
                 {
-                    "rock": "rock.gabbro",
+                    "rock": "gabbro",
                     "thicknessM": 3000
                 },
                 {
-                    "rock": "rock.dolerite",
+                    "rock": "dolerite",
                     "thicknessM": 1500
                 },
                 {
-                    "rock": "rock.pillow_basalt",
+                    "rock": "pillow_basalt",
                     "thicknessM": 1000
                 },
                 {
-                    "rock": "rock.claystone",
+                    "rock": "claystone",
                     "thicknessM": 100
                 }
             ]
@@ -73,33 +73,33 @@
             },
             "layers": [
                 {
-                    "rock": "rock.peridotite",
+                    "rock": "peridotite",
                     "thicknessM": 4000
                 },
                 {
-                    "rock": "rock.gabbro",
+                    "rock": "gabbro",
                     "thicknessM": 3000
                 },
                 {
-                    "rock": "rock.dolerite",
+                    "rock": "dolerite",
                     "thicknessM": 1500
                 },
                 {
-                    "rock": "rock.pillow_basalt",
+                    "rock": "pillow_basalt",
                     "thicknessM": 1000
                 },
                 {
-                    "rock": "rock.chert",
+                    "rock": "chert",
                     "thicknessM": 100,
                     "requires": "organicRichMarineSediments"
                 },
                 {
-                    "rock": "rock.chalk",
+                    "rock": "chalk",
                     "thicknessM": 200,
                     "requires": "calcareousPlankton"
                 },
                 {
-                    "rock": "rock.claystone",
+                    "rock": "claystone",
                     "thicknessM": 200
                 }
             ]
@@ -129,27 +129,27 @@
             },
             "layers": [
                 {
-                    "rock": "rock.peridotite",
+                    "rock": "peridotite",
                     "thicknessM": 4000
                 },
                 {
-                    "rock": "rock.gabbro",
+                    "rock": "gabbro",
                     "thicknessM": 3000
                 },
                 {
-                    "rock": "rock.pillow_basalt",
+                    "rock": "pillow_basalt",
                     "thicknessM": 1000
                 },
                 {
-                    "rock": "rock.chert",
+                    "rock": "chert",
                     "thicknessM": 100
                 },
                 {
-                    "rock": "rock.greywacke",
+                    "rock": "greywacke",
                     "thicknessM": 800
                 },
                 {
-                    "rock": "rock.mudstone",
+                    "rock": "mudstone",
                     "thicknessM": 400
                 }
             ]
@@ -179,23 +179,23 @@
             },
             "layers": [
                 {
-                    "rock": "rock.diorite",
+                    "rock": "diorite",
                     "thicknessM": 3000
                 },
                 {
-                    "rock": "rock.andesite",
+                    "rock": "andesite",
                     "thicknessM": 800
                 },
                 {
-                    "rock": "rock.volcanic_breccia",
+                    "rock": "volcanic_breccia",
                     "thicknessM": 300
                 },
                 {
-                    "rock": "rock.tuff",
+                    "rock": "tuff",
                     "thicknessM": 300
                 },
                 {
-                    "rock": "rock.andesite",
+                    "rock": "andesite",
                     "thicknessM": 300
                 }
             ]
@@ -225,27 +225,27 @@
             },
             "layers": [
                 {
-                    "rock": "rock.granodiorite",
+                    "rock": "granodiorite",
                     "thicknessM": 3000
                 },
                 {
-                    "rock": "rock.andesite",
+                    "rock": "andesite",
                     "thicknessM": 800
                 },
                 {
-                    "rock": "rock.dacite",
+                    "rock": "dacite",
                     "thicknessM": 500
                 },
                 {
-                    "rock": "rock.tuff",
+                    "rock": "tuff",
                     "thicknessM": 300
                 },
                 {
-                    "rock": "rock.ignimbrite",
+                    "rock": "ignimbrite",
                     "thicknessM": 200
                 },
                 {
-                    "rock": "rock.rhyolite",
+                    "rock": "rhyolite",
                     "thicknessM": 200
                 }
             ]
@@ -275,31 +275,31 @@
             },
             "layers": [
                 {
-                    "rock": "rock.gneiss",
+                    "rock": "gneiss",
                     "thicknessM": 4000
                 },
                 {
-                    "rock": "rock.mica_schist",
+                    "rock": "mica_schist",
                     "thicknessM": 1500
                 },
                 {
-                    "rock": "rock.amphibolite",
+                    "rock": "amphibolite",
                     "thicknessM": 800
                 },
                 {
-                    "rock": "rock.marble",
+                    "rock": "marble",
                     "thicknessM": 400
                 },
                 {
-                    "rock": "rock.quartzite",
+                    "rock": "quartzite",
                     "thicknessM": 400
                 },
                 {
-                    "rock": "rock.phyllite",
+                    "rock": "phyllite",
                     "thicknessM": 800
                 },
                 {
-                    "rock": "rock.slate",
+                    "rock": "slate",
                     "thicknessM": 600
                 }
             ]
@@ -329,31 +329,31 @@
             },
             "layers": [
                 {
-                    "rock": "rock.gneiss",
+                    "rock": "gneiss",
                     "thicknessM": 3000
                 },
                 {
-                    "rock": "rock.amphibolite",
+                    "rock": "amphibolite",
                     "thicknessM": 800
                 },
                 {
-                    "rock": "rock.garnet_schist",
+                    "rock": "garnet_schist",
                     "thicknessM": 700
                 },
                 {
-                    "rock": "rock.mica_schist",
+                    "rock": "mica_schist",
                     "thicknessM": 1200
                 },
                 {
-                    "rock": "rock.quartzite",
+                    "rock": "quartzite",
                     "thicknessM": 400
                 },
                 {
-                    "rock": "rock.marble",
+                    "rock": "marble",
                     "thicknessM": 300
                 },
                 {
-                    "rock": "rock.greenschist",
+                    "rock": "greenschist",
                     "thicknessM": 500
                 }
             ]
@@ -383,28 +383,28 @@
             },
             "layers": [
                 {
-                    "rock": "rock.gneiss",
+                    "rock": "gneiss",
                     "thicknessM": 3000
                 },
                 {
-                    "rock": "rock.red_beds",
+                    "rock": "red_beds",
                     "thicknessM": 600,
                     "requires": "freeOxygen"
                 },
                 {
-                    "rock": "rock.basalt",
+                    "rock": "basalt",
                     "thicknessM": 500
                 },
                 {
-                    "rock": "rock.shale",
+                    "rock": "shale",
                     "thicknessM": 400
                 },
                 {
-                    "rock": "rock.rock_salt",
+                    "rock": "rock_salt",
                     "thicknessM": 200
                 },
                 {
-                    "rock": "rock.quartz_sandstone",
+                    "rock": "quartz_sandstone",
                     "thicknessM": 300
                 }
             ]
@@ -434,35 +434,35 @@
             },
             "layers": [
                 {
-                    "rock": "rock.granite",
+                    "rock": "granite",
                     "thicknessM": 3000
                 },
                 {
-                    "rock": "rock.quartz_sandstone",
+                    "rock": "quartz_sandstone",
                     "thicknessM": 200
                 },
                 {
-                    "rock": "rock.dolerite",
+                    "rock": "dolerite",
                     "thicknessM": 150
                 },
                 {
-                    "rock": "rock.basalt",
+                    "rock": "basalt",
                     "thicknessM": 400
                 },
                 {
-                    "rock": "rock.scoria",
+                    "rock": "scoria",
                     "thicknessM": 30
                 },
                 {
-                    "rock": "rock.basalt",
+                    "rock": "basalt",
                     "thicknessM": 400
                 },
                 {
-                    "rock": "rock.tuff",
+                    "rock": "tuff",
                     "thicknessM": 40
                 },
                 {
-                    "rock": "rock.basalt",
+                    "rock": "basalt",
                     "thicknessM": 400
                 }
             ]
@@ -492,19 +492,19 @@
             },
             "layers": [
                 {
-                    "rock": "rock.orthogneiss",
+                    "rock": "orthogneiss",
                     "thicknessM": 5000
                 },
                 {
-                    "rock": "rock.tonalite",
+                    "rock": "tonalite",
                     "thicknessM": 3000
                 },
                 {
-                    "rock": "rock.greenschist",
+                    "rock": "greenschist",
                     "thicknessM": 700
                 },
                 {
-                    "rock": "rock.granite",
+                    "rock": "granite",
                     "thicknessM": 1500
                 }
             ]
@@ -534,45 +534,45 @@
             },
             "layers": [
                 {
-                    "rock": "rock.orthogneiss",
+                    "rock": "orthogneiss",
                     "thicknessM": 4000
                 },
                 {
-                    "rock": "rock.conglomerate",
+                    "rock": "conglomerate",
                     "thicknessM": 100
                 },
                 {
-                    "rock": "rock.quartz_sandstone",
+                    "rock": "quartz_sandstone",
                     "thicknessM": 300
                 },
                 {
-                    "rock": "rock.shale",
+                    "rock": "shale",
                     "thicknessM": 300
                 },
                 {
-                    "rock": "rock.limestone",
+                    "rock": "limestone",
                     "thicknessM": 400
                 },
                 {
-                    "rock": "rock.dolomite",
+                    "rock": "dolomite",
                     "thicknessM": 200
                 },
                 {
-                    "rock": "rock.gypsum_rock",
+                    "rock": "gypsum_rock",
                     "thicknessM": 100
                 },
                 {
-                    "rock": "rock.red_beds",
+                    "rock": "red_beds",
                     "thicknessM": 200,
                     "requires": "freeOxygen"
                 },
                 {
-                    "rock": "rock.bituminous_coal",
+                    "rock": "bituminous_coal",
                     "thicknessM": 20,
                     "requires": "landPlants"
                 },
                 {
-                    "rock": "rock.siltstone",
+                    "rock": "siltstone",
                     "thicknessM": 150
                 }
             ]
@@ -602,41 +602,41 @@
             },
             "layers": [
                 {
-                    "rock": "rock.orthogneiss",
+                    "rock": "orthogneiss",
                     "thicknessM": 4000
                 },
                 {
-                    "rock": "rock.red_beds",
+                    "rock": "red_beds",
                     "thicknessM": 500,
                     "requires": "freeOxygen"
                 },
                 {
-                    "rock": "rock.rock_salt",
+                    "rock": "rock_salt",
                     "thicknessM": 300
                 },
                 {
-                    "rock": "rock.shale",
+                    "rock": "shale",
                     "thicknessM": 500
                 },
                 {
-                    "rock": "rock.quartz_sandstone",
+                    "rock": "quartz_sandstone",
                     "thicknessM": 600
                 },
                 {
-                    "rock": "rock.limestone",
+                    "rock": "limestone",
                     "thicknessM": 400
                 },
                 {
-                    "rock": "rock.bituminous_coal",
+                    "rock": "bituminous_coal",
                     "thicknessM": 15,
                     "requires": "landPlants"
                 },
                 {
-                    "rock": "rock.siltstone",
+                    "rock": "siltstone",
                     "thicknessM": 500
                 },
                 {
-                    "rock": "rock.mudstone",
+                    "rock": "mudstone",
                     "thicknessM": 300
                 }
             ]
@@ -666,28 +666,28 @@
             },
             "layers": [
                 {
-                    "rock": "rock.orthogneiss",
+                    "rock": "orthogneiss",
                     "thicknessM": 4000
                 },
                 {
-                    "rock": "rock.red_beds",
+                    "rock": "red_beds",
                     "thicknessM": 400,
                     "requires": "freeOxygen"
                 },
                 {
-                    "rock": "rock.rock_salt",
+                    "rock": "rock_salt",
                     "thicknessM": 200
                 },
                 {
-                    "rock": "rock.limestone",
+                    "rock": "limestone",
                     "thicknessM": 600
                 },
                 {
-                    "rock": "rock.quartz_sandstone",
+                    "rock": "quartz_sandstone",
                     "thicknessM": 500
                 },
                 {
-                    "rock": "rock.shale",
+                    "rock": "shale",
                     "thicknessM": 400
                 }
             ]
@@ -717,31 +717,31 @@
             },
             "layers": [
                 {
-                    "rock": "rock.gneiss",
+                    "rock": "gneiss",
                     "thicknessM": 4000
                 },
                 {
-                    "rock": "rock.migmatite",
+                    "rock": "migmatite",
                     "thicknessM": 800
                 },
                 {
-                    "rock": "rock.granulite",
+                    "rock": "granulite",
                     "thicknessM": 600
                 },
                 {
-                    "rock": "rock.amphibolite",
+                    "rock": "amphibolite",
                     "thicknessM": 800
                 },
                 {
-                    "rock": "rock.mica_schist",
+                    "rock": "mica_schist",
                     "thicknessM": 1000
                 },
                 {
-                    "rock": "rock.garnet_schist",
+                    "rock": "garnet_schist",
                     "thicknessM": 400
                 },
                 {
-                    "rock": "rock.marble",
+                    "rock": "marble",
                     "thicknessM": 300
                 }
             ]

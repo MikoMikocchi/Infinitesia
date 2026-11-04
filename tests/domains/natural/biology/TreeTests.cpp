@@ -262,15 +262,15 @@ TEST_CASE("TheFormsLookAlike") {
 TEST_CASE("EveryPartMapsToTheMatterOfTheSpecies") {
   const Species& oak = SpeciesNamed("species.oak");
   CHECK(PartMatter(oak.matter, TreePart::Trunk) ==
-        MatterNamed("plant.oak.trunk").id);
+        MatterNamed("oak.trunk").id);
   CHECK(PartMatter(oak.matter, TreePart::Branch) ==
-        MatterNamed("plant.oak.branch").id);
+        MatterNamed("oak.branch").id);
   CHECK(PartMatter(oak.matter, TreePart::Twig) ==
-        MatterNamed("plant.oak.twig").id);
+        MatterNamed("oak.twig").id);
   CHECK(PartMatter(oak.matter, TreePart::Leaves) ==
-        MatterNamed("plant.oak.leaves").id);
+        MatterNamed("oak.leaves").id);
   CHECK(PartMatter(oak.matter, TreePart::Root) ==
-        MatterNamed("plant.oak.root").id);
+        MatterNamed("oak.root").id);
   CHECK(IsWood(TreePart::Root));
   CHECK(!IsWood(TreePart::Leaves));
 }

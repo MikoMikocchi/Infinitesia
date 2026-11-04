@@ -1,63 +1,35 @@
 #include "matter/MatterLoader.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <set>
-#include <unordered_map>
+#include <string>
+#include <vector>
 
-#include "matter/CatalogJson.h"
+#include "content/xml/XmlDocument.h"
+#include "content/xml/XmlRead.h"
+#include "core/ContentRegistry.h"
+#include "matter/CatalogError.h"
 
 namespace Infinitesia {
-using namespace CatalogJson;
-
 namespace {
-BlockClass MaterialClassField(const Json& object, const Where& where) {
+using Content::Xml::Where;
+
+BlockClass MaterialClass(const std::string& text, const Where& where) {
   static constexpr std::pair<const char*, BlockClass> kNames[] = {
       {"air", BlockClass::Air},         {"fluid", BlockClass::Fluid},
       {"loose", BlockClass::Loose},     {"ice", BlockClass::Ice},
       {"rock", BlockClass::Rock},       {"built", BlockClass::Built},
       {"mineral", BlockClass::Mineral}, {"plant", BlockClass::Plant},
   };
-  const std::string text = StringField(object, "class", where);
   for (const auto& [name, value] : kNames) {
     if (text == name) return value;
   }
-  Fail(where, "unknown material class '" + text + "'");
+  Content::Xml::Fail(where, "unknown material class '" + text + "'");
 }
 
-// The numeric ids a class may use (MatterId.h) and the prefix its key must
-// have.
-struct ClassRule {
-  int lowest;
-  int highest;
-  const char* prefix;  // nullptr: no rule
-  const char* label;
-};
-
-ClassRule RuleOf(BlockClass blockClass) {
-  switch (blockClass) {
-    case BlockClass::Air:
-    case BlockClass::Fluid:
-      return {0, kFirstRockMatter - 1, nullptr, "0-31"};
-    case BlockClass::Rock:
-      return {kFirstRockMatter, kFirstLooseMatter - 1, "rock.", "32-511"};
-    case BlockClass::Loose:
-    case BlockClass::Ice:
-      return {kFirstLooseMatter, kFirstBuiltMatter - 1, nullptr,
-              "512-1023"};
-    case BlockClass::Built:
-      return {kFirstBuiltMatter, kFirstMineralMatter - 1, "built.",
-              "1024-2047"};
-    case BlockClass::Mineral:
-      return {kFirstMineralMatter, kFirstPlantMatter - 1, "mineral.",
-              "2048-4095"};
-    case BlockClass::Plant:
-      return {kFirstPlantMatter, kMatterCapacity - 1, "plant.",
-              "4096-5119"};
-  }
-  return {0, kMatterCapacity - 1, nullptr, "0-4095"};
-}
-
-RockClass RockClassField(const Json& object, const Where& where) {
+RockClass RockClassOf(const std::string& text, const Where& where) {
   static constexpr std::pair<const char*, RockClass> kNames[] = {
       {"igneous_intrusive", RockClass::IgneousIntrusive},
       {"igneous_extrusive", RockClass::IgneousExtrusive},
@@ -67,143 +39,248 @@ RockClass RockClassField(const Json& object, const Where& where) {
       {"sedimentary_biogenic", RockClass::SedimentaryBiogenic},
       {"metamorphic", RockClass::Metamorphic},
   };
-  const std::string text = StringField(object, "class", where);
   for (const auto& [name, value] : kNames) {
     if (text == name) return value;
   }
-  Fail(where, "unknown rock class '" + text + "'");
+  Content::Xml::Fail(where, "unknown rock class '" + text + "'");
 }
 
-ChemistryInfo ReadChemistry(const Json& object, const Where& where) {
+Provenance ProvenanceOf(const std::string& text, const Where& where) {
+  if (text == "reference") return Provenance::Reference;
+  if (text == "derived") return Provenance::Derived;
+  if (text == "gameplay") return Provenance::Gameplay;
+  Content::Xml::Fail(
+      where,
+      "provenance must be reference, derived or gameplay, got '" + text + "'");
+}
+
+std::uint8_t LightLevel(const std::string& text, const char* name,
+                        const Where& where) {
+  char* end = nullptr;
+  const long level = std::strtol(text.c_str(), &end, 10);
+  if (end == text.c_str() || *end != '\0' || level < 0 ||
+      level > kMaxLightLevel) {
+    Content::Xml::Fail(where, std::string("attribute '") + name +
+                                  "' must be 0-15, got '" + text + "'");
+  }
+  return static_cast<std::uint8_t>(level);
+}
+
+// A light value: one level (all three channels equal, opacity only) or
+// "r,g,b". Absent gives `fallback`.
+LightRgb LightAttribute(const pugi::xml_node& node, const char* name,
+                        const Where& where, LightRgb fallback,
+                        bool allowNumber) {
+  const std::string text = Content::Xml::OptionalAttribute(node, name, "");
+  if (text.empty()) return fallback;
+  std::vector<std::string> parts;
+  std::size_t start = 0;
+  for (;;) {
+    const std::size_t comma = text.find(',', start);
+    parts.push_back(text.substr(
+        start, comma == std::string::npos ? std::string::npos : comma - start));
+    if (comma == std::string::npos) break;
+    start = comma + 1;
+  }
+  if (allowNumber && parts.size() == 1) {
+    const std::uint8_t level = LightLevel(text, name, where);
+    return {level, level, level};
+  }
+  if (parts.size() != 3) {
+    Content::Xml::Fail(where, std::string("attribute '") + name + "' must be " +
+                                  (allowNumber ? "a number or " : "") +
+                                  "\"r,g,b\"");
+  }
+  return {LightLevel(parts[0], name, where), LightLevel(parts[1], name, where),
+          LightLevel(parts[2], name, where)};
+}
+
+int HexDigit(char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  return -1;
+}
+
+RgbColor ColorAttribute(const pugi::xml_node& node, const Where& where) {
+  const std::string text = Content::Xml::Attribute(node, "color", where);
+  if (text.size() != 7 || text[0] != '#') {
+    Content::Xml::Fail(where, "colour must look like #rrggbb, got '" + text + "'");
+  }
+  int channel[3];
+  for (int i = 0; i < 3; ++i) {
+    const int high = HexDigit(text[static_cast<std::size_t>(1 + 2 * i)]);
+    const int low = HexDigit(text[static_cast<std::size_t>(2 + 2 * i)]);
+    if (high < 0 || low < 0) {
+      Content::Xml::Fail(where,
+                         "colour must look like #rrggbb, got '" + text + "'");
+    }
+    channel[i] = high * 16 + low;
+  }
+  return {static_cast<std::uint8_t>(channel[0]),
+          static_cast<std::uint8_t>(channel[1]),
+          static_cast<std::uint8_t>(channel[2])};
+}
+
+// The tags of a material: the tag of its class plus the ones in <tags>.
+std::vector<std::string> TagsOf(const pugi::xml_node& material,
+                                BlockClass blockClass, const Where& where) {
+  std::vector<std::string> tags{ClassTag(blockClass)};
+  const pugi::xml_node list = material.child("tags");
+  if (!list) return tags;
+  for (const pugi::xml_node tag : list.children("tag")) {
+    const std::string text = Content::Xml::Text(tag);
+    if (text.empty()) {
+      Content::Xml::Fail(where, "a <tag> must hold a non-empty id");
+    }
+    if (std::find(tags.begin(), tags.end(), text) == tags.end()) {
+      tags.push_back(text);
+    }
+  }
+  return tags;
+}
+
+ChemistryInfo ReadChemistry(const pugi::xml_node& node, const Where& where) {
   ChemistryInfo chemistry;
-  chemistry.formula = StringField(object, "formula", where);
+  chemistry.formula = Content::Xml::Attribute(node, "formula", where);
   std::string error;
-  if (!Chemistry::Composition::TryParse(chemistry.formula,
-                                        chemistry.composition, &error))
-    Fail(where, error);
+  if (!Chemistry::Composition::TryParse(chemistry.formula, chemistry.composition,
+                                        &error)) {
+    Content::Xml::Fail(where, error);
+  }
   chemistry.molarMass = chemistry.composition.MolarMass();
-  chemistry.mohs = NumberField(object, "mohs", where);
-  if (!(chemistry.mohs >= 0.0 && chemistry.mohs <= 10.0))
-    Fail(where, "Mohs hardness must be 0-10");
-  chemistry.solidSolution = BoolField(object, "solidSolution", where, false);
+  chemistry.mohs = Content::Xml::NumberAttribute(node, "mohs", where);
+  if (!(chemistry.mohs >= 0.0 && chemistry.mohs <= 10.0)) {
+    Content::Xml::Fail(where, "Mohs hardness must be 0-10");
+  }
+  chemistry.solidSolution =
+      Content::Xml::OptionalBoolAttribute(node, "solidSolution", where, false);
   return chemistry;
 }
 
-// The modal composition names minerals by key, so it is read once every key is
-// known.
-ModalComposition ReadModal(
-    const Json& object, const Where& where,
-    const std::unordered_map<std::string, MatterId>& idByKey) {
-  ModalComposition modal;
-  modal.rockClass = RockClassField(object, where);
-  if (!object.contains("modal")) return modal;
+// A rock's modal composition as the data writes it: the minerals are still
+// named by their string id; the catalog resolves them while assembling.
+MatterCatalog::PendingModal ReadModal(const pugi::xml_node& rock,
+                                      const Where& where) {
+  MatterCatalog::PendingModal modal;
+  modal.rockClass =
+      RockClassOf(Content::Xml::Attribute(rock, "class", where), where);
   double sum = 0.0;
-  std::set<MatterId> used;
-  for (const Json& part : ArrayField(object, "modal", where)) {
-    const std::string mineralKey = StringField(part, "mineral", where);
-    const auto found = idByKey.find(mineralKey);
-    if (found == idByKey.end())
-      Fail(where,
-           "modal composition names unknown mineral '" + mineralKey + "'");
-    if (!used.insert(found->second).second)
-      Fail(where, "modal composition lists '" + mineralKey + "' twice");
-    const double fraction = NumberField(part, "fraction", where);
-    if (!(fraction > 0.0 && fraction <= 1.0))
-      Fail(where, "modal fraction of '" + mineralKey + "' must be in (0, 1]");
+  std::set<std::string> used;
+  for (const pugi::xml_node part : rock.children("part")) {
+    const std::string mineral = Content::Xml::Attribute(part, "mineral", where);
+    if (!used.insert(mineral).second) {
+      Content::Xml::Fail(where, "modal composition lists '" + mineral +
+                                    "' twice");
+    }
+    const double fraction =
+        Content::Xml::NumberAttribute(part, "fraction", where);
+    if (!(fraction > 0.0 && fraction <= 1.0)) {
+      Content::Xml::Fail(where, "modal fraction of '" + mineral +
+                                    "' must be in (0, 1]");
+    }
     sum += fraction;
-    modal.parts.push_back({found->second, fraction});
+    modal.parts.emplace_back(mineral, fraction);
   }
-  if (std::abs(sum - 1.0) > 1.0e-3)
-    Fail(where, "modal fractions sum to " + std::to_string(sum) + ", not 1");
+  if (!modal.parts.empty() && std::abs(sum - 1.0) > 1.0e-3) {
+    Content::Xml::Fail(where, "modal fractions sum to " + std::to_string(sum) +
+                                  ", not 1");
+  }
   return modal;
+}
+
+// Reads matter.xml; throws ContentError, which the entry point turns into the
+// CatalogError its callers expect.
+void ReadMaterialFile(const std::filesystem::path& path,
+                      std::vector<MatterDef>& materials,
+                      MatterCatalog::ChemistryByKey& chemistry,
+                      MatterCatalog::ModalByKey& modal) {
+  const Content::XmlDocument document =
+      Content::XmlDocument::LoadFromFile(path);
+  const std::string file = path.string();
+
+  std::set<std::string> keys;
+  for (const pugi::xml_node entry : document.Root().children("matter")) {
+    const Where head{file, document.LineOf(entry), ""};
+    MatterDef material;
+    material.key = Content::Xml::Attribute(entry, "id", head);
+    const Where record{file, head.line, material.key};
+    material.blockClass =
+        MaterialClass(Content::Xml::Attribute(entry, "class", record), record);
+    if (!keys.insert(material.key).second) {
+      Content::Xml::Fail(record, "duplicate id");
+    }
+
+    material.name = Content::Xml::Attribute(entry, "name", record);
+    material.density = Content::Xml::NumberAttribute(entry, "density", record);
+    if (material.blockClass == BlockClass::Rock) {
+      if (!(material.density >= 500.0 && material.density <= 6000.0)) {
+        Content::Xml::Fail(record, "density must be 500-6000 kg/m3");
+      }
+    } else if (material.blockClass == BlockClass::Mineral) {
+      if (!(material.density >= 500.0 && material.density <= 25000.0)) {
+        Content::Xml::Fail(record, "density must be 500-25000 kg/m3");
+      }
+    } else if (!(material.density > 0.0)) {
+      Content::Xml::Fail(record, "density must be positive");
+    }
+
+    material.digClass = Content::Xml::IntAttribute(entry, "digClass", record);
+    const bool needsDigClass = material.blockClass == BlockClass::Rock ||
+                               material.blockClass == BlockClass::Mineral;
+    if (material.digClass < (needsDigClass ? 1 : 0) || material.digClass > 5) {
+      Content::Xml::Fail(record, needsDigClass ? "digClass must be 1-5"
+                                               : "digClass must be 0-5");
+    }
+
+    material.color = ColorAttribute(entry, record);
+    material.provenance = ProvenanceOf(
+        Content::Xml::Attribute(entry, "provenance", record), record);
+    material.tags = TagsOf(entry, material.blockClass, record);
+    material.opacity = LightAttribute(entry, "opacity", record,
+                                      DefaultOpacity(material.blockClass), true);
+    material.emission =
+        LightAttribute(entry, "emission", record, LightRgb{}, false);
+    const bool solid = material.blockClass != BlockClass::Air;
+    material.walkable =
+        Content::Xml::OptionalBoolAttribute(entry, "walkable", record, solid);
+    material.diggable =
+        Content::Xml::OptionalBoolAttribute(entry, "diggable", record, solid);
+
+    const pugi::xml_node chemistryPart = entry.child("chemistry");
+    if (material.blockClass == BlockClass::Mineral && !chemistryPart) {
+      Content::Xml::Fail(record, "a mineral needs a 'chemistry' part");
+    }
+    if (chemistryPart) {
+      chemistry.emplace(material.key, ReadChemistry(chemistryPart, record));
+    }
+
+    const pugi::xml_node rockPart = entry.child("rock");
+    if (material.blockClass == BlockClass::Rock && !rockPart) {
+      Content::Xml::Fail(record, "a rock needs a 'rock' part");
+    }
+    if (rockPart) {
+      if (material.blockClass != BlockClass::Rock) {
+        Content::Xml::Fail(record, "only a rock may have a 'rock' part");
+      }
+      modal.emplace(material.key, ReadModal(rockPart, record));
+    }
+
+    materials.push_back(std::move(material));
+  }
 }
 }  // namespace
 
 void LoadMaterialFile(const std::filesystem::path& path,
                       std::vector<MatterDef>& materials,
-                      MatterCatalog::ChemistryTable& chemistry,
-                      MatterCatalog::ModalTable& modal) {
-  const Json root = ReadJson(path);
-  const Where where{path.string(), ""};
-
-  struct PendingRock {
-    MatterId id;
-    const Json* object;
-    Where record;
-  };
-  std::vector<PendingRock> rocks;
-  std::unordered_map<std::string, MatterId> idByKey;
-
-  std::size_t index = 0;
-  for (const Json& entry : ArrayField(root, "matter", where)) {
-    Where record{path.string(), "materials[" + std::to_string(index++) + "]"};
-    MatterDef material;
-    material.key = StringField(entry, "id", record);
-    record.record = material.key;
-    material.blockClass = MaterialClassField(entry, record);
-
-    const ClassRule rule = RuleOf(material.blockClass);
-    if (rule.prefix != nullptr && !StartsWith(material.key, rule.prefix))
-      Fail(record, std::string("id must start with '") + rule.prefix + "'");
-    const int numericId = IntField(entry, "numericId", record);
-    if (numericId < rule.lowest || numericId > rule.highest)
-      Fail(record,
-           std::string("numericId is outside the range of its class (") +
-               rule.label + ")");
-    material.id = static_cast<MatterId>(numericId);
-    if (!idByKey.emplace(material.key, material.id).second)
-      Fail(record, "duplicate id");
-
-    material.name = StringField(entry, "name", record);
-    material.density = NumberField(entry, "density", record);
-    if (material.blockClass == BlockClass::Rock) {
-      if (!(material.density >= 500.0 && material.density <= 6000.0))
-        Fail(record, "density must be 500-6000 kg/m3");
-    } else if (material.blockClass == BlockClass::Mineral) {
-      if (!(material.density >= 500.0 && material.density <= 25000.0))
-        Fail(record, "density must be 500-25000 kg/m3");
-    } else if (!(material.density > 0.0)) {
-      Fail(record, "density must be positive");
-    }
-    material.digClass = IntField(entry, "digClass", record);
-    const bool needsDigClass = material.blockClass == BlockClass::Rock ||
-                               material.blockClass == BlockClass::Mineral;
-    if (material.digClass < (needsDigClass ? 1 : 0) || material.digClass > 5)
-      Fail(record,
-           needsDigClass ? "digClass must be 1-5" : "digClass must be 0-5");
-    material.color = ColorField(entry, record);
-    material.provenance = ProvenanceField(entry, record);
-    material.tags = TagsField(entry, material.blockClass, record);
-    material.opacity = LightField(entry, "opacity", record,
-                                  DefaultOpacity(material.blockClass), true);
-    material.emission =
-        LightField(entry, "emission", record, LightRgb{}, false);
-    const bool solid = material.blockClass != BlockClass::Air;
-    material.walkable = BoolField(entry, "walkable", record, solid);
-    material.diggable = BoolField(entry, "diggable", record, solid);
-
-    if (material.blockClass == BlockClass::Mineral &&
-        !entry.contains("chemistry"))
-      Fail(record, "a mineral needs a 'chemistry' part");
-    if (entry.contains("chemistry")) {
-      const Json& part = entry.at("chemistry");
-      if (!part.is_object())
-        Fail(record, "field 'chemistry' must be an object");
-      chemistry.emplace(material.id, ReadChemistry(part, record));
-    }
-    if (material.blockClass == BlockClass::Rock && !entry.contains("rock"))
-      Fail(record, "a rock needs a 'rock' part");
-    if (entry.contains("rock")) {
-      if (material.blockClass != BlockClass::Rock)
-        Fail(record, "only a rock may have a 'rock' part");
-      if (!entry.at("rock").is_object())
-        Fail(record, "field 'rock' must be an object");
-      rocks.push_back({material.id, &entry.at("rock"), record});
-    }
-    materials.push_back(std::move(material));
+                      MatterCatalog::ChemistryByKey& chemistry,
+                      MatterCatalog::ModalByKey& modal) {
+  try {
+    ReadMaterialFile(path, materials, chemistry, modal);
+  } catch (const ContentError& error) {
+    // The matter catalog reports CatalogError to its callers (MatterLoader.h);
+    // the content layer underneath speaks ContentError.
+    throw CatalogError(error.what());
   }
-
-  for (const PendingRock& rock : rocks)
-    modal.emplace(rock.id, ReadModal(*rock.object, rock.record, idByKey));
 }
 }  // namespace Infinitesia
