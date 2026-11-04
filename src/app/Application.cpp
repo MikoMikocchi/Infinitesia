@@ -1,6 +1,7 @@
 #include "app/Application.h"
 #include "raylib.h"
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
+#include "domains/natural/biology/community/VegetationLayer.h"
 #include "domains/natural/geology/model/GeologyModel.h"
 #include "domains/natural/planetary/PlanetLoadSteps.h"
 #include "domains/natural/planetary/StarSystemGenerator.h"
@@ -57,15 +58,15 @@ namespace Infinitesia
 
         // Materials, geology columns and shapes come from the assets shipped next to the executable.
         const std::filesystem::path assets = std::filesystem::path(GetApplicationDirectory()) / "assets";
-        auto materials = std::make_shared<const MaterialCatalog>(
-            MaterialCatalog::LoadFromFile(assets / "materials" / "materials.json"));
+        auto materials = m_materials != nullptr ? m_materials
+            : std::make_shared<const MaterialCatalog>(MaterialCatalog::LoadFromFile(assets / "materials" / "materials.json"));
         auto catalog = std::make_shared<const GeologyCatalog>(
             GeologyCatalog::Load(materials, assets / "geology" / "province_columns.json"));
         auto registry = std::make_shared<const BlockRegistry>(
             BlockRegistry::Build(materials, assets / "blocks" / "shapes.json"));
         auto geology = std::make_shared<const GeologyModel>(catalog, terrain.GetPlanetMap());
-        auto flora = std::make_shared<const SpeciesCatalog>(
-            SpeciesCatalog::Load(assets / "biology" / "species.json", *materials));
+        auto flora = m_species != nullptr ? m_species
+            : std::make_shared<const SpeciesCatalog>(SpeciesCatalog::Load(assets / "biology" / "species.json", *materials));
 
         const GridConfig gridConfig = m_config.settlementGrid;
         auto source = std::make_shared<PlanetTerrainSource>(
@@ -109,12 +110,22 @@ namespace Infinitesia
             LoadStep::kStarSystem, LoadStep::kTectonics, LoadStep::kTerrain, LoadStep::kGeology,
             LoadStep::kClimateContinentality, LoadStep::kClimateTemperature,
             LoadStep::kClimatePrecipitation, LoadStep::kHydrology, LoadStep::kSoils,
-            LoadStep::kBiomes, LoadStep::kViewerColors, LoadStep::kViewerSmoothing });
+            LoadStep::kBiomes, LoadStep::kVegetation, LoadStep::kViewerColors, LoadStep::kViewerSmoothing });
         progress->LoadProfile(kLoadProfilePath);
-        m_planetLoad = std::async(std::launch::async, [seed, progress]() {
+
+        // The planet grows its vegetation from the species catalog, which the settlement reads again later.
+        const std::filesystem::path assets = std::filesystem::path(GetApplicationDirectory()) / "assets";
+        m_materials = std::make_shared<const MaterialCatalog>(
+            MaterialCatalog::LoadFromFile(assets / "materials" / "materials.json"));
+        m_species = std::make_shared<const SpeciesCatalog>(
+            SpeciesCatalog::Load(assets / "biology" / "species.json", *m_materials));
+        PlanetPipeline pipeline = MakeDefaultPlanetPipeline();
+        AddVegetationStages(pipeline, m_species);
+
+        m_planetLoad = std::async(std::launch::async, [seed, progress, pipeline = std::move(pipeline)]() {
             BeginLoadStep(progress, LoadStep::kStarSystem, "Generating star system");
             StarSystem system = StarSystemGenerator::Generate(GenerationScenario{ .seed = seed });
-            auto viewer = std::make_unique<PlanetViewer>(std::move(system), progress);
+            auto viewer = std::make_unique<PlanetViewer>(std::move(system), pipeline, progress);
             progress->Finish();
             progress->SaveProfile(kLoadProfilePath); // best effort; a failed save only skips recalibration
             return viewer;

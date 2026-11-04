@@ -16,10 +16,16 @@
 namespace Infinitesia
 {
     PlanetViewer::PlanetViewer(StarSystem system, LoadProgress* progress)
+        : PlanetViewer(std::move(system), MakeDefaultPlanetPipeline(), progress)
+    {
+    }
+
+    PlanetViewer::PlanetViewer(StarSystem system, const PlanetPipeline& pipeline, LoadProgress* progress)
         : m_system(std::move(system)),
           m_planetMap(
               m_system.planet,
               ClimateInputsFor(m_system),
+              pipeline,
               progress),
           m_regionMap(
               m_planetMap,

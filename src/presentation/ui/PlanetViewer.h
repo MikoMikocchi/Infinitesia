@@ -3,6 +3,7 @@
 #include "foundation/LoadProgress.h"
 #include "domains/natural/planetary/StarSystem.h"
 #include "domains/natural/planetary/PlanetMap.h"
+#include "domains/natural/planetary/pipeline/PlanetPipeline.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
 #include "raylib.h"
 #include "presentation/ui/RegionMapView.h"
@@ -18,6 +19,8 @@ namespace Infinitesia
     {
     public:
         explicit PlanetViewer(StarSystem system, LoadProgress* progress = nullptr);
+        // The planet is built by `pipeline` (the default stages plus those of the domains the game uses).
+        PlanetViewer(StarSystem system, const PlanetPipeline& pipeline, LoadProgress* progress = nullptr);
 
         void Update();
         void Draw() const;

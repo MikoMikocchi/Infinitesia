@@ -1,5 +1,6 @@
 #pragma once
 
+#include "domains/natural/biology/community/VegetationLayer.h"
 #include "domains/natural/biology/flora/FloraModel.h"
 #include "domains/natural/geology/model/GeologyModel.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
@@ -62,6 +63,7 @@ namespace Infinitesia
             int pileTopMeters = 0;
             Conditions climate; // slope is filled in when the flora asks
             bool underSea = false;
+            CartesianPoint3D direction{};
         };
 
         // The ground of a column as the flora sees it.

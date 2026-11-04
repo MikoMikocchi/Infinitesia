@@ -38,17 +38,40 @@ namespace
         return conditions;
     }
 
-    // Flat ground with one climate everywhere.
+    // Flat ground with one climate everywhere, and perhaps one vegetation sample from a planet layer.
     class FlatGround final : public GroundView
     {
     public:
-        explicit FlatGround(Conditions conditions, bool growable = true) : m_conditions(conditions), m_growable(growable) {}
-        GroundColumn ColumnAt(int, int) const override { return { m_growable, kGround, m_conditions }; }
+        explicit FlatGround(Conditions conditions, bool growable = true, std::optional<VegetationSample> vegetation = std::nullopt)
+            : m_conditions(conditions), m_growable(growable), m_vegetation(vegetation) {}
+        GroundColumn ColumnAt(int, int) const override { return { m_growable, kGround, m_conditions, m_vegetation }; }
 
     private:
         Conditions m_conditions;
         bool m_growable;
+        std::optional<VegetationSample> m_vegetation;
     };
+
+    std::uint16_t IndexOf(const char* key)
+    {
+        const auto& all = Catalog()->All();
+        for (std::size_t i = 0; i < all.size(); ++i)
+        {
+            if (all[i].key == key)
+                return static_cast<std::uint16_t>(i);
+        }
+        FAIL(key);
+        return kNoSpecies;
+    }
+
+    VegetationSample Sample(double canopy, std::initializer_list<std::pair<const char*, double>> kinds)
+    {
+        VegetationSample sample;
+        sample.canopyCover = canopy;
+        for (const auto& [key, weight] : kinds)
+            sample.entries[static_cast<std::size_t>(sample.count++)] = { IndexOf(key), weight };
+        return sample;
+    }
 
     int CountTrees(const FloraModel& model)
     {
@@ -162,7 +185,7 @@ TEST_CASE("ForestsFollowTheClimate")
 {
     const FlatGround temperateGround(Temperate());
     const FloraModel temperate(Catalog(), 5, kSize, kSize, temperateGround);
-    CHECK(CountTrees(temperate) > SeedCells() * 0.35);
+    CHECK(CountTrees(temperate) > SeedCells() * 0.2);
     CHECK(KindsOf(temperate).contains("species.oak"));
     CHECK(!KindsOf(temperate).contains("species.palm"));
 
@@ -271,4 +294,28 @@ TEST_CASE("TheFloraNeedsACatalogAndAGrid")
     const FlatGround ground(Temperate());
     CHECK_THROWS_AS(FloraModel(nullptr, 1, kSize, kSize, ground), std::invalid_argument);
     CHECK_THROWS_AS(FloraModel(Catalog(), 1, 0, kSize, ground), std::invalid_argument);
+}
+
+TEST_CASE("TheVegetationLayerSetsTheDensityAndTheKinds")
+{
+    // The climate would grow oaks and spruces; the layer says a sparse forest of spruce and oak.
+    const FlatGround sparse(Temperate(), true, Sample(0.15, { { "species.spruce", 0.5 }, { "species.oak", 0.5 } }));
+    const FlatGround dense(Temperate(), true, Sample(1.0, { { "species.spruce", 0.5 }, { "species.oak", 0.5 } }));
+    const FloraModel sparseForest(Catalog(), 5, kSize, kSize, sparse);
+    const FloraModel denseForest(Catalog(), 5, kSize, kSize, dense);
+    CHECK(CountTrees(sparseForest) < CountTrees(denseForest));
+    CHECK(CountTrees(sparseForest) < SeedCells() * 0.15);
+    CHECK(KindsOf(denseForest) == std::set<std::string>{ "species.oak", "species.spruce" });
+
+    // A treeless sample means a treeless place whatever the climate.
+    const FlatGround treeless(Temperate(), true, Sample(0.0, {}));
+    CHECK(CountTrees(FloraModel(Catalog(), 5, kSize, kSize, treeless)) == 0);
+
+    // The layer's kinds still have to suit the column: palms do not grow in a temperate climate.
+    const FlatGround wrong(Temperate(), true, Sample(1.0, { { "species.palm", 1.0 } }));
+    CHECK(CountTrees(FloraModel(Catalog(), 5, kSize, kSize, wrong)) == 0);
+
+    // A forest of one kind is of that kind.
+    const FlatGround oaks(Temperate(), true, Sample(1.0, { { "species.oak", 1.0 } }));
+    CHECK(KindsOf(FloraModel(Catalog(), 5, kSize, kSize, oaks)) == std::set<std::string>{ "species.oak" });
 }

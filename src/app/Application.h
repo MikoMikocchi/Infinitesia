@@ -10,6 +10,8 @@
 #include "presentation/input/WorldInteractionController.h"
 #include "presentation/rendering/WorldRenderer.h"
 #include "presentation/ui/DebugOverlay.h"
+#include "domains/natural/biology/catalog/SpeciesCatalog.h"
+#include "materials/MaterialCatalog.h"
 #include "presentation/ui/PlanetViewer.h"
 #include "gameplay/LocalGame.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
@@ -56,6 +58,9 @@ namespace Infinitesia
         DebugOverlay m_debugOverlay;
         // Built on a worker thread after the window opens; null while loading.
         std::unique_ptr<PlanetViewer> m_planetViewer;
+        // Read once when the planet starts loading; the settlement reuses them.
+        std::shared_ptr<const MaterialCatalog> m_materials;
+        std::shared_ptr<const SpeciesCatalog> m_species;
         // Declared before m_planetLoad: the future's destructor joins the worker,
         // which still writes to this, so it must be destroyed after the future.
         LoadProgress m_loadProgress;

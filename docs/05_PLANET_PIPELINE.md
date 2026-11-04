@@ -64,6 +64,11 @@ A domain library lives above `planet` (it may include it, not the other way roun
 function that adds its stages, so the game builds one pipeline from the default stages plus the
 domains it wants. `tests/PlanetPipelineTests.cpp` has a working example.
 
+## Domain stages in use
+
+`biology` adds the stage `vegetation` (`AddVegetationStages`, layer `biology.vegetation`, docs/07_BIOLOGY.md); the game builds its
+pipeline as `MakeDefaultPlanetPipeline()` plus that call and passes it to `PlanetViewer`.
+
 ## Not done yet
 
 - The default stages still read and write `PlanetRegion` fields directly; their reads and writes

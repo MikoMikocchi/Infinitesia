@@ -45,6 +45,8 @@ namespace Infinitesia
         double soilFertility = 0.0; // 0..1
         double soilDepth = 0.0;     // 0..1
         double elevationMeters = 0.0; // above sea level
+        // Where on the planet the column is, to look up planet layers at it.
+        CartesianPoint3D direction{};
     };
 
     // Turns the continuous planet terrain into block columns around an origin point of
@@ -61,6 +63,7 @@ namespace Infinitesia
                           double originEastMeters, double originNorthMeters);
 
         const LocalGrid& GetGrid() const noexcept { return m_grid; }
+        const PlanetMap& GetPlanetMap() const noexcept { return m_terrain.GetPlanetMap(); }
 
         // The origin column's centre, metres east and north of the grid's anchor.
         double OriginEastMeters() const noexcept { return m_originEastMeters; }

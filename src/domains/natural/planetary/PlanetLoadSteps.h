@@ -15,6 +15,7 @@ namespace Infinitesia::LoadStep
     inline constexpr const char* kHydrology = "hydrology";
     inline constexpr const char* kSoils = "soils";
     inline constexpr const char* kBiomes = "biomes";
+    inline constexpr const char* kVegetation = "vegetation";
     inline constexpr const char* kViewerColors = "viewer_colors";
     inline constexpr const char* kViewerSmoothing = "viewer_smoothing";
 }

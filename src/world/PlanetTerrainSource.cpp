@@ -120,6 +120,7 @@ namespace Infinitesia
             m_columns[index].province = column.province;
             m_columns[index].pileTopMeters = column.pileTopMeters;
             m_columns[index].underSea = column.underSea;
+            m_columns[index].direction = column.direction;
             Conditions& climate = m_columns[index].climate;
             climate.temperatureCelsius = column.temperatureCelsius;
             climate.precipitationMm = column.precipitationMm;
@@ -142,6 +143,7 @@ namespace Infinitesia
                               std::abs(z - m_owner.m_depth / 2) < kStartClearingMeters;
         ground.growable = soil && !column.underSea && column.surface > m_owner.WaterTopLevel() && !clearing;
         ground.conditions = column.climate;
+        ground.vegetation = SampleVegetation(m_owner.m_terrain->GetPlanetMap(), column.direction);
         // The steepest rise over two metres in the four directions.
         int steepest = 0;
         for (const auto [dx, dz] : { std::pair{ 2, 0 }, std::pair{ -2, 0 }, std::pair{ 0, 2 }, std::pair{ 0, -2 } })

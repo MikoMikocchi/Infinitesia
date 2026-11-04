@@ -3,6 +3,7 @@
 
 #include "blocks/BlockRegistry.h"
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
+#include "domains/natural/biology/community/VegetationLayer.h"
 #include "domains/natural/geology/catalog/GeologyCatalog.h"
 #include "domains/natural/geology/model/GeologyModel.h"
 #include "materials/MaterialCatalog.h"
@@ -583,4 +584,70 @@ TEST_CASE("TheRegistryMustKnowThePlantsOfTheCatalog")
     CHECK_THROWS_AS(PlanetTerrainSource(terrain, kWidth, kHeight, kDepth, kAnchorLevel, std::make_shared<const BlockRegistry>(BlockRegistry::BuiltIn()),
                                         nullptr, SharedSpecies(), 1),
                     std::invalid_argument);
+}
+
+namespace
+{
+    // The same coarse planet, grown with the vegetation stage.
+    const PlanetMap& VegetationMap()
+    {
+        static const PlanetMap map = []
+        {
+            PlanetParameters parameters;
+            parameters.latitudeBands = 90;
+            parameters.longitudeSegments = 180;
+            PlanetPipeline pipeline = MakeDefaultPlanetPipeline();
+            AddVegetationStages(pipeline, SharedSpecies());
+            return PlanetMap(parameters, {}, pipeline);
+        }();
+        return map;
+    }
+
+    std::shared_ptr<PlanetTerrainSource> MakeSourceOnVegetationMap(CartesianPoint3D anchor)
+    {
+        static const RegionGenerator generator(VegetationMap());
+        auto terrain = std::make_shared<const SettlementTerrain>(generator.GetTerrain(), generator.MakeGrid(anchor), 0.0, 0.0);
+        return std::make_shared<PlanetTerrainSource>(terrain, kWidth, kHeight, kDepth, kAnchorLevel, SharedRegistry(),
+                                                     nullptr, SharedSpecies(), 11);
+    }
+
+    CartesianPoint3D FindOnVegetationMap(bool forested)
+    {
+        const PlanetMap& map = VegetationMap();
+        const auto& layer = map.Layers().Require<VegetationCell>(kVegetationLayer);
+        for (int latitude = 10; latitude < map.GetLatitudeBandCount() - 10; ++latitude)
+        {
+            for (int longitude = 0; longitude < map.GetLongitudeSegmentCount(); ++longitude)
+            {
+                const PlanetRegion& cell = map.GetRegion(latitude, longitude);
+                const float canopy = layer.At(latitude, longitude).canopyCover;
+                const bool land = cell.elevationNormalized > 0.05 && cell.elevationNormalized < 0.3;
+                if (land && (forested ? canopy > 0.5f : canopy == 0.0f))
+                    return map.GetPlanet().GetSurfacePoint(latitude, longitude);
+            }
+        }
+        FAIL("The test planet has no matching cell.");
+        return {};
+    }
+
+    int CountPlants(const PlanetTerrainSource& source)
+    {
+        int plants = 0;
+        for (int z = 0; z < kDepth; z += 2)
+        {
+            for (int x = 0; x < kWidth; x += 2)
+            {
+                const int surface = source.SurfaceLevelAt(x, z);
+                for (int y = surface + 1; y < surface + 40 && y < kHeight; ++y)
+                    plants += IsPlant(source, { x, y, z }) ? 1 : 0;
+            }
+        }
+        return plants;
+    }
+}
+
+TEST_CASE("TheForestFollowsTheVegetationLayerOfThePlanet")
+{
+    CHECK(CountPlants(*MakeSourceOnVegetationMap(FindOnVegetationMap(true))) > 1000);
+    CHECK(CountPlants(*MakeSourceOnVegetationMap(FindOnVegetationMap(false))) == 0);
 }

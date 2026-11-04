@@ -85,18 +85,39 @@ namespace Infinitesia
         if (!ground.growable)
             return nullptr;
 
-        // The kinds that suit the place, each weighted by how well.
+        // The kinds that suit the place, each weighted by how well. The planet's layer, when there is one,
+        // says which kinds make up the forest and how dense it is; the column then adjusts it for its own
+        // elevation and slope (a steep or high column fits a kind worse than the planet cell as a whole).
         const std::vector<Species>& kinds = m_species->All();
-        std::vector<double> weight(kinds.size());
+        std::vector<double> weight(kinds.size(), 0.0);
         double total = 0.0;
-        double best = 0.0;
-        for (std::size_t i = 0; i < kinds.size(); ++i)
+        double canopy = 0.0;
+        if (ground.vegetation)
         {
-            weight[i] = Suitability(kinds[i].niche, ground.conditions);
-            total += weight[i];
-            best = std::max(best, weight[i]);
+            const VegetationSample& vegetation = *ground.vegetation;
+            for (int i = 0; i < vegetation.count; ++i)
+            {
+                const VegetationSample::Entry& entry = vegetation.entries[static_cast<std::size_t>(i)];
+                if (entry.species >= kinds.size())
+                    continue;
+                weight[entry.species] = entry.weight * Suitability(kinds[entry.species].niche, ground.conditions);
+                total += weight[entry.species];
+            }
+            // The weights of the layer add up to 1, so `total` is the mean fitness of the forest here.
+            canopy = vegetation.canopyCover * total * kDensestStand;
         }
-        if (total <= 0.0 || roll(2) >= CanopyCover(ground.conditions) * best)
+        else
+        {
+            double best = 0.0;
+            for (std::size_t i = 0; i < kinds.size(); ++i)
+            {
+                weight[i] = Suitability(kinds[i].niche, ground.conditions);
+                total += weight[i];
+                best = std::max(best, weight[i]);
+            }
+            canopy = CanopyCover(ground.conditions) * best * kDensestStand;
+        }
+        if (total <= 0.0 || roll(2) >= canopy)
             return nullptr;
 
         double pick = roll(3) * total;

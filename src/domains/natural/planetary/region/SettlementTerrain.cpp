@@ -74,6 +74,7 @@ namespace Infinitesia
         column.soilFertility = cell.soilFertility;
         column.soilDepth = cell.soilDepthNorm;
         column.elevationMeters = elevation;
+        column.direction = direction;
         return column;
     }
 }

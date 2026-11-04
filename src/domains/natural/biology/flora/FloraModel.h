@@ -1,6 +1,7 @@
 #pragma once
 
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
+#include "domains/natural/biology/community/VegetationSample.h"
 #include "domains/natural/biology/flora/Tree.h"
 #include "domains/natural/biology/niche/Suitability.h"
 
@@ -18,6 +19,9 @@ namespace Infinitesia
         bool growable = false;   // soil that a plant can take root in, above the water
         int surfaceLevel = 0;    // level of the topmost ground block
         Conditions conditions;   // climate, soil and slope at the column
+        // What the planet's vegetation layer says about the place. Without it the flora works out the
+        // canopy and the kinds from `conditions` alone.
+        std::optional<VegetationSample> vegetation;
     };
 
     // The ground as the flora sees it. Implemented by whoever owns the terrain; the flora never touches
@@ -48,6 +52,9 @@ namespace Infinitesia
     {
     public:
         static constexpr int kSeedCellMeters = 6;
+        // The share of seed cells that hold a tree in the densest forest. Crowns are wider than the cells, so
+        // even a share well below 1 closes the canopy; at 1 the forest floor is dark and hard to walk.
+        static constexpr double kDensestStand = 0.55;
 
         // `ground` must outlive the model. Columns outside [0, width) x [0, depth) have no flora.
         FloraModel(std::shared_ptr<const SpeciesCatalog> species, std::uint64_t seed, int width, int depth,
