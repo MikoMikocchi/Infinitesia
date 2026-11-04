@@ -1,0 +1,78 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code: enforce LF line endings
+*.cpp   text eol=lf
+*.h     text eol=lf
+*.cc    text eol=lf
+*.hpp   text eol=lf
+*.c     text eol=lf
+*.hpp   text eol=lf
+
+# Build system and config files
+CMakeLists.txt          text eol=lf
+*.cmake                 text eol=lf
+CMakePresets.json       text eol=lf
+.clang-format           text eol=lf
+.gitignore              text eol=lf
+
+# Documentation and scripts
+*.md    text eol=lf
+*.sh    text eol=lf
+*.ps1   text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# JSON data assets: treat as text
+*.json  text eol=lf
+
+# Binary assets: mark as binary to prevent normalization
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.bmp     binary
+*.ico     binary
+*.webp    binary
+*.tga     binary
+*.exr     binary
+*.hdr     binary
+
+# Audio and video assets
+*.wav     binary
+*.ogg     binary
+*.mp3     binary
+*.flac    binary
+*.fbx     binary
+*.blend   binary
+*.glb     binary
+*.gltf    binary
+
+# 3D model and font assets
+*.obj     binary
+*.fbx     binary
+*.ttf     binary
+*.otf     binary
+*.woff    binary
+*.woff2   binary
+
+# Compiled binaries and objects
+*.o      binary
+*.a      binary
+*.so     binary
+*.dylib   binary
+*.dll    binary
+*.exe    binary
+*.lib    binary
+*.pdb    binary
+*.out    binary
+
+# IDE / editor files
+*.suo    binary
+*.user   binary
+*.vcxproj binary
+
+# Merge strategies: never merge generated or IDE-specific files
+CMakeCache.txt                binary
+compile_commands.json         binary
+*.ninja                       binary
