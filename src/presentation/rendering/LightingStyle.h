@@ -10,9 +10,9 @@ namespace Infinitesia
     {
         // Direction towards the sun (the shader normalises it) and the colours of the light.
         inline constexpr float kSunDirection[3]{ -0.45f, 0.82f, 0.35f };
-        inline constexpr float kSunColor[3]{ 0.62f, 0.57f, 0.48f };      // warm
-        inline constexpr float kAmbientSky[3]{ 0.46f, 0.50f, 0.60f };    // cool, for faces turned up
-        inline constexpr float kAmbientGround[3]{ 0.26f, 0.25f, 0.24f }; // for faces turned down
+        inline constexpr float kSunColor[3]{ 0.85f, 0.78f, 0.65f };      // warm
+        inline constexpr float kAmbientSky[3]{ 0.20f, 0.24f, 0.32f };    // cool, for faces turned up
+        inline constexpr float kAmbientGround[3]{ 0.09f, 0.085f, 0.08f }; // for faces turned down
 
         // Haze with distance from the camera. The distances are multiples of the distance from
         // the camera to its target, so the haze looks the same at any zoom: nothing nearer than
@@ -31,6 +31,6 @@ namespace Infinitesia
 
         // Ambient occlusion: the brightness of a face corner that touches 0, 1, 2 or 3 "units" of
         // neighbouring blocks (3 = open corner, 0 = a corner closed on both sides).
-        inline constexpr float kAmbientOcclusion[4]{ 0.50f, 0.66f, 0.83f, 1.0f };
+        inline constexpr float kAmbientOcclusion[4]{ 0.58f, 0.72f, 0.87f, 1.0f };
     }
 }
