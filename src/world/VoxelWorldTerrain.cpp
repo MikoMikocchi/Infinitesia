@@ -29,6 +29,17 @@ namespace Infinitesia
         return &chunk->second.blocks[GetBlockIndexHelper(chunk->second, cell)];
     }
 
+    BlockState VoxelWorld::GroundStateAt(GridCell cell) const
+    {
+        if (cell.x < 0 || cell.x >= m_gridWidth ||
+            cell.y < 0 || cell.y >= m_gridHeight ||
+            cell.z < 0 || cell.z >= m_gridDepth)
+        {
+            return {};
+        }
+        return m_terrain->GroundStateAt(cell);
+    }
+
     bool VoxelWorld::HasSkyAccess(GridCell cell) const
     {
         if (cell.x < 0 || cell.x >= m_gridWidth ||

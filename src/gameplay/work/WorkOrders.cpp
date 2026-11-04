@@ -1,5 +1,7 @@
 #include "gameplay/work/WorkSystem.h"
+#include "gameplay/work/TreeFelling.h"
 
+#include <algorithm>
 #include <array>
 #include <utility>
 
@@ -17,7 +19,7 @@ namespace Infinitesia
 
     WorkOrderResult WorkSystem::AssignChopOrder(
         WorldObjectId workerId,
-        WorldObjectId treeId,
+        GridCell treeCell,
         GameWorld& world,
         const Grid& grid)
     {
@@ -27,36 +29,52 @@ namespace Infinitesia
             return WorkOrderResult::InvalidWorker;
         }
 
-        const WorldObject* tree = world.entities.FindObject(treeId);
-        if (tree == nullptr || !tree->Is(ObjectAbility::Choppable))
+        const std::vector<GridCell> wood = FindTreeWood(world.terrain, treeCell);
+        if (wood.empty())
         {
             return WorkOrderResult::InvalidTarget;
         }
-
         if (HasOrderForWorker(workerId))
         {
             return WorkOrderResult::WorkerBusy;
         }
-        if (HasOrderForTree(treeId))
+        if (HasOrderForTree(wood))
         {
             return WorkOrderResult::TargetBusy;
+        }
+
+        // The worker stands on the ground beside the trunk: the cell of ground one level under a cell of wood,
+        // next to it on one of the four sides. A cell of wood high in the crown has only air under it.
+        constexpr std::size_t kMaxWorkCells = 64;
+        std::vector<GridCell> candidates;
+        for (const GridCell& cell : wood)
+        {
+            for (const GridCell offset : kAdjacentOffsets)
+            {
+                const GridCell candidate{ cell.x + offset.x, cell.y - 1, cell.z + offset.z };
+                const Block* block = grid.Contains(candidate) ? world.terrain.GetBlock(candidate) : nullptr;
+                if (block == nullptr || !world.terrain.Registry().Walkable(block->state) || IsReserved(candidate) ||
+                    world.entities.FindObjectAt(candidate).has_value())
+                {
+                    continue;
+                }
+                if (std::none_of(candidates.begin(), candidates.end(), [&](const GridCell& known)
+                    { return known.x == candidate.x && known.y == candidate.y && known.z == candidate.z; }))
+                {
+                    candidates.push_back(candidate);
+                }
+            }
+            if (candidates.size() >= kMaxWorkCells)
+            {
+                break;
+            }
         }
 
         bool foundWorkCell = false;
         GridCell workCell{};
         std::vector<GridCell> bestPath;
-        for (const GridCell offset : kAdjacentOffsets)
+        for (const GridCell& candidate : candidates)
         {
-            const GridCell candidate{
-                tree->cell.x + offset.x,
-                tree->cell.y + offset.y,
-                tree->cell.z + offset.z
-            };
-            if (!grid.Contains(candidate) || IsReserved(candidate))
-            {
-                continue;
-            }
-
             const std::optional<std::vector<GridCell>> path =
                 FindPath(worker->cell, candidate, workerId, world, grid);
             if (path.has_value() && (!foundWorkCell || path->size() < bestPath.size()))
@@ -66,7 +84,6 @@ namespace Infinitesia
                 bestPath = *path;
             }
         }
-
         if (!foundWorkCell)
         {
             return WorkOrderResult::NoReachableWorkCell;
@@ -76,8 +93,8 @@ namespace Infinitesia
         m_orders.push_back({
             WorkType::ChopTree,
             workerId,
-            treeId,
-            tree->cell,
+            std::nullopt,
+            treeCell,
             workCell,
             std::move(bestPath),
             1,

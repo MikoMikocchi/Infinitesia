@@ -169,6 +169,16 @@ namespace Infinitesia
 
     BlockState PlanetTerrainSource::StateAt(GridCell cell) const
     {
+        return StateOf(cell, true);
+    }
+
+    BlockState PlanetTerrainSource::GroundStateAt(GridCell cell) const
+    {
+        return StateOf(cell, false);
+    }
+
+    BlockState PlanetTerrainSource::StateOf(GridCell cell, bool withPlants) const
+    {
         if (cell.x < 0 || cell.x >= m_width || cell.y < 0 || cell.y >= m_height ||
             cell.z < 0 || cell.z >= m_depth)
         {
@@ -176,7 +186,7 @@ namespace Infinitesia
         }
 
         const Column& column = ColumnAt(cell.x, cell.z);
-        const FloraCell* plant = FloraAt(cell);
+        const FloraCell* plant = withPlants ? FloraAt(cell) : nullptr;
         if (cell.y > column.surface)
         {
             if (cell.y <= WaterTopLevel())

@@ -16,13 +16,20 @@ namespace Infinitesia
             return false;
         }
 
-        bool HasOrderForTree(const std::vector<WorkSystem::WorkOrder>& orders, WorldObjectId tree)
+        bool HasOrderForTree(const std::vector<WorkSystem::WorkOrder>& orders, const std::vector<GridCell>& wood)
         {
             for (const WorkSystem::WorkOrder& order : orders)
             {
-                if (order.targetObject == tree)
+                if (order.type != WorkSystem::WorkType::ChopTree)
                 {
-                    return true;
+                    continue;
+                }
+                for (const GridCell& cell : wood)
+                {
+                    if (cell.x == order.targetCell.x && cell.y == order.targetCell.y && cell.z == order.targetCell.z)
+                    {
+                        return true;
+                    }
                 }
             }
             return false;

@@ -3915,7 +3915,7 @@
             "color": "#6b4a2c",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.oak.branch",
@@ -3927,7 +3927,7 @@
             "color": "#6f4f31",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.oak.twig",
@@ -3939,7 +3939,7 @@
             "color": "#7a5a38",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.oak.leaves",
@@ -3951,7 +3951,7 @@
             "color": "#4e7f35",
             "provenance": "gameplay",
             "tags": ["leaves", "tree_leaves"],
-            "walkable": false,
+            "walkable": false, "diggable": false,
             "opacity": 4
         },
         {
@@ -3964,7 +3964,7 @@
             "color": "#5a3f26",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.spruce.trunk",
@@ -3976,7 +3976,7 @@
             "color": "#5e4630",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.spruce.branch",
@@ -3988,7 +3988,7 @@
             "color": "#614a33",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.spruce.twig",
@@ -4000,7 +4000,7 @@
             "color": "#6a523a",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.spruce.leaves",
@@ -4012,7 +4012,7 @@
             "color": "#2f5a3a",
             "provenance": "gameplay",
             "tags": ["leaves", "tree_leaves"],
-            "walkable": false,
+            "walkable": false, "diggable": false,
             "opacity": 4
         },
         {
@@ -4025,7 +4025,7 @@
             "color": "#52402c",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.palm.trunk",
@@ -4037,7 +4037,7 @@
             "color": "#8a7350",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.palm.branch",
@@ -4049,7 +4049,7 @@
             "color": "#8e7753",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.palm.twig",
@@ -4061,7 +4061,7 @@
             "color": "#94805a",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         },
         {
             "id": "plant.palm.leaves",
@@ -4073,7 +4073,7 @@
             "color": "#5f9a3c",
             "provenance": "gameplay",
             "tags": ["leaves", "tree_leaves"],
-            "walkable": false,
+            "walkable": false, "diggable": false,
             "opacity": 4
         },
         {
@@ -4086,7 +4086,7 @@
             "color": "#6e5a3e",
             "provenance": "gameplay",
             "tags": ["wood", "tree_wood"],
-            "walkable": false
+            "walkable": false, "diggable": false
         }
     ]
 }

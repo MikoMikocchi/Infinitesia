@@ -18,29 +18,19 @@ namespace Infinitesia
     };
 
     // How the presentation draws an object of this kind.
-    enum class ObjectVisual : std::uint8_t { Worker, Tree, Item };
+    enum class ObjectVisual : std::uint8_t { Worker, Item };
 
     // What the rules let an object of a kind do or be done to; the work system and the
     // commands ask for abilities, never for a particular kind.
     enum class ObjectAbility : std::uint8_t
     {
         Worker = 1,     // takes orders, carries an inventory
-        Choppable = 2,  // can be chopped down (see ObjectKindDef::chopped)
-        Pickable = 4    // a worker can pick it up
-    };
-
-    struct ObjectKindDef;
-
-    // What a chopped object turns into.
-    struct ChoppedResult
-    {
-        const ObjectKindDef* becomes = nullptr;
-        const ItemDef* item = nullptr;
+        Pickable = 4    // a worker can pick it up (2 was Choppable: trees are blocks now, docs/07_BIOLOGY.md)
     };
 
     struct ObjectKindDef
     {
-        std::string key;       // "object.tree"
+        std::string key;       // "object.worker"
         std::string name;
         float widthInCells = 1.0f;
         float heightInCells = 1.0f;
@@ -48,7 +38,6 @@ namespace Infinitesia
         std::uint8_t abilities = 0;
         bool carriesItem = false; // such an object holds an item (a pile on the ground)
         int shadowOpacity = 110;  // 0..255
-        std::optional<ChoppedResult> chopped;
 
         bool Has(ObjectAbility ability) const
         {

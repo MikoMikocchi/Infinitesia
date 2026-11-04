@@ -72,10 +72,6 @@ namespace Infinitesia
             {
                 return ObjectVisual::Worker;
             }
-            if (text == "tree")
-            {
-                return ObjectVisual::Tree;
-            }
             if (text == "item")
             {
                 return ObjectVisual::Item;
@@ -88,10 +84,6 @@ namespace Infinitesia
             if (text == "worker")
             {
                 return static_cast<std::uint8_t>(ObjectAbility::Worker);
-            }
-            if (text == "choppable")
-            {
-                return static_cast<std::uint8_t>(ObjectAbility::Choppable);
             }
             if (text == "pickable")
             {
@@ -127,7 +119,7 @@ namespace Infinitesia
             }
         }
 
-        void LoadObjectKinds(const std::filesystem::path& path, const ContentRegistry<ItemDef>& items,
+        void LoadObjectKinds(const std::filesystem::path& path,
                              ContentRegistry<ObjectKindDef>& kinds)
         {
             const Json records = ReadArray(path, "objects");
@@ -180,45 +172,6 @@ namespace Infinitesia
                     Fail(where, error.what());
                 }
             }
-
-            // References between records are resolved once every kind exists.
-            for (std::size_t index = 0; index < records.size(); ++index)
-            {
-                const Json& record = records[index];
-                if (!record.contains("chopped"))
-                {
-                    continue;
-                }
-                const std::string where = RecordName(path, record, index);
-                ObjectKindDef* def = kinds.FindMutable(record["id"].get<std::string>());
-                if (!def->Has(ObjectAbility::Choppable))
-                {
-                    Fail(where, "'chopped' needs the 'choppable' ability");
-                }
-                const Json& chopped = record["chopped"];
-                const ObjectKindDef* becomes = kinds.Find(RequireString(where, chopped, "becomes"));
-                const ItemDef* item = items.Find(RequireString(where, chopped, "item"));
-                if (becomes == nullptr)
-                {
-                    Fail(where, "'chopped.becomes' names an unknown object");
-                }
-                if (item == nullptr)
-                {
-                    Fail(where, "'chopped.item' names an unknown item");
-                }
-                if (!becomes->carriesItem)
-                {
-                    Fail(where, "'chopped.becomes' must be an object that carries an item");
-                }
-                def->chopped = ChoppedResult{ becomes, item };
-            }
-            for (const ObjectKindDef& def : kinds.All())
-            {
-                if (def.Has(ObjectAbility::Choppable) && !def.chopped.has_value())
-                {
-                    Fail(path.filename().string() + " record " + def.key, "a choppable object needs 'chopped'");
-                }
-            }
         }
     }
 
@@ -226,7 +179,7 @@ namespace Infinitesia
     {
         std::shared_ptr<GameContent> content(new GameContent());
         LoadItems(directory / "items.json", content->m_items);
-        LoadObjectKinds(directory / "objects.json", content->m_items, content->m_objectKinds);
+        LoadObjectKinds(directory / "objects.json", content->m_objectKinds);
         return content;
     }
 }

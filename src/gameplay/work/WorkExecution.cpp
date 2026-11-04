@@ -1,7 +1,9 @@
 #include "gameplay/work/WorkSystem.h"
 #include "gameplay/work/WorkMovement.h"
+#include "gameplay/work/TreeFelling.h"
 #include "gameplay/work/WorkUtils.h"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -18,15 +20,11 @@ namespace Infinitesia
         {
             const bool orderIsValid = WorkInternal::AdvanceOrder(*this, m_orders[index], world, grid, fixedDeltaTime);
             const WorldObject* worker = world.entities.FindObject(m_orders[index].worker);
-            const WorldObject* targetObject = m_orders[index].targetObject.has_value()
-                ? world.entities.FindObject(*m_orders[index].targetObject)
-                : nullptr;
             const Block* targetBlock = m_orders[index].type == WorkType::DigBlock
                 ? world.terrain.GetBlock(m_orders[index].targetCell)
                 : nullptr;
             if (!orderIsValid || worker == nullptr || !worker->Is(ObjectAbility::Worker) ||
-                (m_orders[index].type == WorkType::ChopTree &&
-                 (targetObject == nullptr || !targetObject->Is(ObjectAbility::Choppable))) ||
+                (m_orders[index].type == WorkType::ChopTree && !IsTreeWood(world.terrain, m_orders[index].targetCell)) ||
                 (m_orders[index].type == WorkType::DigBlock &&
                  (targetBlock == nullptr || !world.terrain.Registry().Diggable(targetBlock->state))))
             {
@@ -46,11 +44,7 @@ namespace Infinitesia
             {
                 if (m_orders[index].type == WorkType::ChopTree)
                 {
-                    const ChoppedResult& chopped = *targetObject->kind->chopped;
-                    world.entities.TransformObject(
-                        *m_orders[index].targetObject,
-                        *chopped.becomes,
-                        Item{ *chopped.item, m_config.logsPerTree });
+                    FellAndDropLogs(world, grid, m_orders[index].targetCell);
                 }
                 else
                 {
@@ -61,6 +55,40 @@ namespace Infinitesia
             }
 
             ++index;
+        }
+    }
+
+    void WorkSystem::FellAndDropLogs(GameWorld& world, const Grid& grid, GridCell treeCell)
+    {
+        const FelledTree felled = FellTree(world.terrain, treeCell);
+        if (felled.wood.empty() || m_drop.pile == nullptr || m_drop.logs == nullptr)
+        {
+            return;
+        }
+
+        // The logs lie on the stump: ground that is free and open above, lowest first (the cell of a root at the
+        // surface, where the trunk stood).
+        std::vector<GridCell> places = felled.wood;
+        std::sort(places.begin(), places.end(), [](const GridCell& a, const GridCell& b) { return a.y < b.y; });
+        const BlockRegistry& registry = world.terrain.Registry();
+        int logs = std::max(1, static_cast<int>(std::lround(felled.woodKilograms / m_config.kilogramsPerLog)));
+        for (const GridCell& cell : places)
+        {
+            if (logs <= 0)
+            {
+                break;
+            }
+            const Block* ground = world.terrain.GetBlock(cell);
+            const Block* above = world.terrain.GetBlock({ cell.x, cell.y + 1, cell.z });
+            if (ground == nullptr || !registry.Walkable(ground->state) ||
+                (above != nullptr && registry.Occupied(above->state)) ||
+                world.entities.FindObjectAt(cell).has_value())
+            {
+                continue;
+            }
+            const int pile = std::min(logs, m_drop.logs->maxStack);
+            world.AddObject(*m_drop.pile, cell, grid, Item{ *m_drop.logs, pile });
+            logs -= pile;
         }
     }
 

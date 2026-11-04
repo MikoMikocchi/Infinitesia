@@ -78,6 +78,10 @@ infinitesia_add_test(LocalGameTests GAMEPLAY_ASSET_DIR
   SOURCES LocalGameTests.cpp
   LINK InfinitesiaGameplay)
 
+infinitesia_add_test(TreeFellingTests ASSET_DIR GAMEPLAY_ASSET_DIR
+  SOURCES TreeFellingTests.cpp
+  LINK InfinitesiaGameplay)
+
 infinitesia_add_test(ContentTests GAMEPLAY_ASSET_DIR
   SOURCES ContentTests.cpp
   LINK InfinitesiaGameplay)

@@ -1,4 +1,5 @@
 #include "gameplay/work/WorkMovement.h"
+#include "gameplay/work/TreeFelling.h"
 #include "gameplay/work/WorkPathfinding.h"
 #include "gameplay/work/WorkUtils.h"
 
@@ -78,8 +79,7 @@ namespace Infinitesia
             }
             if (order.type == WorkSystem::WorkType::ChopTree)
             {
-                const WorldObject* tree = world.entities.FindObject(*order.targetObject);
-                if (tree == nullptr || !tree->Is(ObjectAbility::Choppable))
+                if (!IsTreeWood(world.terrain, order.targetCell))
                 {
                     return false;
                 }

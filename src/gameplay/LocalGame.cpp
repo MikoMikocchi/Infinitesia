@@ -1,6 +1,5 @@
 #include "gameplay/LocalGame.h"
 
-#include "gameplay/commands/ChopTreeCommand.h"
 #include "gameplay/commands/PickUpItemCommand.h"
 
 #include <utility>
@@ -12,12 +11,7 @@ namespace Infinitesia
     {
         std::vector<WorldObjectPlacement> StartingObjects(const GameContent& content, const StartingCells& cells)
         {
-            std::vector<WorldObjectPlacement> objects{ { &content.GetObjectKind("object.worker"), cells.worker } };
-            if (cells.tree.has_value())
-            {
-                objects.push_back({ &content.GetObjectKind("object.tree"), *cells.tree });
-            }
-            return objects;
+            return { { &content.GetObjectKind("object.worker"), cells.worker } };
         }
     }
 
@@ -31,10 +25,11 @@ namespace Infinitesia
           m_simulation(config.simulationTicksPerSecond),
           m_runtime(m_simulation)
     {
-        auto workSystem = std::make_unique<WorkSystem>(config.worker, m_world, m_grid);
+        // A felled tree leaves its logs as piles of the item object.
+        const WoodDrop drop{ &m_content->GetObjectKind("object.item"), &m_content->GetItem("item.logs") };
+        auto workSystem = std::make_unique<WorkSystem>(config.worker, m_world, m_grid, drop);
         m_workSystem = workSystem.get();
         m_runtime.Registry().Register(WorkSystem::Descriptor(), std::move(workSystem));
-        m_commands.Register(std::make_unique<ChopTreeCommand>(*m_workSystem, m_grid));
         m_commands.Register(std::make_unique<PickUpItemCommand>());
     }
 

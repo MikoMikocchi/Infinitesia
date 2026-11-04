@@ -39,6 +39,7 @@ namespace Infinitesia
                             std::uint64_t floraSeed = 0);
 
         BlockState StateAt(GridCell cell) const override;
+        BlockState GroundStateAt(GridCell cell) const override;
         const BlockRegistry& Registry() const override { return *m_registry; }
 
         // What a layer of ground is, before a material is chosen for it.
@@ -82,6 +83,7 @@ namespace Infinitesia
         static constexpr int kStartClearingMeters = 7;
 
         const Column& ColumnAt(int x, int z) const;
+        BlockState StateOf(GridCell cell, bool withPlants) const;
         // The plant occupying the cell, if any.
         const FloraCell* FloraAt(GridCell cell) const;
         const GeologyModel::ColumnProfile& ProfileAt(int x, int z) const;

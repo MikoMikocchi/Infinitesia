@@ -18,6 +18,11 @@ namespace Infinitesia
         virtual ~TerrainSource() = default;
         virtual BlockState StateAt(GridCell cell) const = 0;
 
+        // What the cell would be without the plants that grow on the ground: where a felled tree stood the
+        // ground shows again (roots in the soil give way to soil, the air to air). The same as StateAt for
+        // a terrain without plants.
+        virtual BlockState GroundStateAt(GridCell cell) const { return StateAt(cell); }
+
         // The registry that names the materials and shapes this terrain hands out.
         virtual const BlockRegistry& Registry() const = 0;
     };

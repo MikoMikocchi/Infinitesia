@@ -5,7 +5,7 @@ namespace Infinitesia
     namespace
     {
         constexpr std::string_view kNames[kEngineTagCount] = {
-            "air", "fluid", "water", "soil", "rock", "ice", "built", "glass", "light_source", "plant",
+            "air", "fluid", "water", "soil", "rock", "ice", "built", "glass", "light_source", "plant", "tree_wood", "tree_leaves",
         };
     }
 

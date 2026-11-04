@@ -107,7 +107,19 @@ namespace Infinitesia
                 return std::string{};
             }();
             const bool solidCell = block != nullptr && world.terrain.Registry().Occupied(block->state);
-            if (solidCell)
+            const bool treeWood = block != nullptr && world.terrain.Registry().Has(block->state.material, Tag::TreeWood);
+            const bool foliage = block != nullptr && world.terrain.Registry().Has(block->state.material, Tag::TreeLeaves);
+            if (treeWood)
+            {
+                // A tree is felled whole, from any cell of its wood.
+                cellCommands.push_back({
+                    "chop_tree",
+                    "Chop tree",
+                    workerDisabledReason.empty(),
+                    workerDisabledReason
+                });
+            }
+            else if (solidCell && !foliage)
             {
                 const bool occupied = world.entities.FindObjectAt(*m_hoveredCell).has_value();
                 const std::string digDisabledReason = occupied
@@ -186,6 +198,12 @@ namespace Infinitesia
                     ? workSystem.AssignDigOrder(*request.actor, request.target, world, grid)
                     : WorkOrderResult::InvalidWorker;
             }
+            else if (request.commandId == "chop_tree")
+            {
+                result = request.actor.has_value()
+                    ? workSystem.AssignChopOrder(*request.actor, request.target, world, grid)
+                    : WorkOrderResult::InvalidWorker;
+            }
             else if (request.commandId == "move_to_cell")
             {
                 result = request.actor.has_value()
@@ -198,22 +216,26 @@ namespace Infinitesia
             case WorkOrderResult::Accepted:
                 m_actionNotice = request.commandId == "dig_block"
                     ? "Worker is going to dig"
-                    : "Worker is moving to the selected cell";
+                    : request.commandId == "chop_tree"
+                        ? "Worker is going to fell the tree"
+                        : "Worker is moving to the selected cell";
                 break;
             case WorkOrderResult::InvalidWorker:
                 m_actionNotice = "Selected worker is no longer available";
                 break;
             case WorkOrderResult::InvalidTarget:
-                m_actionNotice = "Select a reachable solid cell on the worker's level";
+                m_actionNotice = request.commandId == "chop_tree"
+                    ? "That is no longer a tree"
+                    : "Select a reachable solid cell on the worker's level";
                 break;
             case WorkOrderResult::WorkerBusy:
                 m_actionNotice = "Worker already has an order";
                 break;
             case WorkOrderResult::TargetBusy:
-                m_actionNotice = "Cell already has an order";
+                m_actionNotice = request.commandId == "chop_tree" ? "The tree is already being felled" : "Cell already has an order";
                 break;
             case WorkOrderResult::NoReachableWorkCell:
-                m_actionNotice = "Cell is not reachable";
+                m_actionNotice = request.commandId == "chop_tree" ? "No free ground by the trunk to work from" : "Cell is not reachable";
                 break;
             }
         }

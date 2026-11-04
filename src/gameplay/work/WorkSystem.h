@@ -17,7 +17,17 @@ namespace Infinitesia
         float movementSpeed;
         float choppingDuration;
         float diggingDuration;
-        int logsPerTree;
+        // A log is this much wood: a felled tree gives its mass (the density of its wood, a cubic metre a cell)
+        // divided by this, at least one log.
+        float kilogramsPerLog;
+    };
+
+    // What a felled tree leaves lying: a pile object that carries the logs. Without it (a null pointer) the
+    // wood is gone without trace.
+    struct WoodDrop
+    {
+        const ObjectKindDef* pile = nullptr;
+        const ItemDef* logs = nullptr;
     };
 
     enum class WorkOrderResult
@@ -48,11 +58,13 @@ namespace Infinitesia
             return { SystemId("system.work"), SystemPhase::Update, Cadence::EveryTick() };
         }
 
-        WorkSystem(WorkerConfig config, GameWorld& world, const Grid& grid);
+        WorkSystem(WorkerConfig config, GameWorld& world, const Grid& grid, WoodDrop drop = {});
 
         void Update(const SystemContext& context) override;
 
-        WorkOrderResult AssignChopOrder(WorldObjectId worker, WorldObjectId tree, GameWorld& world, const Grid& grid);
+        // Sends the worker to fell the tree that has a cell of wood at `treeCell`; he works from the ground beside its
+        // trunk.
+        WorkOrderResult AssignChopOrder(WorldObjectId worker, GridCell treeCell, GameWorld& world, const Grid& grid);
         WorkOrderResult AssignDigOrder(
             WorldObjectId worker,
             GridCell target,
@@ -88,7 +100,7 @@ namespace Infinitesia
             WorkType type;
             WorldObjectId worker;
             std::optional<WorldObjectId> targetObject;
-            GridCell targetCell;
+            GridCell targetCell; // for ChopTree a cell of the tree's wood
             GridCell workCell;
             std::vector<GridCell> path;
             std::size_t nextPathCell = 1;
@@ -104,7 +116,7 @@ namespace Infinitesia
 
     private:
         bool HasOrderForWorker(WorldObjectId worker) const;
-        bool HasOrderForTree(WorldObjectId tree) const;
+        bool HasOrderForTree(const std::vector<GridCell>& wood) const;
         bool HasOrderForDigCell(GridCell cell) const;
         float GetWorkDuration(const WorkOrder& order) const;
         bool IsReserved(GridCell cell) const;
@@ -118,8 +130,11 @@ namespace Infinitesia
         bool AdvanceMovement(WorkOrder& order, GameWorld& world, const Grid& grid, float fixedDeltaTime);
 
         void Tick(GameWorld& world, const Grid& grid, float fixedDeltaTime);
+        // Fells the tree and leaves its logs as piles on the stump.
+        void FellAndDropLogs(GameWorld& world, const Grid& grid, GridCell treeCell);
 
         WorkerConfig m_config;
+        WoodDrop m_drop;
         GameWorld& m_world;
         const Grid& m_grid;
         GridPathfinder m_pathfinder;

@@ -8,15 +8,6 @@
       "abilities": ["worker"]
     },
     {
-      "id": "object.tree",
-      "name": "Tree",
-      "size": [0.98, 1.95],
-      "visual": "tree",
-      "shadowOpacity": 150,
-      "abilities": ["choppable"],
-      "chopped": { "becomes": "object.item", "item": "item.logs" }
-    },
-    {
       "id": "object.item",
       "name": "Item",
       "size": [0.78, 0.36],

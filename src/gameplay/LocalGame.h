@@ -29,8 +29,8 @@ namespace Infinitesia
     class LocalGame
     {
     public:
-        // Puts the first worker (and a tree within his reach) on the terrain. The content
-        // must define "object.worker" and "object.tree".
+        // Puts the first worker on the terrain. The content must define "object.worker" and
+        // "object.item" with "item.logs" (what a felled tree leaves).
         LocalGame(std::shared_ptr<const GameContent> content,
                   const LocalGameConfig& config,
                   std::shared_ptr<const TerrainSource> terrain);
@@ -52,7 +52,7 @@ namespace Infinitesia
         // Systems registered here run on every fixed tick the simulation produces.
         SimulationRuntime& GetRuntime() { return m_runtime; }
         const SimulationRuntime& GetRuntime() const { return m_runtime; }
-        // Where the first worker stands (and the first tree, if one was placed).
+        // Where the first worker stands.
         const StartingCells& GetStartingCells() const { return m_start; }
 
     private:

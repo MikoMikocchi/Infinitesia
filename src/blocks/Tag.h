@@ -20,9 +20,11 @@ namespace Infinitesia
         Glass,
         LightSource,
         Plant,
+        TreeWood,   // the wood of a tree: trunk, branch, twig, root; felled as one tree
+        TreeLeaves, // the foliage of a tree; falls with the wood that holds it
     };
 
-    inline constexpr int kEngineTagCount = 10;
+    inline constexpr int kEngineTagCount = 12;
 
     std::string_view TagName(Tag tag) noexcept;
     std::optional<Tag> TagFromName(std::string_view name) noexcept;

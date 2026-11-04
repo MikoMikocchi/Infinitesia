@@ -85,14 +85,11 @@ TEST_CASE("ShippedGameplayContentLoads")
 
     const ObjectKindDef& worker = content->GetObjectKind("object.worker");
     CHECK(worker.Has(ObjectAbility::Worker));
-    CHECK_FALSE(worker.Has(ObjectAbility::Choppable));
+    CHECK_FALSE(worker.Has(ObjectAbility::Pickable));
     CHECK_FALSE(worker.carriesItem);
 
-    const ObjectKindDef& tree = content->GetObjectKind("object.tree");
-    REQUIRE(tree.Has(ObjectAbility::Choppable));
-    REQUIRE(tree.chopped.has_value());
-    CHECK(tree.chopped->becomes == &content->GetObjectKind("object.item"));
-    CHECK(tree.chopped->item == &content->GetItem("item.logs"));
+    // Trees are blocks of the world (docs/07_BIOLOGY.md), not objects.
+    CHECK_THROWS_AS(content->GetObjectKind("object.tree"), ContentError);
 
     CHECK(content->GetObjectKind("object.item").carriesItem);
     CHECK(content->GetItem("item.logs").maxStack == 64);
@@ -109,19 +106,13 @@ TEST_CASE("BrokenGameplayContentIsReportedByRecord")
 
     scratch.Write("items.json", kItems);
     scratch.Write("objects.json",
-        R"({ "objects": [ { "id": "object.tree", "name": "Tree", "size": [1, 2], "visual": "tree",
-             "abilities": ["choppable"] } ] })");
-    CHECK(scratch.LoadError().find("object.tree") != std::string::npos);
-
-    scratch.Write("objects.json",
         R"({ "objects": [ { "id": "object.x", "name": "X", "size": [1, 1], "visual": "item",
              "abilities": ["flying"] } ] })");
     CHECK(scratch.LoadError().find("flying") != std::string::npos);
 
     scratch.Write("objects.json",
-        R"({ "objects": [ { "id": "object.tree", "name": "Tree", "size": [1, 2], "visual": "tree",
-             "abilities": ["choppable"], "chopped": { "becomes": "object.nowhere", "item": "item.logs" } } ] })");
-    CHECK(scratch.LoadError().find("unknown object") != std::string::npos);
+        R"({ "objects": [ { "id": "object.x", "name": "X", "size": [1, 1], "visual": "tree" } ] })");
+    CHECK(scratch.LoadError().find("unknown object visual") != std::string::npos);
 
     scratch.Write("objects.json", R"({ "objects": [ { "id": "a", "name": "A", "size": [1, 1], "visual": "item" },
                                                       { "id": "a", "name": "B", "size": [1, 1], "visual": "item" } ] })");
@@ -144,7 +135,7 @@ TEST_CASE("EntityStoreChecksTheKindsRules")
     const Item logs(content->GetItem("item.logs"), 3);
     CHECK_THROWS_AS(entities.AddObject(content->GetObjectKind("object.item"), { 5, 4, 4 }, grid),
                     std::invalid_argument);
-    CHECK_THROWS_AS(entities.AddObject(content->GetObjectKind("object.tree"), { 6, 4, 4 }, grid, logs),
+    CHECK_THROWS_AS(entities.AddObject(content->GetObjectKind("object.worker"), { 6, 4, 4 }, grid, logs),
                     std::invalid_argument);
     CHECK_NOTHROW(entities.AddObject(content->GetObjectKind("object.item"), { 5, 4, 4 }, grid, logs));
 

@@ -34,7 +34,7 @@ in step.
   the same id. A world cell is `BlockState{material, shape}`; every rule about it is a
   `BlockRegistry` query (docs/06_BLOCKS.md). Gameplay items and object
   kinds are in `assets/gameplay/{items,objects}.json` (`GameContent`). Code asks an object
-  for its *abilities* (worker, choppable, pickable), never for a particular kind. Adding a
+  for its *abilities* (worker, pickable), never for a particular kind. Adding a
   kind with a known look is JSON only; a new look is a new `ObjectVisual` plus a draw routine.
 
 ## Adding a domain

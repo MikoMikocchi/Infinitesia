@@ -7,15 +7,16 @@
 
 namespace Infinitesia
 {
-    WorkSystem::WorkSystem(WorkerConfig config, GameWorld& world, const Grid& grid)
+    WorkSystem::WorkSystem(WorkerConfig config, GameWorld& world, const Grid& grid, WoodDrop drop)
         : m_config(config),
+          m_drop(drop),
           m_world(world),
           m_grid(grid)
     {
         if (!std::isfinite(config.movementSpeed) || config.movementSpeed <= 0.0f ||
             !std::isfinite(config.choppingDuration) || config.choppingDuration <= 0.0f ||
             !std::isfinite(config.diggingDuration) || config.diggingDuration <= 0.0f ||
-            config.logsPerTree <= 0)
+            !std::isfinite(config.kilogramsPerLog) || config.kilogramsPerLog <= 0.0f)
         {
             throw std::invalid_argument("Worker configuration contains invalid values.");
         }
@@ -31,9 +32,9 @@ namespace Infinitesia
         return WorkInternal::HasOrderForWorker(m_orders, worker);
     }
 
-    bool WorkSystem::HasOrderForTree(WorldObjectId tree) const
+    bool WorkSystem::HasOrderForTree(const std::vector<GridCell>& wood) const
     {
-        return WorkInternal::HasOrderForTree(m_orders, tree);
+        return WorkInternal::HasOrderForTree(m_orders, wood);
     }
 
     bool WorkSystem::HasOrderForDigCell(GridCell cell) const

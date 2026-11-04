@@ -144,23 +144,6 @@ namespace Infinitesia
                     return;
                 }
 
-                if (object.kind->visual == ObjectVisual::Tree)
-                {
-                    DrawLitMesh(
-                        cylinderMesh,
-                        material,
-                        cellCenter,
-                        { cellSize * 0.15f, cellSize * 0.86f, cellSize * 0.15f },
-                        { 115, 75, 45, 255 });
-                    DrawLitMesh(
-                        sphereMesh,
-                        material,
-                        { cellCenter.x, cellCenter.y + cellSize * 1.2f, cellCenter.z },
-                        { cellSize * 0.48f, cellSize * 0.48f, cellSize * 0.48f },
-                        { 65, 145, 75, 255 });
-                    return;
-                }
-
                 DrawItem(grid, object, cylinderMesh, material);
             }
 
