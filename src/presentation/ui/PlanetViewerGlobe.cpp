@@ -159,6 +159,7 @@ void PlanetViewer::ReleaseRenderResources() noexcept
 	}
 	m_surfaceTexture.Reset();
 	m_regionMap.ReleaseRenderResources();
+	m_worldMapView.ReleaseRenderResources();
 }
 
 Matrix PlanetViewer::GetGlobeTransform() const

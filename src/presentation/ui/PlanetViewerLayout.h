@@ -18,6 +18,7 @@ struct ViewerLayout
 	Rectangle globePanel{};
 	Rectangle mapBounds{};
 	Rectangle regionBounds{};
+	Rectangle worldBounds{};
 	Vector2 globeCenter{};
 	float globeRadius = 0.0f;
 };

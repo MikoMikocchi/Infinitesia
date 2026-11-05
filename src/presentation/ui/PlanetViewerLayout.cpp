@@ -36,6 +36,10 @@ ViewerLayout GetLayout(int screenWidth, int screenHeight, const PlanetMap &plane
 	                       layout.mapPanel.y + (layout.mapPanel.height - mapHeight) * 0.5f, std::max(1.0f, mapWidth),
 	                       std::max(1.0f, mapHeight)};
 
+	const float worldSide = std::max(1.0f, std::min(mapWidth, mapHeight));
+	layout.worldBounds = {layout.mapPanel.x + (layout.mapPanel.width - worldSide) * 0.5f,
+	                      layout.mapPanel.y + (layout.mapPanel.height - worldSide) * 0.5f, worldSide, worldSide};
+
 	layout.globeCenter = {layout.globePanel.x + layout.globePanel.width * 0.5f,
 	                      layout.globePanel.y + layout.globePanel.height * 0.5f};
 	layout.globeRadius = std::max(1.0f, std::min(layout.globePanel.width * 0.39f, layout.globePanel.height * 0.42f));

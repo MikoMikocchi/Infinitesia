@@ -15,16 +15,22 @@ Local (settlement) view:
 | M | Switch between the local view and the planet map |
 | Right-click | Context menu with actions for the cell or object |
 
-Planet and region map:
+Planet, world and region map:
 
 | Input | Action |
 |---|---|
-| Click the map / globe | Select a planet cell |
-| R | Toggle the region map for the selected cell |
-| WASD / arrows | Move the focus one region at a time |
+| Click the map / globe | Select a planet cell and re-centre the world window |
+| W | Toggle the 257 × 257 World Map and the planet surface map |
+| Click a world tile | Focus that region |
+| R | World Map → region map of the focused tile; region map → World Map |
+| WASD / arrows | Region map: move the focus one tile at a time |
 | Enter | Found the settlement in the focused region (dry land only) |
 | M | Return to the settlement |
-| Backspace | Leave region mode |
+| Backspace | World Map → surface map; region map → World Map |
+
+The World Map is the main selection screen: 257 × 257 tiles of 768 m. The region
+map is its zoomed-in view, and the globe shows where the world window lies on the
+planet.
 
 The camera tunables are in `src/presentation/input/CameraController.h` (`CameraControlConfig`),
 the look in `src/presentation/rendering/LightingStyle.h` and `DepthShading.h`.

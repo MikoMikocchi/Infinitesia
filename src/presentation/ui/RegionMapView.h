@@ -40,6 +40,10 @@ public:
 	{
 		return m_generator.GetTerrain();
 	}
+	std::shared_ptr<const WorldMap> GetWorldMap() const noexcept
+	{
+		return m_worldMap;
+	}
 
 	// Lays a new chessboard anchored at a point of the planet and focuses its
 	// middle region.

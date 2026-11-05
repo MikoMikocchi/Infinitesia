@@ -17,11 +17,33 @@ void PlanetViewer::HandleInput()
 	const int rows = m_planetMap.GetLatitudeBandCount();
 	const int columns = m_planetMap.GetLongitudeSegmentCount();
 
+	if (!m_regionMode && IsKeyPressed(KEY_W))
+	{
+		if (m_worldMapMode)
+		{
+			m_worldMapMode = false;
+		}
+		else
+		{
+			m_worldMapMode = true;
+		}
+	}
+	if (m_worldMapMode && IsKeyPressed(KEY_BACKSPACE))
+	{
+		m_worldMapMode = false;
+	}
 	if (IsKeyPressed(KEY_R))
 	{
 		if (m_regionMode)
 		{
 			m_regionMode = false;
+			m_worldMapMode = true;
+		}
+		else if (m_worldMapMode)
+		{
+			// Region map is a zoom of the current world tile, not a new world.
+			m_worldMapMode = false;
+			m_regionMode = true;
 		}
 		else
 		{
@@ -33,6 +55,7 @@ void PlanetViewer::HandleInput()
 		if (IsKeyPressed(KEY_BACKSPACE))
 		{
 			m_regionMode = false;
+			m_worldMapMode = true;
 		}
 		if (m_foundingEnabled && IsKeyPressed(KEY_ENTER))
 		{
@@ -55,6 +78,11 @@ void PlanetViewer::HandleInput()
 		}
 	}
 
+	if (m_foundingEnabled && m_worldMapMode && IsKeyPressed(KEY_ENTER))
+	{
+		TryFoundSettlement();
+	}
+
 	if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
 	{
 		if (m_regionMode && RectangleContains(layout.regionBounds, mousePosition))
@@ -66,12 +94,22 @@ void PlanetViewer::HandleInput()
 			}
 			m_draggingGlobe = false;
 		}
-		else if (!m_regionMode && RectangleContains(layout.mapBounds, mousePosition))
+		else if (m_worldMapMode && RectangleContains(layout.worldBounds, mousePosition))
+		{
+			if (const auto tile = m_worldMapView.TileAt(mousePosition, layout.worldBounds))
+			{
+				m_regionMap.Focus({tile->i, tile->j});
+				SyncSelectionToRegion();
+			}
+			m_draggingGlobe = false;
+		}
+		else if (!m_regionMode && !m_worldMapMode && RectangleContains(layout.mapBounds, mousePosition))
 		{
 			const float normalizedX = (mousePosition.x - layout.mapBounds.x) / layout.mapBounds.width;
 			const float normalizedY = (mousePosition.y - layout.mapBounds.y) / layout.mapBounds.height;
 			m_selectedLongitude = std::clamp(static_cast<int>(normalizedX * columns), 0, columns - 1);
 			m_selectedLatitude = rows - 1 - std::clamp(static_cast<int>(normalizedY * rows), 0, rows - 1);
+			FocusRegionOnSelectedCell();
 			m_draggingGlobe = false;
 		}
 		else
@@ -94,10 +132,7 @@ void PlanetViewer::HandleInput()
 				    std::clamp(static_cast<int>((coordinates.latitudeDegrees + 90.0) / 180.0 * rows), 0, rows - 1);
 				m_selectedLongitude =
 				    std::clamp(static_cast<int>(coordinates.longitudeDegrees / 360.0 * columns), 0, columns - 1);
-				if (m_regionMode)
-				{
-					FocusRegionOnSelectedCell();
-				}
+				FocusRegionOnSelectedCell();
 			}
 		}
 	}

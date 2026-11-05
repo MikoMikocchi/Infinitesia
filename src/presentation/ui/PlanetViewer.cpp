@@ -170,12 +170,49 @@ PlanetViewer::PlanetViewer(StarSystem system, const PlanetPipeline &pipeline, Lo
 			    0.25f);
 		}
 	}
+	// Start on a land world, not on the middle of an ocean. Prefer a river
+	// tile near the planet centre; fall back to the first land cell.
+	int bestLatitude = rows / 2;
+	int bestLongitude = columns / 2;
+	double bestScore = -1.0;
+	for (int latitude = 0; latitude < rows; ++latitude)
+	{
+		for (int longitude = 0; longitude < columns; ++longitude)
+		{
+			const PlanetRegion &region = m_planetMap.GetRegion(latitude, longitude);
+			if (region.isOcean || region.isLake)
+			{
+				continue;
+			}
+			const double centrality =
+			    1.0 - static_cast<double>(std::abs(latitude - rows / 2) + std::abs(longitude - columns / 2)) /
+			              static_cast<double>(rows + columns);
+			const double score = (region.hasRiver ? 4.0 : 0.0) + region.precipitationMm / 1000.0 +
+			                     region.soilFertility * 2.0 + centrality;
+			if (score > bestScore)
+			{
+				bestScore = score;
+				bestLatitude = latitude;
+				bestLongitude = longitude;
+			}
+		}
+	}
+	if (bestScore >= 0.0)
+	{
+		m_selectedLatitude = bestLatitude;
+		m_selectedLongitude = bestLongitude;
+		m_regionMap.Anchor(PlanetaryCoordinates::ToCartesian(
+		    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
+	}
+
 }
 
 void PlanetViewer::Update()
 {
 	EnsureSurfaceTexture();
 	m_regionMap.Update();
+	m_worldMapView.SetWorld(m_regionMap.GetWorldMap());
+	m_worldMapView.Update();
 	HandleInput();
 
 	const float frameTime = GetFrameTime();
@@ -231,6 +268,7 @@ void PlanetViewer::TryFoundSettlement()
 
 void PlanetViewer::EnterRegionMode()
 {
+	m_worldMapMode = false;
 	m_regionMode = true;
 	FocusRegionOnSelectedCell();
 }

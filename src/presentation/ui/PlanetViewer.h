@@ -12,6 +12,7 @@
 #include "domains/natural/planetary/region/WorldTerrain.h"
 #include "presentation/ui/RegionMapView.h"
 #include "presentation/ui/UniqueTexture.h"
+#include "presentation/ui/WorldMapView.h"
 #include "raylib.h"
 
 namespace Infinitesia
@@ -54,6 +55,7 @@ private:
 	StarSystem m_system;
 	PlanetMap m_planetMap;
 	RegionMapView m_regionMap;
+	WorldMapView m_worldMapView;
 	std::vector<Color> m_regionColors;
 	std::vector<float> m_regionBrightness;
 	std::vector<Vector3> m_sphereVertices;
@@ -75,6 +77,7 @@ private:
 	std::string m_notice;
 	float m_noticeSeconds = 0.0f;
 	bool m_regionMode = false;
+	bool m_worldMapMode = true;
 	float m_regionBlend = 0.0f; // 0 = whole globe, 1 = zoomed onto the focused region
 	bool m_draggingGlobe = false;
 	Vector2 m_lastMousePosition{};

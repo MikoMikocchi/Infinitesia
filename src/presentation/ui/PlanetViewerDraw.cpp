@@ -34,14 +34,19 @@ void PlanetViewer::Draw() const
 
 	DrawRectangleRounded(layout.mapPanel, 0.035f, 8, {19, 28, 40, 255});
 	DrawRectangleRounded(layout.globePanel, 0.035f, 8, {19, 28, 40, 255});
-	DrawText(m_regionMode ? "REGION MAP" : "SURFACE MAP", static_cast<int>(layout.mapPanel.x + 18.0f),
-	         static_cast<int>(layout.mapPanel.y + 16.0f), 16, SKYBLUE);
+	const char *mapTitle = m_regionMode ? "REGION MAP" : (m_worldMapMode ? "WORLD MAP" : "SURFACE MAP");
+	DrawText(mapTitle, static_cast<int>(layout.mapPanel.x + 18.0f), static_cast<int>(layout.mapPanel.y + 16.0f), 16,
+	         SKYBLUE);
 	DrawText("ROTATING GLOBE", static_cast<int>(layout.globePanel.x + 18.0f),
 	         static_cast<int>(layout.globePanel.y + 16.0f), 16, SKYBLUE);
 
 	if (m_regionMode)
 	{
 		m_regionMap.Draw(layout.regionBounds);
+	}
+	else if (m_worldMapMode)
+	{
+		m_worldMapView.Draw(layout.worldBounds, m_regionMap.GetFocus());
 	}
 	else
 	{
@@ -78,6 +83,37 @@ void PlanetViewer::Draw() const
 	SyncGlobeMesh();
 	const Matrix globeTransform = GetGlobeTransform();
 	DrawMesh(m_globeMesh, m_globeMaterial, globeTransform);
+	if (m_worldMapMode)
+	{
+		if (const auto world = m_regionMap.GetWorldMap())
+		{
+			const double halfExtent = (kRegionTilesPerWorldHalfSide + 0.5) * kRegionTileSizeMeters;
+			const CartesianPoint3D corners[4] = {
+			    world->Grid().Direction(-halfExtent, -halfExtent),
+			    world->Grid().Direction(halfExtent, -halfExtent),
+			    world->Grid().Direction(halfExtent, halfExtent),
+			    world->Grid().Direction(-halfExtent, halfExtent),
+			};
+			Vector3 screenCorners[4];
+			for (int index = 0; index < 4; ++index)
+			{
+				const CartesianPoint3D &corner = corners[index];
+				screenCorners[index] =
+				    Vector3Transform({static_cast<float>(corner.x) * 1.006f, static_cast<float>(corner.y) * 1.006f,
+					                  -static_cast<float>(corner.z) * 1.006f},
+					                 globeTransform);
+			}
+			for (int index = 0; index < 4; ++index)
+			{
+				DrawLine3D(screenCorners[index], screenCorners[(index + 1) % 4], kSelectedCellColor);
+			}
+			const CartesianPoint3D center = world->Grid().CenterDirection({});
+			DrawSphere(Vector3Transform({static_cast<float>(center.x) * 1.006f, static_cast<float>(center.y) * 1.006f,
+			                             -static_cast<float>(center.z) * 1.006f},
+			                            globeTransform),
+			           0.006f, kSelectedCellColor);
+		}
+	}
 	if (m_regionBlend > 0.01f)
 	{
 		// Mesh longitude runs opposite to geographic longitude, hence the -z.
@@ -92,6 +128,48 @@ void PlanetViewer::Draw() const
 	EndMode3D();
 	EndScissorMode();
 
+	const int footerY = screenHeight - 70;
+	if (m_worldMapMode)
+	{
+		const auto world = m_regionMap.GetWorldMap();
+		const RegionId focus = m_regionMap.GetFocus();
+		char worldText[256];
+		if (world)
+		{
+			const RegionTile *tile = world->Find(focus);
+			if (tile != nullptr)
+			{
+				const char *water =
+				    tile->IsOcean() ? "Ocean" : (tile->IsLake() ? "Lake" : (tile->HasRiver() ? "River" : "Dry"));
+				std::snprintf(worldText, sizeof(worldText),
+				              "World tile (%d, %d)  |  %.0f m  |  %.1f C  |  %.0f mm/yr  |  %s  |  %s", focus.i,
+				              focus.j, static_cast<double>(tile->elevationMeters),
+				              static_cast<double>(tile->temperatureCelsius), static_cast<double>(tile->precipitationMm),
+				              BiomeName(tile->biome), water);
+			}
+			else
+			{
+				std::snprintf(worldText, sizeof(worldText), "World tile (%d, %d) is outside the known world", focus.i,
+				              focus.j);
+			}
+		}
+		else
+		{
+			std::snprintf(worldText, sizeof(worldText), "World map is not available");
+		}
+		DrawText(worldText, 30, footerY, 16, RAYWHITE);
+		char worldDetail[256];
+		std::snprintf(worldDetail, sizeof(worldDetail),
+		              "WorldMap %d x %d region tiles  |  %.0f km across  |  %.0f m per tile", kRegionTilesPerWorldSide,
+		              kRegionTilesPerWorldSide, kWorldSizeMeters / 1000.0, kRegionTileSizeMeters);
+		DrawText(worldDetail, 30, footerY + 20, 14, {180, 195, 210, 255});
+		DrawText(m_foundingEnabled
+		             ? "Click a tile to focus  |  Enter: found here  |  R: zoom tile  |  W/Backspace: surface map"
+					 : "Click a tile to focus  |  R: zoom tile  |  W/Backspace: surface map",
+		         30, footerY + 40, 12, {100, 118, 140, 255});
+		return;
+	}
+
 	char selectionText[256];
 	const PlanetRegion &selectedRegion = m_planetMap.GetRegion(m_selectedLatitude, m_selectedLongitude);
 
@@ -105,7 +183,6 @@ void PlanetViewer::Draw() const
 	              selectedRegion.elevationNormalized * kMaxElevationKm, // physical km
 	              selectedRegion.temperatureCelsius, selectedRegion.precipitationMm, biomeName);
 
-	const int footerY = screenHeight - 70;
 	DrawText(selectionText, 30, footerY, 16, RAYWHITE);
 
 	// Second footer line: geological/hydrological details
@@ -175,9 +252,9 @@ void PlanetViewer::Draw() const
 		}
 		DrawText(regionText, 30, footerY + 40, 13, kSelectedCellColor);
 		DrawText(m_foundingEnabled ? "Click the map to pick a region  |  WASD / arrows: move  |  "
-		                             "Enter: found the settlement here  |  R or Backspace: back"
+		                             "Enter: found the settlement here  |  R or Backspace: World Map"
 		                           : "Click the map to pick a region  |  WASD / arrows: move  |  "
-		                             "M: back to the settlement  |  R or Backspace: back",
+		                             "M: back to the settlement  |  R or Backspace: World Map",
 		         30, footerY + 57, 12, {100, 118, 140, 255});
 		if (m_noticeSeconds > 0.0f)
 		{
@@ -201,7 +278,7 @@ void PlanetViewer::Draw() const
 	              selectedRegion.monthlyTemperatureCelsius[kSeasonMonths[3]],
 	              selectedRegion.monthlyPrecipitationMm[kSeasonMonths[3]]);
 	DrawText(seasonalText, 30, footerY + 40, 13, {100, 118, 140, 255});
-	DrawText("Click the map or globe to select a region  |  R: open region map  |  "
+	DrawText("Click the map or globe to select a region  |  W: world map  |  R: open region map  |  "
 	         "Drag to rotate  |  Scroll to zoom",
 	         30, footerY + 57, 12, {100, 118, 140, 255});
 }
