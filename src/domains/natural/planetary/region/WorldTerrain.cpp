@@ -37,6 +37,79 @@ double SmoothStep(double t) noexcept
 	return t * t * (3.0 - 2.0 * t);
 }
 
+double DistanceToSegment(double px, double py, double ax, double ay, double bx, double by) noexcept
+{
+	const double dx = bx - ax;
+	const double dy = by - ay;
+	const double lengthSquared = dx * dx + dy * dy;
+	if (lengthSquared < 1.0e-9)
+	{
+		return std::hypot(px - ax, py - ay);
+	}
+	const double t = std::clamp(((px - ax) * dx + (py - ay) * dy) / lengthSquared, 0.0, 1.0);
+	return std::hypot(px - (ax + dx * t), py - (ay + dy * t));
+}
+
+struct CurvePoint
+{
+	double x = 0.0;
+	double y = 0.0;
+	double distance = 0.0;
+};
+
+CurvePoint ClosestPointOnBezier(double px, double py, double fromX, double fromY, double controlX, double controlY,
+                                double toX, double toY) noexcept
+{
+	const auto point = [&](double t) {
+		const double inverse = 1.0 - t;
+		return CurvePoint{inverse * inverse * fromX + 2.0 * inverse * t * controlX + t * t * toX,
+		                  inverse * inverse * fromY + 2.0 * inverse * t * controlY + t * t * toY, 0.0};
+	};
+
+	constexpr int kCoarseSamples = 8;
+	CurvePoint best;
+	best.distance = std::numeric_limits<double>::infinity();
+	int bestIndex = 0;
+	for (int sample = 0; sample <= kCoarseSamples; ++sample)
+	{
+		const double t = static_cast<double>(sample) / kCoarseSamples;
+		const CurvePoint candidate = point(t);
+		const double distance = std::hypot(px - candidate.x, py - candidate.y);
+		if (distance < best.distance)
+		{
+			best = candidate;
+			best.distance = distance;
+			bestIndex = sample;
+		}
+	}
+
+	// Refine the bracketing interval by ternary search. The coarse pass alone is
+	// too coarse for narrow channels.
+	double low = std::max(0.0, (static_cast<double>(bestIndex) - 1.0) / kCoarseSamples);
+	double high = std::min(1.0, (static_cast<double>(bestIndex) + 1.0) / kCoarseSamples);
+	for (int iteration = 0; iteration < 16; ++iteration)
+	{
+		const double first = low + (high - low) / 3.0;
+		const double second = high - (high - low) / 3.0;
+		const CurvePoint firstPoint = point(first);
+		const CurvePoint secondPoint = point(second);
+		const double firstDistance = std::hypot(px - firstPoint.x, py - firstPoint.y);
+		const double secondDistance = std::hypot(px - secondPoint.x, py - secondPoint.y);
+		if (firstDistance < secondDistance)
+		{
+			high = second;
+		}
+		else
+		{
+			low = first;
+		}
+	}
+
+	CurvePoint refined = point((low + high) * 0.5);
+	refined.distance = std::hypot(px - refined.x, py - refined.y);
+	return refined.distance < best.distance ? refined : best;
+}
+
 ChannelSample SampleChannel(const RiverChannel &river, double localX, double localY) noexcept
 {
 	ChannelSample sample;
@@ -57,17 +130,34 @@ ChannelSample SampleChannel(const RiverChannel &river, double localX, double loc
 		return sample;
 	}
 
-	const double t = std::clamp(((localX - fromX) * segmentX + (localY - fromY) * segmentY) / lengthSquared, 0.0, 1.0);
-	sample.centerX = fromX + segmentX * t;
-	sample.centerY = fromY + segmentY * t;
-	const double dx = localX - sample.centerX;
-	const double dy = localY - sample.centerY;
-	sample.distanceMeters = std::sqrt(dx * dx + dy * dy);
-
 	const double waterHalfWidth = std::max(kMinimumWaterHalfWidthMeters, static_cast<double>(river.widthMeters) * 0.5);
 	const double bankWidth =
 	    std::clamp(static_cast<double>(river.widthMeters) * 0.5, kMinimumBankWidthMeters, kMaximumBankWidthMeters);
 	const double bankHalfWidth = waterHalfWidth + bankWidth;
+
+	if (river.HasBend())
+	{
+		const double controlX = static_cast<double>(river.bendX) * kRegionTileSizeMeters;
+		const double controlY = static_cast<double>(river.bendY) * kRegionTileSizeMeters;
+		const double maxBendOffset = DistanceToSegment(controlX, controlY, fromX, fromY, toX, toY);
+		if (DistanceToSegment(localX, localY, fromX, fromY, toX, toY) > bankHalfWidth + maxBendOffset + 1.0)
+		{
+			return sample;
+		}
+		const CurvePoint closest = ClosestPointOnBezier(localX, localY, fromX, fromY, controlX, controlY, toX, toY);
+		sample.centerX = closest.x;
+		sample.centerY = closest.y;
+		sample.distanceMeters = closest.distance;
+	}
+	else
+	{
+		const double t =
+		    std::clamp(((localX - fromX) * segmentX + (localY - fromY) * segmentY) / lengthSquared, 0.0, 1.0);
+		sample.centerX = fromX + segmentX * t;
+		sample.centerY = fromY + segmentY * t;
+		sample.distanceMeters = std::hypot(localX - sample.centerX, localY - sample.centerY);
+	}
+
 	if (sample.distanceMeters >= bankHalfWidth)
 	{
 		return sample;

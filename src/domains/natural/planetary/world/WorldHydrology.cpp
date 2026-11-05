@@ -90,7 +90,42 @@ void AddChannel(std::vector<RegionTile> &tiles, std::vector<RiverChannel> &river
 	++tile.riverCount;
 }
 
-RiverChannel ChannelBetween(TilePoint from, TilePoint to, float catchmentKm2) noexcept
+float MeanderHash(int i, int j, int segment) noexcept
+{
+	std::uint32_t hash = static_cast<std::uint32_t>(i) * 0x9E3779B1u;
+	hash ^= static_cast<std::uint32_t>(j) * 0x85EBCA77u;
+	hash ^= static_cast<std::uint32_t>(segment) * 0xC2B2AE3Du;
+	hash ^= hash >> 16;
+	hash *= 0x7FEB352Du;
+	hash ^= hash >> 15;
+	return static_cast<float>(hash & 0xFFFFu) / 65535.0f;
+}
+
+// A quadratic Bezier control point. The meander amplitude is a fraction of the
+// segment length, so short tributary stubs stay tame while the main stem can
+// curve across the tile. The control point is clamped inside the tile.
+TilePoint MeanderControl(TilePoint from, TilePoint to, int i, int j, int segment) noexcept
+{
+	const double dx = static_cast<double>(to.x) - from.x;
+	const double dy = static_cast<double>(to.y) - from.y;
+	const double length = std::hypot(dx, dy);
+	if (length < 1.0e-4)
+	{
+		return {0.5f, 0.5f};
+	}
+
+	const double nx = -dy / length;
+	const double ny = dx / length;
+	const double amplitude = std::min(length * 0.18, 0.12);
+	const double phase = 2.0 * static_cast<double>(MeanderHash(i, j, segment)) - 1.0;
+	TilePoint control{static_cast<float>((from.x + to.x) * 0.5 + nx * amplitude * phase),
+	                  static_cast<float>((from.y + to.y) * 0.5 + ny * amplitude * phase)};
+	control.x = std::clamp(control.x, 0.02f, 0.98f);
+	control.y = std::clamp(control.y, 0.02f, 0.98f);
+	return control;
+}
+
+RiverChannel ChannelBetween(TilePoint from, TilePoint to, float catchmentKm2, TilePoint control) noexcept
 {
 	RiverChannel channel;
 	channel.fromX = from.x;
@@ -99,6 +134,8 @@ RiverChannel ChannelBetween(TilePoint from, TilePoint to, float catchmentKm2) no
 	channel.toY = to.y;
 	channel.widthMeters = RiverWidthMeters(catchmentKm2);
 	channel.depthMeters = RiverDepthMeters(channel.widthMeters);
+	channel.bendX = control.x;
+	channel.bendY = control.y;
 	return channel;
 }
 } // namespace
@@ -355,14 +392,19 @@ std::vector<RiverChannel> ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 
 			const float width = RiverWidthMeters(area);
 			const float depth = RiverDepthMeters(width);
+			int segment = 0;
 			if (inletCount == 0)
 			{
 				// A spring at the tile centre.
-				AddChannel(tiles, rivers, index, ChannelBetween(TilePoint{0.5f, 0.5f}, outlet, area));
+				const TilePoint source{0.5f, 0.5f};
+				AddChannel(tiles, rivers, index,
+				           ChannelBetween(source, outlet, area, MeanderControl(source, outlet, i, j, segment)));
 			}
 			else if (inletCount == 1)
 			{
-				AddChannel(tiles, rivers, index, ChannelBetween(inlets[0].point, outlet, area));
+				AddChannel(tiles, rivers, index,
+				           ChannelBetween(inlets[0].point, outlet, area,
+				                          MeanderControl(inlets[0].point, outlet, i, j, segment)));
 			}
 			else
 			{
@@ -373,9 +415,11 @@ std::vector<RiverChannel> ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 				for (int inlet = 0; inlet < inletCount; ++inlet)
 				{
 					AddChannel(tiles, rivers, index,
-					           ChannelBetween(inlets[inlet].point, junction, inlets[inlet].areaKm2));
+					           ChannelBetween(inlets[inlet].point, junction, inlets[inlet].areaKm2,
+					                          MeanderControl(inlets[inlet].point, junction, i, j, segment++)));
 				}
-				AddChannel(tiles, rivers, index, ChannelBetween(junction, outlet, area));
+				AddChannel(tiles, rivers, index,
+				           ChannelBetween(junction, outlet, area, MeanderControl(junction, outlet, i, j, segment)));
 			}
 
 			tile.waterLevelMeters = tile.elevationMeters - kRiverFreeboardMeters;

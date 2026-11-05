@@ -95,10 +95,18 @@ struct RiverChannel
 	float toY = 0.5f;
 	float widthMeters = 0.0f; // full width across the water surface
 	float depthMeters = 0.0f; // incision below the surrounding ground
+	// Quadratic Bezier control point in the same 0..1 tile coordinates. A
+	// negative pair means a straight segment (synthetic channels and old data).
+	float bendX = -1.0f;
+	float bendY = -1.0f;
 
 	bool IsValid() const noexcept
 	{
 		return widthMeters > 0.0f && depthMeters > 0.0f;
+	}
+	bool HasBend() const noexcept
+	{
+		return bendX >= 0.0f && bendY >= 0.0f;
 	}
 };
 

@@ -323,6 +323,42 @@ TEST_CASE("WorldRiversCarveChannelsAndCarryWater")
 	CHECK(bankColumn.heightBlocks > channelColumn.heightBlocks);
 }
 
+TEST_CASE("WorldRiversFollowTheMeanderControlPoint")
+{
+	const PlanetMap &planet = SharedMap();
+	const CartesianPoint3D anchor = Place(35.0, 80.0);
+	const LocalGrid grid(kRadius, anchor);
+
+	std::vector<RegionTile> tiles(static_cast<std::size_t>(kRegionTilesPerWorldSide) *
+	                              static_cast<std::size_t>(kRegionTilesPerWorldSide));
+	for (RegionTile &tile : tiles)
+	{
+		tile.elevationMeters = 100.0f;
+		tile.temperatureCelsius = 15.0f;
+		tile.precipitationMm = 1000.0f;
+		tile.flags = 0;
+	}
+	RegionTile &river = tiles[WorldMap::Index({0, 0})];
+	SetFlag(river.flags, RegionTileFlag::River);
+	river.riverFirst = 0;
+	river.riverCount = 1;
+	river.flowEast = 1;
+	std::vector<RiverChannel> channels{RiverChannel{0.0f, 0.5f, 1.0f, 0.5f, 20.0f, 2.0f, 0.5f, 0.8f}};
+	const auto world = std::make_shared<const WorldMap>(grid, std::move(tiles), std::move(channels));
+	const WorldTerrain terrain(planet, world);
+
+	// The channel belongs to tile (0, 0): local (0.25, 0.6125) is global
+	// (-0.25, +0.1125) tiles from the anchor.
+	const GeographicCoordinates onCurve = PlanetaryCoordinates::ToGeographic(
+	    grid.Direction(-0.25 * kRegionTileSizeMeters, 0.1125 * kRegionTileSizeMeters));
+	const GeographicCoordinates offCurve =
+	    PlanetaryCoordinates::ToGeographic(grid.Direction(-0.25 * kRegionTileSizeMeters, 0.0 * kRegionTileSizeMeters));
+	const LocalWater wet = terrain.WaterAt(onCurve, 2.0);
+	const LocalWater dry = terrain.WaterAt(offCurve, 2.0);
+	REQUIRE(wet.origin == FluidOrigin::River);
+	CHECK(dry.origin == FluidOrigin::None);
+}
+
 TEST_CASE("WorldLakesFillLocalDepressionsToTheSpillLevel")
 {
 	const PlanetMap &planet = SharedMap();

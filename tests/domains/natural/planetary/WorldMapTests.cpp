@@ -91,7 +91,7 @@ bool SameRiver(const RiverChannel &first, const RiverChannel &second)
 {
 	return first.fromX == second.fromX && first.fromY == second.fromY && first.toX == second.toX &&
 	       first.toY == second.toY && first.widthMeters == second.widthMeters &&
-	       first.depthMeters == second.depthMeters;
+	       first.depthMeters == second.depthMeters && first.bendX == second.bendX && first.bendY == second.bendY;
 }
 
 std::span<const RiverChannel> ChannelsOf(const RegionTile &tile, const std::vector<RiverChannel> &rivers)
@@ -343,6 +343,11 @@ TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
 			CHECK_LE(channel.toX, 1.0f);
 			CHECK_GE(channel.toY, 0.0f);
 			CHECK_LE(channel.toY, 1.0f);
+			REQUIRE(channel.HasBend());
+			CHECK_GE(channel.bendX, 0.0f);
+			CHECK_LE(channel.bendX, 1.0f);
+			CHECK_GE(channel.bendY, 0.0f);
+			CHECK_LE(channel.bendY, 1.0f);
 		}
 	}
 	CHECK(channelCount > 0);
