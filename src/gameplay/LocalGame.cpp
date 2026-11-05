@@ -33,6 +33,13 @@ std::uint64_t LocalGame::AdvanceFrame(float frameDelta)
 {
 	// The runtime listens to the simulation and runs the due systems on every
 	// tick.
-	return m_simulation.AdvanceFrame(frameDelta);
+	const std::uint64_t ticks = m_simulation.AdvanceFrame(frameDelta);
+	// The fluid runs on the same fixed tick, not on the frame rate, so its speed
+	// does not depend on the FPS.
+	for (std::uint64_t tick = 0; tick < ticks; ++tick)
+	{
+		m_world.terrain.StepFluids();
+	}
+	return ticks;
 }
 } // namespace Infinitesia

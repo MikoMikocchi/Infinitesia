@@ -7,6 +7,7 @@
 #include "presentation/rendering/ViewMode.h"
 #include "presentation/rendering/WorldGeometryRenderer.h"
 #include "presentation/rendering/terrain/BlockTextureAtlas.h"
+#include "presentation/rendering/terrain/FluidMeshBuilder.h"
 #include "raylib.h"
 #include "world/Grid.h"
 
@@ -49,5 +50,6 @@ private:
 	Mesh m_cylinderMesh{};
 	Mesh m_sphereMesh{};
 	mutable WorldGeometryRenderer::ChunkMeshCache m_chunkMeshes;
+	mutable WorldGeometryRenderer::FluidMeshCache m_fluidMeshes;
 };
 } // namespace Infinitesia

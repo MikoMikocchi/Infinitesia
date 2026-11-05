@@ -188,6 +188,10 @@ FluidColumn PlanetTerrainSource::FluidAt(int x, int z) const
 	// grid and FluidColumn do not care which material it is.
 	fluid.matter = column.fluid != FluidOrigin::None ? m_matter.water : kAirMatter;
 	fluid.origin = column.fluid;
+	// The block range the fluid fills: strictly above the topmost ground block,
+	// up to and including the top fluid block the surface falls in.
+	fluid.groundBlock = column.surface;
+	fluid.topBlock = column.fluid != FluidOrigin::None ? column.fluidTopBlocks : -1;
 	// The top of the topmost ground block.
 	fluid.groundMeters = static_cast<double>(m_terrain->OriginElevationMeters() + column.surface + 1 - m_anchorLevel);
 	fluid.surfaceMeters = fluid.HasFluid() ? column.fluidLevelMeters : fluid.groundMeters;
@@ -216,13 +220,8 @@ BlockState PlanetTerrainSource::StateOf(GridCell cell, bool withPlants) const
 	const FloraCell *plant = withPlants ? FloraAt(cell) : nullptr;
 	if (cell.y > column.surface)
 	{
-		if (cell.y <= column.fluidTopBlocks)
-		{
-			// Every fluid origin maps to the one surface fluid for now; a later
-			// origin table can send volcanic pockets to magma and subsurface ones to
-			// oil without touching the grid.
-			return {m_matter.water, kShapeFull};
-		}
+		// Water is not a block: the cells above the ground are air (or a plant)
+		// and the separate FluidField holds the fluid (docs/06_BLOCKS.md, section 5).
 		return {plant != nullptr ? plant->matter : kAirMatter, kShapeFull};
 	}
 	const Layer layer = LayerAt(column.kind, column.surface - cell.y);

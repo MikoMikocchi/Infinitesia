@@ -11,8 +11,8 @@ VoxelWorld::VoxelWorld(const Grid &grid, std::uint32_t seed)
 }
 
 VoxelWorld::VoxelWorld(const Grid &grid, std::shared_ptr<const TerrainSource> terrain)
-    : m_gridWidth(grid.GetWidth()), m_gridHeight(grid.GetHeight()), m_gridDepth(grid.GetDepth()),
-      m_terrain(std::move(terrain))
+    : m_fluids(grid.GetWidth(), grid.GetHeight(), grid.GetDepth()), m_gridWidth(grid.GetWidth()),
+      m_gridHeight(grid.GetHeight()), m_gridDepth(grid.GetDepth()), m_terrain(std::move(terrain))
 {
 	if (m_terrain == nullptr)
 	{

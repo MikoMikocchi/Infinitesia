@@ -82,6 +82,9 @@ void VoxelWorld::SetBlock(GridCell cell, BlockState state)
 	Block &changed = chunk.blocks[GetBlockIndexHelper(chunk, cell)];
 	changed.state = state;
 	++m_terrainRevision;
+	// Keep the separate fluid layer in step: a dug cell lets water in, a placed
+	// block pushes it out.
+	m_fluids.OnBlockChanged(cell, *this);
 
 	// A mesh depends on the blocks one cell around its own (hidden faces and the
 	// ambient occlusion of their corners, diagonals included), so every chunk
@@ -113,6 +116,16 @@ void VoxelWorld::SetBlock(GridCell cell, BlockState state)
 			++affectedChunk.terrainRevision;
 		}
 	}
+}
+
+const FluidCell *VoxelWorld::GetFluid(GridCell cell) const
+{
+	return m_fluids.At(cell);
+}
+
+void VoxelWorld::StepFluids()
+{
+	m_fluids.Step(*this);
 }
 
 std::uint64_t VoxelWorld::GetTerrainRevision() const

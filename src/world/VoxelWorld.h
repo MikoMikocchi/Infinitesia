@@ -8,6 +8,7 @@
 
 #include "world/Block.h"
 #include "world/Chunk.h"
+#include "world/FluidField.h"
 #include "world/Grid.h"
 #include "world/TerrainSource.h"
 
@@ -35,7 +36,22 @@ public:
 	bool HasSkyAccess(GridCell cell) const;
 	// Puts a block into the cell; throws std::invalid_argument when the registry
 	// does not know its material or shape, std::out_of_range outside the grid.
+	// The fluid of the cell is displaced or woken up as a result.
 	void SetBlock(GridCell cell, BlockState state);
+	// The fluid layer, separate from the blocks. Generated with each chunk and
+	// stepped on the fixed simulation tick.
+	const FluidField &Fluids() const
+	{
+		return m_fluids;
+	}
+	FluidField &Fluids()
+	{
+		return m_fluids;
+	}
+	// nullptr when the cell holds no fluid (or its chunk is not generated).
+	const FluidCell *GetFluid(GridCell cell) const;
+	// One tick of the fluid simulation.
+	void StepFluids();
 	std::uint64_t GetTerrainRevision() const;
 	// What the cell would be without plants (TerrainSource::GroundStateAt); air
 	// outside the grid.
@@ -57,6 +73,7 @@ private:
 
 	std::map<ChunkCoordinate, WorldChunk> m_chunks;
 	std::vector<ChunkCoordinate> m_pendingChunks;
+	FluidField m_fluids;
 	int m_gridWidth;
 	int m_gridHeight;
 	int m_gridDepth;

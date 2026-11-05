@@ -117,6 +117,17 @@ void WorldRenderer::UnloadShaders()
 	}
 	m_chunkMeshes.clear();
 
+	for (auto &[coordinate, fluidMesh] : m_fluidMeshes)
+	{
+		static_cast<void>(coordinate);
+		if (fluidMesh.mesh.vaoId != 0 || fluidMesh.mesh.vboId != nullptr)
+		{
+			UnloadMesh(fluidMesh.mesh);
+			fluidMesh.mesh = {};
+		}
+	}
+	m_fluidMeshes.clear();
+
 	if (m_cylinderMesh.vaoId != 0 || m_cylinderMesh.vboId != nullptr)
 	{
 		UnloadMesh(m_cylinderMesh);
@@ -207,6 +218,20 @@ void WorldRenderer::Draw(const Grid &grid, const GameWorld &world, std::optional
 	WorldGeometryRenderer::DrawBlocks(grid, world.terrain, chunkViewCenter, chunkRenderRadius, viewLevel, viewMode,
 	                                  m_worldMaterial, m_blockAtlas, m_chunkMeshes);
 	EndShaderMode();
+
+	// Water is a separate, translucent layer over the opaque ground: it never
+	// writes depth, so the ground and objects behind it stay visible.
+	if (!world.terrain.Fluids().Chunks().empty())
+	{
+		rlDisableDepthMask();
+		BeginBlendMode(BLEND_ALPHA);
+		BeginShaderMode(m_worldShader);
+		WorldGeometryRenderer::DrawFluids(grid, world.terrain, chunkViewCenter, chunkRenderRadius, viewLevel, viewMode,
+		                                  m_worldMaterial, m_blockAtlas, m_fluidMeshes);
+		EndShaderMode();
+		EndBlendMode();
+		rlEnableDepthMask();
+	}
 
 	rlDisableDepthMask();
 	BeginShaderMode(m_shadowShader);

@@ -133,7 +133,8 @@ void VoxelWorld::EnsureChunkGenerated(ChunkCoordinate coordinate)
 		}
 	}
 
-	m_chunks.emplace(coordinate, std::move(chunk));
+	const auto inserted = m_chunks.emplace(coordinate, std::move(chunk));
+	m_fluids.InitializeChunk(inserted.first->second, *m_terrain);
 
 	// The meshes of the loaded neighbours were built with this chunk counted as
 	// open air; their border faces and ambient occlusion are stale now.

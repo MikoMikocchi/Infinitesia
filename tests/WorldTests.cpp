@@ -2,8 +2,10 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -157,6 +159,57 @@ CartesianPoint3D LakeAnchor()
 {
 	return FindCell([](const PlanetRegion &cell) { return cell.isLake; });
 }
+
+// A flat test world: solid bedrock up to y = 1, air above. Good for fluid tests
+// that need a small, known shape.
+class FlatTestTerrain final : public TerrainSource
+{
+public:
+	BlockState StateAt(GridCell cell) const override
+	{
+		if (cell.y <= 1)
+		{
+			return {SharedRegistry()->FindMatter("bedrock")->id, kShapeFull};
+		}
+		return {};
+	}
+	const BlockRegistry &Registry() const override
+	{
+		return *SharedRegistry();
+	}
+};
+
+// The top or bottom fluid cell of the first column of a given origin.
+std::optional<GridCell> FindFluidCell(const TerrainSource &source, FluidOrigin origin, bool bottom)
+{
+	for (int x = 0; x < kWidth; x += 2)
+	{
+		for (int z = 0; z < kDepth; z += 2)
+		{
+			const FluidColumn fluid = source.FluidAt(x, z);
+			if (fluid.origin != origin || fluid.topBlock <= fluid.groundBlock)
+			{
+				continue;
+			}
+			return GridCell{x, bottom ? fluid.groundBlock + 1 : fluid.topBlock, z};
+		}
+	}
+	return std::nullopt;
+}
+
+std::uint64_t TotalFluidVolume(const VoxelWorld &world)
+{
+	std::uint64_t volume = 0;
+	for (const auto &[coordinate, chunk] : world.Fluids().Chunks())
+	{
+		static_cast<void>(coordinate);
+		for (const FluidCell &cell : chunk.cells)
+		{
+			volume += cell.amountMb;
+		}
+	}
+	return volume;
+}
 } // namespace
 
 TEST_CASE("TheOriginColumnSitsAtTheAnchorLevel")
@@ -176,7 +229,6 @@ TEST_CASE("ColumnsAreGroundWithSoilAndRockBelowAndAirAbove")
 	{
 		const Settlement settlement = MakeSettlement(anchor);
 		const PlanetTerrainSource &source = *settlement.source;
-		const int waterTop = source.WaterTopLevel();
 
 		for (int x = 0; x < kWidth; x += 17)
 		{
@@ -196,9 +248,8 @@ TEST_CASE("ColumnsAreGroundWithSoilAndRockBelowAndAirAbove")
 
 				for (int y = surface + 1; y < kHeight; ++y)
 				{
-					const GridCell cell{x, y, z};
-					Require(y <= waterTop ? IsMade(source, cell, "water") : IsAir(source, cell),
-					        "The column above the ground is neither air nor fluid.");
+					// Water is no longer a block: the fluid is a separate layer.
+					Require(IsAir(source, {x, y, z}), "The column above the ground is not air.");
 				}
 			}
 		}
@@ -209,10 +260,11 @@ TEST_CASE("TheSeaFillsLowGroundOnlyBelowSeaLevel")
 {
 	const Settlement ocean = MakeSettlement(OceanAnchor());
 	Require(ocean.source->WaterTopLevel() > kAnchorLevel, "Sea level is not above an ocean anchor.");
-	Require(IsMade(*ocean.source, {kWidth / 2, ocean.source->WaterTopLevel(), kDepth / 2}, "water"),
-	        "There is no water above the ocean floor.");
-	Require(IsAir(*ocean.source, {kWidth / 2, ocean.source->WaterTopLevel() + 1, kDepth / 2}),
-	        "The water does not stop at the waterline.");
+	const FluidColumn sea = ocean.source->FluidAt(kWidth / 2, kDepth / 2);
+	Require(sea.HasFluid(), "The sea column is dry.");
+	Require(sea.origin == FluidOrigin::Sea, "The sea column has the wrong origin.");
+	Require(sea.topBlock == ocean.source->WaterTopLevel(), "The sea does not stop at the waterline.");
+	Require(sea.groundBlock < sea.topBlock, "The sea has no depth.");
 	Require(IsMade(*ocean.source, {kWidth / 2, kAnchorLevel, kDepth / 2}, "sand"), "The sea floor is not sand.");
 
 	const Settlement land = MakeSettlement(LandAnchor());
@@ -242,45 +294,231 @@ TEST_CASE("ALakeFillsWaterAboveSeaLevel")
 			Require(fluid.surfaceMeters > 0.0, "The lake surface is not above sea level.");
 			Require(fluid.surfaceMeters > fluid.groundMeters, "The lake surface is not above its ground.");
 			Require(fluid.depthMeters > 0.0, "The lake has no depth.");
+			Require(fluid.groundBlock < fluid.topBlock, "The lake has no fluid blocks.");
 		}
 	}
 	Require(foundLake, "No lake column: the lake was not filled.");
 }
 
-TEST_CASE("TheFluidLayerMatchesTheBlocks")
+TEST_CASE("TerrainBlocksContainNoFluid")
 {
 	for (const CartesianPoint3D anchor : {LandAnchor(), OceanAnchor(), LakeAnchor()})
 	{
 		const Settlement settlement = MakeSettlement(anchor);
 		const PlanetTerrainSource &source = *settlement.source;
-		const MatterDef *water = source.Registry().FindMatter("water");
-		Require(water != nullptr, "The registry has no water.");
-
-		for (int x = 0; x < kWidth; x += 32)
+		for (int x = 0; x < kWidth; x += 13)
 		{
-			for (int z = 0; z < kDepth; z += 32)
+			for (int z = 0; z < kDepth; z += 11)
 			{
-				const FluidColumn fluid = source.FluidAt(x, z);
-				int top = -1;
-				for (int y = kHeight - 1; y >= 0; --y)
+				for (int y = 0; y < kHeight; y += 7)
 				{
-					if (IsWater(source, {x, y, z}))
-					{
-						top = y;
-						break;
-					}
+					const BlockState state = source.StateAt({x, y, z});
+					Require(!source.Registry().Has(state.matter, Tag::Fluid),
+					        "The block terrain still hands out a fluid.");
 				}
+			}
+		}
+	}
+}
 
-				Require((top >= 0) == fluid.HasFluid(), "The fluid layer disagrees with the blocks.");
-				Require(fluid.surfaceMeters >= fluid.groundMeters, "The fluid surface is below its ground.");
-				if (top >= 0)
+TEST_CASE("TheSeaIsStoredInTheFluidField")
+{
+	const Settlement settlement = MakeSettlement(OceanAnchor());
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+	const std::optional<GridCell> cell = FindFluidCell(*settlement.source, FluidOrigin::Sea, false);
+	REQUIRE(cell.has_value());
+	world.EnsureChunkContaining(*cell);
+
+	const FluidCell *fluid = world.GetFluid(*cell);
+	REQUIRE(fluid != nullptr);
+	const MatterDef *water = settlement.source->Registry().FindMatter("water");
+	REQUIRE(water != nullptr);
+	CHECK(fluid->matter == water->id);
+	CHECK(fluid->origin == FluidOrigin::Sea);
+	CHECK(fluid->amountMb > 0);
+
+	// The block at the same cell is air, not water.
+	CHECK(!settlement.source->Registry().Has(settlement.source->StateAt(*cell).matter, Tag::Fluid));
+}
+
+TEST_CASE("TheSeaIsInfiniteAndALakeIsFinite")
+{
+	{
+		const Settlement settlement = MakeSettlement(OceanAnchor());
+		const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+		VoxelWorld world(grid, settlement.source);
+		const std::optional<GridCell> cell = FindFluidCell(*settlement.source, FluidOrigin::Sea, true);
+		REQUIRE(cell.has_value());
+		world.EnsureChunkContaining(*cell);
+		const FluidCell original = *world.GetFluid(*cell);
+		REQUIRE(original.origin == FluidOrigin::Sea);
+
+		world.Fluids().Set(*cell, {original.matter, 0, FluidOrigin::Sea});
+		world.StepFluids();
+		const FluidCell *after = world.GetFluid(*cell);
+		REQUIRE(after != nullptr);
+		CHECK(after->amountMb == 1000); // the sea fills itself again
+	}
+
+	{
+		const Settlement settlement = MakeSettlement(LakeAnchor());
+		const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+		VoxelWorld world(grid, settlement.source);
+		const std::optional<GridCell> cell = FindFluidCell(*settlement.source, FluidOrigin::Lake, true);
+		REQUIRE(cell.has_value());
+		world.EnsureChunkContaining(*cell);
+		const FluidCell original = *world.GetFluid(*cell);
+		REQUIRE(original.origin == FluidOrigin::Lake);
+		REQUIRE(original.amountMb > 0);
+
+		const std::uint64_t before = TotalFluidVolume(world);
+		world.Fluids().Set(*cell, {original.matter, 0, FluidOrigin::Lake});
+		world.StepFluids();
+		// A lake has no endless source: draining it cannot add water back.
+		CHECK(TotalFluidVolume(world) <= before - original.amountMb);
+	}
+}
+
+TEST_CASE("WaterFillsADugHole")
+{
+	const Settlement settlement = MakeSettlement(OceanAnchor());
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+	const std::optional<GridCell> wetCell = FindFluidCell(*settlement.source, FluidOrigin::Sea, true);
+	REQUIRE(wetCell.has_value());
+	const int x = wetCell->x;
+	const int z = wetCell->z;
+	const GridCell hole{x, wetCell->y - 1, z}; // the solid block the water rests on
+	world.EnsureChunkContaining(hole);
+	world.EnsureChunkContaining(*wetCell);
+	REQUIRE(world.GetBlock(hole) != nullptr);
+	REQUIRE(world.Registry().Occupied(world.GetBlock(hole)->state));
+
+	world.SetBlock(hole, {kAirMatter, kShapeFull});
+	for (int tick = 0; tick < 8; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	const FluidCell *filled = world.GetFluid(hole);
+	REQUIRE(filled != nullptr);
+	CHECK(filled->amountMb > 0);
+}
+
+TEST_CASE("ABlockPlacedInWaterDisplacesIt")
+{
+	const Settlement settlement = MakeSettlement(OceanAnchor());
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+	const std::optional<GridCell> wetCell = FindFluidCell(*settlement.source, FluidOrigin::Sea, true);
+	REQUIRE(wetCell.has_value());
+	world.EnsureChunkContaining(*wetCell);
+	REQUIRE(world.GetFluid(*wetCell) != nullptr);
+	REQUIRE(world.GetFluid(*wetCell)->amountMb > 0);
+
+	const MatterId sand = settlement.source->Registry().FindMatter("sand")->id;
+	world.SetBlock(*wetCell, {sand, kShapeFull});
+
+	// The block wins the cell: the fluid is pushed out or, when there is no room
+	// (the sea reaches the top of the grid here), simply lost.
+	const FluidCell *displaced = world.GetFluid(*wetCell);
+	CHECK((displaced == nullptr || displaced->amountMb == 0));
+	CHECK(world.GetBlock(*wetCell)->state.matter == sand);
+}
+
+TEST_CASE("WaterDoesNotPassThroughSolidBlocks")
+{
+	const Grid grid(GridConfig{5, 5, 5, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	world.EnsureChunkContaining({2, 2, 2});
+
+	const MatterId bedrock = SharedRegistry()->FindMatter("bedrock")->id;
+	for (int z = 0; z < 5; ++z)
+	{
+		for (int y = 2; y < 5; ++y)
+		{
+			world.SetBlock({2, y, z}, {bedrock, kShapeFull});
+		}
+	}
+
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	world.Fluids().Set({1, 2, 2}, {water, 1000, FluidOrigin::None});
+	for (int tick = 0; tick < 10; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	for (int z = 0; z < 5; ++z)
+	{
+		for (int y = 0; y < 5; ++y)
+		{
+			// The wall itself stays dry, and nothing appears behind it.
+			const FluidCell *wall = world.GetFluid({2, y, z});
+			CHECK((wall == nullptr || wall->amountMb == 0));
+			const FluidCell *behind = world.GetFluid({3, y, z});
+			CHECK((behind == nullptr || behind->amountMb == 0));
+		}
+	}
+}
+
+TEST_CASE("FluidDoesNotMixDifferentMaterials")
+{
+	const Grid grid(GridConfig{5, 5, 5, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	world.EnsureChunkContaining({2, 2, 2});
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	const MatterId oil = SharedRegistry()->FindMatter("oil")->id;
+
+	world.Fluids().Set({1, 2, 2}, {water, 500, FluidOrigin::None});
+	world.Fluids().Set({2, 2, 2}, {oil, 500, FluidOrigin::None});
+	for (int tick = 0; tick < 10; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	const FluidCell *oilCell = world.GetFluid({2, 2, 2});
+	REQUIRE(oilCell != nullptr);
+	CHECK(oilCell->matter == oil);
+	CHECK(oilCell->amountMb > 0);
+
+	const FluidCell *waterCell = world.GetFluid({1, 2, 2});
+	CHECK(waterCell != nullptr);
+	CHECK(waterCell->matter == water);
+}
+
+TEST_CASE("FluidFlowIsDeterministic")
+{
+	auto makeWorld = [](VoxelWorld &world) {
+		world.EnsureChunkContaining({2, 2, 2});
+		const MatterId water = SharedRegistry()->FindMatter("water")->id;
+		const MatterId oil = SharedRegistry()->FindMatter("oil")->id;
+		world.Fluids().Set({1, 2, 2}, {water, 700, FluidOrigin::None});
+		world.Fluids().Set({3, 2, 2}, {oil, 300, FluidOrigin::None});
+		for (int tick = 0; tick < 20; ++tick)
+		{
+			world.StepFluids();
+		}
+	};
+
+	const Grid grid(GridConfig{5, 5, 5, 1.0f});
+	VoxelWorld first(grid, std::make_shared<FlatTestTerrain>());
+	VoxelWorld second(grid, std::make_shared<FlatTestTerrain>());
+	makeWorld(first);
+	makeWorld(second);
+
+	for (int z = 0; z < 5; ++z)
+	{
+		for (int y = 0; y < 5; ++y)
+		{
+			for (int x = 0; x < 5; ++x)
+			{
+				const FluidCell *left = first.GetFluid({x, y, z});
+				const FluidCell *right = second.GetFluid({x, y, z});
+				REQUIRE((left == nullptr) == (right == nullptr));
+				if (left != nullptr && right != nullptr)
 				{
-					Require(fluid.matter == water->id, "A fluid column has the wrong material.");
-					Require(fluid.depthMeters > 0.0, "A wet column has no depth.");
-				}
-				else
-				{
-					Require(fluid.depthMeters == 0.0, "A dry column has depth.");
+					REQUIRE(*left == *right);
 				}
 			}
 		}
@@ -375,9 +613,8 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain")
 	const GridCell target{center.x + 1, kAnchorLevel, center.z};
 	world.terrain.SetBlock(target, {kAirMatter, kShapeFull});
 	world.terrain.SetBlock(target, {registry.FindMatter("sand")->id, kShapeFull});
-	world.terrain.SetBlock(target, {registry.FindMatter("water")->id, kShapeFull});
-	Require(world.terrain.GetBlock(target)->state.matter == registry.FindMatter("water")->id,
-	        "A water block could not be placed.");
+	Require(world.terrain.GetBlock(target)->state.matter == registry.FindMatter("sand")->id,
+	        "A sand block could not be placed.");
 	world.terrain.SetBlock(target, {registry.FindMatter("quartz")->id, kShapeFull});
 	Require(world.terrain.GetBlock(target)->state.matter == registry.FindMatter("quartz")->id,
 	        "A mineral block could not be placed.");
@@ -734,3 +971,4 @@ TEST_CASE("TheForestFollowsTheVegetationLayerOfThePlanet")
 	CHECK(CountPlants(*MakeSourceOnVegetationMap(FindOnVegetationMap(true))) > 1000);
 	CHECK(CountPlants(*MakeSourceOnVegetationMap(FindOnVegetationMap(false))) == 0);
 }
+

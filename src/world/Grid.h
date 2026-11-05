@@ -1,5 +1,6 @@
 #pragma once
 
+#include <compare>
 #include <cstddef>
 #include <optional>
 
@@ -18,6 +19,8 @@ struct GridCell
 	int x;
 	int y;
 	int z;
+
+	auto operator<=>(const GridCell &) const = default;
 };
 
 struct WorldPosition
