@@ -26,6 +26,10 @@ infinitesia_add_test(RegionTests
   SOURCES domains/natural/planetary/RegionTests.cpp
   LINK InfinitesiaPlanet)
 
+infinitesia_add_test(WorldMapTests MAIN
+  SOURCES domains/natural/planetary/WorldMapTests.cpp
+  LINK InfinitesiaPlanet)
+
 infinitesia_add_test(PlanetGeologyTests MAIN
   SOURCES
     domains/natural/planetary/GeologyFieldsTests.cpp
