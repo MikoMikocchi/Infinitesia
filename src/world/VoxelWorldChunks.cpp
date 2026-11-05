@@ -88,6 +88,42 @@ std::size_t VoxelWorld::GeneratePendingChunks(std::size_t maximumChunks)
 	return generatedChunks;
 }
 
+void VoxelWorld::UnloadChunksOutside(GridCell center, int horizontalRadius, int verticalRadius)
+{
+	if (horizontalRadius < 0 || verticalRadius < 0)
+	{
+		throw std::invalid_argument("Chunk unload radii cannot be negative.");
+	}
+	if (!Contains(center))
+	{
+		throw std::out_of_range("Chunk unload center is outside the world.");
+	}
+	const ChunkCoordinate centerChunk = GetChunkCoordinate(center);
+	const std::map<ChunkCoordinate, FluidChunk> &fluidChunks = m_fluids.Chunks();
+
+	for (auto chunk = m_chunks.begin(); chunk != m_chunks.end();)
+	{
+		const ChunkCoordinate &coordinate = chunk->first;
+		const bool inside = std::abs(coordinate.x - centerChunk.x) <= horizontalRadius &&
+		                    std::abs(coordinate.z - centerChunk.z) <= horizontalRadius &&
+		                    std::abs(coordinate.y - centerChunk.y) <= verticalRadius;
+		if (inside || chunk->second.modified || fluidChunks.find(coordinate) != fluidChunks.end())
+		{
+			++chunk;
+			continue;
+		}
+		chunk = m_chunks.erase(chunk);
+	}
+
+	m_pendingChunks.erase(std::remove_if(m_pendingChunks.begin(), m_pendingChunks.end(),
+	                                     [&](const ChunkCoordinate &coordinate) {
+		                                     return std::abs(coordinate.x - centerChunk.x) > horizontalRadius ||
+											        std::abs(coordinate.z - centerChunk.z) > horizontalRadius ||
+											        std::abs(coordinate.y - centerChunk.y) > verticalRadius;
+	                                     }),
+	                      m_pendingChunks.end());
+}
+
 const std::map<ChunkCoordinate, WorldChunk> &VoxelWorld::GetChunks() const
 {
 	return m_chunks;
@@ -117,7 +153,7 @@ void VoxelWorld::EnsureChunkGenerated(ChunkCoordinate coordinate)
 	const int chunkWidth = std::min(kChunkSize, m_gridWidth - startX);
 	const int chunkHeight = std::min(kChunkSize, m_gridHeight - startY);
 	const int chunkDepth = std::min(kChunkSize, m_gridDepth - startZ);
-	WorldChunk chunk{coordinate, chunkWidth, chunkHeight, chunkDepth, 0, {}};
+	WorldChunk chunk{coordinate, chunkWidth, chunkHeight, chunkDepth, 0, false, {}};
 	chunk.blocks.reserve(static_cast<std::size_t>(chunkWidth) * static_cast<std::size_t>(chunkHeight) *
 	                     static_cast<std::size_t>(chunkDepth));
 

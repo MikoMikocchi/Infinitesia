@@ -95,6 +95,10 @@ const GeologyModel::ColumnProfile &PlanetTerrainSource::ProfileAt(int x, int z) 
 	{
 		return found->second;
 	}
+	if (m_profiles.size() >= kMaxCachedProfiles)
+	{
+		m_profiles.clear();
+	}
 	const Column &column = ColumnAt(x, z);
 	// The centre of the 1 m column, in metres east and north of the grid's
 	// anchor.
@@ -112,6 +116,10 @@ const PlanetTerrainSource::Column &PlanetTerrainSource::ColumnAt(int x, int z) c
 	if (found != m_columns.end())
 	{
 		return found->second;
+	}
+	if (m_columns.size() >= kMaxCachedColumns)
+	{
+		m_columns.clear();
 	}
 	const SurfaceColumn column = m_terrain->Column(x - m_width / 2, m_depth / 2 - z);
 	Column &cached = m_columns[index];
@@ -135,7 +143,8 @@ const PlanetTerrainSource::Column &PlanetTerrainSource::ColumnAt(int x, int z) c
 
 GroundColumn PlanetTerrainSource::Ground::ColumnAt(int x, int z) const
 {
-	const Column &column = m_owner.ColumnAt(x, z);
+	// A copy: SurfaceLevelAt below may grow the cache and clear it.
+	const Column column = m_owner.ColumnAt(x, z);
 	GroundColumn ground;
 	ground.surfaceLevel = column.surface;
 	const bool soil = column.kind == SurfaceKind::Grass || column.kind == SurfaceKind::Dirt;
@@ -216,7 +225,9 @@ BlockState PlanetTerrainSource::StateOf(GridCell cell, bool withPlants) const
 		return {};
 	}
 
-	const Column &column = ColumnAt(cell.x, cell.z);
+	// A copy: ProfileAt below may clear the column cache while this point is in
+	// use.
+	const Column column = ColumnAt(cell.x, cell.z);
 	const FloraCell *plant = withPlants ? FloraAt(cell) : nullptr;
 	if (cell.y > column.surface)
 	{

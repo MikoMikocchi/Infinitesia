@@ -101,6 +101,12 @@ private:
 	// trunk is up to 2 m thick, so the middle 5 m around it are free of trunks).
 	static constexpr int kStartClearingMeters = 7;
 
+	// The caches are losing caches: a site can be a kilometre across, and every
+	// column would otherwise stay resident forever. When one grows past this,
+	// it is cleared and refilled from the terrain source as chunks ask again.
+	static constexpr std::size_t kMaxCachedColumns = 262144;
+	static constexpr std::size_t kMaxCachedProfiles = 131072;
+
 	const Column &ColumnAt(int x, int z) const;
 	BlockState StateOf(GridCell cell, bool withPlants) const;
 	// The plant occupying the cell, if any.

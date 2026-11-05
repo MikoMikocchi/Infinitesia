@@ -676,6 +676,35 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain")
 	CHECK_THROWS_AS(world.terrain.SetBlock({-1, 0, 0}, {kAirMatter, kShapeFull}), std::out_of_range);
 }
 
+TEST_CASE("UnloadKeepsModifiedChunksAndDropsUntouchedOnes")
+{
+	const Settlement settlement = MakeSettlement(LandAnchor());
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	const GridCell center{kWidth / 2, kAnchorLevel, kDepth / 2};
+	GameWorld world(grid, {{&WorkerKind(), center}}, settlement.source);
+
+	world.terrain.RequestChunksAround(center, 1, 1);
+	world.terrain.GeneratePendingChunks(1000);
+	const GridCell modifiedCell{240, kAnchorLevel, 240};
+	const GridCell untouchedCell{208, kAnchorLevel, 208};
+	world.terrain.SetBlock(modifiedCell, {world.terrain.Registry().FindMatter("sand")->id, kShapeFull});
+	world.terrain.EnsureChunkContaining(untouchedCell);
+	Require(world.terrain.GetBlock(modifiedCell) != nullptr && world.terrain.GetBlock(untouchedCell) != nullptr,
+	        "The test chunks were not loaded.");
+
+	const ChunkCoordinate modifiedChunk{modifiedCell.x / kChunkSize, modifiedCell.y / kChunkSize,
+	                                    modifiedCell.z / kChunkSize};
+	const ChunkCoordinate untouchedChunk{untouchedCell.x / kChunkSize, untouchedCell.y / kChunkSize,
+	                                     untouchedCell.z / kChunkSize};
+	world.terrain.UnloadChunksOutside(center, 1, 1);
+
+	Require(world.terrain.GetChunks().find(modifiedChunk) != world.terrain.GetChunks().end(),
+	        "A modified chunk was unloaded.");
+	Require(world.terrain.GetChunks().find(untouchedChunk) == world.terrain.GetChunks().end(),
+	        "An untouched chunk outside the view was kept.");
+	Require(world.terrain.GetBlock(modifiedCell) != nullptr, "A modified chunk lost its blocks.");
+}
+
 TEST_CASE("TheOriginalNoiseWorldStillWorks")
 {
 	const Grid grid(GridConfig{64, 32, 64, 1.0f});

@@ -174,6 +174,7 @@ void Application::UpdateLocal()
 	// needed as far as the eye can usefully tell them apart.
 	const int verticalChunkRadius = kVerticalChunkRadius;
 	game.GetWorld().terrain.RequestChunksAround(m_chunkViewCenter, m_chunkRenderRadius, verticalChunkRadius);
+	game.GetWorld().terrain.UnloadChunksOutside(m_chunkViewCenter, m_chunkRenderRadius + 2, verticalChunkRadius + 1);
 	game.GetWorld().terrain.GeneratePendingChunks(kChunksGeneratedPerFrame);
 	m_worldInteraction.Update({GetMousePosition(), IsMouseButtonPressed(MOUSE_BUTTON_RIGHT),
 	                           IsMouseButtonPressed(MOUSE_BUTTON_LEFT), IsKeyPressed(KEY_ESCAPE)},

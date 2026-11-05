@@ -38,6 +38,9 @@ struct WorldChunk
 	int height;
 	int depth;
 	std::uint64_t terrainRevision = 0;
+	// A player or simulation changed a block here. Unmodified chunks can be
+	// dropped when they leave the view and regenerated from the terrain source.
+	bool modified = false;
 	std::vector<Block> blocks;
 };
 } // namespace Infinitesia

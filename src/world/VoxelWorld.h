@@ -24,6 +24,10 @@ public:
 
 	void RequestChunksAround(GridCell center, int horizontalRadius, int verticalRadius = 0);
 	std::size_t GeneratePendingChunks(std::size_t maximumChunks);
+	// Drops chunks outside the view that nobody has changed and that have no
+	// fluid to keep alive. They are regenerated from the terrain source when
+	// the camera returns. Modified chunks and chunks owning fluid stay.
+	void UnloadChunksOutside(GridCell center, int horizontalRadius, int verticalRadius);
 	// Generates the chunk holding the cell now; throws std::out_of_range outside
 	// the grid.
 	void EnsureChunkContaining(GridCell cell);

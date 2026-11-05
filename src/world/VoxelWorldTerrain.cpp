@@ -79,6 +79,7 @@ void VoxelWorld::SetBlock(GridCell cell, BlockState state)
 	EnsureChunkGenerated(GetChunkCoordinate(cell));
 	const ChunkCoordinate changedChunk = GetChunkCoordinate(cell);
 	WorldChunk &chunk = m_chunks.at(changedChunk);
+	chunk.modified = true;
 	Block &changed = chunk.blocks[GetBlockIndexHelper(chunk, cell)];
 	changed.state = state;
 	++m_terrainRevision;
