@@ -81,7 +81,7 @@ private:
 		FluidOrigin fluid = FluidOrigin::None;
 		double fluidLevelMeters = 0.0;
 		int fluidTopBlocks = -1;
-		CartesianPoint3D direction{};
+		GeographicCoordinates position{};
 	};
 
 	// The ground of a column as the flora sees it.

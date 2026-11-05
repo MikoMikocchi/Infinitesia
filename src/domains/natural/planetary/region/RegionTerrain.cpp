@@ -76,6 +76,62 @@ int WrapIndex(int index, int count) noexcept
 {
 	return ((index % count) + count) % count;
 }
+
+// The surface fields are carried together through the pole blend; this keeps
+// the list in one place.
+#define INFINITESIA_FOR_EACH_SURFACE_FIELD(M)                                                                          \
+	M(temperatureCelsius)                                                                                              \
+	M(precipitationMm)                                                                                                 \
+	M(drySeasonMonths)                                                                                                 \
+	M(snowDays)                                                                                                        \
+	M(humidityNormalized)                                                                                              \
+	M(soilMoisture)                                                                                                    \
+	M(soilFertility)                                                                                                   \
+	M(soilDepthNorm)                                                                                                   \
+	M(drainageAccumulation)                                                                                            \
+	M(lakeFraction)                                                                                                    \
+	M(lakeWaterLevelKm)                                                                                                \
+	M(lakeSpillHeightKm)                                                                                               \
+	M(tectonicStress)
+
+void AddSurface(PlanetSurface &sum, const PlanetRegion &region) noexcept
+{
+#define INFINITESIA_ADD_SURFACE_FIELD(field) sum.field += region.field;
+	INFINITESIA_FOR_EACH_SURFACE_FIELD(INFINITESIA_ADD_SURFACE_FIELD)
+#undef INFINITESIA_ADD_SURFACE_FIELD
+	sum.volcanicFraction += region.isVolcanicZone ? 1.0 : 0.0;
+}
+
+void ScaleSurface(PlanetSurface &surface, double scale) noexcept
+{
+#define INFINITESIA_SCALE_SURFACE_FIELD(field) surface.field *= scale;
+	INFINITESIA_FOR_EACH_SURFACE_FIELD(INFINITESIA_SCALE_SURFACE_FIELD)
+#undef INFINITESIA_SCALE_SURFACE_FIELD
+	surface.volcanicFraction *= scale;
+}
+
+void BlendSurface(PlanetSurface &surface, const PlanetSurface &pole, double toward) noexcept
+{
+#define INFINITESIA_BLEND_SURFACE_FIELD(field) surface.field = pole.field + (surface.field - pole.field) * toward;
+	INFINITESIA_FOR_EACH_SURFACE_FIELD(INFINITESIA_BLEND_SURFACE_FIELD)
+#undef INFINITESIA_BLEND_SURFACE_FIELD
+	surface.volcanicFraction = pole.volcanicFraction + (surface.volcanicFraction - pole.volcanicFraction) * toward;
+}
+
+void ClampSurface(PlanetSurface &surface) noexcept
+{
+	surface.humidityNormalized = std::clamp(surface.humidityNormalized, 0.0, 1.0);
+	surface.soilMoisture = std::clamp(surface.soilMoisture, 0.0, 1.0);
+	surface.soilFertility = std::clamp(surface.soilFertility, 0.0, 1.0);
+	surface.soilDepthNorm = std::clamp(surface.soilDepthNorm, 0.0, 1.0);
+	surface.drainageAccumulation = std::clamp(surface.drainageAccumulation, 0.0, 1.0);
+	surface.lakeFraction = std::clamp(surface.lakeFraction, 0.0, 1.0);
+	surface.tectonicStress = std::clamp(surface.tectonicStress, 0.0, 1.0);
+	surface.volcanicFraction = std::clamp(surface.volcanicFraction, 0.0, 1.0);
+	surface.precipitationMm = std::max(0.0, surface.precipitationMm);
+	surface.lakeWaterLevelKm = std::max(0.0, surface.lakeWaterLevelKm);
+	surface.lakeSpillHeightKm = std::max(0.0, surface.lakeSpillHeightKm);
+}
 } // namespace
 
 RegionTerrain::RegionTerrain(const PlanetMap &map) noexcept
@@ -86,27 +142,30 @@ RegionTerrain::RegionTerrain(const PlanetMap &map) noexcept
 	for (int pole = 0; pole < 2; ++pole)
 	{
 		const int row = pole == 0 ? 0 : latitudeBands - 1;
-		double elevation = 0.0;
-		double roughness = 0.0;
+		PoleMeans means;
 		for (int longitude = 0; longitude < longitudeSegments; ++longitude)
 		{
-			elevation += map.GetRegion(row, longitude).elevationNormalized;
-			roughness += map.GetRegion(row, longitude).slopeNormalized;
+			const PlanetRegion &region = map.GetRegion(row, longitude);
+			means.elevation += region.elevationNormalized;
+			means.roughness += region.slopeNormalized;
+			AddSurface(means.surface, region);
 		}
-		m_poleElevation[pole] = elevation / longitudeSegments;
-		m_poleRoughness[pole] = roughness / longitudeSegments;
+		const double scale = 1.0 / static_cast<double>(longitudeSegments);
+		means.elevation *= scale;
+		means.roughness *= scale;
+		ScaleSurface(means.surface, scale);
+		m_pole[pole] = means;
 	}
 }
 
-PlanetFieldSample RegionTerrain::SamplePlanet(CartesianPoint3D direction) const noexcept
+PlanetFieldSample RegionTerrain::SampleAt(const GeographicCoordinates &position) const noexcept
 {
-	const GeographicCoordinates geo = PlanetaryCoordinates::ToGeographic(direction);
 	const int latitudeBands = m_map.GetLatitudeBandCount();
 	const int longitudeSegments = m_map.GetLongitudeSegmentCount();
 
 	// Continuous cell coordinates with cell centres at integer positions.
-	const double latitudeCell = (geo.latitudeDegrees + 90.0) / 180.0 * latitudeBands - 0.5;
-	const double longitudeCell = geo.longitudeDegrees / 360.0 * longitudeSegments - 0.5;
+	const double latitudeCell = (position.latitudeDegrees + 90.0) / 180.0 * latitudeBands - 0.5;
+	const double longitudeCell = position.longitudeDegrees / 360.0 * longitudeSegments - 0.5;
 	const double latitudeFloor = std::floor(latitudeCell);
 	const double longitudeFloor = std::floor(longitudeCell);
 	const double tLatitude = latitudeCell - latitudeFloor;
@@ -147,35 +206,73 @@ PlanetFieldSample RegionTerrain::SamplePlanet(CartesianPoint3D direction) const 
 	double elevationNormalized = catmullRom(rows[0], rows[1], rows[2], rows[3], tLatitude);
 	double roughness = bilinear([](const PlanetRegion &r) { return r.slopeNormalized; });
 
+	PlanetSurface surface;
+#define INFINITESIA_SAMPLE_SURFACE_FIELD(field) surface.field = bilinear([](const PlanetRegion &r) { return r.field; });
+	INFINITESIA_FOR_EACH_SURFACE_FIELD(INFINITESIA_SAMPLE_SURFACE_FIELD)
+#undef INFINITESIA_SAMPLE_SURFACE_FIELD
+	surface.volcanicFraction = bilinear([](const PlanetRegion &r) { return r.isVolcanicZone ? 1.0 : 0.0; });
+
+	// Lakes are small bodies, not a smooth climate field: keep the level of the
+	// cell with the most lake cover while the coverage itself interpolates. A
+	// level interpolated towards a dry cell would tilt or truncate the lake at
+	// the cell border.
+	double bestLakeFraction = 0.0;
+	for (int row = 0; row < 2; ++row)
+	{
+		for (int column = 0; column < 2; ++column)
+		{
+			const PlanetRegion &region = m_map.GetRegion(row == 0 ? la0 : la1, column == 0 ? lo0 : lo1);
+			if (region.lakeFraction > bestLakeFraction)
+			{
+				bestLakeFraction = region.lakeFraction;
+				surface.lakeWaterLevelKm = region.lakeWaterLevelKm;
+				surface.lakeSpillHeightKm = region.lakeSpillHeightKm;
+			}
+		}
+	}
+
 	// Between the centre of the polar row and the pole itself, fade the variation
 	// with longitude out: a point at the pole belongs to every longitude at once.
 	const double cellDegrees = 180.0 / latitudeBands;
-	const double poleDistance = 90.0 - std::abs(geo.latitudeDegrees);
+	const double poleDistance = 90.0 - std::abs(position.latitudeDegrees);
 	if (poleDistance < 0.5 * cellDegrees)
 	{
 		const double t = std::clamp(poleDistance / (0.5 * cellDegrees), 0.0, 1.0);
 		const double toward = t * t * (3.0 - 2.0 * t); // 1 away from the pole, 0 at the pole
-		const int pole = geo.latitudeDegrees > 0.0 ? 1 : 0;
-		elevationNormalized = m_poleElevation[pole] + (elevationNormalized - m_poleElevation[pole]) * toward;
-		roughness = m_poleRoughness[pole] + (roughness - m_poleRoughness[pole]) * toward;
+		const int pole = position.latitudeDegrees > 0.0 ? 1 : 0;
+		elevationNormalized = m_pole[pole].elevation + (elevationNormalized - m_pole[pole].elevation) * toward;
+		roughness = m_pole[pole].roughness + (roughness - m_pole[pole].roughness) * toward;
+		BlendSurface(surface, m_pole[pole].surface, toward);
 	}
+
+	ClampSurface(surface);
+
+	const int nearestLatitude = std::clamp(
+	    static_cast<int>(std::floor((position.latitudeDegrees + 90.0) / 180.0 * latitudeBands)), 0, latitudeBands - 1);
+	const int nearestLongitude = WrapIndex(
+	    static_cast<int>(std::floor(position.longitudeDegrees / 360.0 * longitudeSegments)), longitudeSegments);
+	surface.province = m_map.GetRegion(nearestLatitude, nearestLongitude).provinceId;
 
 	PlanetFieldSample sample;
 	sample.elevationMeters = std::clamp(elevationNormalized, -1.0, 1.0) * kMaxElevationKm * 1000.0;
 	sample.roughness = std::clamp(roughness, 0.0, 1.0);
-	sample.nearestLatitudeIndex = std::clamp(
-	    static_cast<int>(std::floor((geo.latitudeDegrees + 90.0) / 180.0 * latitudeBands)), 0, latitudeBands - 1);
-	sample.nearestLongitudeIndex =
-	    WrapIndex(static_cast<int>(std::floor(geo.longitudeDegrees / 360.0 * longitudeSegments)), longitudeSegments);
+	sample.nearestLatitudeIndex = nearestLatitude;
+	sample.nearestLongitudeIndex = nearestLongitude;
+	sample.surface = surface;
 	return sample;
 }
 
-double RegionTerrain::ElevationMeters(CartesianPoint3D direction, double minWavelengthMeters) const noexcept
+PlanetFieldSample RegionTerrain::SamplePlanet(CartesianPoint3D direction) const noexcept
 {
-	return ElevationMeters(direction, SamplePlanet(direction), minWavelengthMeters);
+	return SampleAt(PlanetaryCoordinates::ToGeographic(direction));
 }
 
-double RegionTerrain::ElevationMeters(CartesianPoint3D direction, const PlanetFieldSample &planet,
+double RegionTerrain::ElevationMeters(const GeographicCoordinates &position, double minWavelengthMeters) const noexcept
+{
+	return ElevationMeters(position, SampleAt(position), minWavelengthMeters);
+}
+
+double RegionTerrain::ElevationMeters(const GeographicCoordinates &position, const PlanetFieldSample &planet,
                                       double minWavelengthMeters) const noexcept
 {
 	const double roughness = planet.roughness;
@@ -192,6 +289,7 @@ double RegionTerrain::ElevationMeters(CartesianPoint3D direction, const PlanetFi
 	const double detailAmplitude = seaFloorAmplitude + (landAmplitude - seaFloorAmplitude) * land;
 	const double ridgeMix = land * std::clamp(roughness * 1.5, 0.0, 1.0);
 
+	const CartesianPoint3D direction = PlanetaryCoordinates::ToCartesian(position);
 	const double px = direction.x * m_radiusMeters;
 	const double py = direction.y * m_radiusMeters;
 	const double pz = direction.z * m_radiusMeters;
@@ -234,5 +332,16 @@ double RegionTerrain::ElevationMeters(CartesianPoint3D direction, const PlanetFi
 	}
 
 	return planet.elevationMeters + detail + micro;
+}
+
+double RegionTerrain::ElevationMeters(CartesianPoint3D direction, double minWavelengthMeters) const noexcept
+{
+	return ElevationMeters(PlanetaryCoordinates::ToGeographic(direction), minWavelengthMeters);
+}
+
+double RegionTerrain::ElevationMeters(CartesianPoint3D direction, const PlanetFieldSample &planet,
+                                      double minWavelengthMeters) const noexcept
+{
+	return ElevationMeters(PlanetaryCoordinates::ToGeographic(direction), planet, minWavelengthMeters);
 }
 } // namespace Infinitesia

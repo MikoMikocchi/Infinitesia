@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 
@@ -184,6 +185,59 @@ struct PlanetRegion
 
 	// --- Classification ---
 	Biome biome = Biome::DeepOcean;
+};
+
+// -----------------------------------------------------------------------
+// PlanetSurface — the continuous fields of a planet cell, interpolated at an
+// arbitrary point of the surface. Only the fields that are meaningful between
+// cells are here: elevation itself is sampled separately (it uses a smoother
+// interpolation than the rest), and discrete data such as the province stays
+// nearest-cell. Use ToRegion() to turn the fields plus a local elevation into
+// a PlanetRegion for the biome classifier and the palette.
+// -----------------------------------------------------------------------
+struct PlanetSurface
+{
+	double temperatureCelsius = 0.0;
+	double precipitationMm = 0.0;
+	double drySeasonMonths = 0.0;
+	double snowDays = 0.0;
+	double humidityNormalized = 0.0;
+	double soilMoisture = 0.0;
+	double soilFertility = 0.0;
+	double soilDepthNorm = 0.0;
+	double drainageAccumulation = 0.0;
+	double lakeFraction = 0.0;
+	double lakeWaterLevelKm = 0.0;
+	double lakeSpillHeightKm = 0.0;
+	double tectonicStress = 0.0;
+	double volcanicFraction = 0.0;
+	ProvinceId province = kNoProvince;
+
+	// A PlanetRegion at the given local elevation. isOcean follows the local
+	// height, so the coastline is the zero contour rather than a cell border.
+	PlanetRegion ToRegion(double elevationMeters) const
+	{
+		PlanetRegion region;
+		region.elevationNormalized = std::clamp(elevationMeters / (kMaxElevationKm * 1000.0), -1.0, 1.0);
+		region.isOcean = elevationMeters < 0.0;
+		region.isLake = lakeFraction >= 0.5;
+		region.isVolcanicZone = volcanicFraction >= 0.5;
+		region.temperatureCelsius = temperatureCelsius;
+		region.precipitationMm = precipitationMm;
+		region.drySeasonMonths = drySeasonMonths;
+		region.snowDays = snowDays;
+		region.humidityNormalized = humidityNormalized;
+		region.soilMoisture = soilMoisture;
+		region.soilFertility = soilFertility;
+		region.soilDepthNorm = soilDepthNorm;
+		region.drainageAccumulation = drainageAccumulation;
+		region.lakeFraction = lakeFraction;
+		region.lakeWaterLevelKm = lakeWaterLevelKm;
+		region.lakeSpillHeightKm = lakeSpillHeightKm;
+		region.tectonicStress = tectonicStress;
+		region.provinceId = province;
+		return region;
+	}
 };
 
 // -----------------------------------------------------------------------

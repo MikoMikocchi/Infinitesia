@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "domains/natural/planetary/internal/SurfaceModel.h"
+
 namespace Infinitesia
 {
 RegionGenerator::RegionGenerator(const PlanetMap &map) : m_radiusMeters(map.GetPlanet().GetRadius()), m_terrain(map)
@@ -27,7 +29,6 @@ RegionData RegionGenerator::Generate(const LocalGrid &grid, RegionId id) const
 
 	// The lattice resolves features down to two cells (Nyquist).
 	const double minWavelength = data.cellSizeMeters * 2.0;
-	const PlanetMap &map = m_terrain.GetPlanetMap();
 
 	float minimum = 0.0f;
 	float maximum = 0.0f;
@@ -35,13 +36,13 @@ RegionData RegionGenerator::Generate(const LocalGrid &grid, RegionId id) const
 	{
 		for (int x = 0; x < RegionData::kPoints; ++x)
 		{
-			const CartesianPoint3D direction = grid.PointDirection(id, x, y);
-			const PlanetFieldSample planet = m_terrain.SamplePlanet(direction);
-			const float elevation = static_cast<float>(m_terrain.ElevationMeters(direction, planet, minWavelength));
+			const GeographicCoordinates position = PlanetaryCoordinates::ToGeographic(grid.PointDirection(id, x, y));
+			const PlanetFieldSample planet = m_terrain.SampleAt(position);
+			const float elevation = static_cast<float>(m_terrain.ElevationMeters(position, planet, minWavelength));
 
 			const std::size_t index = RegionData::Index(x, y);
 			data.elevationMeters[index] = elevation;
-			data.biome[index] = map.GetRegion(planet.nearestLatitudeIndex, planet.nearestLongitudeIndex).biome;
+			data.biome[index] = GenerationDetail::ClassifyBiome(planet.surface, elevation);
 
 			if (index == 0)
 			{
@@ -79,24 +80,21 @@ RegionPatch RegionGenerator::GeneratePatch(const LocalGrid &grid, RegionId cente
 	const std::size_t count = static_cast<std::size_t>(patch.points) * patch.points;
 	patch.elevationMeters.resize(count);
 	patch.biome.resize(count);
-	patch.planetCell.resize(count);
+	patch.surface.resize(count);
 
 	const double minWavelength = patch.cellSizeMeters * 2.0;
-	const PlanetMap &map = m_terrain.GetPlanetMap();
-	const int longitudeSegments = map.GetLongitudeSegmentCount();
 
 	for (int y = 0; y < patch.points; ++y)
 	{
 		for (int x = 0; x < patch.points; ++x)
 		{
-			const CartesianPoint3D direction = patch.Direction(x, y);
-			const PlanetFieldSample planet = m_terrain.SamplePlanet(direction);
+			const GeographicCoordinates position = PlanetaryCoordinates::ToGeographic(patch.Direction(x, y));
+			const PlanetFieldSample planet = m_terrain.SampleAt(position);
 			const std::size_t index = patch.Index(x, y);
-			patch.elevationMeters[index] =
-			    static_cast<float>(m_terrain.ElevationMeters(direction, planet, minWavelength));
-			patch.biome[index] = map.GetRegion(planet.nearestLatitudeIndex, planet.nearestLongitudeIndex).biome;
-			patch.planetCell[index] = static_cast<std::uint32_t>(planet.nearestLatitudeIndex * longitudeSegments +
-			                                                     planet.nearestLongitudeIndex);
+			const float elevation = static_cast<float>(m_terrain.ElevationMeters(position, planet, minWavelength));
+			patch.elevationMeters[index] = elevation;
+			patch.surface[index] = planet.surface;
+			patch.biome[index] = GenerationDetail::ClassifyBiome(planet.surface, elevation);
 		}
 	}
 	return patch;

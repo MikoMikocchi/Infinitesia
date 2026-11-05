@@ -4,6 +4,7 @@
 
 #include "domains/natural/planetary/PlanetMap.h"
 #include "domains/natural/planetary/region/FluidOrigin.h"
+#include "domains/natural/planetary/region/LocalFrame.h"
 #include "domains/natural/planetary/region/LocalGrid.h"
 #include "domains/natural/planetary/region/RegionTerrain.h"
 
@@ -43,8 +44,9 @@ struct SurfaceColumn
 	// reference level the province's rock layers are laid out from.
 	ProvinceId province = kNoProvince;
 	int pileTopMeters = 0;
-	// The climate and soil of the column, from its planet cell; the temperature
-	// is brought to the local elevation with the standard lapse rate.
+	// The climate and soil of the column, interpolated between the planet cells;
+	// the temperature is brought to the local elevation with the standard lapse
+	// rate.
 	double temperatureCelsius = 0.0;
 	double precipitationMm = 0.0;
 	double drySeasonMonths = 0.0;
@@ -52,7 +54,7 @@ struct SurfaceColumn
 	double soilDepth = 0.0;       // 0..1
 	double elevationMeters = 0.0; // above sea level
 	// Where on the planet the column is, to look up planet layers at it.
-	CartesianPoint3D direction{};
+	GeographicCoordinates position{};
 };
 
 // Turns the continuous planet terrain into block columns around an origin point
@@ -109,6 +111,9 @@ public:
 private:
 	const RegionTerrain &m_terrain;
 	LocalGrid m_grid;
+	// Flat frame at the grid anchor; the terrain is sampled through it instead
+	// of a tangent plane and gnomonic projection.
+	LocalFrame m_frame;
 	double m_originEastMeters;
 	double m_originNorthMeters;
 	int m_originElevationMeters = 0;

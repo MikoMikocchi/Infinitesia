@@ -5,8 +5,10 @@
 #include <cmath>
 #include <numbers>
 #include <stdexcept>
+#include <utility>
 
 #include "domains/natural/planetary/PlanetMap.h"
+#include "domains/natural/planetary/region/LocalFrame.h"
 #include "domains/natural/planetary/region/LocalGrid.h"
 #include "domains/natural/planetary/region/RegionGenerator.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
@@ -163,6 +165,27 @@ TEST_CASE("TheGridStretchesLittleFarFromTheAnchor")
 	        "Grid limit is not enforced by IsValid.");
 }
 
+TEST_CASE("LocalFrameIsFlatAndInverts")
+{
+	for (const GeographicCoordinates center :
+	     {GeographicCoordinates{45.0, 100.0}, GeographicCoordinates{-9.8, 359.9}, GeographicCoordinates{89.0, 0.0}})
+	{
+		const LocalFrame frame = LocalFrame::At(center);
+		for (const auto [east, north] : {std::pair{0.0, 0.0}, std::pair{1500.0, -2200.0}, std::pair{-4096.0, 4096.0}})
+		{
+			const GeographicCoordinates position = frame.ToGeographic(east, north);
+			double backEast = 0.0;
+			double backNorth = 0.0;
+			frame.ToLocal(position, backEast, backNorth);
+			Require(std::abs(backEast - east) < 1e-6 && std::abs(backNorth - north) < 1e-6,
+			        "LocalFrame does not invert its own conversion.");
+		}
+		// A degree of longitude shrinks towards the poles; the frame follows.
+		Require(frame.metersPerDegreeEast <= LocalFrame::kMetersPerDegree,
+		        "LocalFrame has more metres per degree of longitude than at the equator.");
+	}
+}
+
 TEST_CASE("RegionGenerationIsDeterministic")
 {
 	const RegionGenerator generator(SharedMap());
@@ -244,6 +267,40 @@ TEST_CASE("FinerWavelengthOnlyAddsDetail")
 	// Remaining octaves sum to at most their own amplitude, well below the full
 	// detail range.
 	Require(std::abs(fine - coarse) < 50.0, "Fine detail rescaled the coarse terrain.");
+}
+
+TEST_CASE("PlanetFieldsAreContinuousAcrossCellBorders")
+{
+	const RegionGenerator generator(SharedMap());
+	const RegionTerrain &terrain = generator.GetTerrain();
+	const PlanetMap &map = SharedMap();
+	const int latitudeBands = map.GetLatitudeBandCount();
+	const int longitudeSegments = map.GetLongitudeSegmentCount();
+
+	// Find a border where the neighbouring cells really differ, so the test
+	// is not satisfied by a uniform map.
+	double largestCellJump = 0.0;
+	double largestSampleJump = 0.0;
+	for (int latitude = 1; latitude < latitudeBands - 1; ++latitude)
+	{
+		const PlanetRegion &row = map.GetRegion(latitude, 0);
+		for (int longitude = 0; longitude < longitudeSegments; ++longitude)
+		{
+			const PlanetRegion &west = map.GetRegion(latitude, longitude);
+			const PlanetRegion &east = map.GetRegion(latitude, (longitude + 1) % longitudeSegments);
+			largestCellJump = std::max(largestCellJump, std::abs(west.temperatureCelsius - east.temperatureCelsius));
+
+			const double borderLongitude = static_cast<double>(longitude + 1) / longitudeSegments * 360.0;
+			constexpr double epsilon = 1e-6;
+			const PlanetFieldSample before = terrain.SampleAt({row.latitudeDegrees, borderLongitude - epsilon});
+			const PlanetFieldSample after = terrain.SampleAt({row.latitudeDegrees, borderLongitude + epsilon});
+			largestSampleJump = std::max(
+			    largestSampleJump, std::abs(before.surface.temperatureCelsius - after.surface.temperatureCelsius));
+		}
+	}
+
+	Require(largestCellJump > 0.5, "The test map has no climate difference between neighbouring cells.");
+	Require(largestSampleJump < 0.01, "Climate fields still step at a planet cell border.");
 }
 
 TEST_CASE("TerrainHasNoCliffWhereTheCoarseFieldCrossesSeaLevel")

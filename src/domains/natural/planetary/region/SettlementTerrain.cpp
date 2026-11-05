@@ -2,20 +2,31 @@
 
 #include <cmath>
 
+#include "domains/natural/planetary/internal/SurfaceModel.h"
+
 namespace Infinitesia
 {
 namespace
 {
 // Within this height of the waterline the ground is beach.
 constexpr double kBeachMeters = 3.0;
+
+// The flat frame is centred on the site, not on the grid anchor: a site can be
+// dozens of regions from the anchor, and the equirectangular approximation is
+// most accurate around its own centre.
+LocalFrame FrameAtOrigin(const LocalGrid &grid, double originEastMeters, double originNorthMeters)
+{
+	return LocalFrame::At(PlanetaryCoordinates::ToGeographic(grid.Direction(originEastMeters, originNorthMeters)));
+}
 } // namespace
 
 SettlementTerrain::SettlementTerrain(const RegionTerrain &terrain, const LocalGrid &grid, double originEastMeters,
                                      double originNorthMeters)
-    : m_terrain(terrain), m_grid(grid), m_originEastMeters(originEastMeters), m_originNorthMeters(originNorthMeters)
+    : m_terrain(terrain), m_grid(grid), m_frame(FrameAtOrigin(grid, originEastMeters, originNorthMeters)),
+      m_originEastMeters(originEastMeters), m_originNorthMeters(originNorthMeters)
 {
-	const CartesianPoint3D origin = m_grid.Direction(m_originEastMeters, m_originNorthMeters);
-	m_originElevationMeters = static_cast<int>(std::floor(m_terrain.ElevationMeters(origin, kMinWavelengthMeters)));
+	m_originElevationMeters =
+	    static_cast<int>(std::floor(m_terrain.ElevationMeters(m_frame.center, kMinWavelengthMeters)));
 }
 
 SurfaceKind SettlementTerrain::ClassifySurface(Biome biome, double elevationMeters) noexcept
@@ -49,13 +60,10 @@ SurfaceKind SettlementTerrain::ClassifySurface(Biome biome, double elevationMete
 
 SurfaceColumn SettlementTerrain::Column(int eastBlocks, int northBlocks) const noexcept
 {
-	const CartesianPoint3D direction =
-	    m_grid.Direction(m_originEastMeters + eastBlocks, m_originNorthMeters + northBlocks);
-	const PlanetFieldSample planet = m_terrain.SamplePlanet(direction);
-	const double elevation = m_terrain.ElevationMeters(direction, planet, kMinWavelengthMeters);
-	const PlanetRegion &cell =
-	    m_terrain.GetPlanetMap().GetRegion(planet.nearestLatitudeIndex, planet.nearestLongitudeIndex);
-	const Biome biome = cell.biome;
+	const GeographicCoordinates position = m_frame.ToGeographic(eastBlocks, northBlocks);
+	const PlanetFieldSample planet = m_terrain.SampleAt(position);
+	const double elevation = m_terrain.ElevationMeters(position, planet, kMinWavelengthMeters);
+	const Biome biome = GenerationDetail::ClassifyBiome(planet.surface, elevation);
 
 	SurfaceColumn column;
 	column.heightBlocks = static_cast<int>(std::floor(elevation)) - m_originElevationMeters;
@@ -71,26 +79,26 @@ SurfaceColumn SettlementTerrain::Column(int eastBlocks, int northBlocks) const n
 		column.fluid = FluidOrigin::Sea;
 		column.fluidLevelMeters = 0.0;
 	}
-	else if (cell.isLake)
+	else if (planet.surface.lakeFraction > 0.0)
 	{
-		const double lakeLevel = cell.lakeWaterLevelKm * 1000.0;
+		const double lakeLevel = planet.surface.lakeWaterLevelKm * 1000.0;
 		if (groundTopMeters < lakeLevel)
 		{
 			column.fluid = FluidOrigin::Lake;
 			column.fluidLevelMeters = lakeLevel;
 		}
 	}
-	column.province = cell.provinceId;
+	column.province = planet.surface.province;
 	column.pileTopMeters = static_cast<int>(std::floor(planet.elevationMeters));
 	constexpr double kLapseRateCelsiusPerMeter = 0.0065;
 	column.temperatureCelsius =
-	    cell.temperatureCelsius - kLapseRateCelsiusPerMeter * (elevation - planet.elevationMeters);
-	column.precipitationMm = cell.precipitationMm;
-	column.drySeasonMonths = cell.drySeasonMonths;
-	column.soilFertility = cell.soilFertility;
-	column.soilDepth = cell.soilDepthNorm;
+	    planet.surface.temperatureCelsius - kLapseRateCelsiusPerMeter * (elevation - planet.elevationMeters);
+	column.precipitationMm = planet.surface.precipitationMm;
+	column.drySeasonMonths = planet.surface.drySeasonMonths;
+	column.soilFertility = planet.surface.soilFertility;
+	column.soilDepth = planet.surface.soilDepthNorm;
 	column.elevationMeters = elevation;
-	column.direction = direction;
+	column.position = position;
 	return column;
 }
 } // namespace Infinitesia

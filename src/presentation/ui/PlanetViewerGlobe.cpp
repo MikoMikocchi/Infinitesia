@@ -184,13 +184,14 @@ Camera3D PlanetViewer::MakeCamera() const
 	const ViewerLayout layout = GetLayout(GetScreenWidth(), GetScreenHeight(), m_planetMap);
 	const float fieldOfViewRadians = kCameraFieldOfView * kPi / 180.0f;
 	const float focalLength = static_cast<float>(GetScreenHeight()) / (2.0f * std::tan(fieldOfViewRadians * 0.5f));
-	const float overviewDistance = std::max(2.4f, focalLength / layout.globeRadius * 1.08f) * m_zoom;
-	const float cameraDistance =
-	    overviewDistance + (kRegionCameraDistance - overviewDistance) * SmootherStepF(m_regionBlend);
-	// Shift the view so the anchor lands on the panel centre. The anchor is the
-	// globe centre in the overview and the (nearer) focused surface point once
-	// zoomed in; the shift needed in world units grows with the anchor's depth.
-	const float anchorDepth = cameraDistance - SmootherStepF(m_regionBlend);
+	// The globe stays a planet-scale view in both modes. Zooming it to the
+	// focused region only magnified a 360x720 cell texture into a blur; the
+	// region map is the close-up, and the globe gives the planet context with a
+	// marker at the focused cell.
+	const float cameraDistance = std::max(2.4f, focalLength / layout.globeRadius * 1.08f) * m_zoom;
+	// Shift the view so the globe centre lands on the panel centre; the needed
+	// shift grows with the camera distance.
+	const float anchorDepth = cameraDistance;
 	const float targetZ =
 	    (static_cast<float>(GetScreenWidth()) * 0.5f - layout.globeCenter.x) * anchorDepth / focalLength;
 	const float targetY =

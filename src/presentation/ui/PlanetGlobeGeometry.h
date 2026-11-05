@@ -7,7 +7,6 @@
 // place.
 namespace Infinitesia
 {
-inline constexpr float kRegionCameraDistance = 1.32f;
 
 // A point of the globe mesh grid (row 0 is the north pole) on a sphere of
 // `radius`.

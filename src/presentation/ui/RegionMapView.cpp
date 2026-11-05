@@ -27,15 +27,14 @@ bool IsAquatic(Biome biome)
 }
 } // namespace
 
-RegionMapView::RegionMapView(const PlanetMap &map, ColorFunction color)
-    : m_map(map), m_generator(map), m_color(std::move(color))
+RegionMapView::RegionMapView(const PlanetMap &map, ColorFunction color) : m_generator(map), m_color(std::move(color))
 {
 	m_grid = m_generator.MakeGrid(PlanetaryCoordinates::ToCartesian({0.0, 0.0}));
 }
 
 RegionMapView::~RegionMapView()
 {
-	// The worker reads m_generator and m_map; wait for it before members go away.
+	// The worker reads m_generator and m_color; wait for it before members go away.
 	if (m_pending.valid())
 	{
 		m_pending.wait();
@@ -67,15 +66,14 @@ GeographicCoordinates RegionMapView::GetFocusCenter() const noexcept
 	return m_grid.Center(m_focus);
 }
 
-RegionMapView::Built RegionMapView::Build(const RegionGenerator &generator, const PlanetMap &map,
-                                          const ColorFunction &color, const LocalGrid &grid, RegionId focus)
+RegionMapView::Built RegionMapView::Build(const RegionGenerator &generator, const ColorFunction &color,
+                                          const LocalGrid &grid, RegionId focus)
 {
 	Built built;
 	built.patch = generator.GeneratePatch(grid, focus, kPatchRadiusRegions);
 	const RegionPatch &patch = built.patch;
 	const int points = patch.points;
 	const double cellSize = patch.cellSizeMeters;
-	const int longitudeSegments = map.GetLongitudeSegmentCount();
 	built.pixels.resize(static_cast<std::size_t>(points) * points);
 
 	const auto height = [&](int x, int y) {
@@ -96,25 +94,23 @@ RegionMapView::Built RegionMapView::Build(const RegionGenerator &generator, cons
 			const std::size_t index = patch.Index(x, y);
 			const float elevation = patch.elevationMeters[index];
 			const Biome biome = patch.biome[index];
-			const std::uint32_t cellIndex = patch.planetCell[index];
-			const PlanetRegion &cell = map.GetRegion(static_cast<int>(cellIndex) / longitudeSegments,
-			                                         static_cast<int>(cellIndex) % longitudeSegments);
+			const PlanetSurface &surface = patch.surface[index];
+			PlanetRegion cell = surface.ToRegion(elevation);
+			cell.biome = biome;
 
 			Color base;
 			bool isWater = false;
 			float waterDepth = 0.0f;
 
-			if (cell.isOcean)
+			// The sea is the zero-height contour, not an ocean cell's border.
+			if (elevation < 0.0f)
 			{
-				if (elevation < 0.0f)
-				{
-					isWater = true;
-					waterDepth = -elevation;
-				}
+				isWater = true;
+				waterDepth = -elevation;
 			}
-			else if (cell.isLake)
+			else if (surface.lakeFraction > 0.0)
 			{
-				const float lakeLevel = static_cast<float>(cell.lakeWaterLevelKm * 1000.0);
+				const float lakeLevel = static_cast<float>(surface.lakeWaterLevelKm * 1000.0);
 				if (elevation < lakeLevel)
 				{
 					isWater = true;
@@ -128,7 +124,7 @@ RegionMapView::Built RegionMapView::Build(const RegionGenerator &generator, cons
 			}
 			else if (IsAquatic(biome))
 			{
-				base = {196, 184, 140, 255}; // shore: the planet cell says sea, this point is dry
+				base = {196, 184, 140, 255}; // an aquatic biome above the water line: shore
 			}
 			else
 			{
@@ -177,7 +173,7 @@ void RegionMapView::Update()
 		m_pendingFocus = m_focus;
 		m_pendingVersion = m_gridVersion;
 		m_pending = std::async(std::launch::async, [this, focus = m_focus, grid = m_grid] {
-			return Build(m_generator, m_map, m_color, grid, focus);
+			return Build(m_generator, m_color, grid, focus);
 		});
 	}
 }

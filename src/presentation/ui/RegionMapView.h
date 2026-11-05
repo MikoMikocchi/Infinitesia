@@ -78,11 +78,10 @@ private:
 		std::vector<Color> pixels;
 	};
 
-	static Built Build(const RegionGenerator &generator, const PlanetMap &map, const ColorFunction &color,
-	                   const LocalGrid &grid, RegionId focus);
+	static Built Build(const RegionGenerator &generator, const ColorFunction &color, const LocalGrid &grid,
+	                   RegionId focus);
 	bool PatchPoint(Vector2 mouse, Rectangle bounds, int &x, int &y) const;
 
-	const PlanetMap &m_map;
 	RegionGenerator m_generator;
 	ColorFunction m_color;
 

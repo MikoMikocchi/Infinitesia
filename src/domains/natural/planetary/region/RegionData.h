@@ -55,7 +55,10 @@ struct RegionPatch
 	double originNorthMeters = 0.0;
 	std::vector<float> elevationMeters;
 	std::vector<Biome> biome;
-	std::vector<std::uint32_t> planetCell; // index into the planet grid, row-major
+	// Interpolated climate, soil, hydrology and volcanic fields at every
+	// point, so the map and the local world can classify a biome and a surface
+	// kind at the point instead of copying the nearest planet cell.
+	std::vector<PlanetSurface> surface;
 
 	std::size_t Index(int x, int y) const noexcept
 	{

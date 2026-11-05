@@ -180,4 +180,9 @@ Biome ClassifyBiome(const PlanetRegion &r)
 	return Biome::HotDesert;
 }
 
+Biome ClassifyBiome(const PlanetSurface &surface, double elevationMeters)
+{
+	return ClassifyBiome(surface.ToRegion(elevationMeters));
+}
+
 } // namespace Infinitesia::GenerationDetail

@@ -122,7 +122,7 @@ const PlanetTerrainSource::Column &PlanetTerrainSource::ColumnAt(int x, int z) c
 	cached.fluid = column.fluid;
 	cached.fluidLevelMeters = column.fluidLevelMeters;
 	cached.fluidTopBlocks = column.fluid != FluidOrigin::None ? FluidTopBlocksFor(column.fluidLevelMeters) : -1;
-	cached.direction = column.direction;
+	cached.position = column.position;
 	Conditions &climate = cached.climate;
 	climate.temperatureCelsius = column.temperatureCelsius;
 	climate.precipitationMm = column.precipitationMm;
@@ -143,7 +143,7 @@ GroundColumn PlanetTerrainSource::Ground::ColumnAt(int x, int z) const
 	                      std::abs(z - m_owner.m_depth / 2) < kStartClearingMeters;
 	ground.growable = soil && column.surface > column.fluidTopBlocks && !clearing;
 	ground.conditions = column.climate;
-	ground.vegetation = SampleVegetation(m_owner.m_terrain->GetPlanetMap(), column.direction);
+	ground.vegetation = SampleVegetation(m_owner.m_terrain->GetPlanetMap(), column.position);
 	// The steepest rise over two metres in the four directions.
 	int steepest = 0;
 	for (const auto [dx, dz] : {std::pair{2, 0}, std::pair{-2, 0}, std::pair{0, 2}, std::pair{0, -2}})

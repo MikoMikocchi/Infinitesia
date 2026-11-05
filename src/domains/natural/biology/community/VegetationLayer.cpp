@@ -101,13 +101,13 @@ void AddVegetationStages(PlanetPipeline &pipeline, std::shared_ptr<const Species
 	              [species = std::move(species)](PlanetBuild &build) { RunVegetation(build, *species); }});
 }
 
-std::optional<VegetationSample> SampleVegetation(const PlanetMap &map, CartesianPoint3D direction)
+std::optional<VegetationSample> SampleVegetation(const PlanetMap &map, GeographicCoordinates position)
 {
 	const Field<VegetationCell> *layer = map.Layers().Find<VegetationCell>(kVegetationLayer);
 	if (layer == nullptr)
 		return std::nullopt;
 
-	const GeographicCoordinates geo = PlanetaryCoordinates::ToGeographic(direction);
+	const GeographicCoordinates &geo = position;
 	const int latitudeBands = layer->LatitudeBands();
 	const int longitudeSegments = layer->LongitudeSegments();
 	// Cell coordinates with cell centres at integer positions, as the terrain
@@ -156,5 +156,10 @@ std::optional<VegetationSample> SampleVegetation(const PlanetMap &map, Cartesian
 	for (int i = 0; i < sample.count; ++i)
 		sample.entries[static_cast<std::size_t>(i)].weight /= speciesWeight;
 	return sample;
+}
+
+std::optional<VegetationSample> SampleVegetation(const PlanetMap &map, CartesianPoint3D direction)
+{
+	return SampleVegetation(map, PlanetaryCoordinates::ToGeographic(direction));
 }
 } // namespace Infinitesia

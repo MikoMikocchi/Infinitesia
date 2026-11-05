@@ -19,7 +19,8 @@ inline constexpr const char *kVegetationLayer = "biology.vegetation";
 // stage's version when the catalog changes what it grows.
 void AddVegetationStages(PlanetPipeline &pipeline, std::shared_ptr<const SpeciesCatalog> species);
 
-// The vegetation at a direction on the sphere, blended bilinearly over the four
+// The vegetation at a point on the sphere, blended bilinearly over the four
 // nearest cells of the layer. Empty when the map was built without the stage.
+std::optional<VegetationSample> SampleVegetation(const PlanetMap &map, GeographicCoordinates position);
 std::optional<VegetationSample> SampleVegetation(const PlanetMap &map, CartesianPoint3D direction);
 } // namespace Infinitesia
