@@ -43,6 +43,41 @@ void PlanetViewer::Draw() const
 	if (m_regionMode)
 	{
 		m_regionMap.Draw(layout.regionBounds);
+
+		const RegionId focus = m_regionMap.GetFocus();
+		const GeographicCoordinates focusCenter = m_regionMap.GetFocusCenter();
+		const PlanetFieldSample sample = m_regionMap.GetTerrain().SampleAt(focusCenter);
+		const double elevation = m_regionMap.GetTerrain().ElevationMeters(focusCenter, 16.0);
+		const std::optional<Biome> biome = m_regionMap.FocusBiome();
+		const LocalWater water = m_regionMap.GetTerrain().WaterAt(focusCenter, 16.0);
+		const char *waterName = water.origin == FluidOrigin::Sea     ? "Sea"
+		                        : water.origin == FluidOrigin::Lake  ? "Lake"
+		                        : water.origin == FluidOrigin::River ? "River"
+		                                                             : "None";
+		const double spanKilometres =
+		    (m_regionMap.PatchSpanMeters() > 0.0 ? m_regionMap.PatchSpanMeters() : LocalGrid::kRegionSizeMeters) /
+		    1000.0;
+
+		const float cardWidth = 350.0f;
+		const float cardHeight = 102.0f;
+		const float cardX =
+		    std::max(layout.mapPanel.x + 16.0f, layout.mapPanel.x + layout.mapPanel.width - cardWidth - 16.0f);
+		const float cardY = layout.mapPanel.y + 44.0f;
+		DrawRectangleRounded({cardX, cardY, cardWidth, cardHeight}, 0.04f, 6, Fade({14, 21, 31, 255}, 0.90f));
+		DrawRectangleLinesEx({cardX, cardY, cardWidth, cardHeight}, 1.0f, Fade({129, 158, 180, 255}, 0.45f));
+		char cardLine[256];
+		std::snprintf(cardLine, sizeof(cardLine), "Region tile (%d, %d)  |  %.1f km across", focus.i, focus.j,
+		              spanKilometres);
+		DrawText(cardLine, static_cast<int>(cardX + 10.0f), static_cast<int>(cardY + 8.0f), 13, RAYWHITE);
+		std::snprintf(cardLine, sizeof(cardLine), "%s  |  %.0f m", biome ? BiomeName(*biome) : "Unknown", elevation);
+		DrawText(cardLine, static_cast<int>(cardX + 10.0f), static_cast<int>(cardY + 28.0f), 12, {180, 195, 210, 255});
+		std::snprintf(cardLine, sizeof(cardLine), "%.1f C  |  %.0f mm/yr  |  Soil %.0f%%",
+		              sample.surface.temperatureCelsius, sample.surface.precipitationMm,
+		              sample.surface.soilFertility * 100.0);
+		DrawText(cardLine, static_cast<int>(cardX + 10.0f), static_cast<int>(cardY + 48.0f), 12, {180, 195, 210, 255});
+		std::snprintf(cardLine, sizeof(cardLine), "Water: %s  |  Province %u  |  Radius %d tiles", waterName,
+		              sample.surface.province, m_regionMap.PatchRadius());
+		DrawText(cardLine, static_cast<int>(cardX + 10.0f), static_cast<int>(cardY + 68.0f), 12, {180, 195, 210, 255});
 	}
 	else if (m_worldMapMode)
 	{
@@ -238,23 +273,24 @@ void PlanetViewer::Draw() const
 		if (cursorElevation && cursorBiome)
 		{
 			std::snprintf(regionText, sizeof(regionText),
-			              "Region (%d, %d) from anchor  |  %.3f, %.3f deg  |  "
+			              "Region (%d, %d)  |  %.3f, %.3f deg  |  "
 			              "Cursor: %.0f m, %s",
 			              focus.i, focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees, *cursorElevation,
 			              BiomeName(*cursorBiome));
 		}
 		else
 		{
-			std::snprintf(regionText, sizeof(regionText),
-			              "Region (%d, %d) from anchor  |  %.3f, %.3f deg  |  %.1f km across", focus.i, focus.j,
-			              focusCenter.latitudeDegrees, focusCenter.longitudeDegrees,
-			              LocalGrid::kRegionSizeMeters / 1000.0);
+			std::snprintf(
+			    regionText, sizeof(regionText), "Region (%d, %d)  |  %.3f, %.3f deg  |  %.1f km across", focus.i,
+			    focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees,
+			    (m_regionMap.PatchSpanMeters() > 0.0 ? m_regionMap.PatchSpanMeters() : LocalGrid::kRegionSizeMeters) /
+			        1000.0);
 		}
 		DrawText(regionText, 30, footerY + 40, 13, kSelectedCellColor);
-		DrawText(m_foundingEnabled ? "Click the map to pick a region  |  WASD / arrows: move  |  "
-		                             "Enter: found the settlement here  |  R or Backspace: World Map"
-		                           : "Click the map to pick a region  |  WASD / arrows: move  |  "
-		                             "M: back to the settlement  |  R or Backspace: World Map",
+		DrawText(m_foundingEnabled ? "Wheel: zoom  |  Click / WASD / arrows: pick a region  |  "
+		                             "Enter: found  |  R/Backspace: World Map"
+		                           : "Wheel: zoom  |  Click / WASD / arrows: pick a region  |  "
+		                             "M: settlement  |  R/Backspace: World Map",
 		         30, footerY + 57, 12, {100, 118, 140, 255});
 		if (m_noticeSeconds > 0.0f)
 		{

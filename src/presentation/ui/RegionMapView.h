@@ -22,9 +22,9 @@ public:
 	// Tint for a point of the planet cell it falls in, at a local elevation.
 	using ColorFunction = std::function<Color(const PlanetRegion &, float elevationMeters)>;
 
-	// Regions on each side of the focus that the map covers (1 => 3 x 3 regions,
-	// ~12 km).
-	static constexpr int kPatchRadiusRegions = 1;
+	// Regions on each side of the focus that the map covers. 8 => 17 x 17
+	// world tiles, about 13 km across. The image is coarsened for large radii.
+	static constexpr int kDefaultPatchRadiusRegions = 8;
 
 	RegionMapView(const PlanetMap &map, ColorFunction color);
 	~RegionMapView();
@@ -55,7 +55,16 @@ public:
 	{
 		return m_focus;
 	}
+	int PatchRadius() const noexcept
+	{
+		return m_patchRadius;
+	}
+	double PatchSpanMeters() const noexcept;
 	GeographicCoordinates GetFocusCenter() const noexcept;
+	// The biome shown at the focused tile, if a patch has been built.
+	std::optional<Biome> FocusBiome() const;
+	// Change the preview scale (the wheel in region mode).
+	void Zoom(int steps);
 	bool IsLoading() const noexcept
 	{
 		return m_pending.valid();
@@ -83,7 +92,7 @@ private:
 	};
 
 	static Built Build(const RegionGenerator &generator, const ColorFunction &color, const LocalGrid &grid,
-	                   RegionId focus);
+	                   RegionId focus, int radiusRegions);
 	bool PatchPoint(Vector2 mouse, Rectangle bounds, int &x, int &y) const;
 
 	std::shared_ptr<const WorldMap> m_worldMap;
@@ -94,6 +103,9 @@ private:
 	unsigned m_gridVersion = 0; // bumped whenever the anchor moves
 	RegionId m_focus{};         // requested
 	RegionId m_displayed{};     // what the texture and patch show
+	int m_patchRadius = kDefaultPatchRadiusRegions;
+	int m_displayedRadius = 0;
+	int m_pendingRadius = 0;
 	unsigned m_displayedVersion = 0;
 	unsigned m_pendingVersion = 0;
 	bool m_hasImage = false;

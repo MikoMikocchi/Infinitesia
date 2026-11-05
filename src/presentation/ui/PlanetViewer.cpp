@@ -204,7 +204,6 @@ PlanetViewer::PlanetViewer(StarSystem system, const PlanetPipeline &pipeline, Lo
 		m_regionMap.Anchor(PlanetaryCoordinates::ToCartesian(
 		    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
 	}
-
 }
 
 void PlanetViewer::Update()
@@ -248,11 +247,14 @@ void PlanetViewer::TryFoundSettlement()
 {
 	const LocalGrid &grid = m_regionMap.GetGrid();
 	const RegionId focus = m_regionMap.GetFocus();
-	const double elevation =
-	    m_regionMap.GetTerrain().ElevationMeters(grid.CenterDirection(focus), SettlementTerrain::kMinWavelengthMeters);
-	if (elevation < 0.0)
+	const GeographicCoordinates center = m_regionMap.GetFocusCenter();
+	const double elevation = m_regionMap.GetTerrain().ElevationMeters(center, SettlementTerrain::kMinWavelengthMeters);
+	const LocalWater water = m_regionMap.GetTerrain().WaterAt(center, SettlementTerrain::kMinWavelengthMeters);
+	const bool inWater = elevation < 0.0 || water.origin == FluidOrigin::Sea || water.origin == FluidOrigin::River ||
+	                     (water.origin == FluidOrigin::Lake && elevation < water.surfaceMeters);
+	if (inWater)
 	{
-		m_notice = "Cannot found a settlement at sea - pick a region on dry land.";
+		m_notice = "Cannot found a settlement in water - pick a dry land tile.";
 		m_noticeSeconds = 4.0f;
 		return;
 	}

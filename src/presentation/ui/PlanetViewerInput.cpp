@@ -149,7 +149,18 @@ void PlanetViewer::HandleInput()
 		m_draggingGlobe = false;
 	}
 
-	m_zoom = std::clamp(m_zoom - GetMouseWheelMove() * 0.1f, GetMinimumZoom(layout, GetScreenHeight()), 2.0f);
+	const float wheel = GetMouseWheelMove();
+	if (m_regionMode)
+	{
+		if (wheel != 0.0f)
+		{
+			m_regionMap.Zoom(wheel > 0.0f ? 1 : -1);
+		}
+	}
+	else
+	{
+		m_zoom = std::clamp(m_zoom - wheel * 0.1f, GetMinimumZoom(layout, GetScreenHeight()), 2.0f);
+	}
 }
 
 } // namespace Infinitesia

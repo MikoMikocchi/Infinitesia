@@ -40,7 +40,11 @@ public:
 	RegionData Generate(const LocalGrid &grid, RegionId id) const;
 
 	// Lattice around `center` covering radiusRegions regions in every direction.
+	// The optional cell size coarsens the preview (16, 32 or 64 m); the actual
+	// spacing is rounded so every region boundary still lands on a lattice point.
 	RegionPatch GeneratePatch(const LocalGrid &grid, RegionId center, int radiusRegions) const;
+	RegionPatch GeneratePatch(const LocalGrid &grid, RegionId center, int radiusRegions,
+	                          double cellSizeMeters) const;
 
 private:
 	double m_radiusMeters;

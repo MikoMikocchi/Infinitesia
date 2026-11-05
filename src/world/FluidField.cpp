@@ -258,7 +258,14 @@ void FluidField::InitializeChunk(const WorldChunk &chunk, const TerrainSource &t
 				                              static_cast<std::size_t>(chunk.width) +
 				                          static_cast<std::size_t>(localX);
 				fluidChunk.cells[index] = {column.matter, amount, column.origin, column.flowEast, column.flowNorth};
-				m_active.insert({x, y, z});
+				// Deep full cells are a static body. Only the surface cell has to
+				// settle; digging activates the surrounding water through
+				// OnBlockChanged, so a whole ocean does not have to be stepped every
+				// tick.
+				if (isTop)
+				{
+					m_active.insert({x, y, z});
+				}
 				anyFluid = true;
 			}
 		}

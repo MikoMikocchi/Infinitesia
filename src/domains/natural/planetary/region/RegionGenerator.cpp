@@ -1,6 +1,7 @@
 #include "domains/natural/planetary/region/RegionGenerator.h"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 #include "domains/natural/planetary/internal/SurfaceModel.h"
@@ -60,6 +61,12 @@ RegionData RegionGenerator::Generate(const LocalGrid &grid, RegionId id) const
 
 RegionPatch RegionGenerator::GeneratePatch(const LocalGrid &grid, RegionId center, int radiusRegions) const
 {
+	return GeneratePatch(grid, center, radiusRegions, LocalGrid::kCellSizeMeters);
+}
+
+RegionPatch RegionGenerator::GeneratePatch(const LocalGrid &grid, RegionId center, int radiusRegions,
+                                           double cellSizeMeters) const
+{
 	if (!LocalGrid::IsValid(center))
 	{
 		throw std::out_of_range("Region is too far from the grid anchor.");
@@ -68,12 +75,17 @@ RegionPatch RegionGenerator::GeneratePatch(const LocalGrid &grid, RegionId cente
 	{
 		throw std::invalid_argument("Patch radius must be between 0 and 8 regions.");
 	}
+	if (!(cellSizeMeters > 0.0) || cellSizeMeters > LocalGrid::kRegionSizeMeters)
+	{
+		throw std::invalid_argument("Patch cell size is outside the region tile.");
+	}
 
+	const int cellsPerRegion = std::max(1, static_cast<int>(std::lround(LocalGrid::kRegionSizeMeters / cellSizeMeters)));
 	RegionPatch patch;
 	patch.center = center;
 	patch.radiusRegions = radiusRegions;
-	patch.points = (2 * radiusRegions + 1) * LocalGrid::kCellsPerRegionEdge + 1;
-	patch.cellSizeMeters = LocalGrid::kCellSizeMeters;
+	patch.points = (2 * radiusRegions + 1) * cellsPerRegion + 1;
+	patch.cellSizeMeters = LocalGrid::kRegionSizeMeters / static_cast<double>(cellsPerRegion);
 	patch.grid = grid;
 	patch.originEastMeters = (center.i - 0.5 - radiusRegions) * LocalGrid::kRegionSizeMeters;
 	patch.originNorthMeters = (center.j - 0.5 - radiusRegions) * LocalGrid::kRegionSizeMeters;

@@ -686,6 +686,23 @@ TEST_CASE("PatchIsTheGridsOwnLattice")
 	Require(farRegionRejected, "A region beyond the grid limit was accepted.");
 }
 
+TEST_CASE("CoarseRegionPatchesKeepTheRegionLattice")
+{
+	const RegionGenerator generator(SharedMap());
+	const LocalGrid grid = generator.MakeGrid(Place(35.0, 100.0));
+	const RegionPatch patch = generator.GeneratePatch(grid, {2, -1}, 4, 32.0);
+	CHECK(patch.cellSizeMeters == doctest::Approx(32.0));
+	CHECK(patch.points == (2 * 4 + 1) * 24 + 1);
+	CHECK(Distance(patch.Direction((patch.points - 1) * 0.5, (patch.points - 1) * 0.5), grid.CenterDirection({2, -1})) <
+	      1e-9);
+	bool finite = true;
+	for (const float elevation : patch.elevationMeters)
+	{
+		finite = finite && std::isfinite(elevation);
+	}
+	CHECK(finite);
+}
+
 TEST_CASE("RegionCacheEvictsLeastRecentlyUsed")
 {
 	const RegionGenerator generator(SharedMap());

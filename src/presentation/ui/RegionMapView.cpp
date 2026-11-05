@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <utility>
 
 #include "domains/natural/planetary/world/WorldGenerator.h"
@@ -26,6 +27,19 @@ bool IsAquatic(Biome biome)
 {
 	return biome == Biome::DeepOcean || biome == Biome::ShallowSea || biome == Biome::CoralReef ||
 	       biome == Biome::PolarSea;
+}
+
+double CellSizeForRadius(int radiusRegions) noexcept
+{
+	if (radiusRegions <= 2)
+	{
+		return 16.0;
+	}
+	if (radiusRegions <= 4)
+	{
+		return 32.0;
+	}
+	return 64.0;
 }
 } // namespace
 
@@ -80,10 +94,10 @@ GeographicCoordinates RegionMapView::GetFocusCenter() const noexcept
 }
 
 RegionMapView::Built RegionMapView::Build(const RegionGenerator &generator, const ColorFunction &color,
-                                          const LocalGrid &grid, RegionId focus)
+                                          const LocalGrid &grid, RegionId focus, int radiusRegions)
 {
 	Built built;
-	built.patch = generator.GeneratePatch(grid, focus, kPatchRadiusRegions);
+	built.patch = generator.GeneratePatch(grid, focus, radiusRegions, CellSizeForRadius(radiusRegions));
 	const RegionPatch &patch = built.patch;
 	const int points = patch.points;
 	const double cellSize = patch.cellSizeMeters;
@@ -188,16 +202,19 @@ void RegionMapView::Update()
 			m_patch = std::make_shared<const RegionPatch>(std::move(built.patch));
 			m_displayed = m_pendingFocus;
 			m_displayedVersion = m_pendingVersion;
+			m_displayedRadius = built.patch.radiusRegions;
 			m_hasImage = true;
 		}
 	}
 
-	if (!m_pending.valid() && (!m_hasImage || !(m_displayed == m_focus) || m_displayedVersion != m_gridVersion))
+	if (!m_pending.valid() && (!m_hasImage || !(m_displayed == m_focus) || m_displayedVersion != m_gridVersion ||
+	                           m_displayedRadius != m_patchRadius))
 	{
 		m_pendingFocus = m_focus;
+		m_pendingRadius = m_patchRadius;
 		m_pendingVersion = m_gridVersion;
-		m_pending = std::async(std::launch::async, [this, focus = m_focus, grid = m_grid] {
-			return Build(m_generator, m_color, grid, focus);
+		m_pending = std::async(std::launch::async, [this, focus = m_focus, grid = m_grid, radius = m_pendingRadius] {
+			return Build(m_generator, m_color, grid, focus, radius);
 		});
 	}
 }
@@ -266,6 +283,44 @@ std::optional<Biome> RegionMapView::BiomeAt(Vector2 mouse, Rectangle bounds) con
 	return m_patch->biome[m_patch->Index(x, y)];
 }
 
+double RegionMapView::PatchSpanMeters() const noexcept
+{
+	return m_patch ? static_cast<double>(m_patch->points - 1) * m_patch->cellSizeMeters : 0.0;
+}
+
+std::optional<Biome> RegionMapView::FocusBiome() const
+{
+	if (!m_patch)
+	{
+		return std::nullopt;
+	}
+	double x = 0.0;
+	double y = 0.0;
+	m_patch->Project(m_patch->grid.CenterDirection(m_focus), x, y);
+	const int px = std::clamp(static_cast<int>(std::lround(x)), 0, m_patch->points - 1);
+	const int py = std::clamp(static_cast<int>(std::lround(y)), 0, m_patch->points - 1);
+	return m_patch->biome[m_patch->Index(px, py)];
+}
+
+void RegionMapView::Zoom(int steps)
+{
+	static constexpr int kRadii[] = {1, 2, 4, 8};
+	int index = 0;
+	for (int candidate = 1; candidate < static_cast<int>(std::size(kRadii)); ++candidate)
+	{
+		if (kRadii[candidate] <= m_patchRadius)
+		{
+			index = candidate;
+		}
+	}
+	index = std::clamp(index + steps, 0, static_cast<int>(std::size(kRadii)) - 1);
+	if (kRadii[index] != m_patchRadius)
+	{
+		m_patchRadius = kRadii[index];
+		++m_gridVersion;
+	}
+}
+
 void RegionMapView::Draw(Rectangle bounds) const
 {
 	const Rectangle square = FitSquare(bounds);
@@ -309,23 +364,31 @@ void RegionMapView::Draw(Rectangle bounds) const
 	BeginScissorMode(static_cast<int>(square.x), static_cast<int>(square.y), static_cast<int>(square.width),
 	                 static_cast<int>(square.height));
 	const RegionId middle = m_patch->center;
-	const int reach = m_patch->radiusRegions;
-	for (int j = -reach; j <= reach; ++j)
-	{
-		for (int i = -reach; i <= reach; ++i)
-		{
-			outline({middle.i + i, middle.j + j}, 1.0f, Fade(RAYWHITE, 0.12f));
-		}
-	}
 	outline(middle, 2.0f, kFocusColor);
 	EndScissorMode();
 	DrawRectangleLinesEx(square, 1.0f, {129, 158, 180, 255});
 
-	// Scale bar: 1 km.
-	const float kilometre = static_cast<float>(1000.0 / (m_patch->cellSizeMeters * last)) * square.width;
+	// Scale bar: a round distance that fits the current span.
+	const double spanMeters = static_cast<double>(last) * m_patch->cellSizeMeters;
+	double barMeters = 1000.0;
+	if (spanMeters > 3000.0)
+	{
+		barMeters = 2000.0;
+	}
+	if (spanMeters > 8000.0)
+	{
+		barMeters = 5000.0;
+	}
+	if (spanMeters > 15000.0)
+	{
+		barMeters = 10000.0;
+	}
+	const float barPixels = static_cast<float>(barMeters / spanMeters) * square.width;
 	const float barY = square.y + square.height - 18.0f;
-	DrawRectangle(static_cast<int>(square.x + 12.0f), static_cast<int>(barY), static_cast<int>(kilometre), 3, RAYWHITE);
-	DrawText("1 km", static_cast<int>(square.x + 12.0f), static_cast<int>(barY - 16.0f), 14, RAYWHITE);
+	DrawRectangle(static_cast<int>(square.x + 12.0f), static_cast<int>(barY), static_cast<int>(barPixels), 3, RAYWHITE);
+	char scaleText[32];
+	std::snprintf(scaleText, sizeof(scaleText), "%.0f km", barMeters / 1000.0);
+	DrawText(scaleText, static_cast<int>(square.x + 12.0f), static_cast<int>(barY - 16.0f), 14, RAYWHITE);
 
 	// The map is north-up, so the arrow is fixed.
 	const Vector2 arrowBase{square.x + 34.0f, square.y + 52.0f};
