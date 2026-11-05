@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace Infinitesia
 {
@@ -71,6 +72,13 @@ constexpr double kOctaveDecay = 0.5;
 constexpr double kMicroLargestWavelengthMeters = 512.0;
 constexpr double kMicroAmplitudeMeters = 4.0;
 constexpr double kMicroDecay = 0.7;
+
+// A province boundary is a contact between two piles of rock, not a grid
+// line. Within this distance of a planet-cell border the contact is pushed
+// around by smooth noise, so it leaves the cell edge and becomes a wavy
+// geological contact.
+constexpr double kProvinceTransitionMeters = 400.0;
+constexpr std::uint32_t kProvinceContactSalt = 0xB0A7C0DEu;
 
 int WrapIndex(int index, int count) noexcept
 {
@@ -252,6 +260,66 @@ PlanetFieldSample RegionTerrain::SampleAt(const GeographicCoordinates &position)
 	const int nearestLongitude = WrapIndex(
 	    static_cast<int>(std::floor(position.longitudeDegrees / 360.0 * longitudeSegments)), longitudeSegments);
 	surface.province = m_map.GetRegion(nearestLatitude, nearestLongitude).provinceId;
+
+	// Where the nearest cell border is also a province border, let smooth noise
+	// move the contact away from the grid line. The rule is symmetric across the
+	// border: the two provinces are ordered by id and the signed distance from
+	// the border decides which side of the noise contour is which, so both sides
+	// agree on the contact.
+	const double heightMeters = std::numbers::pi * m_radiusMeters / static_cast<double>(latitudeBands);
+	const double widthMeters = std::max(1.0, 2.0 * std::numbers::pi * m_radiusMeters *
+	                                             std::cos(position.latitudeDegrees * std::numbers::pi / 180.0) /
+	                                             static_cast<double>(longitudeSegments));
+	const double northDistance = (static_cast<double>(nearestLatitude) + 0.5 - latitudeCell) * heightMeters;
+	const double southDistance = (latitudeCell - (static_cast<double>(nearestLatitude) - 0.5)) * heightMeters;
+	double longitudeDelta = longitudeCell - static_cast<double>(nearestLongitude);
+	while (longitudeDelta > static_cast<double>(longitudeSegments) * 0.5)
+	{
+		longitudeDelta -= static_cast<double>(longitudeSegments);
+	}
+	while (longitudeDelta < -static_cast<double>(longitudeSegments) * 0.5)
+	{
+		longitudeDelta += static_cast<double>(longitudeSegments);
+	}
+	const double eastDistance = (0.5 - longitudeDelta) * widthMeters;
+	const double westDistance = (0.5 + longitudeDelta) * widthMeters;
+
+	double borderDistance = northDistance;
+	int neighbourLatitude = std::min(nearestLatitude + 1, latitudeBands - 1);
+	int neighbourLongitude = nearestLongitude;
+	if (southDistance < borderDistance)
+	{
+		borderDistance = southDistance;
+		neighbourLatitude = std::max(nearestLatitude - 1, 0);
+		neighbourLongitude = nearestLongitude;
+	}
+	if (eastDistance < borderDistance)
+	{
+		borderDistance = eastDistance;
+		neighbourLatitude = nearestLatitude;
+		neighbourLongitude = WrapIndex(nearestLongitude + 1, longitudeSegments);
+	}
+	if (westDistance < borderDistance)
+	{
+		borderDistance = westDistance;
+		neighbourLatitude = nearestLatitude;
+		neighbourLongitude = WrapIndex(nearestLongitude - 1, longitudeSegments);
+	}
+
+	const ProvinceId neighbourProvince = m_map.GetRegion(neighbourLatitude, neighbourLongitude).provinceId;
+	if (neighbourProvince != surface.province && borderDistance < kProvinceTransitionMeters)
+	{
+		const ProvinceId first = std::min(surface.province, neighbourProvince);
+		const ProvinceId second = std::max(surface.province, neighbourProvince);
+		const double signedDistance = surface.province == first ? borderDistance : -borderDistance;
+		const CartesianPoint3D direction = PlanetaryCoordinates::ToCartesian(position);
+		const double px = direction.x * m_radiusMeters;
+		const double py = direction.y * m_radiusMeters;
+		const double pz = direction.z * m_radiusMeters;
+		const double contactNoise = ValueNoise(px / kProvinceTransitionMeters, py / kProvinceTransitionMeters,
+		                                       pz / kProvinceTransitionMeters, m_seed ^ kProvinceContactSalt);
+		surface.province = contactNoise > signedDistance / kProvinceTransitionMeters ? second : first;
+	}
 
 	PlanetFieldSample sample;
 	sample.elevationMeters = std::clamp(elevationNormalized, -1.0, 1.0) * kMaxElevationKm * 1000.0;

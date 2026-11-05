@@ -303,6 +303,41 @@ TEST_CASE("PlanetFieldsAreContinuousAcrossCellBorders")
 	Require(largestSampleJump < 0.01, "Climate fields still step at a planet cell border.");
 }
 
+TEST_CASE("ProvinceContactIsContinuousAcrossCellBorders")
+{
+	const RegionGenerator generator(SharedMap());
+	const RegionTerrain &terrain = generator.GetTerrain();
+	const PlanetMap &map = SharedMap();
+	const int latitudeBands = map.GetLatitudeBandCount();
+	const int longitudeSegments = map.GetLongitudeSegmentCount();
+
+	int tested = 0;
+	for (int latitude = 10; latitude < latitudeBands - 10 && tested < 8; ++latitude)
+	{
+		for (int longitude = 0; longitude < longitudeSegments && tested < 8; ++longitude)
+		{
+			const ProvinceId west = map.GetRegion(latitude, longitude).provinceId;
+			const ProvinceId east = map.GetRegion(latitude, (longitude + 1) % longitudeSegments).provinceId;
+			if (west == east)
+			{
+				continue;
+			}
+			const PlanetRegion &center = map.GetRegion(latitude, 0);
+			const double borderLongitude = static_cast<double>(longitude + 1) / longitudeSegments * 360.0;
+			constexpr double epsilon = 1e-9;
+			const ProvinceId before =
+			    terrain.SampleAt({center.latitudeDegrees, borderLongitude - epsilon}).surface.province;
+			// A tiny offset keeps the threshold difference below one part in a
+			// million of the transition width.
+			const ProvinceId after =
+			    terrain.SampleAt({center.latitudeDegrees, borderLongitude + epsilon}).surface.province;
+			Require(before == after, "The province jumps exactly at a planet-cell border.");
+			++tested;
+		}
+	}
+	Require(tested > 0, "The test planet has no province border.");
+}
+
 TEST_CASE("TerrainHasNoCliffWhereTheCoarseFieldCrossesSeaLevel")
 {
 	const RegionGenerator generator(SharedMap());
