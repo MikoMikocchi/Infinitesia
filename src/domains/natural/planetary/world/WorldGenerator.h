@@ -11,10 +11,6 @@ namespace Infinitesia
 // octaves later.
 inline constexpr double kWorldDetailWavelengthMeters = 2.0 * kRegionTileSizeMeters;
 
-// A region tile is marked as a river when the planet's normalised drainage
-// accumulation reaches this value. Local hydrology will replace this proxy.
-inline constexpr float kRiverDischargeThreshold = 0.15f;
-
 // Builds the 257 x 257 world map from a finished planet. The map must outlive
 // the generator.
 class WorldGenerator

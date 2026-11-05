@@ -34,6 +34,9 @@ inline constexpr int kChunksPerLocalBlock = static_cast<int>(kLocalBlockSizeMete
 inline constexpr int kChunksPerRegionTile = kLocalBlocksPerRegionTile * kChunksPerLocalBlock;
 inline constexpr int kRegionTilesPerWorldHalfSide = kRegionTilesPerWorldSide / 2;
 
+static_assert(LocalGrid::kRegionSizeMeters == kRegionTileSizeMeters,
+              "A LocalGrid region must be one Dwarf Fortress region tile.");
+
 // Address of one region tile. Signed grid coordinates east and north of the
 // anchor tile (0, 0), like RegionId but for the world level.
 struct RegionTileId

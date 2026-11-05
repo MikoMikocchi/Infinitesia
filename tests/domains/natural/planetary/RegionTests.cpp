@@ -67,10 +67,10 @@ const GeographicCoordinates kAnchors[] = {{0.0, 0.0},    {35.0, 100.0}, {-50.0, 
                                           {-9.8, 126.8}, {89.0, 40.0},  {-90.0, 0.0},  {90.0, 0.0}};
 } // namespace
 
-TEST_CASE("RegionsAreEqualSquaresOfFourKilometres")
+TEST_CASE("RegionsAreEqualSquaresOfOneRegionTile")
 {
-	static_assert(LocalGrid::kRegionSizeMeters == 4096.0);
-	static_assert(LocalGrid::kCellSizeMeters == 32.0);
+	static_assert(LocalGrid::kRegionSizeMeters == 768.0);
+	static_assert(LocalGrid::kCellSizeMeters == 16.0);
 
 	for (const GeographicCoordinates anchor : kAnchors)
 	{
@@ -78,12 +78,17 @@ TEST_CASE("RegionsAreEqualSquaresOfFourKilometres")
 		for (const RegionId id : {RegionId{0, 0}, RegionId{3, -2}, RegionId{-20, 14}, RegionId{40, 40}})
 		{
 			// Side lengths of the region measured along the surface.
-			const double east = Distance(grid.PointDirection(id, 0, 0), grid.PointDirection(id, 128, 0)) * kRadius;
-			const double north = Distance(grid.PointDirection(id, 0, 0), grid.PointDirection(id, 0, 128)) * kRadius;
+			const double east =
+			    Distance(grid.PointDirection(id, 0, 0), grid.PointDirection(id, LocalGrid::kCellsPerRegionEdge, 0)) *
+			    kRadius;
+			const double north =
+			    Distance(grid.PointDirection(id, 0, 0), grid.PointDirection(id, 0, LocalGrid::kCellsPerRegionEdge)) *
+			    kRadius;
 			// Within ~160 km of the anchor the projection stretches by less than
 			// 0.1%.
-			Require(std::abs(east - 4096.0) < 5.0 && std::abs(north - 4096.0) < 5.0,
-			        "Region is not a 4 km square near the anchor.");
+			Require(std::abs(east - LocalGrid::kRegionSizeMeters) < 1.0 &&
+			            std::abs(north - LocalGrid::kRegionSizeMeters) < 1.0,
+			        "Region is not a region tile square near the anchor.");
 		}
 	}
 }
@@ -159,9 +164,11 @@ TEST_CASE("TheGridStretchesLittleFarFromTheAnchor")
 	const LocalGrid grid(kRadius, Place(45.0, 100.0));
 	// A region 1600 km out (the limit) is stretched by about 3%.
 	const RegionId outermost{LocalGrid::kMaxRegionIndex, 0};
-	const double side =
-	    Distance(grid.PointDirection(outermost, 0, 0), grid.PointDirection(outermost, 128, 0)) * kRadius;
-	Require(side < 4096.0 && side > 4096.0 * 0.9, "Distance stretch at the grid limit is out of range.");
+	const double side = Distance(grid.PointDirection(outermost, 0, 0),
+	                             grid.PointDirection(outermost, LocalGrid::kCellsPerRegionEdge, 0)) *
+	                    kRadius;
+	Require(side < LocalGrid::kRegionSizeMeters && side > LocalGrid::kRegionSizeMeters * 0.9,
+	        "Distance stretch at the grid limit is out of range.");
 	Require(LocalGrid::IsValid(outermost) && !LocalGrid::IsValid({LocalGrid::kMaxRegionIndex + 1, 0}),
 	        "Grid limit is not enforced by IsValid.");
 }

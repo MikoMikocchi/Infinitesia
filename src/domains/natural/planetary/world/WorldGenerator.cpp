@@ -7,6 +7,7 @@
 
 #include "core/PlanetaryCoordinates.h"
 #include "domains/natural/planetary/internal/SurfaceModel.h"
+#include "domains/natural/planetary/world/WorldHydrology.h"
 
 namespace Infinitesia
 {
@@ -83,12 +84,12 @@ WorldMap WorldGenerator::Generate(CartesianPoint3D anchorDirection) const
 
 			SetFlag(tile.flags, RegionTileFlag::Ocean, tile.elevationMeters < 0.0f);
 			SetFlag(tile.flags, RegionTileFlag::Lake, sample.surface.lakeFraction >= 0.5);
-			SetFlag(tile.flags, RegionTileFlag::River, tile.riverDischarge >= kRiverDischargeThreshold);
 
 			tiles[WorldMap::Index({i, j})] = tile;
 		}
 	}
 
+	ComputeWorldHydrology(tiles);
 	MarkCoasts(tiles);
 	return WorldMap(std::move(grid), std::move(tiles));
 }

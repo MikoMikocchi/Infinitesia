@@ -8,6 +8,7 @@
 
 #include "domains/natural/planetary/PlanetMap.h"
 #include "domains/natural/planetary/world/WorldGenerator.h"
+#include "domains/natural/planetary/world/WorldHydrology.h"
 #include "support/Require.h"
 
 namespace
@@ -117,6 +118,7 @@ TEST_CASE("WorldMapCoversA257By257WindowOfRegionTiles")
 	CHECK_THROWS_AS(world.At({129, 0}), std::out_of_range);
 
 	std::size_t oceanTiles = 0;
+	std::size_t lakeTiles = 0;
 	std::size_t landTiles = 0;
 	std::size_t coastalTiles = 0;
 	std::size_t riverTiles = 0;
@@ -136,10 +138,11 @@ TEST_CASE("WorldMapCoversA257By257WindowOfRegionTiles")
 			        "A world tile names a province that the planet does not have.");
 			Require(tile.IsOcean() == (tile.elevationMeters < 0.0f),
 			        "The ocean flag does not follow the world-tile elevation.");
-			Require(tile.HasRiver() == (tile.riverDischarge >= kRiverDischargeThreshold),
-			        "The river flag does not follow the drainage threshold.");
+			Require(!tile.HasRiver() || (!tile.IsOcean() && tile.riverDischarge > 0.0f),
+			        "A river tile is outside the land or has no discharge.");
 
 			oceanTiles += tile.IsOcean() ? 1 : 0;
+			lakeTiles += tile.IsLake() ? 1 : 0;
 			landTiles += tile.IsLand() ? 1 : 0;
 			coastalTiles += tile.IsCoast() ? 1 : 0;
 			riverTiles += tile.HasRiver() ? 1 : 0;
@@ -147,11 +150,12 @@ TEST_CASE("WorldMapCoversA257By257WindowOfRegionTiles")
 		}
 	}
 
-	CHECK(oceanTiles + landTiles == 66049);
+	CHECK(oceanTiles + lakeTiles + landTiles == 66049);
 	CHECK(oceanTiles > 0);
 	CHECK(landTiles > 0);
 	CHECK(coastalTiles > 0);
 	CHECK(riverTiles > 0);
+	CHECK(lakeTiles > 0);
 	CHECK(biomes.size() >= 2);
 }
 
@@ -208,4 +212,43 @@ TEST_CASE("WorldMapFitsTheStartupBudget")
 #endif
 	Require(elapsed < budget, "World-map generation exceeded its startup budget.");
 	Require(world.TileCount() == 66049, "The world map is incomplete.");
+}
+
+TEST_CASE("WorldHydrologyFillsBasinsAndRoutesRiversDownhill")
+{
+	std::vector<RegionTile> basin(66049);
+	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	{
+		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		{
+			RegionTile &tile = basin[WorldMap::Index({i, j})];
+			tile.elevationMeters = 10.0f + 0.1f * static_cast<float>(std::abs(i) + std::abs(j));
+			tile.precipitationMm = 1000.0f;
+			tile.flags = 0;
+		}
+	}
+	ComputeWorldHydrology(basin);
+	CHECK(basin[WorldMap::Index({0, 0})].IsLake());
+
+	std::vector<RegionTile> slope(66049);
+	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	{
+		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		{
+			RegionTile &tile = slope[WorldMap::Index({i, j})];
+			tile.elevationMeters = 100.0f - 0.1f * static_cast<float>(i);
+			tile.precipitationMm = 1000.0f;
+			tile.flags = 0;
+		}
+	}
+	ComputeWorldHydrology(slope);
+
+	std::size_t rivers = 0;
+	for (const RegionTile &tile : slope)
+	{
+		rivers += tile.HasRiver() ? 1 : 0;
+	}
+	CHECK(rivers > 0);
+	CHECK(slope[WorldMap::Index({kRegionTilesPerWorldHalfSide, 0})].riverDischarge >
+	      slope[WorldMap::Index({-kRegionTilesPerWorldHalfSide, 0})].riverDischarge);
 }

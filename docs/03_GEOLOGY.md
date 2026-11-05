@@ -34,7 +34,7 @@
 | Подвиды границ плит (`BoundarySubtype`) | `src/domains/natural/planetary/PlanetMapTectonics.cpp`, `internal/PlanetMapGenerationHelpers.h` | считаются, но **не сохраняются** в ячейках: сохранить в G0 |
 | Рельеф как функция направления | `src/domains/natural/planetary/region/RegionTerrain.*` | `ElevationMeters(direction, minWavelength)`; планетарное поле плюс шум; чисто детерминирован |
 | Колонки поверхности | `src/domains/natural/planetary/region/SettlementTerrain.*` | `Column(east, north)` даёт высоту, `SurfaceKind` (трава/земля/песок/камень), признак моря |
-| Сетка | `src/domains/natural/planetary/region/LocalGrid.*` | один якорь, шахматные регионы 4096 м; `Direction(east, north)` переводит метры в точку на сфере |
+| Сетка | `src/domains/natural/planetary/region/LocalGrid.*` | один якорь, шахматные region tiles 768 м; `Direction(east, north)` переводит метры в точку на сфере |
 | Блоки мира из планеты | `src/world/PlanetTerrainSource.*`, `TerrainSource.h` | `LayerAt(kind, depth)`: поверхность, 3 блока почвы, ниже камень. **Это то, что заменяет геология.** |
 | Блоки и чанки | `src/world/Block.h`, `Chunk.h`, `World.*` | клетка мира это `BlockState {matter, shape}`; чанк 16³; `BlockType` удалён |
 | Цвета блоков | `src/presentation/rendering/terrain/internal/TerrainMeshGeometry.cpp` | цвет и грани из `BlockRegistry` по `MatterId`, без `switch` |
@@ -43,7 +43,7 @@
 | Сборка | `CMakeLists.txt` | библиотеки `InfinitesiaChemistry`, `InfinitesiaPlanet` и `InfinitesiaWorld` без raylib; игра и утилиты линкуются с ними |
 | Химия | `src/domains/natural/chemistry/` | элементы, `Composition`, `Mix`, `Reaction`, тесты `ChemistryTests` (см. [04_CHEMISTRY.md](./04_CHEMISTRY.md)) |
 
-Масштабы игры: блок 1 м, чанк 16 м, регион 4096 м, окно мира сейчас 256 × 256 м и 192 м по вертикали, земля центральной колонки на уровне 112, ниже 112 блоков. Окно станет бесконечным позже, геология не должна зависеть от размера окна.
+Масштабы игры: блок 1 м, чанк 16 м, region tile 768 м, окно мира сейчас 1024 × 1024 м и 256 м по вертикали, земля центральной колонки на уровне 112, ниже 112 блоков. Окно станет бесконечным позже, геология не должна зависеть от размера окна.
 
 ## 3. Архитектура
 

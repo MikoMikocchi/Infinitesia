@@ -38,10 +38,11 @@ struct TangentFrame
 };
 
 // One chessboard of identical squares laid over the planet around an anchor
-// point: 32 m cells, 128 x 128 cells (4096 m) per region, aligned with
-// east/north at the anchor. A game has one settlement and so one anchor, chosen
-// anywhere on the planet, poles included; the grid itself has no seams and no
-// forbidden places.
+// point: 16 m cells, 48 x 48 cells (768 m) per region tile, aligned with
+// east/north at the anchor. A region tile is the Dwarf Fortress region tile:
+// 16 x 16 local area blocks of 48 x 48 tiles each (docs/08_WORLD_GRID.md).
+// A game has one settlement and so one anchor, chosen anywhere on the planet,
+// poles included; the grid itself has no seams and no forbidden places.
 //
 // Grid coordinates are metres east and north of the anchor measured on the
 // tangent plane. They map to the sphere by projecting the plane point radially
@@ -49,14 +50,18 @@ struct TangentFrame
 // km, 1% at 640 km, 3% at 1600 km. Heights are measured from sea level, so the
 // local world has no visible curvature.
 //
-// The anchor is the centre of region (0, 0).
+// The anchor is the centre of region tile (0, 0).
 class LocalGrid
 {
 public:
-	static constexpr int kCellsPerRegionEdge = 128;
+	static constexpr int kCellsPerRegionEdge = 48;
 	static constexpr int kPointsPerRegionEdge = kCellsPerRegionEdge + 1;
-	static constexpr double kCellSizeMeters = 32.0;
+	static constexpr double kCellSizeMeters = 16.0;
 	static constexpr double kRegionSizeMeters = kCellsPerRegionEdge * kCellSizeMeters;
+
+	// A region tile must be the 16 x 16 local blocks of 48 x 48 one-metre
+	// blocks that the world grid uses.
+	static_assert(kRegionSizeMeters == 768.0);
 
 	// Regions farther than this from the anchor (about 1600 km) are refused: the
 	// plane-to-sphere projection stretches too much there.
