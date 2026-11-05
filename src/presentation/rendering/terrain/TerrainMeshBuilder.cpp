@@ -40,7 +40,11 @@ T* CopyMeshData(const std::vector<T>& data) {
 Mesh BuildChunkMesh(const Grid& grid, const VoxelWorld& world,
                     const WorldChunk& chunk, int cutLevel,
                     const BlockTextureAtlas* atlas) {
+  const int firstLevel = chunk.coordinate.y * kChunkSize;
   const bool isCut = cutLevel != kNoCut;
+  const int topLocalY = isCut
+                            ? std::min(cutLevel - firstLevel, chunk.height - 1)
+                            : chunk.height - 1;
 
   TerrainMeshGeometry::MeshData meshData;
   const BlockRegistry& registry = world.Registry();
@@ -88,7 +92,7 @@ Mesh BuildChunkMesh(const Grid& grid, const VoxelWorld& world,
   };
 
   for (int localZ = 0; localZ < chunk.depth; ++localZ) {
-    for (int localY = 0; localY < chunk.height; ++localY) {
+    for (int localY = 0; localY <= topLocalY; ++localY) {
       for (int localX = 0; localX < chunk.width; ++localX) {
         // One block adds at most 20 vertices; indices are 16-bit.
         if (meshData.vertices.size() / 3 + 20 >
@@ -106,12 +110,6 @@ Mesh BuildChunkMesh(const Grid& grid, const VoxelWorld& world,
         if (!registry.Occupied(block.state)) {
           continue;
         }
-        // Fluids stay visible above the cut: the sea is not cut away with the
-        // ground, so the player keeps seeing water whatever level they view.
-        const bool fluid = registry.Has(block.state.matter, Tag::Fluid);
-        if (isCut && block.cell.y > cutLevel && !fluid) {
-          continue;
-        }
 
         const float left =
             worldLeft + static_cast<float>(block.cell.x) * cellSize;
@@ -124,15 +122,11 @@ Mesh BuildChunkMesh(const Grid& grid, const VoxelWorld& world,
 
         const bool isCutTop = isCut && block.cell.y == cutLevel;
         const Block* above =
-            world.GetBlock(GridCell{block.cell.x, block.cell.y + 1,
-                                    block.cell.z});
-        bool topExposed =
+            isCutTop ? nullptr
+                     : world.GetBlock(GridCell{block.cell.x, block.cell.y + 1,
+                                               block.cell.z});
+        const bool topExposed =
             above == nullptr || !registry.Occupied(above->state);
-        if (isCutTop && !topExposed) {
-          // The cut opens the top of this block (the solid above is cut away),
-          // unless water covers it: water is not cut away and stays visible.
-          topExposed = !registry.Has(above->state.matter, Tag::Fluid);
-        }
 
         const bool lit = hasSkyAccess(block, localX, localZ);
         TerrainMeshGeometry::FaceLook topLook =

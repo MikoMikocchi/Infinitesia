@@ -25,7 +25,7 @@
 | Реализуется только форма `Full`; остальные формы отдельной задачей, но формат клетки сразу рассчитан на них | вы |
 | Все текстуры и цвета в `assets/`; в коде ни цвета, ни имени текстуры | вы |
 | Только английские имена блоков, локализации пока нет | вы |
-| Море `seawater`; `water` и `seawater` пока одно и то же по свойствам | вы |
+| Одна материя `water` для всех водоёмов; жидкость вообще — это материя + слой `FluidColumn`, а не отдельный тип воды | вы |
 | Свет переделывается: тёмные блоки там, где они не должны быть, это баг модели | вы, гипотеза подтверждена |
 | Будут источники света: магма, светильники, блоки | вы |
 | Блочный свет цветной (RGB по 4 бита), небесный скалярный | вы |
@@ -144,7 +144,7 @@ struct Block      { GridCell cell; BlockState state; };      // type исчез�
 
 | Поле | Тип | Дефолт | Назначение |
 |---|---|---|---|
-| `key` | строка | обязательно | стабильный id без префикса: `granite`, `turf`, `seawater`, `quartz`, `lamp` |
+| `key` | строка | обязательно | стабильный id без префикса: `granite`, `turf`, `brine`, `quartz`, `lamp` |
 | `id` | `MatterId` | при загрузке | плотный числовой id, в данных не пишется |
 | `name`, `color`, `provenance` | | обязательно | только английское имя, без локализации; цвет запасной, когда нет текстуры |
 | `class` | `air/fluid/loose/ice/rock/built/mineral/plant` | обязательно | дефолты свойств |
@@ -208,9 +208,10 @@ enum class Tag { Water, Fluid, Soil, Stone, LightSource, ... };
 bool BlockRegistry::Has(MatterId, Tag) const;
 ```
 
-`water` и `seawater` оба `["water"]` плюс тег класса `fluid`, свойства (плотность, цвет, `opacity`)
-в данных **идентичны**, пока это решено «одним и тем же». Генерация использует `seawater` для
-моря; правила и свет теги не различают.
+`water` — единственная материя воды; море, озеро и река различаются не материалом, а слоем
+`FluidColumn` (материя + `FluidOrigin` + уровень/глубина). Любая жидкость (вода, рассол, нефть,
+магма) — обычная материя `class="fluid"`; правила и свет спрашивают тег `fluid`, а не конкретный id.
+Соль и пресность — позже свойство/загрязнитель, как в Dwarf Fortress.
 
 Теги нужны, чтобы новые материалы подключались данными: «любой `tag: stone` копается киркой»,
 «любой `tag: water` можно пить».
@@ -267,7 +268,7 @@ public:
 `Full`), `world/SurfaceMatter.h`:
 
 ```cpp
-struct SurfaceMatter { MatterId turf, subsoil, sand, bedrock, seawater; };
+struct SurfaceMatter { MatterId turf, subsoil, sand, bedrock, water; };
 static SurfaceMatter SurfaceMatter::Resolve(const BlockRegistry&);   // по ключам материи
 ```
 
@@ -279,13 +280,13 @@ static SurfaceMatter SurfaceMatter::Resolve(const BlockRegistry&);   // по к�
 | `Dirt` (под травой и как поверхность) | `subsoil` | |
 | `Sand` | `sand` | |
 | `Stone` | порода из геологии; без геологии `bedrock` | `bedrock`: порода-заглушка, `digClass 4`, серый, пустой `modal` |
-| `Water` | `seawater` | `water` и `seawater` одинаковы |
+| `Water` | `water` | одна материя на море, озеро и реку; тип водоёма — в `FluidOrigin` |
 
 `turf` это «внешний вид поверхности», а `humus` профиль почвы; материя с гранями для травы
 отдельная, физика каталога не ломается.
 
-`water` и `seawater` в данных выровнены (одинаковые плотность, цвет, `opacity`, теги), текстуры
-`water.png` и `seawater.png` пока совпадают визуально.
+`water.png` — текстура единственной материи воды. Любая другая жидкость (рассол, нефть, магма)
+подключается записью в `matter.xml` и текстурой по тому же ключу.
 
 ## 5. Источники ландшафта
 
@@ -296,9 +297,10 @@ virtual BlockState StateAt(GridCell) const = 0;      // {matter, shape}; shape =
 virtual const BlockRegistry& Registry() const = 0;
 ```
 
-- `PlanetTerrainSource`: воздух или `seawater` над поверхностью, дёрн или почва сверху, порода из
-  геологии ниже; без геологии `bedrock`. Конструктор проверяет, что реестр знает все породы разрезов
-  геологии, иначе порода клетки стала бы воздухом.
+- `PlanetTerrainSource`: воздух или `water` над поверхностью, дёрн или почва сверху, порода из
+  геологии ниже; без геологии `bedrock`. Отдельный `FluidAt(x, z)` отдаёт `FluidColumn`
+  (материя, `FluidOrigin`, уровень и глубина) независимо от блоков. Конструктор проверяет, что
+  реестр знает все породы разрезов геологии, иначе порода клетки стала бы воздухом.
 - `NoiseTerrainSource` и тестовые источники (`LocalGameTests`) берут `BlockRegistry::BuiltIn()`.
   Тест на согласованность: `BuiltIn()` совпадает с файлами по ключам и свойствам.
 - `VoxelWorld::SetBlock(cell, BlockState)` бросает `std::invalid_argument`, если в реестре нет такой
@@ -401,7 +403,7 @@ struct WorldChunk { ...; std::vector<std::uint16_t> light; };  // sky 4 бита
 |---|---|---|---|
 | `src/blocks/` (новое): `BlockRegistry`, `BlockState`, `ShapeId`, `Tag`, загрузка `matter.xml` и `shapes.json`; `CMakeLists.txt`, `check_dependencies.py` | реестр материи и форм, теги, `BuiltIn()` | A | L |
 | `matter/` (`MatterLoader.cpp`, `CatalogJson`, `MatterCatalog.*`) | поля свойств в `matter.xml` (`tags`, `opacity`, `emission`, ...), дефолты | A | M |
-| `assets/matter/matter.xml`, **`assets/blocks/shapes.json`** | `turf`, `bedrock`, выравнивание `water`/`seawater`, форма `Full`, первые светящиеся материи | A | M |
+| `assets/matter/matter.xml`, **`assets/blocks/shapes.json`** | `turf`, `bedrock`, одна материя `water`, форма `Full`, первые светящиеся материи | A | M |
 | `world/Block.h` | убрать enum и `type`, добавить `BlockState` | G (B: `StateOf`) | S |
 | `world/TerrainSource.*`, `world/internal/WorldTerrainGen.*` | `StateAt`, реестр | E | S |
 | `world/PlanetTerrainSource.*` | `SurfaceMatter`, `LayerAt` | E | M |
@@ -435,7 +437,7 @@ struct WorldChunk { ...; std::vector<std::uint16_t> light; };  // sky 4 бита
 
 | Шаг | Что | Статус |
 |---|---|---|
-| **A. Реестр и данные** | `BlockRegistry` (материи и формы), теги, `shapes.json` (`Full`), `turf`, `bedrock`, `water = seawater` по свойствам; `BuiltIn()`; тесты | сделано |
+| **A. Реестр и данные** | `BlockRegistry` (материи и формы), теги, `shapes.json` (`Full`), `turf`, `bedrock`, одна материя `water`; `BuiltIn()`; тесты | сделано |
 | **B. Правила** | `VoxelWorld::Registry()` | сделано |
 | **C. Потребители** | `work/*`, `StartingCells`, `WorldInteractionController`, `TerrainMeshBuilder` на реестре | сделано |
 | **D. Внешний вид** | цвет и грани из реестра, текстуры по ключам, `BlockDiagram`; удалены `switch` по цвету | сделано |

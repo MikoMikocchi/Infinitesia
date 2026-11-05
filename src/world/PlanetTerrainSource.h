@@ -19,8 +19,9 @@ namespace Infinitesia {
 // of height.
 //
 // Each column is a surface block (turf, subsoil, sand or rock by biome), a few
-// blocks of matching topsoil, and rock below. Ground below sea level is covered
-// by seawater up to the waterline.
+// blocks of matching topsoil, and rock below. Ground below the sea or a lake is
+// covered by the fluid up to its surface; FluidAt gives that layer in metres
+// without looking at the blocks.
 //
 // With a geology model the rock is real: StateAt gives the rock of every rock
 // block from the layers of the column's province. Without one every rock block
@@ -43,6 +44,7 @@ class PlanetTerrainSource final : public TerrainSource {
 
   BlockState StateAt(GridCell cell) const override;
   BlockState GroundStateAt(GridCell cell) const override;
+  FluidColumn FluidAt(int x, int z) const override;
   const BlockRegistry& Registry() const override { return *m_registry; }
 
   // What a layer of ground is, before a material is chosen for it.
@@ -55,8 +57,7 @@ class PlanetTerrainSource final : public TerrainSource {
   // Level of the topmost solid block of a column (clamped inside the grid).
   int SurfaceLevelAt(int x, int z) const;
 
-  // Level of the highest water block, or a negative number when there is no sea
-  // in the grid.
+  // Level of the top block of the sea, or -1 when the sea is not in the grid.
   int WaterTopLevel() const;
 
  private:
@@ -66,9 +67,11 @@ class PlanetTerrainSource final : public TerrainSource {
     ProvinceId province = kNoProvince;
     int pileTopMeters = 0;
     Conditions climate;  // slope is filled in when the flora asks
-    bool underSea = false;
-    // Level of the top water block over the column, or -1 when it is dry.
-    int waterTopBlocks = -1;
+    // The fluid body over the column, if any, and the level of its top block
+    // (-1 when the column is dry).
+    FluidOrigin fluid = FluidOrigin::None;
+    double fluidLevelMeters = 0.0;
+    int fluidTopBlocks = -1;
     CartesianPoint3D direction{};
   };
 
@@ -91,9 +94,9 @@ class PlanetTerrainSource final : public TerrainSource {
   // The plant occupying the cell, if any.
   const FloraCell* FloraAt(GridCell cell) const;
   const GeologyModel::ColumnProfile& ProfileAt(int x, int z) const;
-  // Top water block level for a water surface this many metres above sea level,
-  // or -1 for the dry sentinel.
-  int WaterTopBlocksFor(double waterLevelMeters) const;
+  // Top block level for a fluid surface this many metres above sea level. Only
+  // call it for a column whose fluid is not None.
+  int FluidTopBlocksFor(double fluidLevelMeters) const;
 
   std::shared_ptr<const SettlementTerrain> m_terrain;
   std::shared_ptr<const BlockRegistry> m_registry;

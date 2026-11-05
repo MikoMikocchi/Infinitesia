@@ -30,7 +30,7 @@ class BlockRegistry {
                              const std::filesystem::path& shapesFile);
 
   // A minimum without files, for terrains and tests that have no catalog: air,
-  // water, seawater, turf, subsoil, sand and bedrock, and the full cube.
+  // water, turf, subsoil, sand and bedrock, and the full cube.
   static BlockRegistry BuiltIn();
 
   const MatterCatalog& Catalog() const noexcept { return *m_catalog; }

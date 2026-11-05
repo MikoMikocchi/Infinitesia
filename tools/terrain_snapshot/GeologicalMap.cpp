@@ -45,7 +45,7 @@ int RenderGeologicalMap(const Options& options, const Window& window,
       const std::size_t index =
           static_cast<std::size_t>(south) * columns + east;
       ground[index] = column.heightBlocks;
-      drowned[index] = column.underSea ? 1 : 0;
+      drowned[index] = column.fluid != FluidOrigin::None ? 1 : 0;
       // Under the topsoil (3 m) the rock that outcrops or lies just below the
       // ground.
       const int rockLevel =

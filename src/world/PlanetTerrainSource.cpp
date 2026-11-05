@@ -123,11 +123,14 @@ const PlanetTerrainSource::Column& PlanetTerrainSource::ColumnAt(int x,
   Column& cached = m_columns[index];
   cached.surface =
       std::clamp(m_anchorLevel + column.heightBlocks, 1, m_height - 2);
-  cached.kind = column.underSea ? SurfaceKind::Sand : column.kind;
+  cached.kind = column.kind;
   cached.province = column.province;
   cached.pileTopMeters = column.pileTopMeters;
-  cached.underSea = column.underSea;
-  cached.waterTopBlocks = WaterTopBlocksFor(column.waterLevelMeters);
+  cached.fluid = column.fluid;
+  cached.fluidLevelMeters = column.fluidLevelMeters;
+  cached.fluidTopBlocks = column.fluid != FluidOrigin::None
+                              ? FluidTopBlocksFor(column.fluidLevelMeters)
+                              : -1;
   cached.direction = column.direction;
   Conditions& climate = cached.climate;
   climate.temperatureCelsius = column.temperatureCelsius;
@@ -148,7 +151,7 @@ GroundColumn PlanetTerrainSource::Ground::ColumnAt(int x, int z) const {
   const bool clearing =
       std::abs(x - m_owner.m_width / 2) < kStartClearingMeters &&
       std::abs(z - m_owner.m_depth / 2) < kStartClearingMeters;
-  ground.growable = soil && column.surface > column.waterTopBlocks && !clearing;
+  ground.growable = soil && column.surface > column.fluidTopBlocks && !clearing;
   ground.conditions = column.climate;
   ground.vegetation =
       SampleVegetation(m_owner.m_terrain->GetPlanetMap(), column.direction);
@@ -170,25 +173,41 @@ int PlanetTerrainSource::SurfaceLevelAt(int x, int z) const {
 }
 
 int PlanetTerrainSource::WaterTopLevel() const {
-  // Ground at elevation k metres fills level anchor + k - origin, and the sea
-  // covers everything below 0 m.
-  const int top = m_anchorLevel + m_terrain->SeaLevelBlocks() - 1;
-  return std::min(top, m_height - 1);
+  // The sea surface is 0 m.
+  return FluidTopBlocksFor(0.0);
 }
 
-int PlanetTerrainSource::WaterTopBlocksFor(double waterLevelMeters) const {
-  // The sea is level 0 and lakes sit above it, so only the dry sentinel is
-  // negative.
-  if (waterLevelMeters < 0.0) {
-    return -1;
-  }
-  // Block y has its bottom at OriginElevation + (y - anchor); it is water when
-  // that lies below the surface, so the top water block is one below the first
-  // block whose bottom reaches the surface.
+int PlanetTerrainSource::FluidTopBlocksFor(double fluidLevelMeters) const {
+  // Block y has its bottom at OriginElevation + (y - anchor); it holds fluid
+  // when that lies below the surface, so the top fluid block is one below the
+  // first block whose bottom reaches the surface.
   const int top = m_anchorLevel +
-                  static_cast<int>(std::ceil(waterLevelMeters)) -
+                  static_cast<int>(std::ceil(fluidLevelMeters)) -
                   m_terrain->OriginElevationMeters() - 1;
   return std::clamp(top, -1, m_height - 1);
+}
+
+FluidColumn PlanetTerrainSource::FluidAt(int x, int z) const {
+  if (x < 0 || x >= m_width || z < 0 || z >= m_depth) {
+    return {};
+  }
+  const Column& column = ColumnAt(x, z);
+  FluidColumn fluid;
+  // The planet makes water bodies for now; a volcanic or subsurface origin
+  // will pick magma or oil here when those sources are generated. The block
+  // grid and FluidColumn do not care which material it is.
+  fluid.matter =
+      column.fluid != FluidOrigin::None ? m_matter.water : kAirMatter;
+  fluid.origin = column.fluid;
+  // The top of the topmost ground block.
+  fluid.groundMeters = static_cast<double>(m_terrain->OriginElevationMeters() +
+                                           column.surface + 1 - m_anchorLevel);
+  fluid.surfaceMeters =
+      fluid.HasFluid() ? column.fluidLevelMeters : fluid.groundMeters;
+  fluid.depthMeters =
+      fluid.HasFluid() ? std::max(0.0, fluid.surfaceMeters - fluid.groundMeters)
+                       : 0.0;
+  return fluid;
 }
 
 BlockState PlanetTerrainSource::StateAt(GridCell cell) const {
@@ -208,8 +227,12 @@ BlockState PlanetTerrainSource::StateOf(GridCell cell, bool withPlants) const {
   const Column& column = ColumnAt(cell.x, cell.z);
   const FloraCell* plant = withPlants ? FloraAt(cell) : nullptr;
   if (cell.y > column.surface) {
-    if (cell.y <= column.waterTopBlocks)
-      return {m_matter.seawater, kShapeFull};
+    if (cell.y <= column.fluidTopBlocks) {
+      // Every fluid origin maps to the one surface fluid for now; a later
+      // origin table can send volcanic pockets to magma and subsurface ones to
+      // oil without touching the grid.
+      return {m_matter.water, kShapeFull};
+    }
     return {plant != nullptr ? plant->matter : kAirMatter, kShapeFull};
   }
   const Layer layer = LayerAt(column.kind, column.surface - cell.y);

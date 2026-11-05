@@ -45,9 +45,8 @@ std::shared_ptr<const MatterCatalog> SharedMatter() {
 }
 
 std::shared_ptr<const BlockRegistry> SharedRegistry() {
-  static const auto registry =
-      std::make_shared<const BlockRegistry>(BlockRegistry::Build(
-          SharedMatter(), kAssets / "blocks" / "shapes.json"));
+  static const auto registry = std::make_shared<const BlockRegistry>(
+      BlockRegistry::Build(SharedMatter(), kAssets / "blocks" / "shapes.json"));
   return registry;
 }
 
@@ -181,9 +180,9 @@ TEST_CASE("ColumnsAreGroundWithSoilAndRockBelowAndAirAbove") {
 
         for (int y = surface + 1; y < kHeight; ++y) {
           const GridCell cell{x, y, z};
-          Require(y <= waterTop ? IsMade(source, cell, "seawater")
+          Require(y <= waterTop ? IsMade(source, cell, "water")
                                 : IsAir(source, cell),
-                  "The column above the ground is neither air nor sea.");
+                  "The column above the ground is neither air nor fluid.");
         }
       }
     }
@@ -194,15 +193,14 @@ TEST_CASE("TheSeaFillsLowGroundOnlyBelowSeaLevel") {
   const Settlement ocean = MakeSettlement(OceanAnchor());
   Require(ocean.source->WaterTopLevel() > kAnchorLevel,
           "Sea level is not above an ocean anchor.");
-  Require(IsMade(*ocean.source,
-                 {kWidth / 2, ocean.source->WaterTopLevel(), kDepth / 2},
-                 "seawater"),
-          "There is no seawater above the ocean floor.");
+  Require(
+      IsMade(*ocean.source,
+             {kWidth / 2, ocean.source->WaterTopLevel(), kDepth / 2}, "water"),
+      "There is no water above the ocean floor.");
   Require(IsAir(*ocean.source,
                 {kWidth / 2, ocean.source->WaterTopLevel() + 1, kDepth / 2}),
           "The water does not stop at the waterline.");
-  Require(IsMade(*ocean.source, {kWidth / 2, kAnchorLevel, kDepth / 2},
-                 "sand"),
+  Require(IsMade(*ocean.source, {kWidth / 2, kAnchorLevel, kDepth / 2}, "sand"),
           "The sea floor is not sand.");
 
   const Settlement land = MakeSettlement(LandAnchor());
@@ -217,21 +215,58 @@ TEST_CASE("TheSeaFillsLowGroundOnlyBelowSeaLevel") {
 TEST_CASE("ALakeFillsWaterAboveSeaLevel") {
   const Settlement settlement = MakeSettlement(LakeAnchor());
   const PlanetTerrainSource& source = *settlement.source;
-  // The lake sits above sea level, so its water is any water above the sea's
-  // top block.
-  const int seaTop = source.WaterTopLevel();
-  bool foundLakeWater = false;
-  for (int x = 0; x < kWidth && !foundLakeWater; x += 4) {
-    for (int z = 0; z < kDepth && !foundLakeWater; z += 4) {
-      for (int y = seaTop + 1; y < kHeight; ++y) {
-        if (IsWater(source, {x, y, z})) {
-          foundLakeWater = true;
-          break;
+  bool foundLake = false;
+  for (int x = 0; x < kWidth && !foundLake; x += 4) {
+    for (int z = 0; z < kDepth && !foundLake; z += 4) {
+      const FluidColumn fluid = source.FluidAt(x, z);
+      if (fluid.origin != FluidOrigin::Lake) {
+        continue;
+      }
+      foundLake = true;
+      Require(fluid.HasFluid(), "A lake column says it is dry.");
+      Require(fluid.surfaceMeters > 0.0,
+              "The lake surface is not above sea level.");
+      Require(fluid.surfaceMeters > fluid.groundMeters,
+              "The lake surface is not above its ground.");
+      Require(fluid.depthMeters > 0.0, "The lake has no depth.");
+    }
+  }
+  Require(foundLake, "No lake column: the lake was not filled.");
+}
+
+TEST_CASE("TheFluidLayerMatchesTheBlocks") {
+  for (const CartesianPoint3D anchor :
+       {LandAnchor(), OceanAnchor(), LakeAnchor()}) {
+    const Settlement settlement = MakeSettlement(anchor);
+    const PlanetTerrainSource& source = *settlement.source;
+    const MatterDef* water = source.Registry().FindMatter("water");
+    Require(water != nullptr, "The registry has no water.");
+
+    for (int x = 0; x < kWidth; x += 32) {
+      for (int z = 0; z < kDepth; z += 32) {
+        const FluidColumn fluid = source.FluidAt(x, z);
+        int top = -1;
+        for (int y = kHeight - 1; y >= 0; --y) {
+          if (IsWater(source, {x, y, z})) {
+            top = y;
+            break;
+          }
+        }
+
+        Require((top >= 0) == fluid.HasFluid(),
+                "The fluid layer disagrees with the blocks.");
+        Require(fluid.surfaceMeters >= fluid.groundMeters,
+                "The fluid surface is below its ground.");
+        if (top >= 0) {
+          Require(fluid.matter == water->id,
+                  "A fluid column has the wrong material.");
+          Require(fluid.depthMeters > 0.0, "A wet column has no depth.");
+        } else {
+          Require(fluid.depthMeters == 0.0, "A dry column has depth.");
         }
       }
     }
   }
-  Require(foundLakeWater, "No water above sea level: the lake was not filled.");
 }
 
 TEST_CASE("SurfaceMatchesThePlanetTerrain") {
@@ -322,15 +357,14 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain") {
   const BlockRegistry& registry = world.terrain.Registry();
   const GridCell target{center.x + 1, kAnchorLevel, center.z};
   world.terrain.SetBlock(target, {kAirMatter, kShapeFull});
+  world.terrain.SetBlock(target, {registry.FindMatter("sand")->id, kShapeFull});
   world.terrain.SetBlock(target,
-                         {registry.FindMatter("sand")->id, kShapeFull});
-  world.terrain.SetBlock(
-      target, {registry.FindMatter("seawater")->id, kShapeFull});
+                         {registry.FindMatter("water")->id, kShapeFull});
   Require(world.terrain.GetBlock(target)->state.matter ==
-              registry.FindMatter("seawater")->id,
+              registry.FindMatter("water")->id,
           "A water block could not be placed.");
-  world.terrain.SetBlock(
-      target, {registry.FindMatter("quartz")->id, kShapeFull});
+  world.terrain.SetBlock(target,
+                         {registry.FindMatter("quartz")->id, kShapeFull});
   Require(world.terrain.GetBlock(target)->state.matter ==
               registry.FindMatter("quartz")->id,
           "A mineral block could not be placed.");
@@ -340,9 +374,8 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain") {
                   std::invalid_argument);
   CHECK_THROWS_AS(world.terrain.SetBlock(target, {kAirMatter, 77}),
                   std::invalid_argument);
-  CHECK_THROWS_AS(
-      world.terrain.SetBlock({-1, 0, 0}, {kAirMatter, kShapeFull}),
-      std::out_of_range);
+  CHECK_THROWS_AS(world.terrain.SetBlock({-1, 0, 0}, {kAirMatter, kShapeFull}),
+                  std::out_of_range);
 }
 
 TEST_CASE("TheOriginalNoiseWorldStillWorks") {
@@ -409,9 +442,8 @@ TEST_CASE("GeologyChoosesTheRockWithoutChangingWhatIsSolid") {
 
           if (IsRock(*plain.source, cell)) {
             // Bedrock stands in for the rock where there is no geology.
-            Require(
-                without.matter == registry.FindMatter("bedrock")->id,
-                "Rock without geology is not bedrock.");
+            Require(without.matter == registry.FindMatter("bedrock")->id,
+                    "Rock without geology is not bedrock.");
             const MatterDef* info = registry.GetMatter(with.matter);
             Require(info != nullptr && info->blockClass == BlockClass::Rock,
                     "A rock block is not a catalog rock.");

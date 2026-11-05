@@ -115,23 +115,28 @@ int RenderBlockDiagram(const Options& options, const Window& window,
 
       Column& cell = at(u, v);
       cell.ground = column.heightBlocks;
-      cell.kind = column.underSea ? SurfaceKind::Sand : column.kind;
+      cell.kind = column.kind;
       cell.province = column.province;
       cell.pileTop = column.pileTopMeters;
       cell.profile = geology.ProfileAt(
           column.province, options.originEast + eastMeters + 0.5,
           options.originNorth + northMeters + 0.5, column.pileTopMeters);
-      // Over drowned ground the filled column reaches the sea surface, but no
-      // more than kMaxWaterDrawn above the ground: a 3 km deep ocean would
+      // Over drowned ground the filled column reaches the water surface, but
+      // no more than kMaxWaterDrawn above the ground: a 3 km deep ocean would
       // swamp the picture.
-      const int seaTop = sea - 1;
-      cell.top =
-          column.underSea
-              ? std::max(column.heightBlocks,
-                         std::min(seaTop, column.heightBlocks + kMaxWaterDrawn))
-              : column.heightBlocks;
-      waterCapped = waterCapped || (column.underSea && seaTop > cell.top);
-      drowned += column.underSea ? 1 : 0;
+      const int waterTop =
+          column.fluid == FluidOrigin::None
+              ? column.heightBlocks
+              : static_cast<int>(std::ceil(column.fluidLevelMeters)) -
+                    terrain.OriginElevationMeters() - 1;
+      cell.top = column.fluid == FluidOrigin::None
+                     ? column.heightBlocks
+                     : std::max(column.heightBlocks,
+                                std::min(waterTop,
+                                         column.heightBlocks + kMaxWaterDrawn));
+      waterCapped = waterCapped ||
+                    (column.fluid != FluidOrigin::None && waterTop > cell.top);
+      drowned += column.fluid != FluidOrigin::None ? 1 : 0;
       lowestGround = std::min(lowestGround, cell.ground);
       highestTop = std::max(highestTop, cell.top);
     }
@@ -178,11 +183,11 @@ int RenderBlockDiagram(const Options& options, const Window& window,
 
   // ---- paint far to near
   // What fills a block at `level` (relative to the window centre ground):
-  // seawater above the ground, topsoil and then real rock below it.
+  // water above the ground, topsoil and then real rock below it.
   std::map<MatterId, long> rocksSeen;
   const auto materialAt = [&](const Column& cell, int level) -> MatterId {
     if (level > cell.ground) {
-      return surface.seawater;
+      return surface.water;
     }
     switch (PlanetTerrainSource::LayerAt(cell.kind, cell.ground - level)) {
       case PlanetTerrainSource::Layer::Turf:
@@ -208,7 +213,7 @@ int RenderBlockDiagram(const Options& options, const Window& window,
     const MatterId id = materialAt(cell, level);
     Rgb color = colorOf(id);
     countRock(id);
-    if (id == surface.seawater) {
+    if (id == surface.water) {
       color = Mix({96, 170, 205}, {22, 56, 116}, (cell.top - level) / 40.0);
     }
     // The deeper the cut, the darker, so the depth reads at a glance.

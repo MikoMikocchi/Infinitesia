@@ -42,9 +42,6 @@ BlockRegistry BlockRegistry::BuiltIn() {
   materials.push_back(MakeBuiltInMaterial("water", "water", BlockClass::Fluid,
                                           1000.0, 0, {0x34, 0x6e, 0xaa},
                                           {"water"}));
-  materials.push_back(MakeBuiltInMaterial("seawater", "seawater",
-                                          BlockClass::Fluid, 1000.0, 0,
-                                          {0x34, 0x6e, 0xaa}, {"water"}));
   materials.push_back(MakeBuiltInMaterial("bedrock", "bedrock", BlockClass::Rock,
                                           2700.0, 4, {0x84, 0x89, 0x8e}));
   materials.push_back(MakeBuiltInMaterial("subsoil", "subsoil", BlockClass::Loose,

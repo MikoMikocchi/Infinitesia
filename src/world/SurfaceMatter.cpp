@@ -17,7 +17,7 @@ SurfaceMatter SurfaceMatter::Resolve(const BlockRegistry& registry) {
   materials.subsoil = Find(registry, "subsoil");
   materials.sand = Find(registry, "sand");
   materials.bedrock = Find(registry, "bedrock");
-  materials.seawater = Find(registry, "seawater");
+  materials.water = Find(registry, "water");
   return materials;
 }
 }  // namespace Infinitesia

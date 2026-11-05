@@ -445,14 +445,15 @@ TEST_CASE("SettlementTerrainFindsTheSea") {
       if (!foundOcean && cell.elevationNormalized < -0.4) {
         foundOcean = true;
         const SurfaceColumn column = terrain.Column(0, 0);
-        Require(column.underSea && column.kind == SurfaceKind::Sand,
+        Require(column.fluid == FluidOrigin::Sea &&
+                    column.kind == SurfaceKind::Sand,
                 "Ocean anchor is not under the sea.");
         Require(terrain.SeaLevelBlocks() > 0,
                 "Sea level is not above an ocean anchor.");
       }
       if (!foundHighland && cell.elevationNormalized > 0.1) {
         foundHighland = true;
-        Require(!terrain.Column(0, 0).underSea,
+        Require(terrain.Column(0, 0).fluid != FluidOrigin::Sea,
                 "Highland anchor is under the sea.");
         Require(terrain.SeaLevelBlocks() < 0,
                 "Sea level is not below a highland anchor.");

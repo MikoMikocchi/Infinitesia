@@ -33,7 +33,7 @@ std::string LoadError(const BrokenFile& broken) {
 }
 
 std::vector<const MatterDef*> OfClass(const MatterCatalog& catalog,
-                                        BlockClass blockClass) {
+                                      BlockClass blockClass) {
   std::vector<const MatterDef*> found;
   for (const MatterDef& material : catalog.Matter()) {
     if (material.blockClass == blockClass) found.push_back(&material);
@@ -150,15 +150,11 @@ TEST_CASE("MaterialsCarryTagsAndLightProperties") {
   CHECK(catalog.ModalOf(bedrock.id)->parts.empty());
   CHECK(catalog.Find("sand")->tags.size() == 2);
 
-  // The sea is the same as fresh water for now (docs/06_BLOCKS.md): one tag,
-  // equal properties.
+  // One water material for every water body; a fluid is a material like any
+  // other, so brine, oil and magma need no separate water type.
   const MatterDef& water = *catalog.Find("water");
-  const MatterDef& seawater = *catalog.Find("seawater");
   CHECK(HasTag(water, "water"));
-  CHECK(HasTag(seawater, "water"));
-  CHECK(water.density == seawater.density);
-  CHECK(water.color == seawater.color);
-  CHECK(water.opacity == seawater.opacity);
+  CHECK(catalog.Find("seawater") == nullptr);
 }
 
 TEST_CASE("MaterialLightFieldsAreValidated") {

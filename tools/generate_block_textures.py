@@ -348,8 +348,8 @@ BUILT = {
     "lamp": "crystal",
 }
 
-FLUIDS = {"water": "wave", "seawater": "wave", "brine": "wave",
-          "oil": "wave", "magma": "magma"}
+FLUIDS = {"water": "wave", "brine": "wave", "oil": "wave",
+          "magma": "magma"}
 
 
 def render(material_id, family, rgb, keep_dark=False):

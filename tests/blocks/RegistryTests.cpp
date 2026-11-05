@@ -118,8 +118,7 @@ TEST_CASE("UnknownIdsBehaveLikeAirAndLikeAFullCube") {
 TEST_CASE("TagsLetRulesAskWhatAMaterialIsInsteadOfWhichId") {
   const BlockRegistry& registry = SharedRegistry();
   CHECK(registry.Has(IdOf("water"), Tag::Water));
-  CHECK(registry.Has(IdOf("seawater"), Tag::Water));
-  CHECK(registry.Has(IdOf("seawater"), Tag::Fluid));
+  CHECK(registry.Has(IdOf("water"), Tag::Fluid));
   CHECK_FALSE(registry.Has(IdOf("brine"), Tag::Water));
   CHECK(registry.Has(IdOf("sand"), Tag::Soil));
   CHECK(registry.Has(IdOf("granite"), Tag::Rock));
@@ -143,7 +142,7 @@ TEST_CASE("TagsLetRulesAskWhatAMaterialIsInsteadOfWhichId") {
 TEST_CASE("BuiltInRegistryAgreesWithTheFiles") {
   const BlockRegistry builtIn = BlockRegistry::BuiltIn();
   const BlockRegistry& files = SharedRegistry();
-  CHECK(builtIn.Matter().size() == 7);
+  CHECK(builtIn.Matter().size() == 6);
   for (const MatterDef& material : builtIn.Matter()) {
     const MatterDef* other = files.FindMatter(material.key);
     REQUIRE_MESSAGE(other != nullptr, material.key, " is not in the files");

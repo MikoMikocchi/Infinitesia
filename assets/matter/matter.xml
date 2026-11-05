@@ -10,11 +10,6 @@
     <tag>water</tag>
   </tags>
   </matter>
-  <matter id="seawater" class="fluid" name="seawater" density="1000" digClass="0" color="#346eaa" provenance="gameplay">
-  <tags>
-    <tag>water</tag>
-  </tags>
-  </matter>
   <matter id="brine" class="fluid" name="brine" density="1200" digClass="0" color="#5a8a8a" provenance="gameplay"/>
   <matter id="oil" class="fluid" name="oil" density="850" digClass="0" color="#1a1410" provenance="gameplay"/>
   <matter id="magma" class="fluid" name="magma" density="2700" digClass="0" color="#e0501a" provenance="gameplay" opacity="15" emission="14,6,1"/>

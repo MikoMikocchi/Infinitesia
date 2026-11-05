@@ -205,8 +205,9 @@ int Run(const Options& options) {
       static_cast<unsigned long long>(options.seed), eastBlock, northBlock);
   std::printf(
       "ground %d m above sea level%s; looking at %d m (%d m %s the ground)\n",
-      ground, column.underSea ? " (under the sea)" : "", elevation,
-      std::abs(ground - elevation), elevation <= ground ? "below" : "above");
+      ground, column.fluid != FluidOrigin::None ? " (under water)" : "",
+      elevation, std::abs(ground - elevation),
+      elevation <= ground ? "below" : "above");
   if (province == nullptr) {
     std::printf("no province here\n");
     return 0;
@@ -241,7 +242,10 @@ int Run(const Options& options) {
   std::printf("\n");
   if (elevation > ground) {
     std::printf("the point is above the ground: %s\n",
-                column.underSea && elevation <= 0 ? "sea water or air" : "air");
+                column.fluid != FluidOrigin::None &&
+                        elevation <= column.fluidLevelMeters
+                    ? "water or air"
+                    : "air");
   } else if (ground - elevation < 4) {
     std::printf("topsoil (the top 3 m under the ground), over:\n");
   }

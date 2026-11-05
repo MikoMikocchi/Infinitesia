@@ -5,6 +5,7 @@
 
 #include "blocks/BlockRegistry.h"
 #include "world/Block.h"
+#include "world/Fluid.h"
 #include "world/Grid.h"
 #include "world/SurfaceMatter.h"
 
@@ -25,6 +26,15 @@ class TerrainSource {
 
   // The registry that names the materials and shapes this terrain hands out.
   virtual const BlockRegistry& Registry() const = 0;
+
+  // The fluid over the column, independent of the blocks: the block grid only
+  // says where the ground is, this says what fluid lies on it and how deep.
+  // Sources without fluids return a dry column.
+  virtual FluidColumn FluidAt(int x, int z) const {
+    static_cast<void>(x);
+    static_cast<void>(z);
+    return {};
+  }
 };
 
 // The original flat world: a value-noise patchwork on a single surface layer.

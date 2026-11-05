@@ -64,14 +64,21 @@ SurfaceColumn SettlementTerrain::Column(int eastBlocks,
   column.heightBlocks =
       static_cast<int>(std::floor(elevation)) - m_originElevationMeters;
   column.kind = ClassifySurface(biome, elevation);
-  column.underSea = elevation < 0.0;
-  column.waterLevelMeters = kNoWaterLevel;
-  if (column.underSea) {
-    column.waterLevelMeters = 0.0;  // the sea covers the column
+
+  // The top of the topmost ground block. The block at level L has its bottom at
+  // the origin elevation + (L - anchor), so the ground of this column ends one
+  // metre above its surface block.
+  const double groundTopMeters =
+      static_cast<double>(m_originElevationMeters + column.heightBlocks + 1);
+
+  if (elevation < 0.0 && groundTopMeters < 0.0) {
+    column.fluid = FluidOrigin::Sea;
+    column.fluidLevelMeters = 0.0;
   } else if (cell.isLake) {
     const double lakeLevel = cell.lakeWaterLevelKm * 1000.0;
-    if (elevation < lakeLevel) {
-      column.waterLevelMeters = lakeLevel;  // the lake covers the column
+    if (groundTopMeters < lakeLevel) {
+      column.fluid = FluidOrigin::Lake;
+      column.fluidLevelMeters = lakeLevel;
     }
   }
   column.province = cell.provinceId;
