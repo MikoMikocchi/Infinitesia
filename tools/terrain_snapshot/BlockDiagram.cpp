@@ -101,11 +101,9 @@ int RenderBlockDiagram(const Options &options, const Window &window, const Snaps
 	std::vector<Column> cells(static_cast<std::size_t>(view.keptU) * static_cast<std::size_t>(view.keptV));
 	const auto at = [&](int u, int v) -> Column & { return cells[static_cast<std::size_t>(v) * view.keptU + u]; };
 
-	constexpr int kMaxWaterDrawn = 60;
 	int lowestGround = 1 << 30;
 	int highestTop = -(1 << 30);
 	int drowned = 0;
-	bool waterCapped = false;
 	for (int v = 0; v < view.keptV; ++v)
 	{
 		for (int u = 0; u < view.keptU; ++u)
@@ -124,17 +122,15 @@ int RenderBlockDiagram(const Options &options, const Window &window, const Snaps
 			cell.pileTop = column.pileTopMeters;
 			cell.profile = geology.ProfileAt(column.province, options.originEast + eastMeters + 0.5,
 			                                 options.originNorth + northMeters + 0.5, column.pileTopMeters);
-			// Over drowned ground the filled column reaches the water surface, but
-			// no more than kMaxWaterDrawn above the ground: a 3 km deep ocean would
-			// swamp the picture.
+			// The water surface is one level for the whole body, never the shape of
+			// the ground under it. A deep ocean therefore draws a deep water column;
+			// use --scale or --depth to keep the picture manageable.
 			const int waterTop =
 			    column.fluid == FluidOrigin::None
 			        ? column.heightBlocks
 			        : static_cast<int>(std::ceil(column.fluidLevelMeters)) - terrain.OriginElevationMeters() - 1;
-			cell.top = column.fluid == FluidOrigin::None
-			               ? column.heightBlocks
-			               : std::max(column.heightBlocks, std::min(waterTop, column.heightBlocks + kMaxWaterDrawn));
-			waterCapped = waterCapped || (column.fluid != FluidOrigin::None && waterTop > cell.top);
+			cell.top =
+			    column.fluid == FluidOrigin::None ? column.heightBlocks : std::max(column.heightBlocks, waterTop);
 			drowned += column.fluid != FluidOrigin::None ? 1 : 0;
 			lowestGround = std::min(lowestGround, cell.ground);
 			highestTop = std::max(highestTop, cell.top);
@@ -328,13 +324,6 @@ int RenderBlockDiagram(const Options &options, const Window &window, const Snaps
 	std::printf("picture: %.3f px/m, vertical x%.1f, ground shown %.0f m below the "
 	            "lowest surface\n",
 	            view.scale, view.exaggeration, depth);
-	if (waterCapped)
-	{
-		std::printf("note: the sea here is deeper than %d m; water is drawn %d m thick "
-		            "over the sea floor\n",
-		            kMaxWaterDrawn, kMaxWaterDrawn);
-	}
-
 	PrintRocks(registry.Catalog(), rocksSeen);
 
 	PrintPlanetCell(options, world.Map());

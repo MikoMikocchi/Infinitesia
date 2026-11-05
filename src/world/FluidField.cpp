@@ -18,6 +18,13 @@ constexpr std::array<GridCell, 6> kNeighborOffsets{GridCell{-1, 0, 0}, GridCell{
                                                    GridCell{0, 1, 0},  GridCell{0, 0, -1}, GridCell{0, 0, 1}};
 constexpr std::array<GridCell, 4> kSideOffsets{GridCell{-1, 0, 0}, GridCell{1, 0, 0}, GridCell{0, 0, -1},
                                                GridCell{0, 0, 1}};
+// Pressure tries down, then sideways, then up, like Dwarf Fortress.
+constexpr std::array<GridCell, 6> kPressureOffsets{GridCell{0, -1, 0}, GridCell{-1, 0, 0}, GridCell{1, 0, 0},
+                                                   GridCell{0, 0, -1}, GridCell{0, 0, 1},  GridCell{0, 1, 0}};
+// One of the seven depth levels of a Dwarf Fortress tile.
+constexpr std::uint16_t kPressureLevelMb = kFullFluidCellMb / 7;
+// A pressure search is a local teleport, not a scan of the whole sea.
+constexpr std::size_t kPressureSearchLimit = 2048;
 
 std::uint16_t AddAmount(std::uint16_t left, std::uint16_t right)
 {
@@ -154,6 +161,9 @@ void FluidField::Set(GridCell cell, FluidCell value)
 	}
 	WriteCell(cell, value);
 	ActivateAround(cell);
+	// A placed body of water (a lake in a test, a filled reservoir later) can
+	// push through a connected tunnel just like the terrain's sea.
+	PressurizeAround(cell);
 }
 
 void FluidField::InitializeChunk(const WorldChunk &chunk, const TerrainSource &terrain)
@@ -334,6 +344,100 @@ std::uint16_t FluidField::Deposit(FluidCell fluid, GridCell to, const VoxelWorld
 	return static_cast<std::uint16_t>(fluid.amountMb - moved);
 }
 
+void FluidField::PressurizeAround(GridCell cell)
+{
+	if (!Contains(cell))
+	{
+		return;
+	}
+	m_pressure.insert(cell);
+	for (const GridCell offset : kNeighborOffsets)
+	{
+		const GridCell neighbor{cell.x + offset.x, cell.y + offset.y, cell.z + offset.z};
+		if (Contains(neighbor))
+		{
+			m_pressure.insert(neighbor);
+		}
+	}
+}
+
+void FluidField::PropagatePressure(GridCell cell, const VoxelWorld &world)
+{
+	const FluidCell *source = At(cell);
+	if (source == nullptr || source->amountMb == 0 || source->matter == kAirMatter)
+	{
+		return;
+	}
+
+	// The head is the first full 7/7 tile of the path: the source itself for an
+	// endless sea, otherwise the full tile under the falling water. Pressure may
+	// reach that level but never above it.
+	GridCell start = cell;
+	int head = cell.y;
+	if (source->origin != FluidOrigin::Sea)
+	{
+		start = GridCell{cell.x, cell.y - 1, cell.z};
+		const FluidCell *below = At(start);
+		if (below == nullptr || below->amountMb < kFullFluidCellMb || below->matter != source->matter)
+		{
+			return;
+		}
+		head = start.y;
+	}
+
+	std::set<GridCell> visited;
+	std::vector<GridCell> frontier;
+	visited.insert(start);
+	frontier.push_back(start);
+	GridCell destination{};
+	bool found = false;
+	for (std::size_t index = 0; index < frontier.size() && !found && visited.size() <= kPressureSearchLimit; ++index)
+	{
+		const GridCell current = frontier[index];
+		for (const GridCell offset : kPressureOffsets)
+		{
+			const GridCell next{current.x + offset.x, current.y + offset.y, current.z + offset.z};
+			// Pressure moves through full water only, orthogonally, and never up
+			// above the first full tile.
+			if (!Contains(next) || next.y > head || visited.count(next) != 0)
+			{
+				continue;
+			}
+			const Block *block = world.GetBlock(next);
+			if (block == nullptr || world.Registry().Occupied(block->state))
+			{
+				continue;
+			}
+			const FluidCell *fluid = At(next);
+			if (fluid != nullptr && fluid->amountMb >= kFullFluidCellMb && fluid->matter == source->matter)
+			{
+				visited.insert(next);
+				frontier.push_back(next);
+				continue;
+			}
+			if (!CanAccept(next, source->matter, world))
+			{
+				continue;
+			}
+			destination = next;
+			found = true;
+			break;
+		}
+	}
+	if (!found)
+	{
+		return;
+	}
+
+	// The full body acts as a pipe: the water is taken from the source cell and
+	// appears at the far end. One level per tick, as in Dwarf Fortress.
+	if (Transfer(cell, destination, kPressureLevelMb, world) > 0)
+	{
+		// A source keeps pushing until the reachable space is full.
+		m_pressure.insert(cell);
+	}
+}
+
 void FluidField::OnBlockChanged(GridCell cell, const VoxelWorld &world)
 {
 	if (!Contains(cell))
@@ -370,11 +474,14 @@ void FluidField::OnBlockChanged(GridCell cell, const VoxelWorld &world)
 	// A dug cell must be noticed by the fluid around it, and a placed block must
 	// let the fluid settle against its new shape.
 	ActivateAround(cell);
+	// Digging may open a tunnel under a full body of water: pressure can now
+	// reach it through the full cells.
+	PressurizeAround(cell);
 }
 
 void FluidField::Step(const VoxelWorld &world)
 {
-	if (m_active.empty())
+	if (m_active.empty() && m_pressure.empty())
 	{
 		return;
 	}
@@ -400,6 +507,9 @@ void FluidField::Step(const VoxelWorld &world)
 				restored.amountMb = kFullFluidCellMb;
 				WriteCell(cell, restored);
 				ActivateAround(cell);
+				// A refilled sea source can push water through a tunnel it is
+				// connected to, like a river in Dwarf Fortress.
+				m_pressure.insert(cell);
 			}
 		}
 
@@ -450,6 +560,20 @@ void FluidField::Step(const VoxelWorld &world)
 				break;
 			}
 		}
+	}
+
+	// Pressure is a second pass: it uses the full cells left by gravity and
+	// diffusion as a pipe, and is the part that can move water to a distant tile
+	// or back up a U-bend.
+	if (m_pressure.empty())
+	{
+		return;
+	}
+	const std::vector<GridCell> pressure(m_pressure.begin(), m_pressure.end());
+	m_pressure.clear();
+	for (const GridCell cell : pressure)
+	{
+		PropagatePressure(cell, world);
 	}
 }
 } // namespace Infinitesia

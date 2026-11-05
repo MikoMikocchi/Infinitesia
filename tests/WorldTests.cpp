@@ -462,6 +462,57 @@ TEST_CASE("WaterDoesNotPassThroughSolidBlocks")
 	}
 }
 
+TEST_CASE("WaterRisesInAUBendLikeDwarfFortress")
+{
+	// A U-shaped tunnel: two shafts joined at the bottom. The left shaft is a
+	// sea source up to level 5; the right is open and must fill up to that level.
+	const Grid grid(GridConfig{9, 9, 9, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	world.EnsureChunkContaining({2, 2, 2});
+	const MatterId bedrock = SharedRegistry()->FindMatter("bedrock")->id;
+	const auto wall = [&](GridCell cell) { world.SetBlock(cell, {bedrock, kShapeFull}); };
+
+	for (int x = 1; x <= 7; ++x)
+	{
+		for (int y = 2; y <= 6; ++y)
+		{
+			wall({x, y, 3});
+			wall({x, y, 5});
+		}
+	}
+	for (int y = 2; y <= 6; ++y)
+	{
+		wall({1, y, 4});
+		wall({7, y, 4});
+	}
+	for (int x = 3; x <= 5; ++x)
+	{
+		for (int y = 3; y <= 6; ++y)
+		{
+			wall({x, y, 4});
+		}
+	}
+
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	for (int y = 2; y <= 5; ++y)
+	{
+		world.Fluids().Set({2, y, 4}, {water, 1000, FluidOrigin::Sea});
+	}
+
+	for (int tick = 0; tick < 200; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	// Pressure pushes the water up the right shaft to the source level, but not
+	// above it.
+	const FluidCell *top = world.GetFluid({6, 5, 4});
+	REQUIRE(top != nullptr);
+	CHECK(top->amountMb > 0);
+	const FluidCell *above = world.GetFluid({6, 6, 4});
+	CHECK((above == nullptr || above->amountMb == 0));
+}
+
 TEST_CASE("FluidDoesNotMixDifferentMaterials")
 {
 	const Grid grid(GridConfig{5, 5, 5, 1.0f});
@@ -971,4 +1022,3 @@ TEST_CASE("TheForestFollowsTheVegetationLayerOfThePlanet")
 	CHECK(CountPlants(*MakeSourceOnVegetationMap(FindOnVegetationMap(true))) > 1000);
 	CHECK(CountPlants(*MakeSourceOnVegetationMap(FindOnVegetationMap(false))) == 0);
 }
-

@@ -91,8 +91,15 @@ private:
 	// Puts fluid into a cell, up to its free room; returns how much is left over.
 	std::uint16_t Deposit(FluidCell fluid, GridCell to, const VoxelWorld &world);
 
+	// Dwarf Fortress-style pressure: water that cannot go down traces a path
+	// through full 7/7 water and teleports a level to an open cell at or below
+	// the first full cell of that path. It never rises above its source.
+	void PropagatePressure(GridCell cell, const VoxelWorld &world);
+	void PressurizeAround(GridCell cell);
+
 	std::map<ChunkCoordinate, FluidChunk> m_chunks;
 	std::set<GridCell> m_active;
+	std::set<GridCell> m_pressure;
 	std::uint64_t m_revision = 0;
 	int m_gridWidth;
 	int m_gridHeight;
