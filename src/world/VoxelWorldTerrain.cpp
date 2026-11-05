@@ -71,6 +71,16 @@ void VoxelWorld::SetBlock(GridCell cell, BlockState state) {
   changed.state = state;
   ++m_terrainRevision;
 
+  // Placing or removing a fluid changes whether the chunk has any water to
+  // show above the cut.
+  chunk.hasFluid = false;
+  for (const Block& block : chunk.blocks) {
+    if (m_terrain->Registry().Has(block.state.matter, Tag::Fluid)) {
+      chunk.hasFluid = true;
+      break;
+    }
+  }
+
   // A mesh depends on the blocks one cell around its own (hidden faces and the
   // ambient occlusion of their corners, diagonals included), so every chunk
   // holding a cell of the 3x3x3 block around the changed one is stale.

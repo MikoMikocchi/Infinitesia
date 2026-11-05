@@ -1,6 +1,7 @@
 #include "world/PlanetTerrainSource.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <stdexcept>
 #include <utility>
@@ -85,14 +86,6 @@ PlanetTerrainSource::PlanetTerrainSource(
     m_flora = std::make_unique<FloraModel>(std::move(flora), floraSeed,
                                            gridWidth, gridDepth, *m_ground);
   }
-  const std::size_t columns =
-      static_cast<std::size_t>(gridWidth) * static_cast<std::size_t>(gridDepth);
-  m_columns.resize(columns);
-  m_known.assign(columns, 0);
-  if (m_geology != nullptr) {
-    m_profiles.resize(columns);
-    m_profileKnown.assign(columns, 0);
-  }
 }
 
 const GeologyModel::ColumnProfile& PlanetTerrainSource::ProfileAt(int x,
@@ -100,18 +93,20 @@ const GeologyModel::ColumnProfile& PlanetTerrainSource::ProfileAt(int x,
   const std::size_t index =
       static_cast<std::size_t>(z) * static_cast<std::size_t>(m_width) +
       static_cast<std::size_t>(x);
-  if (m_profileKnown[index] == 0) {
-    const Column& column = ColumnAt(x, z);
-    // The centre of the 1 m column, in metres east and north of the grid's
-    // anchor.
-    const double east = m_terrain->OriginEastMeters() + (x - m_width / 2) + 0.5;
-    const double north =
-        m_terrain->OriginNorthMeters() + (m_depth / 2 - z) + 0.5;
-    m_profiles[index] = m_geology->ProfileAt(column.province, east, north,
-                                             column.pileTopMeters);
-    m_profileKnown[index] = 1;
+  const auto found = m_profiles.find(index);
+  if (found != m_profiles.end()) {
+    return found->second;
   }
-  return m_profiles[index];
+  const Column& column = ColumnAt(x, z);
+  // The centre of the 1 m column, in metres east and north of the grid's
+  // anchor.
+  const double east = m_terrain->OriginEastMeters() + (x - m_width / 2) + 0.5;
+  const double north =
+      m_terrain->OriginNorthMeters() + (m_depth / 2 - z) + 0.5;
+  return m_profiles.emplace(
+      index, m_geology->ProfileAt(column.province, east, north,
+                                  column.pileTopMeters))
+      .first->second;
 }
 
 const PlanetTerrainSource::Column& PlanetTerrainSource::ColumnAt(int x,
@@ -119,26 +114,29 @@ const PlanetTerrainSource::Column& PlanetTerrainSource::ColumnAt(int x,
   const std::size_t index =
       static_cast<std::size_t>(z) * static_cast<std::size_t>(m_width) +
       static_cast<std::size_t>(x);
-  if (m_known[index] == 0) {
-    const SurfaceColumn column =
-        m_terrain->Column(x - m_width / 2, m_depth / 2 - z);
-    m_columns[index].surface =
-        std::clamp(m_anchorLevel + column.heightBlocks, 1, m_height - 2);
-    m_columns[index].kind = column.underSea ? SurfaceKind::Sand : column.kind;
-    m_columns[index].province = column.province;
-    m_columns[index].pileTopMeters = column.pileTopMeters;
-    m_columns[index].underSea = column.underSea;
-    m_columns[index].direction = column.direction;
-    Conditions& climate = m_columns[index].climate;
-    climate.temperatureCelsius = column.temperatureCelsius;
-    climate.precipitationMm = column.precipitationMm;
-    climate.elevationMeters = column.elevationMeters;
-    climate.drySeasonMonths = column.drySeasonMonths;
-    climate.soilFertility = column.soilFertility;
-    climate.soilDepth = column.soilDepth;
-    m_known[index] = 1;
+  const auto found = m_columns.find(index);
+  if (found != m_columns.end()) {
+    return found->second;
   }
-  return m_columns[index];
+  const SurfaceColumn column =
+      m_terrain->Column(x - m_width / 2, m_depth / 2 - z);
+  Column& cached = m_columns[index];
+  cached.surface =
+      std::clamp(m_anchorLevel + column.heightBlocks, 1, m_height - 2);
+  cached.kind = column.underSea ? SurfaceKind::Sand : column.kind;
+  cached.province = column.province;
+  cached.pileTopMeters = column.pileTopMeters;
+  cached.underSea = column.underSea;
+  cached.waterTopBlocks = WaterTopBlocksFor(column.waterLevelMeters);
+  cached.direction = column.direction;
+  Conditions& climate = cached.climate;
+  climate.temperatureCelsius = column.temperatureCelsius;
+  climate.precipitationMm = column.precipitationMm;
+  climate.elevationMeters = column.elevationMeters;
+  climate.drySeasonMonths = column.drySeasonMonths;
+  climate.soilFertility = column.soilFertility;
+  climate.soilDepth = column.soilDepth;
+  return cached;
 }
 
 GroundColumn PlanetTerrainSource::Ground::ColumnAt(int x, int z) const {
@@ -150,8 +148,7 @@ GroundColumn PlanetTerrainSource::Ground::ColumnAt(int x, int z) const {
   const bool clearing =
       std::abs(x - m_owner.m_width / 2) < kStartClearingMeters &&
       std::abs(z - m_owner.m_depth / 2) < kStartClearingMeters;
-  ground.growable = soil && !column.underSea &&
-                    column.surface > m_owner.WaterTopLevel() && !clearing;
+  ground.growable = soil && column.surface > column.waterTopBlocks && !clearing;
   ground.conditions = column.climate;
   ground.vegetation =
       SampleVegetation(m_owner.m_terrain->GetPlanetMap(), column.direction);
@@ -179,6 +176,21 @@ int PlanetTerrainSource::WaterTopLevel() const {
   return std::min(top, m_height - 1);
 }
 
+int PlanetTerrainSource::WaterTopBlocksFor(double waterLevelMeters) const {
+  // The sea is level 0 and lakes sit above it, so only the dry sentinel is
+  // negative.
+  if (waterLevelMeters < 0.0) {
+    return -1;
+  }
+  // Block y has its bottom at OriginElevation + (y - anchor); it is water when
+  // that lies below the surface, so the top water block is one below the first
+  // block whose bottom reaches the surface.
+  const int top = m_anchorLevel +
+                  static_cast<int>(std::ceil(waterLevelMeters)) -
+                  m_terrain->OriginElevationMeters() - 1;
+  return std::clamp(top, -1, m_height - 1);
+}
+
 BlockState PlanetTerrainSource::StateAt(GridCell cell) const {
   return StateOf(cell, true);
 }
@@ -196,7 +208,8 @@ BlockState PlanetTerrainSource::StateOf(GridCell cell, bool withPlants) const {
   const Column& column = ColumnAt(cell.x, cell.z);
   const FloraCell* plant = withPlants ? FloraAt(cell) : nullptr;
   if (cell.y > column.surface) {
-    if (cell.y <= WaterTopLevel()) return {m_matter.seawater, kShapeFull};
+    if (cell.y <= column.waterTopBlocks)
+      return {m_matter.seawater, kShapeFull};
     return {plant != nullptr ? plant->matter : kAirMatter, kShapeFull};
   }
   const Layer layer = LayerAt(column.kind, column.surface - cell.y);

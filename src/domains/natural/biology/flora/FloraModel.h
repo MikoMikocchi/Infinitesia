@@ -104,7 +104,8 @@ class FloraModel {
   int m_reach = 0;
   mutable std::unordered_map<std::uint64_t, std::unique_ptr<PlacedTree>>
       m_trees;
-  mutable std::vector<std::vector<FloraCell>> m_columns;
-  mutable std::vector<std::uint8_t> m_known;
+  // The flora of a column, computed the first time a block of it is asked for;
+  // stored sparsely so a large world does not pay for columns it never touches.
+  mutable std::unordered_map<std::size_t, std::vector<FloraCell>> m_columns;
 };
 }  // namespace Infinitesia

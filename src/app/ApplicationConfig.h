@@ -17,11 +17,12 @@ struct WindowConfig {
 };
 
 struct ApplicationConfig {
-  WindowConfig window{1920, 1080, 60, "Infinitesia"};
-  // The world of the founded settlement: a 256 m square window of the planet,
-  // 192 m tall, with the ground of its middle column at level 112.
-  GridConfig settlementGrid{256, 192, 256, 1.0f};
-  int settlementAnchorLevel = 112;
+  WindowConfig window{1280, 720, 60, "Infinitesia"};
+  // The world of the founded settlement: a 4 km square window of the planet
+  // (the whole of one region), 512 m tall, with the ground of its middle column
+  // at level 256.
+  GridConfig settlementGrid{4096, 512, 4096, 1.0f};
+  int settlementAnchorLevel = 256;
   // The starting distance and pitch; the pitch then follows the zoom (see
   // CameraControlConfig).
   CameraConfig camera{30.0f, 45.0f, 40.0f};

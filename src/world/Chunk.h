@@ -32,6 +32,9 @@ struct WorldChunk {
   int height;
   int depth;
   std::uint64_t terrainRevision = 0;
+  // Whether any cell holds a fluid (water, oil, magma): such a chunk stays
+  // visible above the cut level, since the sea is not cut away with the ground.
+  bool hasFluid = false;
   std::vector<Block> blocks;
 };
 }  // namespace Infinitesia

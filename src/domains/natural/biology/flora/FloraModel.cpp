@@ -45,10 +45,6 @@ FloraModel::FloraModel(std::shared_ptr<const SpeciesCatalog> species,
                          kind.trunkRadiusMeters.max;
     m_reach = std::max(m_reach, static_cast<int>(std::ceil(reach)));
   }
-  const std::size_t columns =
-      static_cast<std::size_t>(width) * static_cast<std::size_t>(depth);
-  m_columns.resize(columns);
-  m_known.assign(columns, 0);
 }
 
 std::optional<FloraModel::Placement> FloraModel::TreeOfSeedCell(int sx,
@@ -145,8 +141,8 @@ const std::vector<FloraCell>& FloraModel::Column(int x, int z) const {
   if (x < 0 || x >= m_width || z < 0 || z >= m_depth) return NoCells();
   const std::size_t index =
       static_cast<std::size_t>(z) * m_width + static_cast<std::size_t>(x);
-  if (m_known[index] != 0) return m_columns[index];
-  m_known[index] = 1;
+  const auto found = m_columns.find(index);
+  if (found != m_columns.end()) return found->second;
 
   std::vector<FloraCell>& cells = m_columns[index];
   const int firstX = FloorDiv(x - m_reach, kSeedCellMeters);

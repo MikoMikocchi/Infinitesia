@@ -65,6 +65,15 @@ SurfaceColumn SettlementTerrain::Column(int eastBlocks,
       static_cast<int>(std::floor(elevation)) - m_originElevationMeters;
   column.kind = ClassifySurface(biome, elevation);
   column.underSea = elevation < 0.0;
+  column.waterLevelMeters = kNoWaterLevel;
+  if (column.underSea) {
+    column.waterLevelMeters = 0.0;  // the sea covers the column
+  } else if (cell.isLake) {
+    const double lakeLevel = cell.lakeWaterLevelKm * 1000.0;
+    if (elevation < lakeLevel) {
+      column.waterLevelMeters = lakeLevel;  // the lake covers the column
+    }
+  }
   column.province = cell.provinceId;
   column.pileTopMeters = static_cast<int>(std::floor(planet.elevationMeters));
   constexpr double kLapseRateCelsiusPerMeter = 0.0065;

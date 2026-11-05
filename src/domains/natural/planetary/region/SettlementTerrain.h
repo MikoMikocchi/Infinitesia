@@ -17,6 +17,10 @@ struct SettlementSite {
 // What the surface of a block column is made of.
 enum class SurfaceKind : std::uint8_t { Grass, Dirt, Sand, Stone };
 
+// A column with no water above it carries this water level, far below any real
+// one (the sea is 0, a lake sits above sea level).
+inline constexpr double kNoWaterLevel = -1.0e9;
+
 struct SurfaceColumn {
   // Top solid block, in whole metres above the ground level of the origin
   // column.
@@ -25,6 +29,10 @@ struct SurfaceColumn {
   // True where the ground lies below sea level (the sea fills the column up to
   // it).
   bool underSea = false;
+  // Water surface elevation in metres above sea level that covers this column:
+  // 0 for the sea, the lake's level for a lake, or kNoWaterLevel when the
+  // column is dry.
+  double waterLevelMeters = kNoWaterLevel;
   // Geological province of the planet cell under the column, and the elevation
   // (whole metres above sea level) of the planet's coarse surface there: the
   // reference level the province's rock layers are laid out from.

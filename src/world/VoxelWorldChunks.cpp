@@ -111,7 +111,11 @@ void VoxelWorld::EnsureChunkGenerated(ChunkCoordinate coordinate) {
     for (int localY = 0; localY < chunkHeight; ++localY) {
       for (int localX = 0; localX < chunkWidth; ++localX) {
         const GridCell cell{startX + localX, startY + localY, startZ + localZ};
-        chunk.blocks.push_back({cell, m_terrain->StateAt(cell)});
+        const BlockState state = m_terrain->StateAt(cell);
+        if (m_terrain->Registry().Has(state.matter, Tag::Fluid)) {
+          chunk.hasFluid = true;
+        }
+        chunk.blocks.push_back({cell, state});
       }
     }
   }

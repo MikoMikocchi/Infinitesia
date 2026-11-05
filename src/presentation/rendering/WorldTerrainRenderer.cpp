@@ -23,9 +23,13 @@ ChunkMeshKey GetMeshKey(const WorldChunk& chunk, int viewLevel, ViewMode mode) {
   return {chunk.coordinate, isCut ? viewLevel : TerrainMeshBuilder::kNoCut};
 }
 
-bool IsChunkShown(const ChunkCoordinate& coordinate, int viewLevel,
-                  ViewMode mode) {
-  return IsLevelShown(mode, coordinate.y * kChunkSize, viewLevel);
+bool IsChunkShown(const WorldChunk& chunk, int viewLevel, ViewMode mode) {
+  if (IsLevelShown(mode, chunk.coordinate.y * kChunkSize, viewLevel)) {
+    return true;
+  }
+  // A chunk of water above the viewed level stays visible: the sea is not cut
+  // away with the ground.
+  return mode == ViewMode::CutAtLevel && chunk.hasFluid;
 }
 
 // Chunk meshes built in one frame; more would stall the frame, so the rest
@@ -144,7 +148,7 @@ void DrawBlocks(const Grid& grid, const VoxelWorld& world, GridCell viewCenter,
   int buildsLeft = kMeshBuildsPerFrame;
   std::set<ChunkMeshKey> wantedMeshes;
   for (const auto& [coordinate, chunk] : world.GetChunks()) {
-    if (!isInRadius(coordinate) || !IsChunkShown(coordinate, viewLevel, mode)) {
+    if (!isInRadius(coordinate) || !IsChunkShown(chunk, viewLevel, mode)) {
       continue;
     }
 
@@ -187,7 +191,7 @@ void DrawBlocks(const Grid& grid, const VoxelWorld& world, GridCell viewCenter,
       bool builtAhead = false;
       for (const auto& [coordinate, chunk] : world.GetChunks()) {
         if (!isInRadius(coordinate) ||
-            !IsChunkShown(coordinate, adjacentLevel, mode)) {
+            !IsChunkShown(chunk, adjacentLevel, mode)) {
           continue;
         }
 

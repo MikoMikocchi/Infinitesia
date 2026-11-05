@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "domains/natural/biology/community/VegetationLayer.h"
@@ -66,6 +67,8 @@ class PlanetTerrainSource final : public TerrainSource {
     int pileTopMeters = 0;
     Conditions climate;  // slope is filled in when the flora asks
     bool underSea = false;
+    // Level of the top water block over the column, or -1 when it is dry.
+    int waterTopBlocks = -1;
     CartesianPoint3D direction{};
   };
 
@@ -88,6 +91,9 @@ class PlanetTerrainSource final : public TerrainSource {
   // The plant occupying the cell, if any.
   const FloraCell* FloraAt(GridCell cell) const;
   const GeologyModel::ColumnProfile& ProfileAt(int x, int z) const;
+  // Top water block level for a water surface this many metres above sea level,
+  // or -1 for the dry sentinel.
+  int WaterTopBlocksFor(double waterLevelMeters) const;
 
   std::shared_ptr<const SettlementTerrain> m_terrain;
   std::shared_ptr<const BlockRegistry> m_registry;
@@ -97,13 +103,12 @@ class PlanetTerrainSource final : public TerrainSource {
   int m_height;
   int m_depth;
   int m_anchorLevel;
-  // Columns are worked out the first time a chunk touches them.
-  mutable std::vector<Column> m_columns;
-  mutable std::vector<std::uint8_t> m_known;
-  // The rocks under a column, worked out the first time one of its blocks is
-  // asked for.
-  mutable std::vector<GeologyModel::ColumnProfile> m_profiles;
-  mutable std::vector<std::uint8_t> m_profileKnown;
+  // Columns and rock profiles are worked out the first time a chunk touches
+  // them, so they are stored sparsely: the world is far larger than what is
+  // ever loaded at once.
+  mutable std::unordered_map<std::size_t, Column> m_columns;
+  mutable std::unordered_map<std::size_t, GeologyModel::ColumnProfile>
+      m_profiles;
   std::unique_ptr<Ground> m_ground;
   std::unique_ptr<FloraModel> m_flora;
 };

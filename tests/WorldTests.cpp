@@ -139,6 +139,10 @@ CartesianPoint3D OceanAnchor() {
   return FindCell(
       [](const PlanetRegion& cell) { return cell.elevationNormalized < -0.4; });
 }
+
+CartesianPoint3D LakeAnchor() {
+  return FindCell([](const PlanetRegion& cell) { return cell.isLake; });
+}
 }  // namespace
 
 TEST_CASE("TheOriginColumnSitsAtTheAnchorLevel") {
@@ -208,6 +212,26 @@ TEST_CASE("TheSeaFillsLowGroundOnlyBelowSeaLevel") {
     Require(!IsWater(*land.source, {kWidth / 2, y, kDepth / 2}),
             "Water on dry highland.");
   }
+}
+
+TEST_CASE("ALakeFillsWaterAboveSeaLevel") {
+  const Settlement settlement = MakeSettlement(LakeAnchor());
+  const PlanetTerrainSource& source = *settlement.source;
+  // The lake sits above sea level, so its water is any water above the sea's
+  // top block.
+  const int seaTop = source.WaterTopLevel();
+  bool foundLakeWater = false;
+  for (int x = 0; x < kWidth && !foundLakeWater; x += 4) {
+    for (int z = 0; z < kDepth && !foundLakeWater; z += 4) {
+      for (int y = seaTop + 1; y < kHeight; ++y) {
+        if (IsWater(source, {x, y, z})) {
+          foundLakeWater = true;
+          break;
+        }
+      }
+    }
+  }
+  Require(foundLakeWater, "No water above sea level: the lake was not filled.");
 }
 
 TEST_CASE("SurfaceMatchesThePlanetTerrain") {
