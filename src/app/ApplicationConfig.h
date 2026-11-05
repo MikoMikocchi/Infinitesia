@@ -34,6 +34,6 @@ struct ApplicationConfig
 	WorkerConfig worker{3.0f, 4.0f, 3.0f, 7000.0f};
 	bool showPathDebug = false;
 	float simulationTicksPerSecond = 20.0f;
-	std::uint32_t worldSeed = 1234567890;
+	std::uint32_t worldSeed = 123890;
 };
 } // namespace Infinitesia

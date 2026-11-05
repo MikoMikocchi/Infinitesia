@@ -4,9 +4,12 @@
 #include <cmath>
 #include <cstddef>
 #include <set>
+#include <span>
 #include <stdexcept>
+#include <vector>
 
 #include "domains/natural/planetary/PlanetMap.h"
+#include "domains/natural/planetary/world/WorldClimate.h"
 #include "domains/natural/planetary/world/WorldGenerator.h"
 #include "domains/natural/planetary/world/WorldHydrology.h"
 #include "support/Require.h"
@@ -271,4 +274,88 @@ TEST_CASE("WorldMapBlendsTileBordersInsteadOfStepping")
 	CHECK(middle->elevationMeters == doctest::Approx(50.0).epsilon(0.01));
 	CHECK(east->elevationMeters > west->elevationMeters);
 	CHECK(east->elevationMeters - west->elevationMeters < 5.0);
+}
+
+namespace
+{
+std::vector<GeographicCoordinates> PositionsAtLatitude(double latitudeDegrees)
+{
+	std::vector<GeographicCoordinates> positions(66049);
+	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	{
+		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		{
+			positions[WorldMap::Index({i, j})] = {latitudeDegrees, 0.0};
+		}
+	}
+	return positions;
+}
+} // namespace
+
+TEST_CASE("WorldClimateModeratesTheCoastAndCoolsContinentalInteriors")
+{
+	const std::vector<GeographicCoordinates> positions = PositionsAtLatitude(45.0);
+	std::vector<RegionTile> tiles(66049);
+	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	{
+		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		{
+			RegionTile &tile = tiles[WorldMap::Index({i, j})];
+			tile.precipitationMm = 1000.0f;
+			if (i < -100)
+			{
+				SetFlag(tile.flags, RegionTileFlag::Ocean);
+				tile.elevationMeters = -200.0f;
+				tile.temperatureCelsius = 20.0f;
+			}
+			else
+			{
+				tile.elevationMeters = 0.0f;
+				tile.temperatureCelsius = 0.0f;
+			}
+		}
+	}
+
+	ComputeWorldClimate(tiles, std::span<const GeographicCoordinates>(positions), WorldClimateInputs{});
+
+	const RegionTile &coast = tiles[WorldMap::Index({-99, 0})];
+	const RegionTile &interior = tiles[WorldMap::Index({0, 0})];
+	CHECK(coast.temperatureCelsius > interior.temperatureCelsius + 2.0f);
+}
+
+TEST_CASE("WorldClimateRaisesOrographicRainAndLeavesARainShadow")
+{
+	const std::vector<GeographicCoordinates> positions = PositionsAtLatitude(45.0);
+	std::vector<RegionTile> tiles(66049);
+	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	{
+		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		{
+			RegionTile &tile = tiles[WorldMap::Index({i, j})];
+			tile.precipitationMm = 1000.0f;
+			tile.temperatureCelsius = 10.0f;
+			if (i < -100)
+			{
+				SetFlag(tile.flags, RegionTileFlag::Ocean);
+				tile.elevationMeters = -100.0f;
+			}
+			else if (std::abs(i) <= 2)
+			{
+				tile.elevationMeters = 2500.0f;
+			}
+			else
+			{
+				tile.elevationMeters = 100.0f;
+			}
+		}
+	}
+
+	ComputeWorldClimate(tiles, std::span<const GeographicCoordinates>(positions), WorldClimateInputs{});
+
+	// At 45 degrees the prevailing wind is westerly, so the west slope (-2)
+	// is windward and the east slope (+2) is in the lee of the ridge.
+	const float windward = tiles[WorldMap::Index({-2, 0})].precipitationMm;
+	const float lee = tiles[WorldMap::Index({2, 0})].precipitationMm;
+	CHECK(windward > 1000.0f);
+	CHECK(lee < windward * 0.5f);
 }
