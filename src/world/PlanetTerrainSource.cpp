@@ -155,6 +155,8 @@ const PlanetTerrainSource::Column &PlanetTerrainSource::ColumnAt(int x, int z) c
 	cached.fluid = column.fluid;
 	cached.fluidLevelMeters = column.fluidLevelMeters;
 	cached.fluidTopBlocks = column.fluid != FluidOrigin::None ? FluidTopBlocksFor(column.fluidLevelMeters) : -1;
+	cached.flowEast = column.flowEast;
+	cached.flowNorth = column.flowNorth;
 	cached.position = column.position;
 	Conditions &climate = cached.climate;
 	climate.temperatureCelsius = column.temperatureCelsius;
@@ -230,6 +232,8 @@ FluidColumn PlanetTerrainSource::FluidAt(int x, int z) const
 	fluid.groundMeters = static_cast<double>(m_terrain->OriginElevationMeters() + column.surface + 1 - m_anchorLevel);
 	fluid.surfaceMeters = fluid.HasFluid() ? column.fluidLevelMeters : fluid.groundMeters;
 	fluid.depthMeters = fluid.HasFluid() ? std::max(0.0, fluid.surfaceMeters - fluid.groundMeters) : 0.0;
+	fluid.flowEast = column.flowEast;
+	fluid.flowNorth = column.flowNorth;
 	return fluid;
 }
 

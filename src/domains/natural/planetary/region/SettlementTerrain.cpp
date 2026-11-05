@@ -1,5 +1,6 @@
 #include "domains/natural/planetary/region/SettlementTerrain.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "domains/natural/planetary/internal/SurfaceModel.h"
@@ -81,19 +82,38 @@ SurfaceColumn SettlementTerrain::Column(int eastBlocks, int northBlocks) const n
 	// metre above its surface block.
 	const double groundTopMeters = static_cast<double>(m_originElevationMeters + column.heightBlocks + 1);
 
+	const LocalWater water = m_terrain.WaterAt(position, kMinWavelengthMeters);
 	if (elevation < 0.0 && groundTopMeters < 0.0)
 	{
 		column.fluid = FluidOrigin::Sea;
 		column.fluidLevelMeters = 0.0;
 	}
+	else if (water.origin == FluidOrigin::Lake && groundTopMeters < water.surfaceMeters)
+	{
+		column.fluid = FluidOrigin::Lake;
+		column.fluidLevelMeters = water.surfaceMeters;
+	}
 	else if (planet.surface.lakeFraction > 0.0)
 	{
+		// No world map (or outside its window): the coarse planet hydrology is
+		// still the only lake source.
 		const double lakeLevel = planet.surface.lakeWaterLevelKm * 1000.0;
 		if (groundTopMeters < lakeLevel)
 		{
 			column.fluid = FluidOrigin::Lake;
 			column.fluidLevelMeters = lakeLevel;
 		}
+	}
+	else if (water.origin == FluidOrigin::River && groundTopMeters < water.surfaceMeters)
+	{
+		column.fluid = FluidOrigin::River;
+		column.fluidLevelMeters = water.surfaceMeters;
+	}
+	if (column.fluid != FluidOrigin::None)
+	{
+		column.fluidDepthMeters = std::max(0.0, column.fluidLevelMeters - groundTopMeters);
+		column.flowEast = water.flowEast;
+		column.flowNorth = water.flowNorth;
 	}
 	column.province = planet.surface.province;
 	column.secondaryProvince = planet.surface.secondaryProvince;

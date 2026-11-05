@@ -126,6 +126,38 @@ Settlement MakeSettlement(CartesianPoint3D anchor)
 	return {terrain, source};
 }
 
+// A local world with one river crossing the centre of region tile (0, 0): the
+// whole world sits at 100 m and the channel runs west-east through it.
+CartesianPoint3D LandAnchor();
+
+Settlement MakeRiverSettlement()
+{
+	const CartesianPoint3D anchor = LandAnchor();
+	const LocalGrid grid = SharedGenerator().MakeGrid(anchor);
+	std::vector<RegionTile> tiles(static_cast<std::size_t>(kRegionTilesPerWorldSide) *
+	                              static_cast<std::size_t>(kRegionTilesPerWorldSide));
+	for (RegionTile &tile : tiles)
+	{
+		tile.elevationMeters = 100.0f;
+		tile.temperatureCelsius = 15.0f;
+		tile.precipitationMm = 1000.0f;
+		tile.flags = 0;
+	}
+	RegionTile &river = tiles[WorldMap::Index({0, 0})];
+	SetFlag(river.flags, RegionTileFlag::River);
+	river.river = RiverChannel{0.0f, 0.5f, 1.0f, 0.5f, 20.0f, 2.0f};
+	river.waterLevelMeters = 99.75f;
+	river.waterDepthMeters = river.river.depthMeters;
+	river.flowEast = 1;
+
+	auto world = std::make_shared<const WorldMap>(grid, std::move(tiles));
+	auto terrain =
+	    std::make_shared<const SettlementTerrain>(WorldTerrain(SharedMap(), std::move(world)), grid, 0.0, 0.0);
+	auto source =
+	    std::make_shared<PlanetTerrainSource>(terrain, kWidth, kHeight, kDepth, kAnchorLevel, SharedRegistry());
+	return {terrain, source};
+}
+
 // First planet cell centre matching a test, e.g. dry land or deep ocean.
 template <typename Predicate> CartesianPoint3D FindCell(Predicate matches)
 {
@@ -340,6 +372,27 @@ TEST_CASE("TheSeaIsStoredInTheFluidField")
 
 	// The block at the same cell is air, not water.
 	CHECK(!settlement.source->Registry().Has(settlement.source->StateAt(*cell).matter, Tag::Fluid));
+}
+
+TEST_CASE("WorldRiversAreStoredInTheFluidFieldWithTheirFlow")
+{
+	const Settlement settlement = MakeRiverSettlement();
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+
+	const std::optional<GridCell> cell = FindFluidCell(*settlement.source, FluidOrigin::River, false);
+	REQUIRE(cell.has_value());
+	world.EnsureChunkContaining(*cell);
+
+	const FluidCell *fluid = world.GetFluid(*cell);
+	REQUIRE(fluid != nullptr);
+	const MatterDef *water = settlement.source->Registry().FindMatter("water");
+	REQUIRE(water != nullptr);
+	CHECK(fluid->matter == water->id);
+	CHECK(fluid->origin == FluidOrigin::River);
+	CHECK(fluid->amountMb > 0);
+	CHECK(fluid->flowEast == doctest::Approx(1.0));
+	CHECK(fluid->flowNorth == doctest::Approx(0.0));
 }
 
 TEST_CASE("TheSeaIsInfiniteAndALakeIsFinite")

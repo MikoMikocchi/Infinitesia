@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <numbers>
 #include <stdexcept>
 #include <utility>
@@ -256,6 +257,106 @@ TEST_CASE("WorldMapDrivesTheLocalTerrainInsideItsWindow")
 	const PlanetFieldSample fallback = generator.GetTerrain().SampleAt(grid.Center(outside));
 	Require(fallback.surface.temperatureCelsius != doctest::Approx(-10.0),
 	        "A region outside the world window borrowed the world tile.");
+}
+
+TEST_CASE("WorldRiversCarveChannelsAndCarryWater")
+{
+	const PlanetMap &planet = SharedMap();
+	const CartesianPoint3D anchor = Place(35.0, 80.0);
+	const LocalGrid grid(kRadius, anchor);
+
+	std::vector<RegionTile> tiles(static_cast<std::size_t>(kRegionTilesPerWorldSide) *
+	                              static_cast<std::size_t>(kRegionTilesPerWorldSide));
+	for (RegionTile &tile : tiles)
+	{
+		tile.elevationMeters = 100.0f;
+		tile.temperatureCelsius = 15.0f;
+		tile.precipitationMm = 1000.0f;
+		tile.flags = 0;
+	}
+	RegionTile &river = tiles[WorldMap::Index({0, 0})];
+	SetFlag(river.flags, RegionTileFlag::River);
+	river.river = RiverChannel{0.0f, 0.5f, 1.0f, 0.5f, 20.0f, 2.0f};
+	river.waterLevelMeters = 99.75f;
+	river.waterDepthMeters = river.river.depthMeters;
+	river.flowEast = 1;
+
+	const auto world = std::make_shared<const WorldMap>(grid, std::move(tiles));
+	const RegionGenerator generator(planet, world);
+	const WorldTerrain &terrain = generator.GetTerrain();
+
+	const GeographicCoordinates center = grid.Center({0, 0});
+	const PlanetFieldSample sample = terrain.SampleAt(center);
+	const double uncarved = terrain.Planet().ElevationMeters(center, sample, 2.0);
+	const double carved = terrain.ElevationMeters(center, sample, 2.0);
+	const LocalWater water = terrain.WaterAt(center, 2.0);
+
+	REQUIRE(water.origin == FluidOrigin::River);
+	CHECK(water.incisionMeters > 1.5);
+	CHECK(carved < uncarved - 1.5);
+	CHECK(water.surfaceMeters < uncarved);
+	CHECK(water.flowEast == 1.0);
+	CHECK(water.flowNorth == 0.0);
+
+	// Away from the channel the ground is untouched and dry.
+	const GeographicCoordinates bank = PlanetaryCoordinates::ToGeographic(grid.Direction(0.0, 60.0));
+	const LocalWater bankWater = terrain.WaterAt(bank, 2.0);
+	CHECK(bankWater.origin == FluidOrigin::None);
+	CHECK(bankWater.incisionMeters == 0.0);
+	CHECK(terrain.SampleAt(bank).elevationMeters == doctest::Approx(100.0));
+
+	// The local world hands the river to SettlementTerrain: the centre is in
+	// the channel and wet, the bank is dry and higher.
+	const SettlementTerrain settlement(terrain, grid, 0.0, 0.0);
+	const SurfaceColumn channelColumn = settlement.Column(0, 0);
+	const SurfaceColumn bankColumn = settlement.Column(0, 60);
+	REQUIRE(channelColumn.fluid == FluidOrigin::River);
+	CHECK(channelColumn.fluidLevelMeters == doctest::Approx(water.surfaceMeters));
+	CHECK(channelColumn.fluidDepthMeters > 0.0);
+	CHECK(bankColumn.fluid == FluidOrigin::None);
+	CHECK(bankColumn.heightBlocks > channelColumn.heightBlocks);
+}
+
+TEST_CASE("WorldLakesFillLocalDepressionsToTheSpillLevel")
+{
+	const PlanetMap &planet = SharedMap();
+	const CartesianPoint3D anchor = Place(35.0, 80.0);
+	const LocalGrid grid = LocalGrid(kRadius, anchor);
+
+	std::vector<RegionTile> tiles(static_cast<std::size_t>(kRegionTilesPerWorldSide) *
+	                              static_cast<std::size_t>(kRegionTilesPerWorldSide));
+	for (RegionTile &tile : tiles)
+	{
+		tile.elevationMeters = 100.0f;
+		tile.temperatureCelsius = 15.0f;
+		tile.precipitationMm = 1000.0f;
+		tile.flags = 0;
+	}
+	RegionTile &lake = tiles[WorldMap::Index({0, 0})];
+	SetFlag(lake.flags, RegionTileFlag::Lake);
+	lake.waterLevelMeters = 0.0f;
+
+	// Find the local ground at the tile centre, then put the lake just above
+	// its top block so the centre is genuinely under water.
+	const auto probeWorld = std::make_shared<const WorldMap>(grid, tiles);
+	const WorldTerrain probe(planet, probeWorld);
+	const GeographicCoordinates center = grid.Center({0, 0});
+	const double ground = probe.ElevationMeters(center, 2.0);
+	lake.waterLevelMeters = static_cast<float>(std::floor(ground) + 1.25);
+	lake.waterDepthMeters = lake.waterLevelMeters - lake.elevationMeters;
+
+	const auto world = std::make_shared<const WorldMap>(grid, std::move(tiles));
+	const RegionGenerator generator(planet, world);
+	const WorldTerrain &terrain = generator.GetTerrain();
+	const LocalWater water = terrain.WaterAt(center, 2.0);
+	REQUIRE(water.origin == FluidOrigin::Lake);
+	CHECK(water.surfaceMeters == doctest::Approx(lake.waterLevelMeters));
+
+	const SettlementTerrain settlement(terrain, grid, 0.0, 0.0);
+	const SurfaceColumn column = settlement.Column(0, 0);
+	REQUIRE(column.fluid == FluidOrigin::Lake);
+	CHECK(column.fluidLevelMeters == doctest::Approx(water.surfaceMeters));
+	CHECK(column.fluidDepthMeters > 0.0);
 }
 
 TEST_CASE("NeighbouringRegionsShareBorderElevationOnAllSides")

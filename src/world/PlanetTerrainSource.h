@@ -83,6 +83,8 @@ private:
 		FluidOrigin fluid = FluidOrigin::None;
 		double fluidLevelMeters = 0.0;
 		int fluidTopBlocks = -1;
+		double flowEast = 0.0;
+		double flowNorth = 0.0;
 		GeographicCoordinates position{};
 	};
 

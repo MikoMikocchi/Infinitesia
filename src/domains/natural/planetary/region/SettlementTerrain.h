@@ -26,11 +26,16 @@ struct SurfaceColumn
 	int heightBlocks = 0;
 	SurfaceKind kind = SurfaceKind::Grass;
 	// The fluid body over the column, if any, and the elevation of its surface
-	// in metres above sea level (0 for the sea, the lake's level for a lake).
-	// Both are meaningless when `fluid` is None. The planet layer names only the
-	// origin; the world layer maps it to a fluid material.
+	// in metres above sea level (0 for the sea, the lake's level for a lake,
+	// the channel surface for a river). Both are meaningless when `fluid` is
+	// None. The planet layer names only the origin; the world layer maps it to a
+	// fluid material.
 	FluidOrigin fluid = FluidOrigin::None;
 	double fluidLevelMeters = 0.0;
+	double fluidDepthMeters = 0.0;
+	// Unit direction of a river's surface flow, zero for standing water.
+	double flowEast = 0.0;
+	double flowNorth = 0.0;
 	// Geological province of the planet cell under the column, and the elevation
 	// (whole metres above sea level) of the planet's coarse surface there: the
 	// reference level the province's rock layers are laid out from.

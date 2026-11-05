@@ -80,6 +80,27 @@ inline void SetFlag(std::uint8_t &flags, RegionTileFlag flag, bool value = true)
 	}
 }
 
+// A river channel inside one region tile. The endpoints are normalised tile
+// coordinates: (0, 0) is the south-west corner, (1, 1) the north-east corner of
+// the 768 m tile. `from` is the upstream end (the border shared with the
+// tile that feeds this one, or the centre for a spring), `to` is the
+// downstream end. Neighbouring tiles agree on the crossing point because it is
+// always the midpoint of the shared border.
+struct RiverChannel
+{
+	float fromX = 0.5f;
+	float fromY = 0.5f;
+	float toX = 0.5f;
+	float toY = 0.5f;
+	float widthMeters = 0.0f; // full width across the water surface
+	float depthMeters = 0.0f; // incision below the surrounding ground
+
+	bool IsValid() const noexcept
+	{
+		return widthMeters > 0.0f && depthMeters > 0.0f;
+	}
+};
+
 // What the world map knows about one region tile. This is deliberately much
 // smaller than PlanetRegion: the world map is 257 x 257 summaries, not a second
 // copy of the planet grid.
@@ -91,6 +112,18 @@ struct RegionTile
 	float drySeasonMonths = 0.0f;
 	float soilFertility = 0.0f;
 	float riverDischarge = 0.0f; // normalised 0..1
+	// The water surface and its depth at the tile centre. For the sea the level
+	// is 0 and the depth is the ocean depth; for a lake it is the spill level
+	// from the priority flood and the filled depth; for a river it is the
+	// channel's water level and its incision depth. Dry land has the ground as
+	// its level and zero depth.
+	float waterLevelMeters = 0.0f;
+	float waterDepthMeters = 0.0f;
+	RiverChannel river;
+	// Downstream step to the neighbouring tile: -1, 0 or 1. Zero where nothing
+	// flows.
+	std::int8_t flowEast = 0;
+	std::int8_t flowNorth = 0;
 	Biome biome = Biome::DeepOcean;
 	std::uint8_t flags = 0;
 	ProvinceId province = kNoProvince;
@@ -114,6 +147,27 @@ struct RegionTile
 	bool IsLand() const noexcept
 	{
 		return !IsOcean() && !IsLake();
+	}
+	// Whether the tile is covered by standing water or carries a river.
+	bool HasWater() const noexcept
+	{
+		return IsOcean() || IsLake() || (HasRiver() && river.IsValid());
+	}
+};
+
+// Where a point lies inside the world map: the nearest region tile and the
+// normalised coordinates inside it (0 west/south, 1 east/north). `tile` is
+// null outside the 257 x 257 window.
+struct RegionTileLocation
+{
+	const RegionTile *tile = nullptr;
+	RegionTileId id{};
+	double x = 0.0;
+	double y = 0.0;
+
+	explicit operator bool() const noexcept
+	{
+		return tile != nullptr;
 	}
 };
 
@@ -158,9 +212,12 @@ public:
 	const RegionTile *Find(CartesianPoint3D direction) const noexcept;
 
 	// Bilinear (smoothstep) sample of the tile summary at a point. The
-	// continuous fields are blended; biome, province and flags come from the
-	// nearest tile. Empty outside the world window.
+	// continuous fields are blended; biome, province, flags and hydrology come
+	// from the nearest tile. Empty outside the world window.
 	std::optional<RegionTile> SampleAt(CartesianPoint3D direction) const noexcept;
+
+	// The nearest tile and the position inside it. Empty outside the window.
+	RegionTileLocation Locate(CartesianPoint3D direction) const noexcept;
 	std::span<const RegionTile> Tiles() const noexcept
 	{
 		return m_tiles;

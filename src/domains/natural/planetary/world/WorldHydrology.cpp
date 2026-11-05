@@ -17,6 +17,21 @@ namespace
 constexpr float kFillEpsilonMeters = 0.01f;
 constexpr float kFlowEpsilonMeters = 1.0e-4f;
 constexpr float kTileAreaKm2 = static_cast<float>((kRegionTileSizeMeters / 1000.0) * (kRegionTileSizeMeters / 1000.0));
+// Water sits this far below the surrounding ground so the banks stay visible.
+constexpr float kRiverFreeboardMeters = 0.25f;
+
+// A river occupies a channel in its region tile. Width follows the square root
+// of the catchment (a river twice as wide drains four times the area), and the
+// incision grows slowly with width.
+float RiverWidthMeters(float catchmentKm2) noexcept
+{
+	return std::clamp(2.5f * std::sqrt(std::max(catchmentKm2, 0.0f)), 3.0f, 100.0f);
+}
+
+float RiverDepthMeters(float widthMeters) noexcept
+{
+	return std::clamp(0.4f + 0.05f * widthMeters, 0.75f, 5.0f);
+}
 
 struct FloodNode
 {
@@ -213,6 +228,11 @@ void ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 				tile.riverDischarge = 0.0f;
 				SetFlag(tile.flags, RegionTileFlag::River, false);
 				SetFlag(tile.flags, RegionTileFlag::Lake, false);
+				tile.waterLevelMeters = 0.0f;
+				tile.waterDepthMeters = std::max(0.0f, -tile.elevationMeters);
+				tile.river = {};
+				tile.flowEast = 0;
+				tile.flowNorth = 0;
 				continue;
 			}
 
@@ -221,10 +241,98 @@ void ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 			SetFlag(tile.flags, RegionTileFlag::River, area >= kRiverAreaKm2);
 
 			const float fillDepth = filled[static_cast<std::size_t>(index)] - tile.elevationMeters;
-			if (fillDepth > kLakeDepthMeters)
+			SetFlag(tile.flags, RegionTileFlag::Lake, fillDepth > kLakeDepthMeters);
+
+			// Flow direction is the step to the downstream tile. It is kept even
+			// on a lake surface, where the water itself is flat.
+			const int next = downstream[static_cast<std::size_t>(index)];
+			tile.flowEast = 0;
+			tile.flowNorth = 0;
+			int stepI = 0;
+			int stepJ = 0;
+			if (next >= 0)
 			{
-				SetFlag(tile.flags, RegionTileFlag::Lake);
+				const int nextI = next % side - half;
+				const int nextJ = next / side - half;
+				stepI = nextI - i;
+				stepJ = nextJ - j;
+				tile.flowEast = static_cast<std::int8_t>(stepI > 0 ? 1 : (stepI < 0 ? -1 : 0));
+				tile.flowNorth = static_cast<std::int8_t>(stepJ > 0 ? 1 : (stepJ < 0 ? -1 : 0));
 			}
+
+			if (tile.IsLake())
+			{
+				// The priority flood found the spill level: the local terrain fills
+				// up to it, leaving islands and shores where the ground is higher.
+				tile.waterLevelMeters = filled[static_cast<std::size_t>(index)];
+				tile.waterDepthMeters = std::max(0.0f, fillDepth);
+				tile.river = {};
+				continue;
+			}
+
+			if (!tile.HasRiver() || next < 0)
+			{
+				tile.waterLevelMeters = tile.elevationMeters;
+				tile.waterDepthMeters = 0.0f;
+				tile.river = {};
+				continue;
+			}
+
+			// The downstream end is the midpoint of the shared border (a corner
+			// for a diagonal step), so the two tiles meet exactly.
+			RiverChannel channel;
+			if (stepI != 0 && stepJ != 0)
+			{
+				channel.toX = stepI > 0 ? 1.0f : 0.0f;
+				channel.toY = stepJ > 0 ? 1.0f : 0.0f;
+			}
+			else if (stepI != 0)
+			{
+				channel.toX = stepI > 0 ? 1.0f : 0.0f;
+				channel.toY = 0.5f;
+			}
+			else
+			{
+				channel.toX = 0.5f;
+				channel.toY = stepJ > 0 ? 1.0f : 0.0f;
+			}
+
+			// The upstream end is the border shared with the largest tributary,
+			// or the tile centre when the river rises here.
+			int upstream = -1;
+			float upstreamArea = -1.0f;
+			for (int direction = 0; direction < 8; ++direction)
+			{
+				const int neighbour = NeighbourIndex(i, j, deltaI[direction], deltaJ[direction]);
+				if (neighbour < 0 || downstream[static_cast<std::size_t>(neighbour)] != index)
+				{
+					continue;
+				}
+				const float neighbourArea = catchment[static_cast<std::size_t>(neighbour)];
+				if (neighbourArea > upstreamArea)
+				{
+					upstream = neighbour;
+					upstreamArea = neighbourArea;
+				}
+			}
+			if (upstream >= 0)
+			{
+				const int upstreamI = upstream % side - half;
+				const int upstreamJ = upstream / side - half;
+				channel.fromX = upstreamI > i ? 1.0f : (upstreamI < i ? 0.0f : 0.5f);
+				channel.fromY = upstreamJ > j ? 1.0f : (upstreamJ < j ? 0.0f : 0.5f);
+			}
+			else
+			{
+				channel.fromX = 0.5f;
+				channel.fromY = 0.5f;
+			}
+
+			channel.widthMeters = RiverWidthMeters(area);
+			channel.depthMeters = RiverDepthMeters(channel.widthMeters);
+			tile.river = channel;
+			tile.waterLevelMeters = tile.elevationMeters - kRiverFreeboardMeters;
+			tile.waterDepthMeters = channel.depthMeters;
 		}
 	}
 }

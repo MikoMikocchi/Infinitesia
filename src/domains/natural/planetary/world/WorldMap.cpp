@@ -103,6 +103,47 @@ std::optional<RegionTile> WorldMap::SampleAt(CartesianPoint3D direction) const n
 	result.biome = nearest.biome;
 	result.province = nearest.province;
 	result.flags = nearest.flags;
+	// Water bodies are not smooth fields: a lake keeps one level to its shore
+	// and a river channel belongs to the tile it runs through.
+	result.waterLevelMeters = nearest.waterLevelMeters;
+	result.waterDepthMeters = nearest.waterDepthMeters;
+	result.river = nearest.river;
+	result.flowEast = nearest.flowEast;
+	result.flowNorth = nearest.flowNorth;
 	return result;
+}
+
+RegionTileLocation WorldMap::Locate(CartesianPoint3D direction) const noexcept
+{
+	if (m_tiles.empty())
+	{
+		return {};
+	}
+
+	double eastMeters = 0.0;
+	double northMeters = 0.0;
+	m_grid.Project(direction, eastMeters, northMeters);
+	const double tileX = eastMeters / kRegionTileSizeMeters;
+	const double tileY = northMeters / kRegionTileSizeMeters;
+	// Tiles are centred on integer coordinates and span half a tile to each
+	// side, so the outer edge of the window is at +/- (kHalfSide + 0.5).
+	constexpr double kEdge = static_cast<double>(kHalfSide) + 0.5;
+	if (tileX < -kEdge || tileX > kEdge || tileY < -kEdge || tileY > kEdge)
+	{
+		return {};
+	}
+
+	const RegionTileId id{static_cast<int>(std::floor(tileX + 0.5)), static_cast<int>(std::floor(tileY + 0.5))};
+	if (!Contains(id))
+	{
+		return {};
+	}
+
+	RegionTileLocation location;
+	location.id = id;
+	location.tile = &m_tiles[Index(id)];
+	location.x = std::clamp(tileX - (static_cast<double>(id.i) - 0.5), 0.0, 1.0);
+	location.y = std::clamp(tileY - (static_cast<double>(id.j) - 0.5), 0.0, 1.0);
+	return location;
 }
 } // namespace Infinitesia

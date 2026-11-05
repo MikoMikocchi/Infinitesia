@@ -257,7 +257,7 @@ void FluidField::InitializeChunk(const WorldChunk &chunk, const TerrainSource &t
 				                           static_cast<std::size_t>(localY)) *
 				                              static_cast<std::size_t>(chunk.width) +
 				                          static_cast<std::size_t>(localX);
-				fluidChunk.cells[index] = {column.matter, amount, column.origin};
+				fluidChunk.cells[index] = {column.matter, amount, column.origin, column.flowEast, column.flowNorth};
 				m_active.insert({x, y, z});
 				anyFluid = true;
 			}
@@ -318,18 +318,26 @@ std::uint16_t FluidField::Transfer(GridCell from, GridCell to, std::uint16_t max
 		// The receiver already held this fluid: keep what it was.
 		targetValue.matter = target->matter;
 		targetValue.origin = target->origin;
+		targetValue.flowEast = target->flowEast;
+		targetValue.flowNorth = target->flowNorth;
 	}
 	else if (target != nullptr && target->origin == FluidOrigin::Sea)
 	{
 		// A drained sea source stays a sea source: the sea is endless.
 		targetValue.matter = target->matter;
 		targetValue.origin = FluidOrigin::Sea;
+		targetValue.flowEast = target->flowEast;
+		targetValue.flowNorth = target->flowNorth;
 	}
 	else
 	{
 		// Fluid that flowed here is no longer at its original source.
 		targetValue.matter = matter;
 		targetValue.origin = FluidOrigin::None;
+		// A river's direction travels with its water while the channel is
+		// filling; it is metadata, not a force.
+		targetValue.flowEast = source->flowEast;
+		targetValue.flowNorth = source->flowNorth;
 	}
 	WriteCell(to, targetValue);
 
@@ -368,16 +376,22 @@ std::uint16_t FluidField::Deposit(FluidCell fluid, GridCell to, const VoxelWorld
 	{
 		targetValue.matter = target->matter;
 		targetValue.origin = target->origin;
+		targetValue.flowEast = target->flowEast;
+		targetValue.flowNorth = target->flowNorth;
 	}
 	else if (target != nullptr && target->origin == FluidOrigin::Sea)
 	{
 		targetValue.matter = target->matter;
 		targetValue.origin = FluidOrigin::Sea;
+		targetValue.flowEast = target->flowEast;
+		targetValue.flowNorth = target->flowNorth;
 	}
 	else
 	{
 		targetValue.matter = fluid.matter;
 		targetValue.origin = FluidOrigin::None;
+		targetValue.flowEast = fluid.flowEast;
+		targetValue.flowNorth = fluid.flowNorth;
 	}
 	WriteCell(to, targetValue);
 	ActivateAround(to);

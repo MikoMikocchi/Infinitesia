@@ -76,12 +76,17 @@ GeographicCoordinates FindWorldAnchor(const PlanetMap &planet)
 	return best;
 }
 
-bool SameTile(const RegionTile &first, const RegionTile &second)
+	bool SameTile(const RegionTile &first, const RegionTile &second)
 {
 	return first.elevationMeters == second.elevationMeters && first.temperatureCelsius == second.temperatureCelsius &&
 	       first.precipitationMm == second.precipitationMm && first.drySeasonMonths == second.drySeasonMonths &&
 	       first.soilFertility == second.soilFertility && first.riverDischarge == second.riverDischarge &&
-	       first.biome == second.biome && first.province == second.province && first.flags == second.flags;
+	       first.waterLevelMeters == second.waterLevelMeters && first.waterDepthMeters == second.waterDepthMeters &&
+	       first.river.fromX == second.river.fromX && first.river.fromY == second.river.fromY &&
+	       first.river.toX == second.river.toX && first.river.toY == second.river.toY &&
+	       first.river.widthMeters == second.river.widthMeters && first.river.depthMeters == second.river.depthMeters &&
+	       first.flowEast == second.flowEast && first.flowNorth == second.flowNorth && first.biome == second.biome &&
+	       first.province == second.province && first.flags == second.flags;
 }
 } // namespace
 
@@ -96,7 +101,7 @@ TEST_CASE("WorldGridMatchesTheDwarfFortressHierarchy")
 	static_assert(kLocalBlockSizeMeters == 48.0);
 	static_assert(kRegionTileSizeMeters == 768.0);
 	static_assert(kWorldSizeMeters == 197376.0);
-	static_assert(sizeof(RegionTile) <= 32);
+	static_assert(sizeof(RegionTile) <= 64);
 
 	CHECK(kRegionTilesPerWorldHalfSide == 128);
 	CHECK(kRegionTilesPerWorldSide * kRegionTilesPerWorldSide == 66049);
@@ -254,6 +259,111 @@ TEST_CASE("WorldHydrologyFillsBasinsAndRoutesRiversDownhill")
 	CHECK(rivers > 0);
 	CHECK(slope[WorldMap::Index({kRegionTilesPerWorldHalfSide, 0})].riverDischarge >
 	      slope[WorldMap::Index({-kRegionTilesPerWorldHalfSide, 0})].riverDischarge);
+}
+
+TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
+{
+	std::vector<RegionTile> basin(66049);
+	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	{
+		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		{
+			RegionTile &tile = basin[WorldMap::Index({i, j})];
+			tile.elevationMeters = 10.0f + 0.1f * static_cast<float>(std::abs(i) + std::abs(j));
+			tile.precipitationMm = 1000.0f;
+			tile.flags = 0;
+		}
+	}
+	ComputeWorldHydrology(basin);
+	const RegionTile &lake = basin[WorldMap::Index({0, 0})];
+	REQUIRE(lake.IsLake());
+	CHECK(lake.waterLevelMeters > lake.elevationMeters);
+	CHECK(lake.waterDepthMeters > kLakeDepthMeters);
+	CHECK_FALSE(lake.river.IsValid());
+	CHECK(lake.HasWater());
+
+	std::vector<RegionTile> slope(66049);
+	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	{
+		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		{
+			RegionTile &tile = slope[WorldMap::Index({i, j})];
+			tile.elevationMeters = 100.0f - 0.1f * static_cast<float>(i);
+			tile.precipitationMm = 1000.0f;
+			tile.flags = 0;
+		}
+	}
+	ComputeWorldHydrology(slope);
+
+	std::size_t channels = 0;
+	for (const RegionTile &tile : slope)
+	{
+		if (!tile.HasRiver())
+		{
+			continue;
+		}
+		REQUIRE(tile.flowEast >= 0);
+		REQUIRE(tile.flowNorth == 0);
+		if (!tile.river.IsValid())
+		{
+			continue;
+		}
+		++channels;
+		CHECK(tile.river.widthMeters >= 3.0f);
+		CHECK(tile.river.depthMeters > 0.0f);
+		CHECK_GE(tile.river.fromX, 0.0f);
+		CHECK_LE(tile.river.fromX, 1.0f);
+		CHECK_GE(tile.river.fromY, 0.0f);
+		CHECK_LE(tile.river.fromY, 1.0f);
+		CHECK_GE(tile.river.toX, 0.0f);
+		CHECK_LE(tile.river.toX, 1.0f);
+		CHECK_GE(tile.river.toY, 0.0f);
+		CHECK_LE(tile.river.toY, 1.0f);
+		CHECK(tile.waterLevelMeters < tile.elevationMeters);
+		CHECK(tile.waterDepthMeters == doctest::Approx(tile.river.depthMeters));
+	}
+	CHECK(channels > 0);
+
+	// A river flowing east enters at the west border and leaves at the east
+	// border of its tile.
+	const RegionTile &middle = slope[WorldMap::Index({0, 0})];
+	REQUIRE(middle.HasRiver());
+	REQUIRE(middle.river.IsValid());
+	CHECK(middle.river.fromX < middle.river.toX);
+	CHECK(middle.flowEast == 1);
+}
+
+TEST_CASE("WorldMapLocatesPointsInsideRegionTiles")
+{
+	const LocalGrid grid(6371000.0, PlanetaryCoordinates::ToCartesian({0.0, 0.0}));
+	std::vector<RegionTile> tiles(66049);
+	for (std::size_t index = 0; index < tiles.size(); ++index)
+	{
+		tiles[index].elevationMeters = static_cast<float>(index);
+	}
+	const WorldMap world(grid, std::move(tiles));
+
+	const RegionTileLocation center = world.Locate(grid.Direction(0.0, 0.0));
+	REQUIRE(center);
+	CHECK(center.id == RegionTileId{0, 0});
+	CHECK(center.x == doctest::Approx(0.5));
+	CHECK(center.y == doctest::Approx(0.5));
+
+	const RegionTileLocation east =
+	    world.Locate(grid.Direction(0.25 * kRegionTileSizeMeters, -0.25 * kRegionTileSizeMeters));
+	REQUIRE(east);
+	CHECK(east.id == RegionTileId{0, 0});
+	CHECK(east.x == doctest::Approx(0.75));
+	CHECK(east.y == doctest::Approx(0.25));
+
+	const RegionTileLocation next =
+	    world.Locate(grid.Direction(0.75 * kRegionTileSizeMeters, 0.75 * kRegionTileSizeMeters));
+	REQUIRE(next);
+	CHECK(next.id == RegionTileId{1, 1});
+	CHECK(next.x == doctest::Approx(0.25));
+	CHECK(next.y == doctest::Approx(0.25));
+
+	CHECK_FALSE(world.Locate(grid.Direction(200.0 * kRegionTileSizeMeters, 0.0)));
 }
 
 TEST_CASE("WorldMapBlendsTileBordersInsteadOfStepping")

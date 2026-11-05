@@ -26,6 +26,9 @@ struct FluidColumn
 	double surfaceMeters = 0.0;
 	// surfaceMeters - groundMeters, never negative.
 	double depthMeters = 0.0;
+	// Unit direction of a river's surface flow, zero for standing water.
+	double flowEast = 0.0;
+	double flowNorth = 0.0;
 
 	bool HasFluid() const noexcept
 	{
@@ -46,6 +49,11 @@ struct FluidCell
 	MatterId matter = kAirMatter;
 	std::uint16_t amountMb = 0;
 	FluidOrigin origin = FluidOrigin::None;
+	// Unit direction of a river's surface flow. It is metadata for now: the
+	// carved channel makes the water run downhill by gravity, while this gives
+	// the simulation and the renderer the river's own direction.
+	double flowEast = 0.0;
+	double flowNorth = 0.0;
 
 	bool HasFluid() const noexcept
 	{
