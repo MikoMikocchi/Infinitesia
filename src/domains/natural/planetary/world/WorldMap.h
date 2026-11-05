@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -119,7 +120,9 @@ struct RegionTile
 	// its level and zero depth.
 	float waterLevelMeters = 0.0f;
 	float waterDepthMeters = 0.0f;
-	RiverChannel river;
+	// Slice of WorldMap::Rivers() holding this tile's channel segments.
+	std::uint32_t riverFirst = 0;
+	std::uint16_t riverCount = 0;
 	// Downstream step to the neighbouring tile: -1, 0 or 1. Zero where nothing
 	// flows.
 	std::int8_t flowEast = 0;
@@ -151,7 +154,7 @@ struct RegionTile
 	// Whether the tile is covered by standing water or carries a river.
 	bool HasWater() const noexcept
 	{
-		return IsOcean() || IsLake() || (HasRiver() && river.IsValid());
+		return IsOcean() || IsLake() || (HasRiver() && riverCount > 0);
 	}
 };
 
@@ -183,7 +186,7 @@ public:
 	static constexpr double kSizeMeters = kWorldSizeMeters;
 
 	WorldMap() = default;
-	WorldMap(LocalGrid grid, std::vector<RegionTile> tiles);
+	WorldMap(LocalGrid grid, std::vector<RegionTile> tiles, std::vector<RiverChannel> rivers = {});
 
 	const LocalGrid &Grid() const noexcept
 	{
@@ -222,10 +225,24 @@ public:
 	{
 		return m_tiles;
 	}
+	std::span<const RiverChannel> Rivers() const noexcept
+	{
+		return m_rivers;
+	}
+	std::span<const RiverChannel> RiversOf(const RegionTile &tile) const noexcept
+	{
+		if (tile.riverCount == 0 || tile.riverFirst >= m_rivers.size())
+		{
+			return {};
+		}
+		const std::size_t count = std::min<std::size_t>(tile.riverCount, m_rivers.size() - tile.riverFirst);
+		return std::span<const RiverChannel>(m_rivers.data() + tile.riverFirst, count);
+	}
 
 private:
 	LocalGrid m_grid;
 	std::vector<RegionTile> m_tiles;
+	std::vector<RiverChannel> m_rivers;
 };
 } // namespace Infinitesia
 

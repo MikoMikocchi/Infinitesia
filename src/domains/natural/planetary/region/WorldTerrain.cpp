@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <utility>
 
 #include "core/PlanetaryCoordinates.h"
@@ -199,17 +200,37 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double m
 
 	const double localX = location.x * kRegionTileSizeMeters;
 	const double localY = location.y * kRegionTileSizeMeters;
-	const ChannelSample channel = SampleChannel(tile.river, localX, localY);
-	if (!channel.inChannel)
+	const auto channels = m_world->RiversOf(tile);
+	if (channels.empty())
 	{
 		return water;
 	}
-	water.incisionMeters = channel.incisionMeters;
 
-	// Only the bed carries water; the banks are dry but lowered.
-	const double waterHalfWidth =
-	    std::max(kMinimumWaterHalfWidthMeters, static_cast<double>(tile.river.widthMeters) * 0.5);
-	if (channel.distanceMeters > waterHalfWidth)
+	double incisionMeters = 0.0;
+	const RiverChannel *waterChannel = nullptr;
+	ChannelSample waterSample;
+	double waterDistance = std::numeric_limits<double>::infinity();
+	for (const RiverChannel &river : channels)
+	{
+		const ChannelSample channel = SampleChannel(river, localX, localY);
+		if (!channel.inChannel)
+		{
+			continue;
+		}
+		incisionMeters = std::max(incisionMeters, channel.incisionMeters);
+
+		// Only the bed carries water; the banks are dry but lowered.
+		const double waterHalfWidth =
+		    std::max(kMinimumWaterHalfWidthMeters, static_cast<double>(river.widthMeters) * 0.5);
+		if (channel.distanceMeters <= waterHalfWidth && channel.distanceMeters < waterDistance)
+		{
+			waterDistance = channel.distanceMeters;
+			waterChannel = &river;
+			waterSample = channel;
+		}
+	}
+	water.incisionMeters = incisionMeters;
+	if (waterChannel == nullptr)
 	{
 		return water;
 	}
@@ -217,8 +238,8 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double m
 	// The water surface follows the centreline ground, smoothed by the same
 	// tile blend the terrain uses, so the river runs downhill with the land and
 	// neighbouring tiles agree at the border.
-	const double eastMeters = (static_cast<double>(location.id.i) - 0.5) * kRegionTileSizeMeters + channel.centerX;
-	const double northMeters = (static_cast<double>(location.id.j) - 0.5) * kRegionTileSizeMeters + channel.centerY;
+	const double eastMeters = (static_cast<double>(location.id.i) - 0.5) * kRegionTileSizeMeters + waterSample.centerX;
+	const double northMeters = (static_cast<double>(location.id.j) - 0.5) * kRegionTileSizeMeters + waterSample.centerY;
 	const GeographicCoordinates centerPosition =
 	    PlanetaryCoordinates::ToGeographic(m_world->Grid().Direction(eastMeters, northMeters));
 
@@ -232,7 +253,7 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double m
 
 	water.origin = FluidOrigin::River;
 	water.surfaceMeters = groundMeters - kRiverFreeboardMeters;
-	water.depthMeters = std::max(0.0, channel.incisionMeters - kRiverFreeboardMeters);
+	water.depthMeters = std::max(0.0, waterSample.incisionMeters - kRiverFreeboardMeters);
 	return water;
 }
 } // namespace Infinitesia

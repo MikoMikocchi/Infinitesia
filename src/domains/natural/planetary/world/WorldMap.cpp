@@ -7,7 +7,8 @@
 
 namespace Infinitesia
 {
-WorldMap::WorldMap(LocalGrid grid, std::vector<RegionTile> tiles) : m_grid(std::move(grid)), m_tiles(std::move(tiles))
+WorldMap::WorldMap(LocalGrid grid, std::vector<RegionTile> tiles, std::vector<RiverChannel> rivers)
+    : m_grid(std::move(grid)), m_tiles(std::move(tiles)), m_rivers(std::move(rivers))
 {
 	if (m_tiles.size() != static_cast<std::size_t>(kSide) * static_cast<std::size_t>(kSide))
 	{
@@ -109,7 +110,8 @@ std::optional<RegionTile> WorldMap::SampleAt(CartesianPoint3D direction) const n
 	// and a river channel belongs to the tile it runs through.
 	result.waterLevelMeters = nearest.waterLevelMeters;
 	result.waterDepthMeters = nearest.waterDepthMeters;
-	result.river = nearest.river;
+	result.riverFirst = nearest.riverFirst;
+	result.riverCount = nearest.riverCount;
 	result.flowEast = nearest.flowEast;
 	result.flowNorth = nearest.flowNorth;
 	return result;

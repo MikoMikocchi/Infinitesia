@@ -152,11 +152,11 @@ WorldMap WorldGenerator::Generate(CartesianPoint3D anchorDirection) const
 	// Climate changes precipitation, so hydrology runs once more before biomes.
 	ComputeWorldHydrology(tiles);
 	ComputeWorldClimate(tiles, std::span<const GeographicCoordinates>(positions), climate);
-	ComputeWorldHydrology(tiles);
+	std::vector<RiverChannel> rivers = ComputeWorldHydrology(tiles);
 	MarkCoasts(tiles);
 	ReclassifyBiomes(tiles, surfaces);
 
-	return WorldMap(std::move(grid), std::move(tiles));
+	return WorldMap(std::move(grid), std::move(tiles), std::move(rivers));
 }
 
 WorldMap WorldGenerator::Generate(const GeographicCoordinates &anchor) const

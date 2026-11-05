@@ -276,12 +276,18 @@ TEST_CASE("WorldRiversCarveChannelsAndCarryWater")
 	}
 	RegionTile &river = tiles[WorldMap::Index({0, 0})];
 	SetFlag(river.flags, RegionTileFlag::River);
-	river.river = RiverChannel{0.0f, 0.5f, 1.0f, 0.5f, 20.0f, 2.0f};
+	river.riverFirst = 0;
+	river.riverCount = 3;
 	river.waterLevelMeters = 99.75f;
-	river.waterDepthMeters = river.river.depthMeters;
+	river.waterDepthMeters = 2.0f;
 	river.flowEast = 1;
+	std::vector<RiverChannel> channels{
+	    RiverChannel{0.0f, 0.5f, 0.5f, 0.5f, 20.0f, 2.0f},
+	    RiverChannel{0.5f, 1.0f, 0.5f, 0.5f, 12.0f, 1.5f},
+	    RiverChannel{0.5f, 0.5f, 1.0f, 0.5f, 20.0f, 2.0f},
+	};
 
-	const auto world = std::make_shared<const WorldMap>(grid, std::move(tiles));
+	const auto world = std::make_shared<const WorldMap>(grid, std::move(tiles), std::move(channels));
 	const RegionGenerator generator(planet, world);
 	const WorldTerrain &terrain = generator.GetTerrain();
 
@@ -299,7 +305,7 @@ TEST_CASE("WorldRiversCarveChannelsAndCarryWater")
 	CHECK(water.flowNorth == 0.0);
 
 	// Away from the channel the ground is untouched and dry.
-	const GeographicCoordinates bank = PlanetaryCoordinates::ToGeographic(grid.Direction(0.0, 60.0));
+	const GeographicCoordinates bank = PlanetaryCoordinates::ToGeographic(grid.Direction(60.0, 60.0));
 	const LocalWater bankWater = terrain.WaterAt(bank, 2.0);
 	CHECK(bankWater.origin == FluidOrigin::None);
 	CHECK(bankWater.incisionMeters == 0.0);
@@ -309,7 +315,7 @@ TEST_CASE("WorldRiversCarveChannelsAndCarryWater")
 	// the channel and wet, the bank is dry and higher.
 	const SettlementTerrain settlement(terrain, grid, 0.0, 0.0);
 	const SurfaceColumn channelColumn = settlement.Column(0, 0);
-	const SurfaceColumn bankColumn = settlement.Column(0, 60);
+	const SurfaceColumn bankColumn = settlement.Column(60, 60);
 	REQUIRE(channelColumn.fluid == FluidOrigin::River);
 	CHECK(channelColumn.fluidLevelMeters == doctest::Approx(water.surfaceMeters));
 	CHECK(channelColumn.fluidDepthMeters > 0.0);

@@ -56,16 +56,62 @@ int NeighbourIndex(int i, int j, int deltaI, int deltaJ) noexcept
 	const RegionTileId id{i + deltaI, j + deltaJ};
 	return WorldMap::Contains(id) ? static_cast<int>(WorldMap::Index(id)) : -1;
 }
+
+struct TilePoint
+{
+	float x = 0.5f;
+	float y = 0.5f;
+};
+
+// Point on the border of the `to` tile that the flow from `from` crosses.
+// Orthogonal crossings are border midpoints, diagonal crossings are corners, so
+// the two tiles sharing the border agree on the point exactly.
+TilePoint BorderPoint(int fromI, int fromJ, int toI, int toJ) noexcept
+{
+	const int dx = fromI - toI;
+	const int dy = fromJ - toJ;
+	return {dx < 0 ? 0.0f : (dx > 0 ? 1.0f : 0.5f), dy < 0 ? 0.0f : (dy > 0 ? 1.0f : 0.5f)};
+}
+
+void AddChannel(std::vector<RegionTile> &tiles, std::vector<RiverChannel> &rivers, int index, RiverChannel channel)
+{
+	const float dx = channel.toX - channel.fromX;
+	const float dy = channel.toY - channel.fromY;
+	if (dx * dx + dy * dy < 1.0e-6f)
+	{
+		return;
+	}
+	RegionTile &tile = tiles[static_cast<std::size_t>(index)];
+	if (tile.riverCount == 0)
+	{
+		tile.riverFirst = static_cast<std::uint32_t>(rivers.size());
+	}
+	rivers.push_back(channel);
+	++tile.riverCount;
+}
+
+RiverChannel ChannelBetween(TilePoint from, TilePoint to, float catchmentKm2) noexcept
+{
+	RiverChannel channel;
+	channel.fromX = from.x;
+	channel.fromY = from.y;
+	channel.toX = to.x;
+	channel.toY = to.y;
+	channel.widthMeters = RiverWidthMeters(catchmentKm2);
+	channel.depthMeters = RiverDepthMeters(channel.widthMeters);
+	return channel;
+}
 } // namespace
 
-void ComputeWorldHydrology(std::vector<RegionTile> &tiles)
+std::vector<RiverChannel> ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 {
+	std::vector<RiverChannel> rivers;
 	constexpr int side = kRegionTilesPerWorldSide;
 	constexpr int half = kRegionTilesPerWorldHalfSide;
 	const std::size_t count = static_cast<std::size_t>(side) * static_cast<std::size_t>(side);
 	if (tiles.size() != count)
 	{
-		return;
+		return rivers;
 	}
 
 	const int deltaI[8] = {1, -1, 0, 0, 1, 1, -1, -1};
@@ -223,6 +269,9 @@ void ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 		{
 			const int index = static_cast<int>(WorldMap::Index({i, j}));
 			RegionTile &tile = tiles[static_cast<std::size_t>(index)];
+			tile.riverFirst = 0;
+			tile.riverCount = 0;
+
 			if (tile.IsOcean())
 			{
 				tile.riverDischarge = 0.0f;
@@ -230,7 +279,6 @@ void ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 				SetFlag(tile.flags, RegionTileFlag::Lake, false);
 				tile.waterLevelMeters = 0.0f;
 				tile.waterDepthMeters = std::max(0.0f, -tile.elevationMeters);
-				tile.river = {};
 				tile.flowEast = 0;
 				tile.flowNorth = 0;
 				continue;
@@ -266,7 +314,6 @@ void ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 				// up to it, leaving islands and shores where the ground is higher.
 				tile.waterLevelMeters = filled[static_cast<std::size_t>(index)];
 				tile.waterDepthMeters = std::max(0.0f, fillDepth);
-				tile.river = {};
 				continue;
 			}
 
@@ -274,33 +321,21 @@ void ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 			{
 				tile.waterLevelMeters = tile.elevationMeters;
 				tile.waterDepthMeters = 0.0f;
-				tile.river = {};
 				continue;
 			}
 
-			// The downstream end is the midpoint of the shared border (a corner
-			// for a diagonal step), so the two tiles meet exactly.
-			RiverChannel channel;
-			if (stepI != 0 && stepJ != 0)
-			{
-				channel.toX = stepI > 0 ? 1.0f : 0.0f;
-				channel.toY = stepJ > 0 ? 1.0f : 0.0f;
-			}
-			else if (stepI != 0)
-			{
-				channel.toX = stepI > 0 ? 1.0f : 0.0f;
-				channel.toY = 0.5f;
-			}
-			else
-			{
-				channel.toX = 0.5f;
-				channel.toY = stepJ > 0 ? 1.0f : 0.0f;
-			}
+			const TilePoint outlet = BorderPoint(next % side - half, next / side - half, i, j);
 
-			// The upstream end is the border shared with the largest tributary,
-			// or the tile centre when the river rises here.
-			int upstream = -1;
-			float upstreamArea = -1.0f;
+			// Every upstream river tile enters through the shared border. The
+			// largest channel still defines the visible main stem, but all
+			// tributaries now get their own segment to the junction.
+			struct Inlet
+			{
+				TilePoint point;
+				float areaKm2 = 0.0f;
+			};
+			Inlet inlets[8];
+			int inletCount = 0;
 			for (int direction = 0; direction < 8; ++direction)
 			{
 				const int neighbour = NeighbourIndex(i, j, deltaI[direction], deltaJ[direction]);
@@ -309,31 +344,45 @@ void ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 					continue;
 				}
 				const float neighbourArea = catchment[static_cast<std::size_t>(neighbour)];
-				if (neighbourArea > upstreamArea)
+				if (neighbourArea < kRiverAreaKm2)
 				{
-					upstream = neighbour;
-					upstreamArea = neighbourArea;
+					continue;
 				}
+				const int neighbourI = neighbour % side - half;
+				const int neighbourJ = neighbour / side - half;
+				inlets[inletCount++] = {BorderPoint(neighbourI, neighbourJ, i, j), neighbourArea};
 			}
-			if (upstream >= 0)
+
+			const float width = RiverWidthMeters(area);
+			const float depth = RiverDepthMeters(width);
+			if (inletCount == 0)
 			{
-				const int upstreamI = upstream % side - half;
-				const int upstreamJ = upstream / side - half;
-				channel.fromX = upstreamI > i ? 1.0f : (upstreamI < i ? 0.0f : 0.5f);
-				channel.fromY = upstreamJ > j ? 1.0f : (upstreamJ < j ? 0.0f : 0.5f);
+				// A spring at the tile centre.
+				AddChannel(tiles, rivers, index, ChannelBetween(TilePoint{0.5f, 0.5f}, outlet, area));
+			}
+			else if (inletCount == 1)
+			{
+				AddChannel(tiles, rivers, index, ChannelBetween(inlets[0].point, outlet, area));
 			}
 			else
 			{
-				channel.fromX = 0.5f;
-				channel.fromY = 0.5f;
+				// A junction in the middle of the tile: each tributary keeps its
+				// own width up to the junction, and the combined channel leaves
+				// the tile at the catchment width.
+				const TilePoint junction{0.5f, 0.5f};
+				for (int inlet = 0; inlet < inletCount; ++inlet)
+				{
+					AddChannel(tiles, rivers, index,
+					           ChannelBetween(inlets[inlet].point, junction, inlets[inlet].areaKm2));
+				}
+				AddChannel(tiles, rivers, index, ChannelBetween(junction, outlet, area));
 			}
 
-			channel.widthMeters = RiverWidthMeters(area);
-			channel.depthMeters = RiverDepthMeters(channel.widthMeters);
-			tile.river = channel;
 			tile.waterLevelMeters = tile.elevationMeters - kRiverFreeboardMeters;
-			tile.waterDepthMeters = channel.depthMeters;
+			tile.waterDepthMeters = depth;
 		}
 	}
+
+	return rivers;
 }
 } // namespace Infinitesia

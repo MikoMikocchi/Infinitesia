@@ -18,5 +18,5 @@ inline constexpr float kLakeDepthMeters = 1.0f;
 // neighbour, accumulates precipitation-weighted catchment area and marks rivers
 // and lakes. The coarse planet hydrology is only a boundary condition; this is
 // the world's own water.
-void ComputeWorldHydrology(std::vector<RegionTile> &tiles);
+std::vector<RiverChannel> ComputeWorldHydrology(std::vector<RegionTile> &tiles);
 } // namespace Infinitesia

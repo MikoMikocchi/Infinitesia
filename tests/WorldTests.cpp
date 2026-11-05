@@ -145,12 +145,14 @@ Settlement MakeRiverSettlement()
 	}
 	RegionTile &river = tiles[WorldMap::Index({0, 0})];
 	SetFlag(river.flags, RegionTileFlag::River);
-	river.river = RiverChannel{0.0f, 0.5f, 1.0f, 0.5f, 20.0f, 2.0f};
+	river.riverFirst = 0;
+	river.riverCount = 1;
 	river.waterLevelMeters = 99.75f;
-	river.waterDepthMeters = river.river.depthMeters;
+	river.waterDepthMeters = 2.0f;
 	river.flowEast = 1;
+	std::vector<RiverChannel> channels{RiverChannel{0.0f, 0.5f, 1.0f, 0.5f, 20.0f, 2.0f}};
 
-	auto world = std::make_shared<const WorldMap>(grid, std::move(tiles));
+	auto world = std::make_shared<const WorldMap>(grid, std::move(tiles), std::move(channels));
 	auto terrain =
 	    std::make_shared<const SettlementTerrain>(WorldTerrain(SharedMap(), std::move(world)), grid, 0.0, 0.0);
 	auto source =

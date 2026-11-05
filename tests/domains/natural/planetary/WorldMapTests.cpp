@@ -82,11 +82,26 @@ bool SameTile(const RegionTile &first, const RegionTile &second)
 	       first.precipitationMm == second.precipitationMm && first.drySeasonMonths == second.drySeasonMonths &&
 	       first.soilFertility == second.soilFertility && first.riverDischarge == second.riverDischarge &&
 	       first.waterLevelMeters == second.waterLevelMeters && first.waterDepthMeters == second.waterDepthMeters &&
-	       first.river.fromX == second.river.fromX && first.river.fromY == second.river.fromY &&
-	       first.river.toX == second.river.toX && first.river.toY == second.river.toY &&
-	       first.river.widthMeters == second.river.widthMeters && first.river.depthMeters == second.river.depthMeters &&
+	       first.riverFirst == second.riverFirst && first.riverCount == second.riverCount &&
 	       first.flowEast == second.flowEast && first.flowNorth == second.flowNorth && first.biome == second.biome &&
 	       first.province == second.province && first.flags == second.flags;
+}
+
+bool SameRiver(const RiverChannel &first, const RiverChannel &second)
+{
+	return first.fromX == second.fromX && first.fromY == second.fromY && first.toX == second.toX &&
+	       first.toY == second.toY && first.widthMeters == second.widthMeters &&
+	       first.depthMeters == second.depthMeters;
+}
+
+std::span<const RiverChannel> ChannelsOf(const RegionTile &tile, const std::vector<RiverChannel> &rivers)
+{
+	if (tile.riverCount == 0 || tile.riverFirst >= rivers.size())
+	{
+		return {};
+	}
+	const std::size_t count = std::min<std::size_t>(tile.riverCount, rivers.size() - tile.riverFirst);
+	return {rivers.data() + tile.riverFirst, count};
 }
 } // namespace
 
@@ -176,6 +191,12 @@ TEST_CASE("WorldMapIsDeterministic")
 	const WorldMap second = generator.Generate(anchor);
 
 	REQUIRE(first.TileCount() == second.TileCount());
+	REQUIRE(first.Rivers().size() == second.Rivers().size());
+	for (std::size_t index = 0; index < first.Rivers().size(); ++index)
+	{
+		Require(SameRiver(first.Rivers()[index], second.Rivers()[index]),
+		        "World-map river channels are not deterministic.");
+	}
 	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
 	{
 		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
@@ -279,7 +300,7 @@ TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
 	REQUIRE(lake.IsLake());
 	CHECK(lake.waterLevelMeters > lake.elevationMeters);
 	CHECK(lake.waterDepthMeters > kLakeDepthMeters);
-	CHECK_FALSE(lake.river.IsValid());
+	CHECK(lake.riverCount == 0);
 	CHECK(lake.HasWater());
 
 	std::vector<RegionTile> slope(66049);
@@ -293,9 +314,9 @@ TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
 			tile.flags = 0;
 		}
 	}
-	ComputeWorldHydrology(slope);
+	const std::vector<RiverChannel> rivers = ComputeWorldHydrology(slope);
 
-	std::size_t channels = 0;
+	std::size_t channelCount = 0;
 	for (const RegionTile &tile : slope)
 	{
 		if (!tile.HasRiver())
@@ -304,33 +325,71 @@ TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
 		}
 		REQUIRE(tile.flowEast >= 0);
 		REQUIRE(tile.flowNorth == 0);
-		if (!tile.river.IsValid())
+		const std::span<const RiverChannel> channels = ChannelsOf(tile, rivers);
+		if (!channels.empty())
 		{
-			continue;
+			CHECK(tile.waterLevelMeters < tile.elevationMeters);
 		}
-		++channels;
-		CHECK(tile.river.widthMeters >= 3.0f);
-		CHECK(tile.river.depthMeters >= 1.0f);
-		CHECK_GE(tile.river.fromX, 0.0f);
-		CHECK_LE(tile.river.fromX, 1.0f);
-		CHECK_GE(tile.river.fromY, 0.0f);
-		CHECK_LE(tile.river.fromY, 1.0f);
-		CHECK_GE(tile.river.toX, 0.0f);
-		CHECK_LE(tile.river.toX, 1.0f);
-		CHECK_GE(tile.river.toY, 0.0f);
-		CHECK_LE(tile.river.toY, 1.0f);
-		CHECK(tile.waterLevelMeters < tile.elevationMeters);
-		CHECK(tile.waterDepthMeters == doctest::Approx(tile.river.depthMeters));
+		for (const RiverChannel &channel : channels)
+		{
+			++channelCount;
+			CHECK(channel.widthMeters >= 3.0f);
+			CHECK(channel.depthMeters >= 1.0f);
+			CHECK_GE(channel.fromX, 0.0f);
+			CHECK_LE(channel.fromX, 1.0f);
+			CHECK_GE(channel.fromY, 0.0f);
+			CHECK_LE(channel.fromY, 1.0f);
+			CHECK_GE(channel.toX, 0.0f);
+			CHECK_LE(channel.toX, 1.0f);
+			CHECK_GE(channel.toY, 0.0f);
+			CHECK_LE(channel.toY, 1.0f);
+		}
 	}
-	CHECK(channels > 0);
+	CHECK(channelCount > 0);
 
 	// A river flowing east enters at the west border and leaves at the east
-	// border of its tile.
+	// border of its tile; a single-inlet tile has one straight segment.
 	const RegionTile &middle = slope[WorldMap::Index({0, 0})];
 	REQUIRE(middle.HasRiver());
-	REQUIRE(middle.river.IsValid());
-	CHECK(middle.river.fromX < middle.river.toX);
+	const std::span<const RiverChannel> middleChannels = ChannelsOf(middle, rivers);
+	REQUIRE(!middleChannels.empty());
 	CHECK(middle.flowEast == 1);
+}
+
+TEST_CASE("WorldHydrologyBuildsAConfluenceWithSeveralTributaries")
+{
+	std::vector<RegionTile> tiles(66049);
+	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	{
+		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		{
+			RegionTile &tile = tiles[WorldMap::Index({i, j})];
+			tile.elevationMeters = 100.0f + 0.1f * static_cast<float>(std::abs(i) + std::abs(j));
+			if (j == 0 && i >= 0)
+			{
+				tile.elevationMeters = 100.0f - 0.5f * static_cast<float>(i);
+			}
+			tile.precipitationMm = 1000.0f;
+			tile.flags = 0;
+		}
+	}
+
+	const std::vector<RiverChannel> rivers = ComputeWorldHydrology(tiles);
+	const RegionTile &confluence = tiles[WorldMap::Index({0, 0})];
+	REQUIRE(confluence.HasRiver());
+	REQUIRE(confluence.riverCount >= 3);
+	CHECK(ChannelsOf(confluence, rivers).size() == confluence.riverCount);
+
+	// The tributary segments are narrower than the combined outlet segment.
+	const std::span<const RiverChannel> channels = ChannelsOf(confluence, rivers);
+	float narrowest = channels.front().widthMeters;
+	float widest = channels.front().widthMeters;
+	for (const RiverChannel &channel : channels)
+	{
+		narrowest = std::min(narrowest, channel.widthMeters);
+		widest = std::max(widest, channel.widthMeters);
+	}
+	CHECK(widest > narrowest);
 }
 
 TEST_CASE("WorldMapLocatesPointsInsideRegionTiles")
