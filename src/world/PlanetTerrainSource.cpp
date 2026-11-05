@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "domains/natural/planetary/region/ProvinceMix.h"
+
 namespace Infinitesia
 {
 namespace
@@ -108,6 +110,27 @@ const GeologyModel::ColumnProfile &PlanetTerrainSource::ProfileAt(int x, int z) 
 	    .first->second;
 }
 
+const GeologyModel::ColumnProfile &PlanetTerrainSource::SecondaryProfileAt(int x, int z) const
+{
+	const std::size_t index =
+	    static_cast<std::size_t>(z) * static_cast<std::size_t>(m_width) + static_cast<std::size_t>(x);
+	const auto found = m_secondaryProfiles.find(index);
+	if (found != m_secondaryProfiles.end())
+	{
+		return found->second;
+	}
+	if (m_secondaryProfiles.size() >= kMaxCachedProfiles)
+	{
+		m_secondaryProfiles.clear();
+	}
+	const Column &column = ColumnAt(x, z);
+	const double east = m_terrain->OriginEastMeters() + (x - m_width / 2) + 0.5;
+	const double north = m_terrain->OriginNorthMeters() + (m_depth / 2 - z) + 0.5;
+	return m_secondaryProfiles
+	    .emplace(index, m_geology->ProfileAt(column.secondaryProvince, east, north, column.pileTopMeters))
+	    .first->second;
+}
+
 const PlanetTerrainSource::Column &PlanetTerrainSource::ColumnAt(int x, int z) const
 {
 	const std::size_t index =
@@ -126,6 +149,8 @@ const PlanetTerrainSource::Column &PlanetTerrainSource::ColumnAt(int x, int z) c
 	cached.surface = std::clamp(m_anchorLevel + column.heightBlocks, 1, m_height - 2);
 	cached.kind = column.kind;
 	cached.province = column.province;
+	cached.secondaryProvince = column.secondaryProvince;
+	cached.secondaryWeight = column.secondaryWeight;
 	cached.pileTopMeters = column.pileTopMeters;
 	cached.fluid = column.fluid;
 	cached.fluidLevelMeters = column.fluidLevelMeters;
@@ -257,7 +282,13 @@ BlockState PlanetTerrainSource::StateOf(GridCell cell, bool withPlants) const
 	// A level is a metre of height: the ground of the origin column is at
 	// anchorLevel and OriginElevationMeters above sea level.
 	const int elevation = m_terrain->OriginElevationMeters() + (cell.y - m_anchorLevel);
-	return {GeologyModel::RockAt(ProfileAt(cell.x, cell.z), elevation), kShapeFull};
+	const GeologyModel::ColumnProfile *profile = &ProfileAt(cell.x, cell.z);
+	if (column.secondaryWeight > 0.0 && column.secondaryProvince != kNoProvince &&
+	    UseSecondaryRock(column.secondaryWeight, cell.x - m_width / 2, m_depth / 2 - cell.z, elevation))
+	{
+		profile = &SecondaryProfileAt(cell.x, cell.z);
+	}
+	return {GeologyModel::RockAt(*profile, elevation), kShapeFull};
 }
 
 const FloraCell *PlanetTerrainSource::FloraAt(GridCell cell) const

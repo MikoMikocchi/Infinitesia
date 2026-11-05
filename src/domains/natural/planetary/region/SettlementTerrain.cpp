@@ -96,6 +96,8 @@ SurfaceColumn SettlementTerrain::Column(int eastBlocks, int northBlocks) const n
 		}
 	}
 	column.province = planet.surface.province;
+	column.secondaryProvince = planet.surface.secondaryProvince;
+	column.secondaryWeight = planet.surface.secondaryWeight;
 	column.pileTopMeters = static_cast<int>(std::floor(planet.elevationMeters));
 	constexpr double kLapseRateCelsiusPerMeter = 0.0065;
 	column.temperatureCelsius =

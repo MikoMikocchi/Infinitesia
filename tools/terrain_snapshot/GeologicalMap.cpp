@@ -7,6 +7,7 @@
 #include <map>
 #include <vector>
 
+#include "domains/natural/planetary/region/ProvinceMix.h"
 #include "terrain_snapshot/Image.h"
 #include "terrain_snapshot/Reports.h"
 
@@ -37,14 +38,21 @@ int RenderGeologicalMap(const Options &options, const Window &window, const Snap
 			const int eastMeters = static_cast<int>(std::lround(-extent * 0.5 + (east + 0.5) * step));
 			const int northMeters = static_cast<int>(std::lround(extent * 0.5 - (south + 0.5) * step));
 			const SurfaceColumn column = terrain.Column(eastMeters, northMeters);
-			const auto profile = geology.ProfileAt(column.province, options.originEast + eastMeters + 0.5,
-			                                       options.originNorth + northMeters + 0.5, column.pileTopMeters);
 			const std::size_t index = static_cast<std::size_t>(south) * columns + east;
 			ground[index] = column.heightBlocks;
 			drowned[index] = column.fluid != FluidOrigin::None ? 1 : 0;
 			// Under the topsoil (3 m) the rock that outcrops or lies just below the
 			// ground.
 			const int rockLevel = terrain.OriginElevationMeters() + column.heightBlocks - 4;
+			GeologyModel::ColumnProfile profile =
+			    geology.ProfileAt(column.province, options.originEast + eastMeters + 0.5,
+				                  options.originNorth + northMeters + 0.5, column.pileTopMeters);
+			if (column.secondaryProvince != kNoProvince &&
+			    UseSecondaryRock(column.secondaryWeight, eastMeters, northMeters, rockLevel))
+			{
+				profile = geology.ProfileAt(column.secondaryProvince, options.originEast + eastMeters + 0.5,
+				                            options.originNorth + northMeters + 0.5, column.pileTopMeters);
+			}
 			rockAt[index] = GeologyModel::RockAt(profile, rockLevel);
 
 			// Where a fault plane reaches the ground the fault shows as a line on the

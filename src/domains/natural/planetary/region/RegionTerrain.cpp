@@ -78,6 +78,8 @@ constexpr double kMicroDecay = 0.7;
 // around by smooth noise, so it leaves the cell edge and becomes a wavy
 // geological contact.
 constexpr double kProvinceTransitionMeters = 400.0;
+// Width of the mixed zone on either side of the wavy contact.
+constexpr double kProvinceMixMeters = 160.0;
 constexpr std::uint32_t kProvinceContactSalt = 0xB0A7C0DEu;
 
 int WrapIndex(int index, int count) noexcept
@@ -319,6 +321,17 @@ PlanetFieldSample RegionTerrain::SampleAt(const GeographicCoordinates &position)
 		const double contactNoise = ValueNoise(px / kProvinceTransitionMeters, py / kProvinceTransitionMeters,
 		                                       pz / kProvinceTransitionMeters, m_seed ^ kProvinceContactSalt);
 		surface.province = contactNoise > signedDistance / kProvinceTransitionMeters ? second : first;
+		surface.secondaryProvince = surface.province == first ? second : first;
+		// Distance from the actual (noise-displaced) contact. The mixture is
+		// strongest on the contact and fades out over kProvinceMixMeters.
+		const double distanceToContact = std::abs(signedDistance - contactNoise * kProvinceTransitionMeters);
+		const double mixT = std::clamp(1.0 - distanceToContact / kProvinceMixMeters, 0.0, 1.0);
+		const double mix = mixT * mixT * (3.0 - 2.0 * mixT);
+		surface.secondaryWeight = 0.5 * mix;
+		if (surface.secondaryWeight <= 0.0)
+		{
+			surface.secondaryProvince = kNoProvince;
+		}
 	}
 
 	PlanetFieldSample sample;

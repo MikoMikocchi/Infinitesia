@@ -10,6 +10,7 @@
 #include "domains/natural/planetary/PlanetMap.h"
 #include "domains/natural/planetary/region/LocalFrame.h"
 #include "domains/natural/planetary/region/LocalGrid.h"
+#include "domains/natural/planetary/region/ProvinceMix.h"
 #include "domains/natural/planetary/region/RegionGenerator.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
 
@@ -336,6 +337,53 @@ TEST_CASE("ProvinceContactIsContinuousAcrossCellBorders")
 		}
 	}
 	Require(tested > 0, "The test planet has no province border.");
+}
+
+TEST_CASE("ProvinceContactMixesTheTwoRockPiles")
+{
+	const RegionGenerator generator(SharedMap());
+	const RegionTerrain &terrain = generator.GetTerrain();
+	const PlanetMap &map = SharedMap();
+	const int latitudeBands = map.GetLatitudeBandCount();
+	const int longitudeSegments = map.GetLongitudeSegmentCount();
+
+	bool foundMix = false;
+	for (int latitude = 10; latitude < latitudeBands - 10 && !foundMix; ++latitude)
+	{
+		const PlanetRegion &cell = map.GetRegion(latitude, 0);
+		const double metersPerDegree = 111320.0 * std::cos(cell.latitudeDegrees * std::numbers::pi / 180.0);
+		for (int longitude = 0; longitude < longitudeSegments && !foundMix; ++longitude)
+		{
+			if (map.GetRegion(latitude, longitude).provinceId ==
+			    map.GetRegion(latitude, (longitude + 1) % longitudeSegments).provinceId)
+			{
+				continue;
+			}
+			const double borderLongitude = static_cast<double>(longitude + 1) / longitudeSegments * 360.0;
+			for (int offset = -500; offset <= 500; offset += 25)
+			{
+				const PlanetFieldSample sample =
+				    terrain.SampleAt({cell.latitudeDegrees, borderLongitude + offset / metersPerDegree});
+				if (sample.surface.secondaryWeight > 0.0 && sample.surface.secondaryProvince != kNoProvince)
+				{
+					foundMix = true;
+					break;
+				}
+			}
+		}
+	}
+	Require(foundMix, "No mixed province contact zone was found.");
+
+	int borrowed = 0;
+	int primary = 0;
+	for (int east = 0; east < 512; ++east)
+	{
+		for (int north = 0; north < 512; ++north)
+		{
+			(UseSecondaryRock(0.5, east, north, 100) ? borrowed : primary) += 1;
+		}
+	}
+	Require(borrowed > 0 && primary > 0, "The contact mixture does not borrow from both piles.");
 }
 
 TEST_CASE("TerrainHasNoCliffWhereTheCoarseFieldCrossesSeaLevel")

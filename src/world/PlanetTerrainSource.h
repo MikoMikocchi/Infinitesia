@@ -74,6 +74,8 @@ private:
 		int surface = 0;
 		SurfaceKind kind = SurfaceKind::Grass;
 		ProvinceId province = kNoProvince;
+		ProvinceId secondaryProvince = kNoProvince;
+		double secondaryWeight = 0.0;
 		int pileTopMeters = 0;
 		Conditions climate; // slope is filled in when the flora asks
 		// The fluid body over the column, if any, and the level of its top block
@@ -112,6 +114,7 @@ private:
 	// The plant occupying the cell, if any.
 	const FloraCell *FloraAt(GridCell cell) const;
 	const GeologyModel::ColumnProfile &ProfileAt(int x, int z) const;
+	const GeologyModel::ColumnProfile &SecondaryProfileAt(int x, int z) const;
 	// Top block level for a fluid surface this many metres above sea level. Only
 	// call it for a column whose fluid is not None.
 	int FluidTopBlocksFor(double fluidLevelMeters) const;
@@ -129,6 +132,7 @@ private:
 	// ever loaded at once.
 	mutable std::unordered_map<std::size_t, Column> m_columns;
 	mutable std::unordered_map<std::size_t, GeologyModel::ColumnProfile> m_profiles;
+	mutable std::unordered_map<std::size_t, GeologyModel::ColumnProfile> m_secondaryProfiles;
 	std::unique_ptr<Ground> m_ground;
 	std::unique_ptr<FloraModel> m_flora;
 };

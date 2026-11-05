@@ -35,6 +35,10 @@ struct SurfaceColumn
 	// (whole metres above sea level) of the planet's coarse surface there: the
 	// reference level the province's rock layers are laid out from.
 	ProvinceId province = kNoProvince;
+	// In a mixed contact zone, part of the column is borrowed from the province
+	// on the other side of the contact.
+	ProvinceId secondaryProvince = kNoProvince;
+	double secondaryWeight = 0.0;
 	int pileTopMeters = 0;
 	// The climate and soil of the column, interpolated between the planet cells;
 	// the temperature is brought to the local elevation with the standard lapse

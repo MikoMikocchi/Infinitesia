@@ -212,6 +212,11 @@ struct PlanetSurface
 	double tectonicStress = 0.0;
 	double volcanicFraction = 0.0;
 	ProvinceId province = kNoProvince;
+	// A mixed contact zone borrows part of its rock from the province on the
+	// other side of the contact. 0 means a pure column; 0.5 is the contact
+	// itself.
+	ProvinceId secondaryProvince = kNoProvince;
+	double secondaryWeight = 0.0;
 
 	// A PlanetRegion at the given local elevation. isOcean follows the local
 	// height, so the coastline is the zero contour rather than a cell border.
