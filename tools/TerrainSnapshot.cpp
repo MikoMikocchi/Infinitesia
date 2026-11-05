@@ -25,41 +25,46 @@
 
 using namespace SnapshotTool;
 
-namespace {
-int Run(const Options& options) {
-  if (!ValidateOptions(options)) {
-    return 2;
-  }
-  Window window;
-  if (!MakeWindow(options, window)) {
-    return 2;
-  }
+namespace
+{
+int Run(const Options &options)
+{
+	if (!ValidateOptions(options))
+	{
+		return 2;
+	}
+	Window window;
+	if (!MakeWindow(options, window))
+	{
+		return 2;
+	}
 
-  // The planet, built the way the game builds it.
-  const auto started = std::chrono::steady_clock::now();
-  std::fprintf(stderr, "Generating the planet (seed %llu)...\n",
-               static_cast<unsigned long long>(options.seed));
-  const SnapshotWorld world(options);
-  std::fprintf(
-      stderr, "Planet ready in %.1f s.\n",
-      std::chrono::duration<double>(std::chrono::steady_clock::now() - started)
-          .count());
+	// The planet, built the way the game builds it.
+	const auto started = std::chrono::steady_clock::now();
+	std::fprintf(stderr, "Generating the planet (seed %llu)...\n", static_cast<unsigned long long>(options.seed));
+	const SnapshotWorld world(options);
+	std::fprintf(stderr, "Planet ready in %.1f s.\n",
+	             std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count());
 
-  return options.map ? RenderGeologicalMap(options, window, world)
-                     : RenderBlockDiagram(options, window, world);
+	return options.map ? RenderGeologicalMap(options, window, world) : RenderBlockDiagram(options, window, world);
 }
-}  // namespace
+} // namespace
 
-int main(int argc, char** argv) {
-  try {
-    Options options;
-    if (!ParseOptions(argc, argv, options)) {
-      PrintUsage();
-      return 0;
-    }
-    return Run(options);
-  } catch (const std::exception& error) {
-    std::fprintf(stderr, "Error: %s\n", error.what());
-    return 1;
-  }
+int main(int argc, char **argv)
+{
+	try
+	{
+		Options options;
+		if (!ParseOptions(argc, argv, options))
+		{
+			PrintUsage();
+			return 0;
+		}
+		return Run(options);
+	}
+	catch (const std::exception &error)
+	{
+		std::fprintf(stderr, "Error: %s\n", error.what());
+		return 1;
+	}
 }

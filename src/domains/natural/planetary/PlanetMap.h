@@ -2,12 +2,13 @@
 
 #include <vector>
 
+#include "core/LoadProgress.h"
 #include "domains/natural/planetary/PlanetRegion.h"
 #include "domains/natural/planetary/pipeline/PlanetData.h"
 #include "domains/natural/planetary/pipeline/PlanetPipeline.h"
-#include "core/LoadProgress.h"
 
-namespace Infinitesia {
+namespace Infinitesia
+{
 // -----------------------------------------------------------------------
 // PlanetMap — caches a fully-generated grid; GetRegion is O(1)
 //
@@ -16,43 +17,50 @@ namespace Infinitesia {
 // pipeline makes the planet the game uses; a pipeline with extra stages adds
 // more data, which lives in Layers().
 // -----------------------------------------------------------------------
-class PlanetMap {
- public:
-  explicit PlanetMap(PlanetParameters parameters = {},
-                     ClimateInputs climate = {},
-                     LoadProgress* progress = nullptr);
-  PlanetMap(PlanetParameters parameters, ClimateInputs climate,
-            const PlanetPipeline& pipeline, LoadProgress* progress = nullptr);
+class PlanetMap
+{
+public:
+	explicit PlanetMap(PlanetParameters parameters = {}, ClimateInputs climate = {}, LoadProgress *progress = nullptr);
+	PlanetMap(PlanetParameters parameters, ClimateInputs climate, const PlanetPipeline &pipeline,
+	          LoadProgress *progress = nullptr);
 
-  const Planet& GetPlanet() const noexcept;
-  const PlanetParameters& GetParameters() const noexcept;
-  const ClimateInputs& GetClimateInputs() const noexcept;
-  int GetLatitudeBandCount() const noexcept;
-  int GetLongitudeSegmentCount() const noexcept;
+	const Planet &GetPlanet() const noexcept;
+	const PlanetParameters &GetParameters() const noexcept;
+	const ClimateInputs &GetClimateInputs() const noexcept;
+	int GetLatitudeBandCount() const noexcept;
+	int GetLongitudeSegmentCount() const noexcept;
 
-  const PlanetRegion& GetRegion(int latitudeIndex,
-                                int longitudeIndex) const noexcept;
-  double SampleElevation(int latitudeIndex, int longitudeIndex) const;
-  bool IsOcean(int latitudeIndex, int longitudeIndex) const;
-  const PlanetWaterBalance& GetWaterBalance() const noexcept {
-    return m_data.waterBalance;
-  }
+	const PlanetRegion &GetRegion(int latitudeIndex, int longitudeIndex) const noexcept;
+	double SampleElevation(int latitudeIndex, int longitudeIndex) const;
+	bool IsOcean(int latitudeIndex, int longitudeIndex) const;
+	const PlanetWaterBalance &GetWaterBalance() const noexcept
+	{
+		return m_data.waterBalance;
+	}
 
-  // Geological provinces of the planet, indexed by ProvinceId - 1.
-  const std::vector<Province>& GetProvinces() const noexcept {
-    return m_data.provinces;
-  }
-  // nullptr for kNoProvince or an unknown id.
-  const Province* FindProvince(ProvinceId id) const noexcept;
-  const Province* FindProvince(const PlanetRegion& region) const noexcept {
-    return FindProvince(region.provinceId);
-  }
-  const PlanetEpochTable& GetEpochs() const noexcept { return m_data.epochs; }
+	// Geological provinces of the planet, indexed by ProvinceId - 1.
+	const std::vector<Province> &GetProvinces() const noexcept
+	{
+		return m_data.provinces;
+	}
+	// nullptr for kNoProvince or an unknown id.
+	const Province *FindProvince(ProvinceId id) const noexcept;
+	const Province *FindProvince(const PlanetRegion &region) const noexcept
+	{
+		return FindProvince(region.provinceId);
+	}
+	const PlanetEpochTable &GetEpochs() const noexcept
+	{
+		return m_data.epochs;
+	}
 
-  // Data added by stages beyond the default ones, by layer name.
-  const PlanetLayers& Layers() const noexcept { return m_data.layers; }
+	// Data added by stages beyond the default ones, by layer name.
+	const PlanetLayers &Layers() const noexcept
+	{
+		return m_data.layers;
+	}
 
- private:
-  PlanetData m_data;
+private:
+	PlanetData m_data;
 };
-}  // namespace Infinitesia
+} // namespace Infinitesia

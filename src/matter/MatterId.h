@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace Infinitesia {
+namespace Infinitesia
+{
 // Dense index of a material: what a block of the world is made of. The catalog
 // assigns it while loading, in the order the records are written (air first,
 // then the fluids), so it is 0, 1, 2, ... and is the material's place in the
@@ -23,4 +24,4 @@ inline constexpr int kMatterCapacity = 5120;
 // "No material": what a record holds when it names none (an event that formed
 // no rock).
 inline constexpr MatterId kUnspecifiedMatter = 0xFFFF;
-}  // namespace Infinitesia
+} // namespace Infinitesia

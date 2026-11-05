@@ -6,20 +6,23 @@
 
 #include "core/PlanetaryCoordinates.h"
 
-namespace Infinitesia {
+namespace Infinitesia
+{
 // Address of one region inside a LocalGrid: signed grid coordinates, east and
 // north of the anchor region (0, 0). Not to be confused with PlanetRegion,
 // which is a single cell of the 55 km planet grid.
-struct RegionId {
-  int i = 0;  // east
-  int j = 0;  // north
+struct RegionId
+{
+	int i = 0; // east
+	int j = 0; // north
 
-  friend bool operator==(const RegionId&, const RegionId&) = default;
+	friend bool operator==(const RegionId &, const RegionId &) = default;
 
-  std::uint64_t Pack() const noexcept {
-    return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(i)) << 32) |
-           static_cast<std::uint64_t>(static_cast<std::uint32_t>(j));
-  }
+	std::uint64_t Pack() const noexcept
+	{
+		return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(i)) << 32) |
+		       static_cast<std::uint64_t>(static_cast<std::uint32_t>(j));
+	}
 };
 
 // Local north-up frame at a point: unit vectors in PlanetaryCoordinates space.
@@ -27,10 +30,11 @@ struct RegionId {
 // clockwise seen from the north pole, the globe mesh compensates with
 // -longitude), so east = center x north is what reads as "right" on a map seen
 // from outside.
-struct TangentFrame {
-  CartesianPoint3D center{};
-  CartesianPoint3D east{};
-  CartesianPoint3D north{};
+struct TangentFrame
+{
+	CartesianPoint3D center{};
+	CartesianPoint3D east{};
+	CartesianPoint3D north{};
 };
 
 // One chessboard of identical squares laid over the planet around an anchor
@@ -46,55 +50,59 @@ struct TangentFrame {
 // local world has no visible curvature.
 //
 // The anchor is the centre of region (0, 0).
-class LocalGrid {
- public:
-  static constexpr int kCellsPerRegionEdge = 128;
-  static constexpr int kPointsPerRegionEdge = kCellsPerRegionEdge + 1;
-  static constexpr double kCellSizeMeters = 32.0;
-  static constexpr double kRegionSizeMeters =
-      kCellsPerRegionEdge * kCellSizeMeters;
+class LocalGrid
+{
+public:
+	static constexpr int kCellsPerRegionEdge = 128;
+	static constexpr int kPointsPerRegionEdge = kCellsPerRegionEdge + 1;
+	static constexpr double kCellSizeMeters = 32.0;
+	static constexpr double kRegionSizeMeters = kCellsPerRegionEdge * kCellSizeMeters;
 
-  // Regions farther than this from the anchor (about 1600 km) are refused: the
-  // plane-to-sphere projection stretches too much there.
-  static constexpr int kMaxRegionIndex = 400;
+	// Regions farther than this from the anchor (about 1600 km) are refused: the
+	// plane-to-sphere projection stretches too much there.
+	static constexpr int kMaxRegionIndex = 400;
 
-  LocalGrid() = default;
-  LocalGrid(double planetRadiusMeters, CartesianPoint3D anchorDirection);
+	LocalGrid() = default;
+	LocalGrid(double planetRadiusMeters, CartesianPoint3D anchorDirection);
 
-  double PlanetRadiusMeters() const noexcept { return m_radiusMeters; }
-  const TangentFrame& Frame() const noexcept { return m_frame; }
+	double PlanetRadiusMeters() const noexcept
+	{
+		return m_radiusMeters;
+	}
+	const TangentFrame &Frame() const noexcept
+	{
+		return m_frame;
+	}
 
-  static bool IsValid(RegionId id) noexcept;
+	static bool IsValid(RegionId id) noexcept;
 
-  // Unit direction at `eastMeters` / `northMeters` of the anchor, and the
-  // inverse.
-  CartesianPoint3D Direction(double eastMeters,
-                             double northMeters) const noexcept;
-  void Project(CartesianPoint3D direction, double& eastMeters,
-               double& northMeters) const noexcept;
+	// Unit direction at `eastMeters` / `northMeters` of the anchor, and the
+	// inverse.
+	CartesianPoint3D Direction(double eastMeters, double northMeters) const noexcept;
+	void Project(CartesianPoint3D direction, double &eastMeters, double &northMeters) const noexcept;
 
-  RegionId RegionAt(CartesianPoint3D direction) const noexcept;
+	RegionId RegionAt(CartesianPoint3D direction) const noexcept;
 
-  // Direction of lattice point (x, y), in cells from the region's south-west
-  // corner. Values outside [0, kCellsPerRegionEdge] continue into the
-  // neighbours. Neighbouring regions share their border points exactly, on all
-  // four sides.
-  CartesianPoint3D PointDirection(RegionId id, double x,
-                                  double y) const noexcept;
-  CartesianPoint3D CenterDirection(RegionId id) const noexcept;
-  GeographicCoordinates Center(RegionId id) const noexcept;
+	// Direction of lattice point (x, y), in cells from the region's south-west
+	// corner. Values outside [0, kCellsPerRegionEdge] continue into the
+	// neighbours. Neighbouring regions share their border points exactly, on all
+	// four sides.
+	CartesianPoint3D PointDirection(RegionId id, double x, double y) const noexcept;
+	CartesianPoint3D CenterDirection(RegionId id) const noexcept;
+	GeographicCoordinates Center(RegionId id) const noexcept;
 
-  static TangentFrame FrameAt(CartesianPoint3D direction) noexcept;
+	static TangentFrame FrameAt(CartesianPoint3D direction) noexcept;
 
- private:
-  double m_radiusMeters = 1.0;
-  TangentFrame m_frame{{1.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 1.0, 0.0}};
+private:
+	double m_radiusMeters = 1.0;
+	TangentFrame m_frame{{1.0, 0.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 1.0, 0.0}};
 };
-}  // namespace Infinitesia
+} // namespace Infinitesia
 
-template <>
-struct std::hash<Infinitesia::RegionId> {
-  std::size_t operator()(const Infinitesia::RegionId& id) const noexcept {
-    return std::hash<std::uint64_t>{}(id.Pack());
-  }
+template <> struct std::hash<Infinitesia::RegionId>
+{
+	std::size_t operator()(const Infinitesia::RegionId &id) const noexcept
+	{
+		return std::hash<std::uint64_t>{}(id.Pack());
+	}
 };

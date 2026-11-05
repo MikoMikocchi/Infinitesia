@@ -8,16 +8,18 @@
 #include "domains/natural/planetary/geology/Province.h"
 #include "domains/natural/planetary/pipeline/PlanetLayers.h"
 
-namespace Infinitesia {
+namespace Infinitesia
+{
 // Everything a planet is made of, as the stages fill it in and PlanetMap serves
 // it.
-struct PlanetData {
-  Planet planet;
-  ClimateInputs climate;
-  std::vector<PlanetRegion> grid;  // row-major [lat * lonSegments + lon]
-  std::vector<Province> provinces;
-  PlanetEpochTable epochs;
-  PlanetWaterBalance waterBalance;
-  PlanetLayers layers;
+struct PlanetData
+{
+	Planet planet;
+	ClimateInputs climate;
+	std::vector<PlanetRegion> grid; // row-major [lat * lonSegments + lon]
+	std::vector<Province> provinces;
+	PlanetEpochTable epochs;
+	PlanetWaterBalance waterBalance;
+	PlanetLayers layers;
 };
-}  // namespace Infinitesia
+} // namespace Infinitesia

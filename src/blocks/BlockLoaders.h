@@ -5,8 +5,8 @@
 
 #include "blocks/ShapeDef.h"
 
-namespace Infinitesia {
+namespace Infinitesia
+{
 // Reads shapes.json. Throws CatalogError.
-void LoadShapes(const std::filesystem::path& path,
-                std::vector<ShapeDef>& shapes);
-}  // namespace Infinitesia
+void LoadShapes(const std::filesystem::path &path, std::vector<ShapeDef> &shapes);
+} // namespace Infinitesia
