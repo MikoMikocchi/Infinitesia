@@ -86,19 +86,37 @@ RegionMapView::Built RegionMapView::Build(const RegionGenerator& generator,
       const std::size_t index = patch.Index(x, y);
       const float elevation = patch.elevationMeters[index];
       const Biome biome = patch.biome[index];
+      const std::uint32_t cellIndex = patch.planetCell[index];
+      const PlanetRegion& cell =
+          map.GetRegion(static_cast<int>(cellIndex) / longitudeSegments,
+                        static_cast<int>(cellIndex) % longitudeSegments);
 
       Color base;
-      if (elevation < 0.0f) {
+      bool isWater = false;
+      float waterDepth = 0.0f;
+
+      if (cell.isOcean) {
+        if (elevation < 0.0f) {
+          isWater = true;
+          waterDepth = -elevation;
+        }
+      } else if (cell.isLake) {
+        const float lakeLevel =
+            static_cast<float>(cell.lakeWaterLevelKm * 1000.0);
+        if (elevation < lakeLevel) {
+          isWater = true;
+          waterDepth = lakeLevel - elevation;
+        }
+      }
+
+      if (isWater) {
         base =
-            Lerp({64, 150, 190, 255}, {18, 52, 110, 255}, -elevation / 200.0f);
+            Lerp({64, 150, 190, 255}, {18, 52, 110, 255}, waterDepth / 200.0f);
       } else if (IsAquatic(biome)) {
         base = {196, 184, 140,
                 255};  // shore: the planet cell says sea, this point is dry
       } else {
-        const std::uint32_t cell = patch.planetCell[index];
-        base = color(map.GetRegion(static_cast<int>(cell) / longitudeSegments,
-                                   static_cast<int>(cell) % longitudeSegments),
-                     elevation);
+        base = color(cell, elevation);
       }
 
       const float slopeX = (height(x + 1, y) - height(x - 1, y)) /
