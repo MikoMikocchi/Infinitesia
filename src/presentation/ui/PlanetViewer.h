@@ -8,7 +8,7 @@
 #include "domains/natural/planetary/PlanetMap.h"
 #include "domains/natural/planetary/StarSystem.h"
 #include "domains/natural/planetary/pipeline/PlanetPipeline.h"
-#include "domains/natural/planetary/region/SettlementTerrain.h"
+#include "domains/natural/planetary/region/Site.h"
 #include "presentation/ui/RegionMapView.h"
 #include "presentation/ui/UniqueTexture.h"
 #include "raylib.h"
@@ -27,8 +27,8 @@ public:
 	void Draw() const;
 	void ReleaseRenderResources() noexcept;
 
-	// Set when the player founds the settlement; handed over once.
-	std::optional<SettlementSite> TakeFoundedSite();
+	// Set when the player founds a site; handed over once.
+	std::optional<Site> TakeFoundedSite();
 	void SetFoundingEnabled(bool enabled) noexcept
 	{
 		m_foundingEnabled = enabled;
@@ -70,7 +70,7 @@ private:
 	float m_tiltDegrees = -12.0f;
 	float m_zoom = 1.0f;
 	bool m_foundingEnabled = true;
-	std::optional<SettlementSite> m_foundedSite;
+	std::optional<Site> m_foundedSite;
 	std::string m_notice;
 	float m_noticeSeconds = 0.0f;
 	bool m_regionMode = false;

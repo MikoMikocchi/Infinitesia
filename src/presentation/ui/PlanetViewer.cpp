@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "domains/natural/planetary/PlanetLoadSteps.h"
+#include "domains/natural/planetary/region/SettlementTerrain.h"
 #include "presentation/ui/PlanetGlobeGeometry.h"
 #include "presentation/ui/PlanetPalette.h"
 #include "presentation/ui/PlanetViewerLayout.h"
@@ -199,9 +200,9 @@ void PlanetViewer::FocusRegionOnSelectedCell()
 	    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
 }
 
-std::optional<SettlementSite> PlanetViewer::TakeFoundedSite()
+std::optional<Site> PlanetViewer::TakeFoundedSite()
 {
-	std::optional<SettlementSite> site;
+	std::optional<Site> site;
 	site.swap(m_foundedSite);
 	return site;
 }
@@ -218,7 +219,14 @@ void PlanetViewer::TryFoundSettlement()
 		m_noticeSeconds = 4.0f;
 		return;
 	}
-	m_foundedSite = SettlementSite{grid, focus};
+
+	Site site;
+	site.kind = SiteKind::Settlement;
+	site.grid = grid;
+	site.region = focus;
+	site.center = m_regionMap.GetFocusCenter();
+	site.frame = LocalFrame::At(site.center);
+	m_foundedSite = site;
 }
 
 void PlanetViewer::EnterRegionMode()

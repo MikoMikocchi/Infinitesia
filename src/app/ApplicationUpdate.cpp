@@ -61,12 +61,18 @@ void Application::UpdateDevHooks()
 
 	double latitude = 0.0;
 	double longitude = 0.0;
-	if (found != nullptr && m_planetViewer && !m_game.has_value() &&
+	if (found != nullptr && m_planetViewer && m_sites.empty() &&
 	    std::sscanf(found, "%lf,%lf", &latitude, &longitude) == 2)
 	{
 		const RegionTerrain &terrain = m_planetViewer->GetRegionTerrain();
 		const double radius = terrain.GetPlanetMap().GetPlanet().GetRadius();
-		StartSettlement({LocalGrid(radius, PlanetaryCoordinates::ToCartesian({latitude, longitude})), RegionId{}});
+		Site site;
+		site.kind = SiteKind::Settlement;
+		site.grid = LocalGrid(radius, PlanetaryCoordinates::ToCartesian({latitude, longitude}));
+		site.region = RegionId{};
+		site.center = site.grid.Center(site.region);
+		site.frame = LocalFrame::At(site.center);
+		StartSettlement(site);
 	}
 
 	if (view != nullptr && std::string_view(view) == "all" && m_screen == Screen::Local &&
@@ -91,7 +97,7 @@ void Application::Update()
 	{
 		if (IsKeyPressed(KEY_M))
 		{
-			m_screen = Screen::Planet; // back to the planet map
+			LeaveSite(); // back to the planet map
 			return;
 		}
 		UpdateLocal();
@@ -102,13 +108,13 @@ void Application::Update()
 	{
 		return;
 	}
-	if (m_game.has_value() && IsKeyPressed(KEY_M))
+	if (IsKeyPressed(KEY_M) && m_activeSite != kNoSite)
 	{
-		m_screen = Screen::Local;
+		EnterSite(m_activeSite);
 		return;
 	}
 	m_planetViewer->Update();
-	if (const std::optional<SettlementSite> site = m_planetViewer->TakeFoundedSite())
+	if (const std::optional<Site> site = m_planetViewer->TakeFoundedSite())
 	{
 		StartSettlement(*site);
 	}
@@ -118,17 +124,21 @@ void Application::Update()
 // nothing is selected.
 void Application::FocusCamera()
 {
-	const LocalGame &game = *m_game;
+	const LocalGame *game = ActiveGame();
+	if (game == nullptr)
+	{
+		return;
+	}
 	const std::optional<WorldObjectId> selectedId = m_worldInteraction.GetSelectedObject();
 	if (selectedId.has_value())
 	{
-		if (const WorldObject *selected = game.GetWorld().entities.FindObject(*selectedId))
+		if (const WorldObject *selected = game->GetWorld().entities.FindObject(*selectedId))
 		{
 			m_cameraController.FocusOn(selected->position.x, selected->position.z);
 			return;
 		}
 	}
-	const WorldPosition worker = game.GetGrid().CellToWorld(game.GetStartingCells().worker);
+	const WorldPosition worker = game->GetGrid().CellToWorld(game->GetStartingCells().worker);
 	m_cameraController.FocusOn(worker.x, worker.z);
 }
 
@@ -143,7 +153,13 @@ void Application::UpdateLocal()
 		m_viewMode = m_viewMode == ViewMode::CutAtLevel ? ViewMode::ShowAll : ViewMode::CutAtLevel;
 	}
 
-	LocalGame &game = *m_game;
+	LocalGame *active = ActiveGame();
+	if (active == nullptr)
+	{
+		LeaveSite();
+		return;
+	}
+	LocalGame &game = *active;
 	AppInternal::UpdateLevelSelection(m_worldRenderer, game.GetGrid(), m_selectedLevel);
 
 	if (IsKeyPressed(KEY_F))

@@ -22,8 +22,15 @@ LocalFrame FrameAtOrigin(const LocalGrid &grid, double originEastMeters, double 
 
 SettlementTerrain::SettlementTerrain(const RegionTerrain &terrain, const LocalGrid &grid, double originEastMeters,
                                      double originNorthMeters)
-    : m_terrain(terrain), m_grid(grid), m_frame(FrameAtOrigin(grid, originEastMeters, originNorthMeters)),
-      m_originEastMeters(originEastMeters), m_originNorthMeters(originNorthMeters)
+    : SettlementTerrain(terrain, FrameAtOrigin(grid, originEastMeters, originNorthMeters), originEastMeters,
+	                    originNorthMeters)
+{
+}
+
+SettlementTerrain::SettlementTerrain(const RegionTerrain &terrain, const LocalFrame &frame,
+                                     double geologyOriginEastMeters, double geologyOriginNorthMeters)
+    : m_terrain(terrain), m_frame(frame), m_originEastMeters(geologyOriginEastMeters),
+      m_originNorthMeters(geologyOriginNorthMeters)
 {
 	m_originElevationMeters =
 	    static_cast<int>(std::floor(m_terrain.ElevationMeters(m_frame.center, kMinWavelengthMeters)));

@@ -15,5 +15,16 @@ Local (settlement) view:
 | M | Switch between the local view and the planet map |
 | Right-click | Context menu with actions for the cell or object |
 
+Planet and region map:
+
+| Input | Action |
+|---|---|
+| Click the map / globe | Select a planet cell |
+| R | Toggle the region map for the selected cell |
+| WASD / arrows | Move the focus one region at a time |
+| Enter | Found the settlement in the focused region (dry land only) |
+| M | Return to the settlement |
+| Backspace | Leave region mode |
+
 The camera tunables are in `src/presentation/input/CameraController.h` (`CameraControlConfig`),
 the look in `src/presentation/rendering/LightingStyle.h` and `DepthShading.h`.

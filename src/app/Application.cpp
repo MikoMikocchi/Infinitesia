@@ -43,11 +43,83 @@ Application::Application(ApplicationConfig config)
 	}
 }
 
-void Application::StartSettlement(const SettlementSite &site)
+void Application::StartSettlement(const Site &site)
 {
+	// The data model supports several sites, but the game currently has one.
+	// Keep the list and the site entry points for later outposts; the player
+	// gets a single settlement.
+	if (!m_sites.empty())
+	{
+		return;
+	}
+	Site founded = site;
+	if (founded.id == kNoSite)
+	{
+		founded.id = m_nextSiteId++;
+	}
+	else
+	{
+		m_nextSiteId = std::max(m_nextSiteId, founded.id + 1);
+	}
+	m_sites.push_back(SiteRuntime{founded, nullptr});
+	EnterSite(founded.id);
+	if (m_planetViewer != nullptr)
+	{
+		m_planetViewer->SetFoundingEnabled(false);
+	}
+}
+
+void Application::EnterSite(SiteId id)
+{
+	const auto found = std::find_if(m_sites.begin(), m_sites.end(),
+	                                [id](const SiteRuntime &runtime) { return runtime.site.id == id; });
+	if (found == m_sites.end())
+	{
+		return;
+	}
+	if (found->game == nullptr)
+	{
+		CreateLocalGame(*found);
+	}
+	if (found->game == nullptr)
+	{
+		return;
+	}
+
+	m_activeSite = id;
+	// A selection from the previous site points into that site's object store.
+	m_worldInteraction = WorldInteractionController{};
+	const GridCell start = found->game->GetStartingCells().worker;
+	const int level = start.y;
+	m_selectedLevel = level;
+	m_chunkViewCenter = start;
+
+	// Look at the middle of the world from the usual distance.
+	Camera3D &camera = m_worldRenderer.GetCamera();
+	const Grid &grid = found->game->GetGrid();
+	camera.target.y = static_cast<float>(level + 1) * grid.GetCellSize();
+	m_cameraController.SetWorldHalfExtents(grid.GetWorldWidth() * 0.5f, grid.GetWorldDepth() * 0.5f);
+	m_cameraController.Reset(camera, 0.0f, 0.0f, m_config.camera.distance);
+
+	m_screen = Screen::Local;
+}
+
+void Application::LeaveSite()
+{
+	m_screen = Screen::Planet;
+}
+
+void Application::CreateLocalGame(SiteRuntime &runtime)
+{
+	if (m_planetViewer == nullptr)
+	{
+		return;
+	}
 	const RegionTerrain &terrain = m_planetViewer->GetRegionTerrain();
-	auto settlement = std::make_shared<const SettlementTerrain>(
-	    terrain, site.grid, site.region.i * LocalGrid::kRegionSizeMeters, site.region.j * LocalGrid::kRegionSizeMeters);
+	const Site &site = runtime.site;
+	auto settlement =
+	    std::make_shared<const SettlementTerrain>(terrain, site.frame, site.region.i * LocalGrid::kRegionSizeMeters,
+		                                          site.region.j * LocalGrid::kRegionSizeMeters);
 
 	// Materials, geology columns and shapes come from the assets shipped next to
 	// the executable.
@@ -69,24 +141,22 @@ void Application::StartSettlement(const SettlementSite &site)
 	auto source = std::make_shared<PlanetTerrainSource>(settlement, gridConfig.width, gridConfig.height,
 	                                                    gridConfig.depth, m_config.settlementAnchorLevel, registry,
 	                                                    geology, flora, m_config.worldSeed);
+	runtime.game = std::make_unique<LocalGame>(
+	    m_content, LocalGameConfig{gridConfig, m_config.worker, m_config.simulationTicksPerSecond}, source);
+}
 
-	m_game.reset();
-	m_game.emplace(m_content, LocalGameConfig{gridConfig, m_config.worker, m_config.simulationTicksPerSecond}, source);
+LocalGame *Application::ActiveGame()
+{
+	const auto found = std::find_if(m_sites.begin(), m_sites.end(),
+	                                [this](const SiteRuntime &runtime) { return runtime.site.id == m_activeSite; });
+	return found != m_sites.end() ? found->game.get() : nullptr;
+}
 
-	const GridCell start = m_game->GetStartingCells().worker;
-	const int level = start.y;
-	m_selectedLevel = level;
-	m_chunkViewCenter = start;
-
-	// Look at the middle of the world from the usual distance.
-	Camera3D &camera = m_worldRenderer.GetCamera();
-	const Grid &grid = m_game->GetGrid();
-	camera.target.y = static_cast<float>(level + 1) * grid.GetCellSize();
-	m_cameraController.SetWorldHalfExtents(grid.GetWorldWidth() * 0.5f, grid.GetWorldDepth() * 0.5f);
-	m_cameraController.Reset(camera, 0.0f, 0.0f, m_config.camera.distance);
-
-	m_planetViewer->SetFoundingEnabled(false);
-	m_screen = Screen::Local;
+const LocalGame *Application::ActiveGame() const
+{
+	const auto found = std::find_if(m_sites.begin(), m_sites.end(),
+	                                [this](const SiteRuntime &runtime) { return runtime.site.id == m_activeSite; });
+	return found != m_sites.end() ? found->game.get() : nullptr;
 }
 
 void Application::StartPlanetLoad()

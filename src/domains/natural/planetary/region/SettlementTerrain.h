@@ -10,14 +10,6 @@
 
 namespace Infinitesia
 {
-// The founded settlement: the grid its world is laid on and the region it was
-// founded in. The world is centred on that region's centre.
-struct SettlementSite
-{
-	LocalGrid grid{};
-	RegionId region{};
-};
-
 // What the surface of a block column is made of.
 enum class SurfaceKind : std::uint8_t
 {
@@ -69,6 +61,9 @@ public:
 
 	SettlementTerrain(const RegionTerrain &terrain, const LocalGrid &grid, double originEastMeters,
 	                  double originNorthMeters);
+	// The same terrain around a site whose flat frame is already known.
+	SettlementTerrain(const RegionTerrain &terrain, const LocalFrame &frame, double geologyOriginEastMeters,
+	                  double geologyOriginNorthMeters);
 
 	const LocalGrid &GetGrid() const noexcept
 	{

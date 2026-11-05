@@ -463,6 +463,28 @@ TEST_CASE("SettlementTerrainColumnsAreStableAndContinuous")
 	}
 }
 
+TEST_CASE("SettlementTerrainAcceptsAPrecomputedFrame")
+{
+	const RegionGenerator generator(SharedMap());
+	const LocalGrid grid = generator.MakeGrid(Place(20.0, 200.0));
+	const double originEast = 2.0 * LocalGrid::kRegionSizeMeters;
+	const double originNorth = -1.0 * LocalGrid::kRegionSizeMeters;
+
+	const SettlementTerrain fromGrid(generator.GetTerrain(), grid, originEast, originNorth);
+	const LocalFrame frame =
+	    LocalFrame::At(PlanetaryCoordinates::ToGeographic(grid.Direction(originEast, originNorth)));
+	const SettlementTerrain fromFrame(generator.GetTerrain(), frame, originEast, originNorth);
+
+	for (const auto [east, north] : {std::pair{0, 0}, std::pair{-37, 18}, std::pair{64, -52}})
+	{
+		const SurfaceColumn a = fromGrid.Column(east, north);
+		const SurfaceColumn b = fromFrame.Column(east, north);
+		Require(a.heightBlocks == b.heightBlocks && a.kind == b.kind && a.province == b.province &&
+		            a.fluid == b.fluid && a.elevationMeters == b.elevationMeters,
+		        "The precomputed frame and the grid origin disagree.");
+	}
+}
+
 TEST_CASE("SettlementTerrainFindsTheSea")
 {
 	const RegionGenerator generator(SharedMap());

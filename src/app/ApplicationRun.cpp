@@ -98,9 +98,12 @@ void Application::Run()
 		while (!WindowShouldClose() && !m_exitRequested)
 		{
 			m_time.Advance(GetFrameTime());
-			if (m_screen == Screen::Local && m_game.has_value())
+			if (m_screen == Screen::Local)
 			{
-				m_game->AdvanceFrame(m_time.GetDeltaTime());
+				if (LocalGame *game = ActiveGame())
+				{
+					game->AdvanceFrame(m_time.GetDeltaTime());
+				}
 			}
 			Update();
 			Render();

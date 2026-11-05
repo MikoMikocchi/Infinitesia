@@ -23,7 +23,12 @@ void Application::Render()
 
 void Application::RenderLocal()
 {
-	LocalGame &game = *m_game;
+	LocalGame *active = ActiveGame();
+	if (active == nullptr)
+	{
+		return;
+	}
+	LocalGame &game = *active;
 	WorldPosition pathOrigin{};
 	std::vector<GridCell> debugPath;
 	const std::optional<WorldObjectId> selectedObjectId = m_worldInteraction.GetSelectedObject();
@@ -53,7 +58,12 @@ void Application::RenderLocal()
 
 void Application::DrawDebugOverlay()
 {
-	const LocalGame &game = *m_game;
+	const LocalGame *active = ActiveGame();
+	if (active == nullptr)
+	{
+		return;
+	}
+	const LocalGame &game = *active;
 	const ObjectKindDef *selectedObjectKind = nullptr;
 	std::optional<WorkerActivity> workerActivity;
 	float workProgress = 0.0f;

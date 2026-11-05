@@ -3,6 +3,7 @@
 #include <future>
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include "app/ApplicationConfig.h"
 #include "core/LoadProgress.h"
@@ -10,6 +11,7 @@
 #include "core/Time.h"
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
+#include "domains/natural/planetary/region/Site.h"
 #include "gameplay/LocalGame.h"
 #include "gameplay/content/GameContent.h"
 #include "matter/MatterCatalog.h"
@@ -22,6 +24,14 @@
 
 namespace Infinitesia
 {
+// A site and its loaded local game. Only one game is active at a time, but the
+// others stay alive so their chunks and changes survive a visit elsewhere.
+struct SiteRuntime
+{
+	Site site;
+	std::unique_ptr<LocalGame> game;
+};
+
 class Application
 {
 public:
@@ -41,7 +51,13 @@ private:
 	void FocusCamera();
 	void Render();
 	void RenderLocal();
-	void StartSettlement(const SettlementSite &site);
+	// Adds a site and enters it.
+	void StartSettlement(const Site &site);
+	void EnterSite(SiteId id);
+	void LeaveSite();
+	void CreateLocalGame(SiteRuntime &runtime);
+	LocalGame *ActiveGame();
+	const LocalGame *ActiveGame() const;
 	void UpdateDevHooks();
 	void DrawDebugOverlay();
 	void StartPlanetLoad();
@@ -50,8 +66,10 @@ private:
 
 	ApplicationConfig m_config;
 	std::shared_ptr<const GameContent> m_content;
-	// The founded settlement; empty until the player founds one.
-	std::optional<LocalGame> m_game;
+	// Every site the player has founded, and which one is being played.
+	std::vector<SiteRuntime> m_sites;
+	SiteId m_activeSite = kNoSite;
+	SiteId m_nextSiteId = 1;
 	TextureAssetManager m_textureAssets;
 	WorldRenderer m_worldRenderer;
 	CameraController m_cameraController;
