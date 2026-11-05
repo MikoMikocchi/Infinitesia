@@ -117,9 +117,10 @@ void Application::CreateLocalGame(SiteRuntime &runtime)
 	}
 	const WorldTerrain &terrain = m_planetViewer->GetRegionTerrain();
 	const Site &site = runtime.site;
-	auto settlement =
-	    std::make_shared<const SettlementTerrain>(terrain, site.frame, site.region.i * LocalGrid::kRegionSizeMeters,
-		                                          site.region.j * LocalGrid::kRegionSizeMeters);
+	double geologyEast = 0.0;
+	double geologyNorth = 0.0;
+	site.grid.Project(PlanetaryCoordinates::ToCartesian(site.center), geologyEast, geologyNorth);
+	auto settlement = std::make_shared<const SettlementTerrain>(terrain, site.frame, geologyEast, geologyNorth);
 
 	// Materials, geology columns and shapes come from the assets shipped next to
 	// the executable.

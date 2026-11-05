@@ -49,6 +49,8 @@ private:
 	void WriteCellColors(Color *out, int row, int column, bool selected) const;
 	void EnterRegionMode();
 	void TryFoundSettlement();
+	// A dry point inside (or very near) the tile, preferably close to water.
+	std::optional<GeographicCoordinates> FindDrySite(const LocalGrid &grid, RegionId tile) const;
 	void FocusRegionOnSelectedCell();
 	void SyncSelectionToRegion();
 

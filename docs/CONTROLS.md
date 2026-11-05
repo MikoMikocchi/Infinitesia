@@ -25,7 +25,7 @@ Planet, world and region map:
 | R | World Map → region map of the focused tile; region map → World Map |
 | WASD / arrows | Region map: move the focus one tile at a time |
 | Mouse wheel | Region map: switch between 3 × 3, 5 × 5, 9 × 9 and 17 × 17 tiles |
-| Enter | Found the settlement in the focused region (dry land only) |
+| Enter | Found the settlement on the nearest dry bank inside the focused tile (ocean/all-water tiles are rejected) |
 | M | Return to the settlement |
 | Backspace | World Map → surface map; region map → World Map |
 

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -236,6 +237,74 @@ void PlanetViewer::FocusRegionOnSelectedCell()
 	    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
 }
 
+std::optional<GeographicCoordinates> PlanetViewer::FindDrySite(const LocalGrid &grid, RegionId tile) const
+{
+	const WorldTerrain &terrain = m_regionMap.GetTerrain();
+	constexpr double kStepMeters = 24.0;
+	constexpr int kHalfSteps = 8; // +/- 192 m, inside the 768 m tile
+	const double centerEast = static_cast<double>(tile.i) * kRegionTileSizeMeters;
+	const double centerNorth = static_cast<double>(tile.j) * kRegionTileSizeMeters;
+
+	const auto wetAt = [&](const GeographicCoordinates &position) {
+		const double elevation = terrain.ElevationMeters(position, 16.0);
+		const LocalWater water = terrain.WaterAt(position, 16.0);
+		if (water.origin == FluidOrigin::Sea || water.origin == FluidOrigin::River)
+		{
+			return true;
+		}
+		if (water.origin == FluidOrigin::Lake)
+		{
+			return elevation < water.surfaceMeters;
+		}
+		return false;
+	};
+
+	static constexpr int kDx[8] = {1, -1, 0, 0, 1, 1, -1, -1};
+	static constexpr int kDz[8] = {0, 0, 1, -1, 1, -1, 1, -1};
+	std::optional<GeographicCoordinates> best;
+	double bestScore = std::numeric_limits<double>::infinity();
+	for (int northStep = -kHalfSteps; northStep <= kHalfSteps; ++northStep)
+	{
+		for (int eastStep = -kHalfSteps; eastStep <= kHalfSteps; ++eastStep)
+		{
+			const double east = centerEast + static_cast<double>(eastStep) * kStepMeters;
+			const double north = centerNorth + static_cast<double>(northStep) * kStepMeters;
+			const GeographicCoordinates candidate = PlanetaryCoordinates::ToGeographic(grid.Direction(east, north));
+			if (terrain.ElevationMeters(candidate, 16.0) <= 0.0 || wetAt(candidate))
+			{
+				continue;
+			}
+
+			// Prefer a dry point with water close by: a river bank or a lake shore.
+			double nearestWater = std::numeric_limits<double>::infinity();
+			for (int direction = 0; direction < 8 && nearestWater > kStepMeters; ++direction)
+			{
+				for (int radius = 1; radius <= 6 && nearestWater > kStepMeters; ++radius)
+				{
+					const double sampleEast = east + static_cast<double>(kDx[direction] * radius) * kStepMeters;
+					const double sampleNorth = north + static_cast<double>(kDz[direction] * radius) * kStepMeters;
+					const GeographicCoordinates sample =
+					    PlanetaryCoordinates::ToGeographic(grid.Direction(sampleEast, sampleNorth));
+					if (wetAt(sample))
+					{
+						nearestWater = static_cast<double>(radius) * kStepMeters;
+					}
+				}
+			}
+
+			const double distanceToCenter = std::hypot(static_cast<double>(eastStep), static_cast<double>(northStep));
+			const double score =
+			    nearestWater < std::numeric_limits<double>::infinity() ? nearestWater : 100000.0 + distanceToCenter;
+			if (score < bestScore)
+			{
+				bestScore = score;
+				best = candidate;
+			}
+		}
+	}
+	return best;
+}
+
 std::optional<Site> PlanetViewer::TakeFoundedSite()
 {
 	std::optional<Site> site;
@@ -247,14 +316,10 @@ void PlanetViewer::TryFoundSettlement()
 {
 	const LocalGrid &grid = m_regionMap.GetGrid();
 	const RegionId focus = m_regionMap.GetFocus();
-	const GeographicCoordinates center = m_regionMap.GetFocusCenter();
-	const double elevation = m_regionMap.GetTerrain().ElevationMeters(center, SettlementTerrain::kMinWavelengthMeters);
-	const LocalWater water = m_regionMap.GetTerrain().WaterAt(center, SettlementTerrain::kMinWavelengthMeters);
-	const bool inWater = elevation < 0.0 || water.origin == FluidOrigin::Sea || water.origin == FluidOrigin::River ||
-	                     (water.origin == FluidOrigin::Lake && elevation < water.surfaceMeters);
-	if (inWater)
+	const std::optional<GeographicCoordinates> dry = FindDrySite(grid, focus);
+	if (!dry.has_value())
 	{
-		m_notice = "Cannot found a settlement in water - pick a dry land tile.";
+		m_notice = "No dry land in this tile - pick another region.";
 		m_noticeSeconds = 4.0f;
 		return;
 	}
@@ -263,7 +328,7 @@ void PlanetViewer::TryFoundSettlement()
 	site.kind = SiteKind::Settlement;
 	site.grid = grid;
 	site.region = focus;
-	site.center = m_regionMap.GetFocusCenter();
+	site.center = *dry;
 	site.frame = LocalFrame::At(site.center);
 	m_foundedSite = site;
 }
