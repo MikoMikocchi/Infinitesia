@@ -336,6 +336,7 @@ PlanetFieldSample RegionTerrain::SampleAt(const GeographicCoordinates &position)
 
 	PlanetFieldSample sample;
 	sample.elevationMeters = std::clamp(elevationNormalized, -1.0, 1.0) * kMaxElevationKm * 1000.0;
+	sample.baseElevationMeters = sample.elevationMeters;
 	sample.roughness = std::clamp(roughness, 0.0, 1.0);
 	sample.nearestLatitudeIndex = nearestLatitude;
 	sample.nearestLongitudeIndex = nearestLongitude;
@@ -365,7 +366,7 @@ double RegionTerrain::ElevationMeters(const GeographicCoordinates &position, con
 	// contour would leave a visible cliff along it.
 	const double seaFloorAmplitude = 20.0 + 150.0 * roughness;
 	const double landAmplitude = 60.0 + 1400.0 * roughness * std::sqrt(roughness);
-	const double t = std::clamp(planet.elevationMeters / (2.0 * kCoastBlendMeters) + 0.5, 0.0, 1.0);
+	const double t = std::clamp(planet.baseElevationMeters / (2.0 * kCoastBlendMeters) + 0.5, 0.0, 1.0);
 	const double land = t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
 	const double detailAmplitude = seaFloorAmplitude + (landAmplitude - seaFloorAmplitude) * land;
 	const double ridgeMix = land * std::clamp(roughness * 1.5, 0.0, 1.0);

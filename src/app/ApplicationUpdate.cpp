@@ -64,7 +64,7 @@ void Application::UpdateDevHooks()
 	if (found != nullptr && m_planetViewer && m_sites.empty() &&
 	    std::sscanf(found, "%lf,%lf", &latitude, &longitude) == 2)
 	{
-		const RegionTerrain &terrain = m_planetViewer->GetRegionTerrain();
+		const WorldTerrain &terrain = m_planetViewer->GetRegionTerrain();
 		const double radius = terrain.GetPlanetMap().GetPlanet().GetRadius();
 		Site site;
 		site.kind = SiteKind::Settlement;

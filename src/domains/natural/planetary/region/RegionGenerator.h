@@ -4,10 +4,11 @@
 #include <list>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 
 #include "domains/natural/planetary/region/LocalGrid.h"
 #include "domains/natural/planetary/region/RegionData.h"
-#include "domains/natural/planetary/region/RegionTerrain.h"
+#include "domains/natural/planetary/region/WorldTerrain.h"
 
 namespace Infinitesia
 {
@@ -15,11 +16,15 @@ namespace Infinitesia
 class RegionGenerator
 {
 public:
-	explicit RegionGenerator(const PlanetMap &map);
+	explicit RegionGenerator(const PlanetMap &map, std::shared_ptr<const WorldMap> world = nullptr);
 
-	const RegionTerrain &GetTerrain() const noexcept
+	const WorldTerrain &GetTerrain() const noexcept
 	{
 		return m_terrain;
+	}
+	void SetWorld(std::shared_ptr<const WorldMap> world) noexcept
+	{
+		m_terrain.SetWorld(std::move(world));
 	}
 	double PlanetRadiusMeters() const noexcept
 	{
@@ -39,7 +44,7 @@ public:
 
 private:
 	double m_radiusMeters;
-	RegionTerrain m_terrain;
+	WorldTerrain m_terrain;
 };
 
 // Small LRU cache so panning across a region map does not regenerate tiles.

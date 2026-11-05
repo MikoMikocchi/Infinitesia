@@ -7,7 +7,8 @@
 
 namespace Infinitesia
 {
-RegionGenerator::RegionGenerator(const PlanetMap &map) : m_radiusMeters(map.GetPlanet().GetRadius()), m_terrain(map)
+RegionGenerator::RegionGenerator(const PlanetMap &map, std::shared_ptr<const WorldMap> world)
+    : m_radiusMeters(map.GetPlanet().GetRadius()), m_terrain(map, std::move(world))
 {
 }
 

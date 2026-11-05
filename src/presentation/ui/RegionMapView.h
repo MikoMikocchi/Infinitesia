@@ -36,7 +36,7 @@ public:
 	{
 		return m_grid;
 	}
-	const RegionTerrain &GetTerrain() const noexcept
+	const WorldTerrain &GetTerrain() const noexcept
 	{
 		return m_generator.GetTerrain();
 	}
@@ -82,6 +82,7 @@ private:
 	                   RegionId focus);
 	bool PatchPoint(Vector2 mouse, Rectangle bounds, int &x, int &y) const;
 
+	std::shared_ptr<const WorldMap> m_worldMap;
 	RegionGenerator m_generator;
 	ColorFunction m_color;
 

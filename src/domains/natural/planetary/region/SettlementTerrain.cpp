@@ -20,14 +20,14 @@ LocalFrame FrameAtOrigin(const LocalGrid &grid, double originEastMeters, double 
 }
 } // namespace
 
-SettlementTerrain::SettlementTerrain(const RegionTerrain &terrain, const LocalGrid &grid, double originEastMeters,
+SettlementTerrain::SettlementTerrain(const WorldTerrain &terrain, const LocalGrid &grid, double originEastMeters,
                                      double originNorthMeters)
     : SettlementTerrain(terrain, FrameAtOrigin(grid, originEastMeters, originNorthMeters), originEastMeters,
 	                    originNorthMeters)
 {
 }
 
-SettlementTerrain::SettlementTerrain(const RegionTerrain &terrain, const LocalFrame &frame,
+SettlementTerrain::SettlementTerrain(const WorldTerrain &terrain, const LocalFrame &frame,
                                      double geologyOriginEastMeters, double geologyOriginNorthMeters)
     : m_terrain(terrain), m_frame(frame), m_originEastMeters(geologyOriginEastMeters),
       m_originNorthMeters(geologyOriginNorthMeters)

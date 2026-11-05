@@ -252,3 +252,23 @@ TEST_CASE("WorldHydrologyFillsBasinsAndRoutesRiversDownhill")
 	CHECK(slope[WorldMap::Index({kRegionTilesPerWorldHalfSide, 0})].riverDischarge >
 	      slope[WorldMap::Index({-kRegionTilesPerWorldHalfSide, 0})].riverDischarge);
 }
+
+TEST_CASE("WorldMapBlendsTileBordersInsteadOfStepping")
+{
+	const LocalGrid grid(6371000.0, PlanetaryCoordinates::ToCartesian({0.0, 0.0}));
+	std::vector<RegionTile> tiles(66049);
+	tiles[WorldMap::Index({0, 0})].elevationMeters = 0.0f;
+	tiles[WorldMap::Index({1, 0})].elevationMeters = 100.0f;
+	const WorldMap world(grid, std::move(tiles));
+
+	const auto west = world.SampleAt(grid.Direction(kRegionTileSizeMeters * 0.49, 0.0));
+	const auto middle = world.SampleAt(grid.Direction(kRegionTileSizeMeters * 0.5, 0.0));
+	const auto east = world.SampleAt(grid.Direction(kRegionTileSizeMeters * 0.51, 0.0));
+
+	REQUIRE(west.has_value());
+	REQUIRE(middle.has_value());
+	REQUIRE(east.has_value());
+	CHECK(middle->elevationMeters == doctest::Approx(50.0).epsilon(0.01));
+	CHECK(east->elevationMeters > west->elevationMeters);
+	CHECK(east->elevationMeters - west->elevationMeters < 5.0);
+}

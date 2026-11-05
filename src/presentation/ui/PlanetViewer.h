@@ -9,6 +9,7 @@
 #include "domains/natural/planetary/StarSystem.h"
 #include "domains/natural/planetary/pipeline/PlanetPipeline.h"
 #include "domains/natural/planetary/region/Site.h"
+#include "domains/natural/planetary/region/WorldTerrain.h"
 #include "presentation/ui/RegionMapView.h"
 #include "presentation/ui/UniqueTexture.h"
 #include "raylib.h"
@@ -33,7 +34,7 @@ public:
 	{
 		m_foundingEnabled = enabled;
 	}
-	const RegionTerrain &GetRegionTerrain() const noexcept
+	const WorldTerrain &GetRegionTerrain() const noexcept
 	{
 		return m_regionMap.GetTerrain();
 	}

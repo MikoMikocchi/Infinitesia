@@ -14,8 +14,13 @@ namespace Infinitesia
 // instead of copied from the nearest 55 km cell.
 struct PlanetFieldSample
 {
-	double elevationMeters = 0.0; // coarse, interpolated over the planet cells
-	double roughness = 0.0;       // 0..1, from planet-cell slope
+	// The elevation the sample is centred on. On the planet it is the coarse
+	// interpolated field; a world-tile overlay replaces it with the tile
+	// elevation while `baseElevationMeters` keeps the planet field that drives
+	// the detail amplitude and the coast blend.
+	double elevationMeters = 0.0;
+	double baseElevationMeters = 0.0;
+	double roughness = 0.0; // 0..1, from planet-cell slope
 	int nearestLatitudeIndex = 0;
 	int nearestLongitudeIndex = 0;
 	PlanetSurface surface;

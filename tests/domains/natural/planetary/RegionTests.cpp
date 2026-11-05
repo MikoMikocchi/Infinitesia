@@ -206,6 +206,58 @@ TEST_CASE("RegionGenerationIsDeterministic")
 	        "Region lattice has the wrong size.");
 }
 
+TEST_CASE("WorldMapDrivesTheLocalTerrainInsideItsWindow")
+{
+	const PlanetMap &planet = SharedMap();
+	const LocalGrid grid(kRadius, Place(35.0, 80.0));
+	const RegionId region{2, -1};
+
+	std::vector<RegionTile> tiles(static_cast<std::size_t>(kRegionTilesPerWorldSide) *
+	                              static_cast<std::size_t>(kRegionTilesPerWorldSide));
+	RegionTile &tile = tiles[WorldMap::Index({region.i, region.j})];
+	tile.elevationMeters = 1234.0f;
+	tile.temperatureCelsius = -10.0f;
+	tile.precipitationMm = 300.0f;
+	tile.drySeasonMonths = 0.0f;
+	tile.soilFertility = 0.4f;
+	tile.biome = Biome::Tundra;
+	tile.flags = 0;
+
+	const auto world = std::make_shared<const WorldMap>(grid, std::move(tiles));
+	const RegionGenerator generator(planet, world);
+	const GeographicCoordinates center = grid.Center(region);
+
+	const PlanetFieldSample sample = generator.GetTerrain().SampleAt(center);
+	Require(sample.elevationMeters == doctest::Approx(1234.0), "The world tile did not replace the base elevation.");
+	Require(sample.surface.temperatureCelsius == doctest::Approx(-10.0),
+	        "The world tile did not replace the temperature.");
+	Require(sample.surface.precipitationMm == doctest::Approx(300.0),
+	        "The world tile did not replace the precipitation.");
+
+	const RegionData data = generator.Generate(grid, region);
+	double mean = 0.0;
+	for (const float elevation : data.elevationMeters)
+	{
+		mean += elevation;
+	}
+	mean /= static_cast<double>(data.elevationMeters.size());
+	Require(std::abs(mean - 1234.0) < 2000.0, "The local region ignored the world tile's base elevation.");
+
+	const SettlementTerrain settlement(generator.GetTerrain(), grid, region.i * LocalGrid::kRegionSizeMeters,
+	                                   region.j * LocalGrid::kRegionSizeMeters);
+	const SurfaceColumn column = settlement.Column(0, 0);
+	Require(std::abs(column.temperatureCelsius + 10.0) < 5.0,
+	        "SettlementTerrain did not use the world tile's temperature.");
+	Require(std::abs(column.elevationMeters - 1234.0) < 2000.0,
+	        "SettlementTerrain did not use the world tile's base elevation.");
+
+	// Outside the 257 x 257 window the planet field is still the fallback.
+	const RegionId outside{300, 0};
+	const PlanetFieldSample fallback = generator.GetTerrain().SampleAt(grid.Center(outside));
+	Require(fallback.surface.temperatureCelsius != doctest::Approx(-10.0),
+	        "A region outside the world window borrowed the world tile.");
+}
+
 TEST_CASE("NeighbouringRegionsShareBorderElevationOnAllSides")
 {
 	const RegionGenerator generator(SharedMap());
@@ -246,7 +298,7 @@ TEST_CASE("PolesAreAnchorableAndGenerateFiniteTerrain")
 TEST_CASE("RegionElevationTracksThePlanetField")
 {
 	const RegionGenerator generator(SharedMap());
-	const RegionTerrain &terrain = generator.GetTerrain();
+	const WorldTerrain &terrain = generator.GetTerrain();
 
 	// Averaged over a region, detail must not drift far from the coarse field.
 	for (const GeographicCoordinates place : {GeographicCoordinates{10.0, 20.0}, {-40.0, 300.0}, {65.0, 100.0}})
@@ -268,7 +320,7 @@ TEST_CASE("RegionElevationTracksThePlanetField")
 TEST_CASE("FinerWavelengthOnlyAddsDetail")
 {
 	const RegionGenerator generator(SharedMap());
-	const RegionTerrain &terrain = generator.GetTerrain();
+	const WorldTerrain &terrain = generator.GetTerrain();
 	const CartesianPoint3D direction = Place(30.0, 45.0);
 	const double coarse = terrain.ElevationMeters(direction, 256.0);
 	const double fine = terrain.ElevationMeters(direction, 1.0);
@@ -280,7 +332,7 @@ TEST_CASE("FinerWavelengthOnlyAddsDetail")
 TEST_CASE("PlanetFieldsAreContinuousAcrossCellBorders")
 {
 	const RegionGenerator generator(SharedMap());
-	const RegionTerrain &terrain = generator.GetTerrain();
+	const WorldTerrain &terrain = generator.GetTerrain();
 	const PlanetMap &map = SharedMap();
 	const int latitudeBands = map.GetLatitudeBandCount();
 	const int longitudeSegments = map.GetLongitudeSegmentCount();
@@ -314,7 +366,7 @@ TEST_CASE("PlanetFieldsAreContinuousAcrossCellBorders")
 TEST_CASE("ProvinceContactIsContinuousAcrossCellBorders")
 {
 	const RegionGenerator generator(SharedMap());
-	const RegionTerrain &terrain = generator.GetTerrain();
+	const WorldTerrain &terrain = generator.GetTerrain();
 	const PlanetMap &map = SharedMap();
 	const int latitudeBands = map.GetLatitudeBandCount();
 	const int longitudeSegments = map.GetLongitudeSegmentCount();
@@ -349,7 +401,7 @@ TEST_CASE("ProvinceContactIsContinuousAcrossCellBorders")
 TEST_CASE("ProvinceContactMixesTheTwoRockPiles")
 {
 	const RegionGenerator generator(SharedMap());
-	const RegionTerrain &terrain = generator.GetTerrain();
+	const WorldTerrain &terrain = generator.GetTerrain();
 	const PlanetMap &map = SharedMap();
 	const int latitudeBands = map.GetLatitudeBandCount();
 	const int longitudeSegments = map.GetLongitudeSegmentCount();
@@ -396,7 +448,7 @@ TEST_CASE("ProvinceContactMixesTheTwoRockPiles")
 TEST_CASE("TerrainHasNoCliffWhereTheCoarseFieldCrossesSeaLevel")
 {
 	const RegionGenerator generator(SharedMap());
-	const RegionTerrain &terrain = generator.GetTerrain();
+	const WorldTerrain &terrain = generator.GetTerrain();
 
 	// Walk along a parallel in coarse steps until the planet field changes sign.
 	int crossings = 0;

@@ -115,7 +115,7 @@ void Application::CreateLocalGame(SiteRuntime &runtime)
 	{
 		return;
 	}
-	const RegionTerrain &terrain = m_planetViewer->GetRegionTerrain();
+	const WorldTerrain &terrain = m_planetViewer->GetRegionTerrain();
 	const Site &site = runtime.site;
 	auto settlement =
 	    std::make_shared<const SettlementTerrain>(terrain, site.frame, site.region.i * LocalGrid::kRegionSizeMeters,

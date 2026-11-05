@@ -5,6 +5,8 @@
 #include <cmath>
 #include <utility>
 
+#include "domains/natural/planetary/world/WorldGenerator.h"
+
 namespace Infinitesia
 {
 namespace
@@ -27,7 +29,9 @@ bool IsAquatic(Biome biome)
 }
 } // namespace
 
-RegionMapView::RegionMapView(const PlanetMap &map, ColorFunction color) : m_generator(map), m_color(std::move(color))
+RegionMapView::RegionMapView(const PlanetMap &map, ColorFunction color)
+    : m_worldMap(std::make_shared<const WorldMap>(WorldGenerator(map).Generate(GeographicCoordinates{0.0, 0.0}))),
+      m_generator(map, m_worldMap), m_color(std::move(color))
 {
 	m_grid = m_generator.MakeGrid(PlanetaryCoordinates::ToCartesian({0.0, 0.0}));
 }
@@ -43,6 +47,15 @@ RegionMapView::~RegionMapView()
 
 void RegionMapView::Anchor(CartesianPoint3D direction)
 {
+	// The worker reads the generator and its world map; let it finish before the
+	// map is replaced.
+	if (m_pending.valid())
+	{
+		m_pending.wait();
+	}
+	m_worldMap =
+	    std::make_shared<const WorldMap>(WorldGenerator(m_generator.GetTerrain().GetPlanetMap()).Generate(direction));
+	m_generator.SetWorld(m_worldMap);
 	m_grid = m_generator.MakeGrid(direction);
 	++m_gridVersion;
 	m_focus = RegionId{};
@@ -290,7 +303,7 @@ void RegionMapView::Draw(Rectangle bounds) const
 	{
 		for (int i = -reach; i <= reach; ++i)
 		{
-			outline({middle.i + i, middle.j + j}, 1.0f, Fade(RAYWHITE, 0.2f));
+			outline({middle.i + i, middle.j + j}, 1.0f, Fade(RAYWHITE, 0.12f));
 		}
 	}
 	outline(middle, 2.0f, kFocusColor);

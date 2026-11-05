@@ -6,7 +6,7 @@
 #include "domains/natural/planetary/region/FluidOrigin.h"
 #include "domains/natural/planetary/region/LocalFrame.h"
 #include "domains/natural/planetary/region/LocalGrid.h"
-#include "domains/natural/planetary/region/RegionTerrain.h"
+#include "domains/natural/planetary/region/WorldTerrain.h"
 
 namespace Infinitesia
 {
@@ -63,10 +63,10 @@ public:
 	// Detail finer than this is not worth a block (heights are whole metres).
 	static constexpr double kMinWavelengthMeters = 2.0;
 
-	SettlementTerrain(const RegionTerrain &terrain, const LocalGrid &grid, double originEastMeters,
+	SettlementTerrain(const WorldTerrain &terrain, const LocalGrid &grid, double originEastMeters,
 	                  double originNorthMeters);
 	// The same terrain around a site whose flat frame is already known.
-	SettlementTerrain(const RegionTerrain &terrain, const LocalFrame &frame, double geologyOriginEastMeters,
+	SettlementTerrain(const WorldTerrain &terrain, const LocalFrame &frame, double geologyOriginEastMeters,
 	                  double geologyOriginNorthMeters);
 
 	const LocalGrid &GetGrid() const noexcept
@@ -108,7 +108,7 @@ public:
 	static SurfaceKind ClassifySurface(Biome biome, double elevationMeters) noexcept;
 
 private:
-	const RegionTerrain &m_terrain;
+	WorldTerrain m_terrain;
 	LocalGrid m_grid;
 	// Flat frame at the grid anchor; the terrain is sampled through it instead
 	// of a tangent plane and gnomonic projection.

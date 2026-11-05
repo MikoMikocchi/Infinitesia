@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -151,6 +152,15 @@ public:
 	{
 		return At({i, j});
 	}
+
+	// nullptr outside the world window.
+	const RegionTile *Find(RegionId id) const noexcept;
+	const RegionTile *Find(CartesianPoint3D direction) const noexcept;
+
+	// Bilinear (smoothstep) sample of the tile summary at a point. The
+	// continuous fields are blended; biome, province and flags come from the
+	// nearest tile. Empty outside the world window.
+	std::optional<RegionTile> SampleAt(CartesianPoint3D direction) const noexcept;
 	std::span<const RegionTile> Tiles() const noexcept
 	{
 		return m_tiles;
