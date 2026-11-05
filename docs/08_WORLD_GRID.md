@@ -97,7 +97,10 @@ struct RegionTile
    поднимают её на наветренных склонах и оставляют дождевую тень за хребтом;
 6. выставить флаги `Ocean` и `Lake`.
 
-Затем `WorldHydrology` (`world/WorldHydrology.{h,cpp}`) считает локальную воду
+Вода и климат считаются в два прохода: сначала `WorldHydrology` даёт локальные
+озёра и реки, затем `WorldClimate` видит эти водоёмы и меняет температуру и
+осадки, после чего `WorldHydrology` пересчитывает воду уже по локальным осадкам.
+`WorldHydrology` (`world/WorldHydrology.{h,cpp}`) считает локальную воду
 на 257 × 257:
 
 1. priority-flood заполняет замкнутые впадины до уровня перелива;
@@ -127,7 +130,9 @@ tiles смешиваются bilinear/smoothstep (`WorldMap::SampleAt`), поэ�
 поэтому река лежит в настоящей ложбине с берегами, а не поверх земли.
 `PlanetTerrainSource::FluidAt` переносит это в `FluidColumn`, а `FluidField`
 инициализирует клетки водой с `FluidOrigin::River`/`Lake`/`Sea` и направлением
-потока.
+потока. `RegionMapView` тоже запрашивает `WaterAt` для каждого пикселя карты,
+поэтому реки и озёра видны на карте региона как вода, а не только как
+врезанные ложбины.
 
 ```cpp
 PlanetMap planet(parameters);

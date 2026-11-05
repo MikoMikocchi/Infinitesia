@@ -59,7 +59,9 @@ std::optional<RegionTile> WorldMap::SampleAt(CartesianPoint3D direction) const n
 	m_grid.Project(direction, eastMeters, northMeters);
 	const double tileX = eastMeters / kRegionTileSizeMeters;
 	const double tileY = northMeters / kRegionTileSizeMeters;
-	if (tileX < -kHalfSide || tileX > kHalfSide || tileY < -kHalfSide || tileY > kHalfSide)
+	// Match Locate: a point may lie in the outer half of the edge tiles.
+	constexpr double kEdge = static_cast<double>(kHalfSide) + 0.5;
+	if (tileX < -kEdge || tileX > kEdge || tileY < -kEdge || tileY > kEdge)
 	{
 		return std::nullopt;
 	}

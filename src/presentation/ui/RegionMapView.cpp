@@ -144,6 +144,17 @@ RegionMapView::Built RegionMapView::Build(const RegionGenerator &generator, cons
 				base = color(cell, elevation);
 			}
 
+			const LocalWater water = generator.GetTerrain().WaterAt(
+			    PlanetaryCoordinates::ToGeographic(patch.Direction(x, y)), cellSize * 2.0);
+			if (water.origin == FluidOrigin::Lake || water.origin == FluidOrigin::River)
+			{
+				if (elevation < static_cast<float>(water.surfaceMeters))
+				{
+					isWater = true;
+					waterDepth = static_cast<float>(water.surfaceMeters) - elevation;
+				}
+			}
+
 			const float slopeX = (height(x + 1, y) - height(x - 1, y)) / static_cast<float>(2.0 * cellSize);
 			const float slopeY = (height(x, y + 1) - height(x, y - 1)) / static_cast<float>(2.0 * cellSize);
 			const float nx = -slopeX * kReliefExaggeration;

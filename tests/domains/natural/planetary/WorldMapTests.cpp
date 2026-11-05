@@ -76,7 +76,7 @@ GeographicCoordinates FindWorldAnchor(const PlanetMap &planet)
 	return best;
 }
 
-	bool SameTile(const RegionTile &first, const RegionTile &second)
+bool SameTile(const RegionTile &first, const RegionTile &second)
 {
 	return first.elevationMeters == second.elevationMeters && first.temperatureCelsius == second.temperatureCelsius &&
 	       first.precipitationMm == second.precipitationMm && first.drySeasonMonths == second.drySeasonMonths &&
@@ -310,7 +310,7 @@ TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
 		}
 		++channels;
 		CHECK(tile.river.widthMeters >= 3.0f);
-		CHECK(tile.river.depthMeters > 0.0f);
+		CHECK(tile.river.depthMeters >= 1.0f);
 		CHECK_GE(tile.river.fromX, 0.0f);
 		CHECK_LE(tile.river.fromX, 1.0f);
 		CHECK_GE(tile.river.fromY, 0.0f);

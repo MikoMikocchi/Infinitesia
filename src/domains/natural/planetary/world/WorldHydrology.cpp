@@ -30,7 +30,7 @@ float RiverWidthMeters(float catchmentKm2) noexcept
 
 float RiverDepthMeters(float widthMeters) noexcept
 {
-	return std::clamp(0.4f + 0.05f * widthMeters, 0.75f, 5.0f);
+	return std::clamp(0.4f + 0.05f * widthMeters, 1.25f, 5.0f);
 }
 
 struct FloodNode

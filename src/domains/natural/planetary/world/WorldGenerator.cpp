@@ -77,10 +77,10 @@ void ReclassifyBiomes(std::vector<RegionTile> &tiles, std::vector<PlanetSurface>
 
 		const double potentialEvapotranspiration =
 		    GenerationDetail::AnnualEvapotranspirationMm(tile.temperatureCelsius);
-		surface.soilMoisture = std::clamp(
-		    static_cast<double>(tile.precipitationMm) /
-		        (static_cast<double>(tile.precipitationMm) + potentialEvapotranspiration + 1.0),
-		    0.0, 1.0);
+		surface.soilMoisture =
+		    std::clamp(static_cast<double>(tile.precipitationMm) /
+			               (static_cast<double>(tile.precipitationMm) + potentialEvapotranspiration + 1.0),
+			           0.0, 1.0);
 		surface.snowDays = LocalSnowDays(tile.temperatureCelsius, tile.precipitationMm);
 
 		// The local drainage network replaces the coarse planet accumulation,
@@ -101,8 +101,8 @@ WorldGenerator::WorldGenerator(const PlanetMap &map) noexcept
 WorldMap WorldGenerator::Generate(CartesianPoint3D anchorDirection) const
 {
 	LocalGrid grid(m_radiusMeters, anchorDirection);
-	const std::size_t tileCount = static_cast<std::size_t>(kRegionTilesPerWorldSide) *
-	                              static_cast<std::size_t>(kRegionTilesPerWorldSide);
+	const std::size_t tileCount =
+	    static_cast<std::size_t>(kRegionTilesPerWorldSide) * static_cast<std::size_t>(kRegionTilesPerWorldSide);
 	std::vector<RegionTile> tiles(tileCount);
 	std::vector<PlanetSurface> surfaces(tileCount);
 	std::vector<GeographicCoordinates> positions(tileCount);
@@ -147,10 +147,11 @@ WorldMap WorldGenerator::Generate(CartesianPoint3D anchorDirection) const
 	const ClimateInputs &planetClimate = m_terrain.GetPlanetMap().GetClimateInputs();
 	WorldClimateInputs climate;
 	climate.rotationPeriodHours = planetClimate.rotationPeriodHours;
-	ComputeWorldClimate(tiles, std::span<const GeographicCoordinates>(positions), climate);
 
-	// Hydrology and biomes both follow the local precipitation, not the 55 km
-	// planet values.
+	// First hydrology gives the local lakes and rivers that climate sees.
+	// Climate changes precipitation, so hydrology runs once more before biomes.
+	ComputeWorldHydrology(tiles);
+	ComputeWorldClimate(tiles, std::span<const GeographicCoordinates>(positions), climate);
 	ComputeWorldHydrology(tiles);
 	MarkCoasts(tiles);
 	ReclassifyBiomes(tiles, surfaces);
