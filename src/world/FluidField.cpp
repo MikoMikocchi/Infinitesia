@@ -164,6 +164,46 @@ void FluidField::Set(GridCell cell, FluidCell value)
 	// A placed body of water (a lake in a test, a filled reservoir later) can
 	// push through a connected tunnel just like the terrain's sea.
 	PressurizeAround(cell);
+	MarkAroundModified(cell);
+}
+
+void FluidField::MarkModified(GridCell cell)
+{
+	const auto chunk = m_chunks.find({cell.x / kChunkSize, cell.y / kChunkSize, cell.z / kChunkSize});
+	if (chunk != m_chunks.end())
+	{
+		chunk->second.modified = true;
+	}
+}
+
+void FluidField::MarkAroundModified(GridCell cell)
+{
+	MarkModified(cell);
+	for (const GridCell offset : kNeighborOffsets)
+	{
+		MarkModified(GridCell{cell.x + offset.x, cell.y + offset.y, cell.z + offset.z});
+	}
+}
+
+void FluidField::RemoveChunk(ChunkCoordinate coordinate)
+{
+	if (m_chunks.erase(coordinate) == 0)
+	{
+		return;
+	}
+	const auto inChunk = [coordinate](GridCell cell) {
+		return cell.x / kChunkSize == coordinate.x && cell.y / kChunkSize == coordinate.y &&
+		       cell.z / kChunkSize == coordinate.z;
+	};
+	for (auto cell = m_active.begin(); cell != m_active.end();)
+	{
+		cell = inChunk(*cell) ? m_active.erase(cell) : std::next(cell);
+	}
+	for (auto cell = m_pressure.begin(); cell != m_pressure.end();)
+	{
+		cell = inChunk(*cell) ? m_pressure.erase(cell) : std::next(cell);
+	}
+	++m_revision;
 }
 
 void FluidField::InitializeChunk(const WorldChunk &chunk, const TerrainSource &terrain)
@@ -477,6 +517,7 @@ void FluidField::OnBlockChanged(GridCell cell, const VoxelWorld &world)
 	// Digging may open a tunnel under a full body of water: pressure can now
 	// reach it through the full cells.
 	PressurizeAround(cell);
+	MarkAroundModified(cell);
 }
 
 void FluidField::Step(const VoxelWorld &world)

@@ -23,6 +23,9 @@ struct FluidChunk
 	int width = 0;
 	int height = 0;
 	int depth = 0;
+	// A player or a block change touched this water. Unmodified fluid chunks can
+	// be dropped with their block chunk and rebuilt from the terrain.
+	bool modified = false;
 	std::vector<FluidCell> cells; // indexed like WorldChunk::blocks
 };
 
@@ -47,6 +50,10 @@ public:
 
 	// Fills the fluid of a freshly generated block chunk from the terrain.
 	void InitializeChunk(const WorldChunk &chunk, const TerrainSource &terrain);
+
+	// Drops a chunk whose blocks are being unloaded too. Modified fluid is kept
+	// by the world's unload policy and never reaches this.
+	void RemoveChunk(ChunkCoordinate coordinate);
 
 	// A block changed: wake the cells around it, and when a solid block was put
 	// into fluid, push that fluid out (up first, then sideways); what finds no
@@ -81,6 +88,10 @@ private:
 
 	// Writes without touching the active set. Returns whether the cell changed.
 	bool WriteCell(GridCell cell, FluidCell value);
+	// Marks the fluid chunk of a cell, and the chunks around it, as changed by
+	// the player. Natural flow in Step does not mark anything: it can be rebuilt.
+	void MarkModified(GridCell cell);
+	void MarkAroundModified(GridCell cell);
 	void Activate(GridCell cell);
 	void ActivateAround(GridCell cell);
 	// Whether a cell can take this fluid: it is empty or already holds the same

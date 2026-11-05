@@ -107,11 +107,14 @@ void VoxelWorld::UnloadChunksOutside(GridCell center, int horizontalRadius, int 
 		const bool inside = std::abs(coordinate.x - centerChunk.x) <= horizontalRadius &&
 		                    std::abs(coordinate.z - centerChunk.z) <= horizontalRadius &&
 		                    std::abs(coordinate.y - centerChunk.y) <= verticalRadius;
-		if (inside || chunk->second.modified || fluidChunks.find(coordinate) != fluidChunks.end())
+		const auto fluid = fluidChunks.find(coordinate);
+		const bool keepForFluid = fluid != fluidChunks.end() && fluid->second.modified;
+		if (inside || chunk->second.modified || keepForFluid)
 		{
 			++chunk;
 			continue;
 		}
+		m_fluids.RemoveChunk(coordinate);
 		chunk = m_chunks.erase(chunk);
 	}
 
