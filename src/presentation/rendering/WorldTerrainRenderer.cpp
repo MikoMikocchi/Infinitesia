@@ -118,7 +118,9 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 	    BuildClock::now() + std::chrono::duration_cast<BuildClock::duration>(
 	                             std::chrono::duration<double, std::milli>(kMeshBuildBudgetMs));
 	int buildsLeft = kMeshBuildsPerFrame;
-	std::set<ChunkMeshKey> wantedMeshes;
+	// Kept across frames for its capacity; sorted before the cleanup below.
+	static std::vector<ChunkMeshKey> wantedMeshes;
+	wantedMeshes.clear();
 
 	// Stale meshes are built nearest first, so the ground under the view appears
 	// before the far edge.
@@ -145,7 +147,7 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		}
 
 		const ChunkMeshKey key = GetMeshKey(chunk, viewLevel, mode);
-		wantedMeshes.insert(key);
+		wantedMeshes.push_back(key);
 		if (!isVisible(chunk))
 		{
 			continue;
@@ -207,7 +209,7 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 				}
 
 				const ChunkMeshKey key = GetMeshKey(chunk, adjacentLevel, mode);
-				wantedMeshes.insert(key);
+				wantedMeshes.push_back(key);
 				const auto cachedMesh = meshCache.find(key);
 				if (cachedMesh != meshCache.end() && cachedMesh->second.terrainRevision == chunk.terrainRevision)
 				{
@@ -230,6 +232,8 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		}
 	}
 
+	std::sort(wantedMeshes.begin(), wantedMeshes.end());
+	wantedMeshes.erase(std::unique(wantedMeshes.begin(), wantedMeshes.end()), wantedMeshes.end());
 	for (auto cachedMesh = meshCache.begin(); cachedMesh != meshCache.end();)
 	{
 		const ChunkCoordinate &cachedCoordinate = cachedMesh->first.first;
@@ -242,7 +246,7 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		                            std::abs(cachedCoordinate.x - centerChunkX) <= chunkRadius &&
 		                            std::abs(cachedCoordinate.z - centerChunkZ) <= chunkRadius;
 		const bool isRetained = (cachedCut == TerrainMeshBuilder::kNoCut && inMargin) || isNeighbourCut;
-		if (wantedMeshes.count(cachedMesh->first) != 0 || isRetained)
+		if (std::binary_search(wantedMeshes.begin(), wantedMeshes.end(), cachedMesh->first) || isRetained)
 		{
 			++cachedMesh;
 			continue;

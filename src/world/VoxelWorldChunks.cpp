@@ -81,6 +81,7 @@ void VoxelWorld::RequestChunksAround(GridCell center, int horizontalRadius, int 
 		          return left.z < right.z;
 	          });
 	m_pendingChunks = std::move(requestedChunks);
+	m_pendingNext = 0;
 	m_pendingCenter = centerChunk;
 	m_pendingHorizontalRadius = horizontalRadius;
 	m_pendingVerticalRadius = verticalRadius;
@@ -91,15 +92,14 @@ std::size_t VoxelWorld::GeneratePendingChunks(std::size_t maximumChunks, double 
 	const auto started = std::chrono::steady_clock::now();
 	const auto budget = std::chrono::duration<double, std::milli>(budgetMs);
 	std::size_t generatedChunks = 0;
-	while (generatedChunks < maximumChunks && !m_pendingChunks.empty())
+	while (generatedChunks < maximumChunks && m_pendingNext < m_pendingChunks.size())
 	{
 		if (budgetMs > 0.0 && generatedChunks > 0 &&
 		    std::chrono::steady_clock::now() - started >= budget)
 		{
 			break;
 		}
-		const ChunkCoordinate coordinate = m_pendingChunks.front();
-		m_pendingChunks.erase(m_pendingChunks.begin());
+		const ChunkCoordinate coordinate = m_pendingChunks[m_pendingNext++];
 		EnsureChunkGenerated(coordinate);
 		++generatedChunks;
 	}
@@ -136,6 +136,13 @@ void VoxelWorld::UnloadChunksOutside(GridCell center, int horizontalRadius, int 
 		chunk = m_chunks.erase(chunk);
 	}
 
+	if (m_pendingNext > 0)
+	{
+		// Drop the chunks already generated, then the ones that left the view.
+		m_pendingChunks.erase(m_pendingChunks.begin(),
+		                      m_pendingChunks.begin() + static_cast<std::ptrdiff_t>(m_pendingNext));
+		m_pendingNext = 0;
+	}
 	m_pendingChunks.erase(std::remove_if(m_pendingChunks.begin(), m_pendingChunks.end(),
 	                                     [&](const ChunkCoordinate &coordinate) {
 		                                     return std::abs(coordinate.x - centerChunk.x) > horizontalRadius ||

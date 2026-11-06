@@ -84,6 +84,9 @@ private:
 
 	std::unordered_map<ChunkCoordinate, WorldChunk, ChunkCoordinateHash> m_chunks;
 	std::vector<ChunkCoordinate> m_pendingChunks;
+	// The next pending chunk to generate; erasing from the front of the vector
+	// moved every remaining coordinate once per chunk.
+	std::size_t m_pendingNext = 0;
 	// The view the pending list was built for; a view that did not move to another
 	// chunk needs no new list.
 	ChunkCoordinate m_pendingCenter{};
