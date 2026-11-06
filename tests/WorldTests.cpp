@@ -397,6 +397,93 @@ TEST_CASE("WorldRiversAreStoredInTheFluidFieldWithTheirFlow")
 	CHECK(fluid->flowNorth == doctest::Approx(0.0));
 }
 
+TEST_CASE("RiverWaterStaysInsideItsCarvedChannel")
+{
+	const Settlement settlement = MakeRiverSettlement();
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+
+	const FluidColumn channel = settlement.source->FluidAt(kWidth / 2, kDepth / 2);
+	REQUIRE(channel.origin == FluidOrigin::River);
+	const int riverX = kWidth / 2;
+	const int riverCenterZ = kDepth / 2;
+	const int riverY = channel.groundBlock + 1;
+
+	// Load a band around the channel so the fluid can move both along and away
+	// from it. The band is wider than the channel and its banks.
+	for (int x = std::max(0, riverX - 2 * kChunkSize); x <= std::min(kWidth - 1, riverX + 2 * kChunkSize);
+	     x += kChunkSize)
+	{
+		for (int z = riverCenterZ - 3 * kChunkSize; z <= riverCenterZ + 3 * kChunkSize; z += kChunkSize)
+		{
+			world.EnsureChunkContaining({x, riverY, z});
+		}
+	}
+
+	// The old channel profile left the bank under the water surface, so a
+	// handful of ticks were enough to level the river across the fields.
+	for (int tick = 0; tick < 100; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	// The bank is 10..18 m from the centreline; four metres outside it there is
+	// definitely dry land. No fluid may appear there, at any height.
+	for (int z : {riverCenterZ - 14, riverCenterZ + 14, riverCenterZ - 20, riverCenterZ + 20})
+	{
+		for (int x = std::max(0, riverX - kChunkSize); x <= std::min(kWidth - 1, riverX + kChunkSize); x += 4)
+		{
+			for (int y = 0; y < kHeight; ++y)
+			{
+				const FluidCell *fluid = world.GetFluid({x, y, z});
+				Require(fluid == nullptr || fluid->amountMb == 0,
+				        "A river has levelled itself across the bank and the dry land beside it.");
+			}
+		}
+	}
+
+	// The water is still in the channel: it follows the bed instead of running
+	// away into the low ground.
+	bool channelHasWater = false;
+	for (int z = riverCenterZ - 8; z <= riverCenterZ + 8; ++z)
+	{
+		const FluidCell *fluid = world.GetFluid({riverX, riverY, z});
+		if (fluid != nullptr && fluid->amountMb > 0)
+		{
+			channelHasWater = true;
+			break;
+		}
+	}
+	CHECK(channelHasWater);
+}
+
+TEST_CASE("ARiverRefillsItsDrainedSurfaceFromUpstream")
+{
+	const Settlement settlement = MakeRiverSettlement();
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+
+	const FluidColumn channel = settlement.source->FluidAt(kWidth / 2, kDepth / 2);
+	REQUIRE(channel.origin == FluidOrigin::River);
+	const GridCell cell{kWidth / 2, channel.topBlock, kDepth / 2};
+	world.EnsureChunkContaining(cell);
+
+	const FluidCell *original = world.GetFluid(cell);
+	REQUIRE(original != nullptr);
+	REQUIRE(original->origin == FluidOrigin::River);
+	REQUIRE(original->sourceAmountMb > 0);
+
+	FluidCell drained = *original;
+	drained.amountMb = 0;
+	world.Fluids().Set(cell, drained);
+	world.StepFluids();
+
+	const FluidCell *after = world.GetFluid(cell);
+	REQUIRE(after != nullptr);
+	CHECK(after->origin == FluidOrigin::River);
+	CHECK(after->amountMb > 0); // the upstream feed filled the channel again
+}
+
 TEST_CASE("TheSeaIsInfiniteAndALakeIsFinite")
 {
 	{

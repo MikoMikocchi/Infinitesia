@@ -310,7 +310,24 @@ TEST_CASE("WorldRiversCarveChannelsAndCarryWater")
 	const LocalWater bankWater = terrain.WaterAt(bank, 2.0);
 	CHECK(bankWater.origin == FluidOrigin::None);
 	CHECK(bankWater.incisionMeters == 0.0);
+	CHECK(bankWater.bankRaiseMeters == 0.0);
 	CHECK(terrain.SampleAt(bank).elevationMeters == doctest::Approx(100.0));
+
+	// The water's edge is below the surface, but the dry bank immediately
+	// outside it is raised to stand above the water. Without this lip the
+	// fluid field simply levels the river across the surrounding land.
+	const GeographicCoordinates west = PlanetaryCoordinates::ToGeographic(grid.Direction(-380.0, 0.0));
+	const LocalWater westWater = terrain.WaterAt(west, 2.0);
+	REQUIRE(westWater.origin == FluidOrigin::River);
+	const GeographicCoordinates shore = PlanetaryCoordinates::ToGeographic(grid.Direction(-380.0, 9.5));
+	const LocalWater shoreWater = terrain.WaterAt(shore, 2.0);
+	CHECK(shoreWater.origin == FluidOrigin::River);
+	CHECK(terrain.ElevationMeters(shore, 2.0) < westWater.surfaceMeters);
+	const GeographicCoordinates lip = PlanetaryCoordinates::ToGeographic(grid.Direction(-380.0, 12.0));
+	const LocalWater lipWater = terrain.WaterAt(lip, 2.0);
+	CHECK(lipWater.origin == FluidOrigin::None);
+	CHECK(lipWater.surfaceMeters == doctest::Approx(westWater.surfaceMeters));
+	CHECK(terrain.ElevationMeters(lip, 2.0) > lipWater.surfaceMeters);
 
 	// The local world hands the river to SettlementTerrain: the centre is in
 	// the channel and wet, the bank is dry and higher.
@@ -899,10 +916,10 @@ TEST_CASE("DiagnosticRiverFlooding" * doctest::skip(false))
 	double maxGround = -1.0e30;
 	double minWetLevel = 1.0e30;
 	double maxWetLevel = -1.0e30;
-	std::vector<int> wetMask(static_cast<std::size_t>((2 * kHalf / kStep) * (2 * kHalf / kStep)), 0);
-	std::vector<double> groundMask(static_cast<std::size_t>((2 * kHalf / kStep) * (2 * kHalf / kStep)), 0.0);
-	std::vector<double> wetLevels(static_cast<std::size_t>((2 * kHalf / kStep) * (2 * kHalf / kStep)), 0.0);
-	constexpr int kSide = 2 * kHalf / kStep;
+	constexpr int kSide = 2 * kHalf / kStep + 1;
+	std::vector<int> wetMask(static_cast<std::size_t>(kSide * kSide), 0);
+	std::vector<double> groundMask(static_cast<std::size_t>(kSide * kSide), 0.0);
+	std::vector<double> wetLevels(static_cast<std::size_t>(kSide * kSide), 0.0);
 	for (int z = -kHalf; z <= kHalf; z += kStep)
 	{
 		for (int x = -kHalf; x <= kHalf; x += kStep)

@@ -14,21 +14,32 @@ namespace
 // Water lies this far below the surrounding bank so a river reads as a channel
 // rather than a sheet of water on the ground.
 constexpr double kRiverFreeboardMeters = 0.25;
-// The part of the channel where there is actual water, and the extra bank over
-// which the ground is lowered smoothly to the bed.
+// The part of the channel where there is actual water, and the dry bank around
+// it. The narrow strip at the water's edge slopes up to the surface, like a
+// shore, instead of ending in a vertical wall.
 constexpr double kMinimumWaterHalfWidthMeters = 0.5;
-constexpr double kMinimumBankWidthMeters = 1.5;
+constexpr double kMinimumBankWidthMeters = 3.0;
 constexpr double kMaximumBankWidthMeters = 8.0;
+constexpr double kMinimumShoreWidthMeters = 1.0;
+// A bank must stand above the water surface, otherwise the fluid field is free
+// to level the river across the surrounding land. The lip is small; the rise
+// gives the bank a natural profile and keeps a continuous ridge along the
+// channel.
+constexpr double kBankLipMeters = 0.05;
+constexpr double kBankRiseMeters = 0.75;
 
 struct ChannelSample
 {
 	bool inChannel = false;
+	bool inWater = false;
 	double distanceMeters = 0.0;
-	double incisionMeters = 0.0;
 	// Closest point on the centreline, in metres from the tile's south-west
 	// corner.
 	double centerX = 0.0;
 	double centerY = 0.0;
+	double waterHalfWidth = 0.0;
+	double bankWidth = 0.0;
+	double bankHalfWidth = 0.0;
 };
 
 double SmoothStep(double t) noexcept
@@ -164,9 +175,10 @@ ChannelSample SampleChannel(const RiverChannel &river, double localX, double loc
 	}
 
 	sample.inChannel = true;
-	const double bankT = (bankHalfWidth - sample.distanceMeters) / bankWidth;
-	const double profile = sample.distanceMeters <= waterHalfWidth ? 1.0 : SmoothStep(bankT);
-	sample.incisionMeters = static_cast<double>(river.depthMeters) * profile;
+	sample.inWater = sample.distanceMeters <= waterHalfWidth;
+	sample.waterHalfWidth = waterHalfWidth;
+	sample.bankWidth = bankWidth;
+	sample.bankHalfWidth = bankHalfWidth;
 	return sample;
 }
 } // namespace
@@ -231,9 +243,9 @@ double WorldTerrain::ElevationMeters(const GeographicCoordinates &position, doub
 double WorldTerrain::ElevationMeters(const GeographicCoordinates &position, const PlanetFieldSample &planet,
                                      double minWavelengthMeters) const noexcept
 {
-	const double elevation = m_planet.ElevationMeters(position, planet, minWavelengthMeters);
-	const LocalWater water = WaterAt(position, minWavelengthMeters);
-	return elevation - water.incisionMeters;
+	const double natural = m_planet.ElevationMeters(position, planet, minWavelengthMeters);
+	const LocalWater water = WaterAt(position, natural, minWavelengthMeters);
+	return natural - water.incisionMeters + water.bankRaiseMeters;
 }
 
 double WorldTerrain::ElevationMeters(CartesianPoint3D direction, double minWavelengthMeters) const noexcept
@@ -248,6 +260,18 @@ double WorldTerrain::ElevationMeters(CartesianPoint3D direction, const PlanetFie
 }
 
 LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double minWavelengthMeters) const noexcept
+{
+	if (m_world == nullptr)
+	{
+		return {};
+	}
+	const PlanetFieldSample planet = SampleAt(position);
+	const double natural = m_planet.ElevationMeters(position, planet, minWavelengthMeters);
+	return WaterAt(position, natural, minWavelengthMeters);
+}
+
+LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double naturalGroundMeters,
+                                 double minWavelengthMeters) const noexcept
 {
 	LocalWater water;
 	if (m_world == nullptr)
@@ -296,7 +320,14 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double m
 		return water;
 	}
 
-	double incisionMeters = 0.0;
+	// The closest channel decides both the water surface and the shape of the
+	// ground around this column. The surface is sampled once at the closest
+	// centreline point, so every column of one cross-section sees the same
+	// level: the river follows the valley downhill instead of becoming a series
+	// of independent pools.
+	const RiverChannel *nearestChannel = nullptr;
+	ChannelSample nearestSample;
+	double nearestDistance = std::numeric_limits<double>::infinity();
 	const RiverChannel *waterChannel = nullptr;
 	ChannelSample waterSample;
 	double waterDistance = std::numeric_limits<double>::infinity();
@@ -307,20 +338,20 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double m
 		{
 			continue;
 		}
-		incisionMeters = std::max(incisionMeters, channel.incisionMeters);
-
-		// Only the bed carries water; the banks are dry but lowered.
-		const double waterHalfWidth =
-		    std::max(kMinimumWaterHalfWidthMeters, static_cast<double>(river.widthMeters) * 0.5);
-		if (channel.distanceMeters <= waterHalfWidth && channel.distanceMeters < waterDistance)
+		if (channel.distanceMeters < nearestDistance)
+		{
+			nearestDistance = channel.distanceMeters;
+			nearestChannel = &river;
+			nearestSample = channel;
+		}
+		if (channel.inWater && channel.distanceMeters < waterDistance)
 		{
 			waterDistance = channel.distanceMeters;
 			waterChannel = &river;
 			waterSample = channel;
 		}
 	}
-	water.incisionMeters = incisionMeters;
-	if (waterChannel == nullptr)
+	if (nearestChannel == nullptr)
 	{
 		return water;
 	}
@@ -328,8 +359,9 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double m
 	// The water surface follows the centreline ground, smoothed by the same
 	// tile blend the terrain uses, so the river runs downhill with the land and
 	// neighbouring tiles agree at the border.
-	const double eastMeters = (static_cast<double>(location.id.i) - 0.5) * kRegionTileSizeMeters + waterSample.centerX;
-	const double northMeters = (static_cast<double>(location.id.j) - 0.5) * kRegionTileSizeMeters + waterSample.centerY;
+	const double eastMeters = (static_cast<double>(location.id.i) - 0.5) * kRegionTileSizeMeters + nearestSample.centerX;
+	const double northMeters =
+	    (static_cast<double>(location.id.j) - 0.5) * kRegionTileSizeMeters + nearestSample.centerY;
 	const GeographicCoordinates centerPosition =
 	    PlanetaryCoordinates::ToGeographic(m_world->Grid().Direction(eastMeters, northMeters));
 
@@ -340,10 +372,53 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double m
 		centerSample = ApplyTile(centerSample, &*blended);
 	}
 	const double groundMeters = m_planet.ElevationMeters(centerPosition, centerSample, minWavelengthMeters);
+	const double surfaceMeters = groundMeters - kRiverFreeboardMeters;
+	water.surfaceMeters = surfaceMeters;
 
+	const double depth = static_cast<double>(nearestChannel->depthMeters);
+	if (nearestSample.distanceMeters <= nearestSample.waterHalfWidth)
+	{
+		// Water bed: a flat bottom with a short shore at the water's edge. The
+		// ground may only be cut down, never raised: a natural hollow is simply
+		// deeper water.
+		const double shoreWidth = std::min(nearestSample.waterHalfWidth,
+		                                   std::max(kMinimumShoreWidthMeters, depth));
+		const double bedHalfWidth = nearestSample.waterHalfWidth - shoreWidth;
+		double bedMeters = surfaceMeters - depth;
+		if (nearestSample.distanceMeters > bedHalfWidth && shoreWidth > 0.0)
+		{
+			const double shoreT =
+			    (nearestSample.distanceMeters - bedHalfWidth) / std::max(shoreWidth, 1.0e-6);
+			bedMeters = surfaceMeters - depth * (1.0 - SmoothStep(shoreT));
+		}
+		if (naturalGroundMeters > bedMeters)
+		{
+			water.incisionMeters = naturalGroundMeters - bedMeters;
+		}
+	}
+	else
+	{
+		// Dry bank: it must stand above the water. A natural bank that is
+		// already high enough is left alone; a low one is raised into a levee
+		// so the fluid field cannot level the river across the fields.
+		const double bankT = std::clamp((nearestSample.distanceMeters - nearestSample.waterHalfWidth) /
+		                                    std::max(nearestSample.bankWidth, 1.0e-6),
+		                                0.0, 1.0);
+		const double crest = surfaceMeters + kBankLipMeters + kBankRiseMeters * SmoothStep(bankT);
+		if (naturalGroundMeters < crest)
+		{
+			water.bankRaiseMeters = crest - naturalGroundMeters;
+		}
+	}
+
+	if (waterChannel == nullptr)
+	{
+		return water;
+	}
+
+	const double carvedGroundMeters = naturalGroundMeters - water.incisionMeters + water.bankRaiseMeters;
 	water.origin = FluidOrigin::River;
-	water.surfaceMeters = groundMeters - kRiverFreeboardMeters;
-	water.depthMeters = std::max(0.0, waterSample.incisionMeters - kRiverFreeboardMeters);
+	water.depthMeters = std::max(0.0, surfaceMeters - carvedGroundMeters);
 	return water;
 }
 } // namespace Infinitesia

@@ -289,7 +289,12 @@ void FluidField::InitializeChunk(const WorldChunk &chunk, const TerrainSource &t
 				                           static_cast<std::size_t>(localY)) *
 				                              static_cast<std::size_t>(chunk.width) +
 				                          static_cast<std::size_t>(localX);
-				fluidChunk.cells[index] = {column.matter, amount, column.origin, column.flowEast, column.flowNorth};
+				// A river's surface is fed from upstream, so it refills to
+				// this level instead of draining away as a finite puddle.
+				const std::uint16_t source =
+				    isTop && column.origin == FluidOrigin::River ? amount : 0;
+				fluidChunk.cells[index] = {column.matter, amount, column.origin, column.flowEast, column.flowNorth,
+				                           source};
 				// Deep full cells are a static body. Only the surface cell has to
 				// settle; digging activates the surrounding water through
 				// OnBlockChanged, so a whole ocean does not have to be stepped every
@@ -365,6 +370,7 @@ std::uint16_t FluidField::Transfer(GridCell from, GridCell to, std::uint16_t max
 		targetValue.origin = target->origin;
 		targetValue.flowEast = target->flowEast;
 		targetValue.flowNorth = target->flowNorth;
+		targetValue.sourceAmountMb = target->sourceAmountMb;
 	}
 	else if (target != nullptr && target->origin == FluidOrigin::Sea)
 	{
@@ -373,6 +379,7 @@ std::uint16_t FluidField::Transfer(GridCell from, GridCell to, std::uint16_t max
 		targetValue.origin = FluidOrigin::Sea;
 		targetValue.flowEast = target->flowEast;
 		targetValue.flowNorth = target->flowNorth;
+		targetValue.sourceAmountMb = target->sourceAmountMb;
 	}
 	else
 	{
@@ -388,7 +395,7 @@ std::uint16_t FluidField::Transfer(GridCell from, GridCell to, std::uint16_t max
 
 	FluidCell sourceValue = *source;
 	sourceValue.amountMb = static_cast<std::uint16_t>(sourceValue.amountMb - moved);
-	if (sourceValue.amountMb == 0 && sourceValue.origin != FluidOrigin::Sea)
+	if (sourceValue.amountMb == 0 && sourceValue.origin != FluidOrigin::Sea && sourceValue.sourceAmountMb == 0)
 	{
 		sourceValue.matter = kAirMatter;
 		sourceValue.origin = FluidOrigin::None;
@@ -423,6 +430,7 @@ std::uint16_t FluidField::Deposit(FluidCell fluid, GridCell to, const VoxelWorld
 		targetValue.origin = target->origin;
 		targetValue.flowEast = target->flowEast;
 		targetValue.flowNorth = target->flowNorth;
+		targetValue.sourceAmountMb = target->sourceAmountMb;
 	}
 	else if (target != nullptr && target->origin == FluidOrigin::Sea)
 	{
@@ -430,9 +438,12 @@ std::uint16_t FluidField::Deposit(FluidCell fluid, GridCell to, const VoxelWorld
 		targetValue.origin = FluidOrigin::Sea;
 		targetValue.flowEast = target->flowEast;
 		targetValue.flowNorth = target->flowNorth;
+		targetValue.sourceAmountMb = target->sourceAmountMb;
 	}
 	else
 	{
+		// Displaced water is no longer in its channel: it does not keep the
+		// river's upstream feed.
 		targetValue.matter = fluid.matter;
 		targetValue.origin = FluidOrigin::None;
 		targetValue.flowEast = fluid.flowEast;
@@ -611,6 +622,18 @@ void FluidField::Step(const VoxelWorld &world)
 				// connected to, like a river in Dwarf Fortress.
 				m_pressure.insert(cell);
 			}
+		}
+
+		// A river's surface is fed from upstream. Refilling to the level the
+		// channel had when it was generated keeps it from draining downhill and
+		// running dry; it never rises above that level, so a full or dammed
+		// river adds nothing.
+		if (current->origin == FluidOrigin::River && current->sourceAmountMb > current->amountMb)
+		{
+			FluidCell refilled = *current;
+			refilled.amountMb = current->sourceAmountMb;
+			WriteCell(cell, refilled);
+			ActivateAround(cell);
 		}
 
 		current = At(cell);

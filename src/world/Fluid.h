@@ -54,6 +54,10 @@ struct FluidCell
 	// the simulation and the renderer the river's own direction.
 	double flowEast = 0.0;
 	double flowNorth = 0.0;
+	// A river's surface cell is fed from upstream: it refills to this amount
+	// when it drains, and never above it. Zero for every other fluid (a lake or
+	// a sea cell does not use this).
+	std::uint16_t sourceAmountMb = 0;
 
 	bool HasFluid() const noexcept
 	{

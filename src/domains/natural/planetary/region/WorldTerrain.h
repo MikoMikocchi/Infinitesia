@@ -24,6 +24,10 @@ struct LocalWater
 	double flowNorth = 0.0;
 	// How far the ground has been lowered by a river channel at this point.
 	double incisionMeters = 0.0;
+	// How far the ground has been raised to form a bank above the river
+	// surface. A bank must never sit below the water, or the fluid field will
+	// level the river across the surrounding land.
+	double bankRaiseMeters = 0.0;
 
 	bool HasWater() const noexcept
 	{
@@ -77,6 +81,11 @@ public:
 
 private:
 	static PlanetFieldSample ApplyTile(PlanetFieldSample sample, const RegionTile *tile) noexcept;
+	// `naturalGroundMeters` is the uncarved ground at `position`; the caller
+	// usually has it already, and the bank profile needs it to decide how far
+	// to cut or raise.
+	LocalWater WaterAt(const GeographicCoordinates &position, double naturalGroundMeters,
+	                   double minWavelengthMeters) const noexcept;
 
 	RegionTerrain m_planet;
 	std::shared_ptr<const WorldMap> m_world;
