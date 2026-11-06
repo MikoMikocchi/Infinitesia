@@ -20,7 +20,7 @@ struct WindowConfig
 
 struct ApplicationConfig
 {
-	WindowConfig window{1280, 720, 60, "Infinitesia"};
+	WindowConfig window{1920, 1080, 60, "Infinitesia"};
 	// The world of the founded settlement: a 1 km square window of the planet,
 	// 256 m tall, with the ground of its middle column at level 112. Chunks are
 	// streamed around the camera; untouched chunks are unloaded when they leave
