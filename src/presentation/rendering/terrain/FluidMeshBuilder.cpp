@@ -19,6 +19,9 @@ namespace WorldGeometryRenderer
 namespace
 {
 constexpr unsigned char kFluidOpacity = 150;
+// Meshes built in one frame; the rest keep their previous mesh for a frame or
+// two, so streaming a whole sea does not stall a single frame.
+constexpr int kFluidBuildsPerFrame = 6;
 
 template <typename T> T *CopyMeshData(const std::vector<T> &data)
 {
@@ -208,6 +211,7 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 {
 	const int centerChunkX = viewCenter.x / kChunkSize;
 	const int centerChunkZ = viewCenter.z / kChunkSize;
+	int buildsLeft = kFluidBuildsPerFrame;
 	std::set<FluidMeshKey> wanted;
 
 	for (const auto &[coordinate, chunk] : world.Fluids().Chunks())
@@ -222,21 +226,33 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		const FluidMeshKey key = GetMeshKey(chunk, viewLevel, mode);
 		wanted.insert(key);
 		auto cached = meshCache.find(key);
-		if (cached == meshCache.end() || cached->second.fluidRevision != chunk.revision)
+		if (cached != meshCache.end() && cached->second.fluidRevision == chunk.revision)
 		{
-			if (cached != meshCache.end() && IsMeshLoaded(cached->second.mesh))
+			DrawFluidMesh(cached->second.mesh, material);
+			continue;
+		}
+		if (buildsLeft == 0)
+		{
+			// A stale mesh is drawn until its turn; a missing one is skipped.
+			if (cached != meshCache.end())
 			{
-				UnloadMesh(cached->second.mesh);
+				DrawFluidMesh(cached->second.mesh, material);
 			}
-			FluidMeshCacheEntry entry{BuildFluidMesh(grid, world, chunk, key.second, &atlas), chunk.revision};
-			if (cached == meshCache.end())
-			{
-				cached = meshCache.emplace(key, entry).first;
-			}
-			else
-			{
-				cached->second = entry;
-			}
+			continue;
+		}
+		--buildsLeft;
+		if (cached != meshCache.end() && IsMeshLoaded(cached->second.mesh))
+		{
+			UnloadMesh(cached->second.mesh);
+		}
+		FluidMeshCacheEntry entry{BuildFluidMesh(grid, world, chunk, key.second, &atlas), chunk.revision};
+		if (cached == meshCache.end())
+		{
+			cached = meshCache.emplace(key, entry).first;
+		}
+		else
+		{
+			cached->second = entry;
 		}
 		DrawFluidMesh(cached->second.mesh, material);
 	}
