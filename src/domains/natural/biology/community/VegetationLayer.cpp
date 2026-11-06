@@ -140,12 +140,12 @@ std::optional<VegetationSample> SampleVegetation(const PlanetMap &map, Geographi
 			for (int i = 0; i < kVegetationSpeciesPerCell && cell.species[i] != kNoSpecies; ++i)
 			{
 				const double weight = share * cell.canopyCover * cell.weight[i];
-				auto *found = std::find_if(
+				auto found = std::find_if(
 				    sample.entries.begin(), sample.entries.begin() + sample.count,
 				    [&](const VegetationSample::Entry &entry) { return entry.species == cell.species[i]; });
 				if (found == sample.entries.begin() + sample.count)
 				{
-					found = &sample.entries[static_cast<std::size_t>(sample.count++)];
+					found = sample.entries.begin() + sample.count++;
 					found->species = cell.species[i];
 				}
 				found->weight += weight;
