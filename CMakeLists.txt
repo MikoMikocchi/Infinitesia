@@ -25,6 +25,7 @@ option(INFINITESIA_BUILD_TESTS "Build the tests" ${infinitesia_tests_default})
 option(INFINITESIA_BUILD_TOOLS "Build the command-line tools" ON)
 option(INFINITESIA_WARNINGS_AS_ERRORS "Treat warnings of project targets as errors" OFF)
 option(INFINITESIA_ENABLE_LTO "Link-time optimization for Release builds, when supported" ON)
+option(INFINITESIA_BUILD_SDL3_SMOKE "Build the SDL3/OpenGL smoke test" ON)
 
 # Faster rebuilds when ccache is installed.
 find_program(INFINITESIA_CCACHE ccache)
@@ -88,9 +89,30 @@ get_property(INFINITESIA_MODULE_DIRS GLOBAL PROPERTY INFINITESIA_MODULE_DIRS)
 foreach(module_dir IN LISTS INFINITESIA_MODULE_DIRS)
   list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/${module_dir}/")
 endforeach()
+# The SDL3 renderer is built by its own target until it replaces the raylib
+# presentation layer.
+list(FILTER INFINITESIA_SOURCES EXCLUDE REGEX "/src/(sdl3|presentation/platform|presentation/gfx|presentation/math)/")
 add_executable(Infinitesia ${INFINITESIA_SOURCES})
 target_link_libraries(Infinitesia PRIVATE raylib InfinitesiaGameplay)
 infinitesia_enable_warnings(Infinitesia)
+
+if (INFINITESIA_BUILD_SDL3_SMOKE)
+  add_executable(InfinitesiaSdl3Smoke
+    src/sdl3/SmokeMain.cpp
+    src/presentation/platform/Window.cpp
+    src/presentation/gfx/Gl.cpp
+  )
+  target_include_directories(InfinitesiaSdl3Smoke PRIVATE "${PROJECT_SOURCE_DIR}/src/presentation")
+  target_compile_definitions(InfinitesiaSdl3Smoke PRIVATE SDL_MAIN_HANDLED)
+  target_link_libraries(InfinitesiaSdl3Smoke PRIVATE SDL3::SDL3)
+  if (MSVC)
+    target_compile_definitions(InfinitesiaSdl3Smoke PRIVATE _CRT_SECURE_NO_WARNINGS)
+  endif()
+  if (WIN32)
+    target_link_libraries(InfinitesiaSdl3Smoke PRIVATE opengl32)
+  endif()
+  infinitesia_enable_warnings(InfinitesiaSdl3Smoke)
+endif()
 
 if (WIN32)
   target_link_libraries(Infinitesia PRIVATE winmm)

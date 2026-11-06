@@ -15,6 +15,36 @@ FetchContent_Declare(
   FIND_PACKAGE_ARGS 5.5 NAMES raylib
 )
 
+# SDL3 is the platform layer for the OpenGL renderer that replaces raylib.
+# Only the subsystems the game uses are built, to keep the dependency small.
+set(SDL_SHARED        OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC        ON  CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY  OFF CACHE BOOL "" FORCE)
+set(SDL_TESTS         OFF CACHE BOOL "" FORCE)
+set(SDL_EXAMPLES      OFF CACHE BOOL "" FORCE)
+set(SDL_INSTALL       OFF CACHE BOOL "" FORCE)
+set(SDL_AUDIO         OFF CACHE BOOL "" FORCE)
+set(SDL_JOYSTICK      OFF CACHE BOOL "" FORCE)
+set(SDL_HAPTIC        OFF CACHE BOOL "" FORCE)
+set(SDL_HIDAPI        OFF CACHE BOOL "" FORCE)
+set(SDL_SENSOR        OFF CACHE BOOL "" FORCE)
+set(SDL_POWER         OFF CACHE BOOL "" FORCE)
+set(SDL_DIALOG        OFF CACHE BOOL "" FORCE)
+set(SDL_TRAY          OFF CACHE BOOL "" FORCE)
+set(SDL_CAMERA        OFF CACHE BOOL "" FORCE)
+set(SDL_GPU           OFF CACHE BOOL "" FORCE)
+set(SDL_RENDER        OFF CACHE BOOL "" FORCE)
+set(SDL_VULKAN        OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  SDL3
+  GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+  GIT_TAG release-3.4.20
+  GIT_SHALLOW TRUE
+  SYSTEM
+  EXCLUDE_FROM_ALL
+  FIND_PACKAGE_ARGS 3.2 NAMES SDL3
+)
+
 # JSON for the content catalogs (docs/03_GEOLOGY.md, section 4.3).
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
@@ -42,7 +72,7 @@ FetchContent_Declare(
   FIND_PACKAGE_ARGS NAMES pugixml
 )
 
-FetchContent_MakeAvailable(raylib nlohmann_json pugixml)
+FetchContent_MakeAvailable(SDL3 raylib nlohmann_json pugixml)
 
 if (INFINITESIA_BUILD_TESTS)
   # doctest's own CMakeLists predates the minimum policy version of CMake 4.
