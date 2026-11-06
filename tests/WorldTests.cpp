@@ -775,6 +775,16 @@ TEST_CASE("AWorldIsBuiltFromThePlanetTerrain")
 	Require(world.terrain.HasSkyAccess(center), "The ground of the middle column is covered.");
 	Require(!world.terrain.HasSkyAccess({center.x, kAnchorLevel - 3, center.z}), "A buried block has sky access.");
 
+	// The remembered sky top follows a block change: a block over the ground
+	// takes the light away, and removing it gives it back.
+	const GridCell above{center.x, center.y + 1, center.z};
+	REQUIRE(world.terrain.HasSkyAccess(above));
+	world.terrain.SetBlock(above, {world.terrain.Registry().FindMatter("sand")->id, kShapeFull});
+	CHECK_FALSE(world.terrain.HasSkyAccess(center));
+	world.terrain.SetBlock(above, {kAirMatter, kShapeFull});
+	CHECK(world.terrain.HasSkyAccess(center));
+	CHECK(world.terrain.HasSkyAccess(above));
+
 	// Any material of the registry can be placed and removed.
 	const BlockRegistry &registry = world.terrain.Registry();
 	const GridCell target{center.x + 1, kAnchorLevel, center.z};

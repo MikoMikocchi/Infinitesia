@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "world/Block.h"
@@ -77,6 +78,9 @@ private:
 	void EnsureChunkGenerated(ChunkCoordinate coordinate);
 	ChunkCoordinate GetChunkCoordinate(GridCell cell) const;
 	std::size_t GetBlockIndex(const WorldChunk &chunk, GridCell cell) const;
+	// The highest cell of a column that stops the light (-1 for none). Asked once
+	// per column and remembered: HasSkyAccess is then a lookup.
+	int SkyTopOf(int x, int z) const;
 
 	std::map<ChunkCoordinate, WorldChunk> m_chunks;
 	std::vector<ChunkCoordinate> m_pendingChunks;
@@ -86,6 +90,10 @@ private:
 	int m_pendingHorizontalRadius = -1;
 	int m_pendingVerticalRadius = -1;
 	FluidField m_fluids;
+	// The sky top of a column, by (x, z); the terrain is static, so only a block
+	// change has to forget one. Sparse and losing, like the terrain caches.
+	static constexpr std::size_t kMaxCachedSkyTops = 262144;
+	mutable std::unordered_map<std::uint64_t, int> m_skyTops;
 	int m_gridWidth;
 	int m_gridHeight;
 	int m_gridDepth;

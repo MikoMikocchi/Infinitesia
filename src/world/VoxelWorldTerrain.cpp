@@ -40,52 +40,87 @@ BlockState VoxelWorld::GroundStateAt(GridCell cell) const
 	return m_terrain->GroundStateAt(cell);
 }
 
+namespace
+{
+std::uint64_t SkyKey(int x, int z)
+{
+	return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(x)) << 32) |
+	       static_cast<std::uint64_t>(static_cast<std::uint32_t>(z));
+}
+} // namespace
+
 bool VoxelWorld::HasSkyAccess(GridCell cell) const
 {
-	if (cell.x < 0 || cell.x >= m_gridWidth || cell.y < 0 || cell.y >= m_gridHeight || cell.z < 0 ||
-	    cell.z >= m_gridDepth)
+	if (!Contains(cell))
 	{
 		return false;
 	}
+	// No opaque block above the cell: the column's sky top is at or below it.
+	return cell.y >= SkyTopOf(cell.x, cell.z);
+}
+
+int VoxelWorld::SkyTopOf(int x, int z) const
+{
+	const std::uint64_t key = SkyKey(x, z);
+	const auto cached = m_skyTops.find(key);
+	if (cached != m_skyTops.end())
+	{
+		return cached->second;
+	}
+	if (m_skyTops.size() >= kMaxCachedSkyTops)
+	{
+		m_skyTops.clear();
+	}
 
 	const BlockRegistry &registry = m_terrain->Registry();
-	int y = cell.y + 1;
-	// The cells of one chunk are looked up once and then indexed: an unbroken
-	// column used to cost a chunk lookup per metre, which matters for the deep
-	// chunks under the sea.
-	while (y < m_gridHeight)
+	int y = m_gridHeight - 1;
+	int top = -1;
+	while (y >= 0)
 	{
-		const ChunkCoordinate coordinate = GetChunkCoordinate(GridCell{cell.x, y, cell.z});
+		const GridCell here{x, y, z};
+		const ChunkCoordinate coordinate = GetChunkCoordinate(here);
+		const int chunkBottom = coordinate.y * kChunkSize;
 		const auto chunk = m_chunks.find(coordinate);
 		if (chunk == m_chunks.end())
 		{
-			// Not generated: there is no storage to index, so ask the source. The
-			// loop still advances a whole chunk at a time.
-			const int end = std::min(m_gridHeight, (coordinate.y + 1) * kChunkSize);
-			for (; y < end; ++y)
+			// Not generated: the source knows the cells, one by one.
+			for (; y >= chunkBottom; --y)
 			{
-				if (!registry.LetsLightThrough(m_terrain->StateAt(GridCell{cell.x, y, cell.z})))
+				if (!registry.LetsLightThrough(m_terrain->StateAt(GridCell{x, y, z})))
 				{
-					return false;
+					top = y;
+					break;
 				}
+			}
+			if (top >= 0)
+			{
+				break;
 			}
 			continue;
 		}
 
 		const WorldChunk &loaded = chunk->second;
-		const int end = std::min(m_gridHeight, coordinate.y * kChunkSize + loaded.height);
-		for (; y < end; ++y)
+		const int chunkTop = chunkBottom + loaded.height - 1;
+		if (y > chunkTop)
 		{
-			const GridCell above{cell.x, y, cell.z};
-			// Air and water let the light through; anything that stops it shades the
-			// cell.
-			if (!registry.LetsLightThrough(loaded.blocks[GetBlockIndexHelper(loaded, above)].state))
+			y = chunkTop;
+			continue;
+		}
+		for (; y >= chunkBottom; --y)
+		{
+			const GridCell cell{x, y, z};
+			if (!registry.LetsLightThrough(loaded.blocks[GetBlockIndexHelper(loaded, cell)].state))
 			{
-				return false;
+				top = y;
+				break;
 			}
 		}
+		if (top >= 0)
+		{
+			break;
+		}
 	}
-	return true;
+	return m_skyTops.emplace(key, top).first->second;
 }
 
 void VoxelWorld::SetBlock(GridCell cell, BlockState state)
@@ -106,6 +141,8 @@ void VoxelWorld::SetBlock(GridCell cell, BlockState state)
 	chunk.modified = true;
 	Block &changed = chunk.blocks[GetBlockIndexHelper(chunk, cell)];
 	changed.state = state;
+	// The column's sky top may have moved.
+	m_skyTops.erase(SkyKey(cell.x, cell.z));
 	++m_terrainRevision;
 	// Keep the separate fluid layer in step: a dug cell lets water in, a placed
 	// block pushes it out.
