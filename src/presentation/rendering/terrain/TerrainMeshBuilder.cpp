@@ -126,7 +126,7 @@ void BuildFaceLookTable(const BlockRegistry &registry, const BlockTextureAtlas *
 }
 
 Mesh BuildChunkMesh(const Grid &grid, const VoxelWorld &world, const WorldChunk &chunk, int cutLevel,
-                    const FaceLookTable &faceLooks)
+                    const FaceLookTable &faceLooks, bool lowDetail)
 {
 	const int firstLevel = chunk.coordinate.y * kChunkSize;
 	const bool isCut = cutLevel != kNoCut;
@@ -256,13 +256,16 @@ Mesh BuildChunkMesh(const Grid &grid, const VoxelWorld &world, const WorldChunk 
 					const std::array<Vector3, 4> topCorners{Vector3{left, topY, front}, Vector3{right, topY, front},
 					                                        Vector3{right, topY, back}, Vector3{left, topY, back}};
 					const Vector3 normal{0.0f, 1.0f, 0.0f};
-					meshData.AppendFace(topCorners, normal, topLook,
-					                    TerrainMeshGeometry::ComputeCornerBrightness(
-					                        isSolid, block.cell, normal,
-					                        {(left + right) * 0.5f, (bottomY + topY) * 0.5f, (front + back) * 0.5f},
-					                        topCorners));
+					const std::array<float, 4> brightness =
+					    lowDetail ? std::array<float, 4>{1.0f, 1.0f, 1.0f, 1.0f}
+					              : TerrainMeshGeometry::ComputeCornerBrightness(
+					                    isSolid, block.cell, normal,
+					                    {(left + right) * 0.5f, (bottomY + topY) * 0.5f, (front + back) * 0.5f},
+					                    topCorners);
+					meshData.AppendFace(topCorners, normal, topLook, brightness);
 				}
-				meshData.AppendExposedSideFaces(isSolid, block.cell, left, right, front, back, bottomY, topY, sideLook);
+				meshData.AppendExposedSideFaces(isSolid, block.cell, left, right, front, back, bottomY, topY, sideLook,
+				                                !lowDetail);
 			}
 		}
 	}

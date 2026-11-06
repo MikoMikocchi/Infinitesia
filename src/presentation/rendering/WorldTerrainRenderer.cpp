@@ -22,12 +22,16 @@ namespace
 // Chunks wholly below the cut never change with the view level, so they share
 // one mesh; only the chunk holding the level is cut (even at its top block,
 // whose top face must show although the chunk above is hidden).
-ChunkMeshKey GetMeshKey(const WorldChunk &chunk, int viewLevel, ViewMode mode)
+ChunkMeshKey GetMeshKey(const WorldChunk &chunk, int viewLevel, ViewMode mode, bool lowDetail)
 {
 	const int firstLevel = chunk.coordinate.y * kChunkSize;
 	const bool isCut = mode == ViewMode::CutAtLevel && viewLevel < firstLevel + chunk.height;
-	return {chunk.coordinate, isCut ? viewLevel : TerrainMeshBuilder::kNoCut};
+	return {chunk.coordinate, isCut ? viewLevel : TerrainMeshBuilder::kNoCut, lowDetail};
 }
+
+// Chunks further than this many chunks from the view centre are meshed without
+// ambient occlusion.
+constexpr int kLowDetailDistanceChunks = 5;
 
 bool IsChunkShown(const ChunkCoordinate &coordinate, int viewLevel, ViewMode mode)
 {
@@ -70,7 +74,7 @@ ChunkMeshCacheEntry &GetOrBuildChunkMesh(const Grid &grid, const VoxelWorld &wor
 		UnloadMesh(cachedMesh->second.mesh);
 	}
 
-	ChunkMeshCacheEntry entry{TerrainMeshBuilder::BuildChunkMesh(grid, world, chunk, key.second, faceLooks),
+	ChunkMeshCacheEntry entry{TerrainMeshBuilder::BuildChunkMesh(grid, world, chunk, key.cut, faceLooks, key.lowDetail),
 	                          chunk.terrainRevision};
 	if (cachedMesh == meshCache.end())
 	{
@@ -146,7 +150,10 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 			continue;
 		}
 
-		const ChunkMeshKey key = GetMeshKey(chunk, viewLevel, mode);
+		const bool lowDetail =
+		    std::max(std::abs(coordinate.x - centerChunkX), std::abs(coordinate.z - centerChunkZ)) >
+		    kLowDetailDistanceChunks;
+		const ChunkMeshKey key = GetMeshKey(chunk, viewLevel, mode, lowDetail);
 		wantedMeshes.push_back(key);
 		if (!isVisible(chunk))
 		{
@@ -208,7 +215,10 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 					continue;
 				}
 
-				const ChunkMeshKey key = GetMeshKey(chunk, adjacentLevel, mode);
+				const bool lowDetail =
+				    std::max(std::abs(coordinate.x - centerChunkX), std::abs(coordinate.z - centerChunkZ)) >
+				    kLowDetailDistanceChunks;
+				const ChunkMeshKey key = GetMeshKey(chunk, adjacentLevel, mode, lowDetail);
 				wantedMeshes.push_back(key);
 				const auto cachedMesh = meshCache.find(key);
 				if (cachedMesh != meshCache.end() && cachedMesh->second.terrainRevision == chunk.terrainRevision)
@@ -236,8 +246,8 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 	wantedMeshes.erase(std::unique(wantedMeshes.begin(), wantedMeshes.end()), wantedMeshes.end());
 	for (auto cachedMesh = meshCache.begin(); cachedMesh != meshCache.end();)
 	{
-		const ChunkCoordinate &cachedCoordinate = cachedMesh->first.first;
-		const int cachedCut = cachedMesh->first.second;
+		const ChunkCoordinate &cachedCoordinate = cachedMesh->first.coordinate;
+		const int cachedCut = cachedMesh->first.cut;
 		const bool inMargin = std::abs(cachedCoordinate.x - centerChunkX) <= chunkRadius + kRetainedChunkMargin &&
 		                      std::abs(cachedCoordinate.z - centerChunkZ) <= chunkRadius + kRetainedChunkMargin;
 		// The neighbouring levels are kept so that paging up and down is instant.

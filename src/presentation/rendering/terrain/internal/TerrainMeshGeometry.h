@@ -60,7 +60,8 @@ struct MeshData
 	                const std::array<float, 4> &cornerBrightness = {1.0f, 1.0f, 1.0f, 1.0f});
 	// The side faces of the block in the cell that no solid neighbour covers.
 	void AppendExposedSideFaces(const SolidQuery &isSolid, GridCell cell, float left, float right, float front,
-	                            float back, float bottomY, float topY, const FaceLook &look);
+	                            float back, float bottomY, float topY, const FaceLook &look,
+	                            bool withAmbientOcclusion = true);
 };
 
 // The colour of a block: its material's colour in the registry.

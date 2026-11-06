@@ -32,7 +32,7 @@ void BuildFaceLookTable(const BlockRegistry &registry, const BlockTextureAtlas *
 // level, blocks above that level are left out and the blocks on it get their
 // top face whatever lies over them, as a cut through the ground.
 Mesh BuildChunkMesh(const Grid &grid, const VoxelWorld &world, const WorldChunk &chunk, int cutLevel,
-                    const FaceLookTable &faceLooks);
+                    const FaceLookTable &faceLooks, bool lowDetail);
 } // namespace TerrainMeshBuilder
 } // namespace WorldGeometryRenderer
 } // namespace Infinitesia

@@ -157,7 +157,8 @@ void MeshData::AppendFace(const std::array<Vector3, 4> &corners, Vector3 normal,
 }
 
 void MeshData::AppendExposedSideFaces(const SolidQuery &isSolid, GridCell cell, float left, float right, float front,
-                                      float back, float bottomY, float topY, const FaceLook &look)
+                                      float back, float bottomY, float topY, const FaceLook &look,
+                                      bool withAmbientOcclusion)
 {
 	const std::array<GridCell, 4> neighbors{GridCell{cell.x - 1, cell.y, cell.z}, GridCell{cell.x + 1, cell.y, cell.z},
 	                                        GridCell{cell.x, cell.y, cell.z - 1}, GridCell{cell.x, cell.y, cell.z + 1}};
@@ -183,8 +184,11 @@ void MeshData::AppendExposedSideFaces(const SolidQuery &isSolid, GridCell cell, 
 		}
 
 		const Vector3 blockCenter{(left + right) * 0.5f, (bottomY + topY) * 0.5f, (front + back) * 0.5f};
-		AppendFace(sideCorners[side], sideNormals[side], look,
-		           ComputeCornerBrightness(isSolid, cell, sideNormals[side], blockCenter, sideCorners[side]));
+		const std::array<float, 4> brightness =
+		    withAmbientOcclusion
+		        ? ComputeCornerBrightness(isSolid, cell, sideNormals[side], blockCenter, sideCorners[side])
+		        : std::array<float, 4>{1.0f, 1.0f, 1.0f, 1.0f};
+		AppendFace(sideCorners[side], sideNormals[side], look, brightness);
 	}
 }
 } // namespace TerrainMeshGeometry

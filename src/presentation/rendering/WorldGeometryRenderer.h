@@ -21,7 +21,32 @@ struct ChunkMeshCacheEntry
 	std::uint64_t terrainRevision = 0;
 };
 
-using ChunkMeshKey = std::pair<ChunkCoordinate, int>;
+struct ChunkMeshKey
+{
+	ChunkCoordinate coordinate;
+	int cut = 0;
+	// Far chunks skip ambient occlusion: the mesh is cheaper and the difference
+	// is not visible at that distance.
+	bool lowDetail = false;
+
+	bool operator<(const ChunkMeshKey &other) const
+	{
+		if (coordinate < other.coordinate)
+		{
+			return true;
+		}
+		if (other.coordinate < coordinate)
+		{
+			return false;
+		}
+		if (cut != other.cut)
+		{
+			return cut < other.cut;
+		}
+		return lowDetail < other.lowDetail;
+	}
+	bool operator==(const ChunkMeshKey &) const = default;
+};
 using ChunkMeshCache = std::map<ChunkMeshKey, ChunkMeshCacheEntry>;
 
 // The tiles of the block faces, worked out once (see TerrainMeshBuilder).
