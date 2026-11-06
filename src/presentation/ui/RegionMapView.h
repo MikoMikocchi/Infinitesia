@@ -8,14 +8,15 @@
 
 #include "domains/natural/planetary/PlanetMap.h"
 #include "domains/natural/planetary/region/RegionGenerator.h"
+#include "domains/natural/planetary/world/TheaterCache.h"
 #include "presentation/ui/UniqueTexture.h"
 #include "raylib.h"
 
 namespace Infinitesia
 {
 // Top-down map of the area around one region: hillshaded relief tinted by
-// biome. The patch is built on a worker thread; the previous image stays up
-// until the next one is ready.
+// biome. The theater itself comes from a TheaterCache, which generates it on a
+// worker; the previous image stays up until the next one is ready.
 class RegionMapView
 {
 public:
@@ -26,7 +27,7 @@ public:
 	// theater tiles, about 17 km across. The image is coarsened for large radii.
 	static constexpr int kDefaultPatchRadiusRegions = 8;
 
-	RegionMapView(const PlanetMap &map, ColorFunction color);
+	RegionMapView(const PlanetMap &map, TheaterCache &theaters, ColorFunction color);
 	~RegionMapView();
 
 	RegionMapView(const RegionMapView &) = delete;
@@ -45,15 +46,28 @@ public:
 		return m_worldMap;
 	}
 
-	// Lays a new chessboard anchored at a point of the planet and focuses its
-	// middle region. `AnchorAsync` does the expensive world generation on a
-	// worker; the old image stays up until the new one is applied.
-	void Anchor(CartesianPoint3D direction);
-	void AnchorAsync(CartesianPoint3D direction);
+	// The theater that is shown now, and the one that was requested. A request
+	// is asynchronous: it stays "anchoring" until the cache hands the map over.
+	const std::optional<TheaterKey> &DisplayedTheater() const noexcept
+	{
+		return m_displayedTheater;
+	}
+	const std::optional<TheaterKey> &RequestedTheater() const noexcept
+	{
+		return m_requestedTheater;
+	}
+	void RequestTheater(const TheaterKey &key, std::optional<CartesianPoint3D> focus = std::nullopt);
+	void RequestTheaterAt(CartesianPoint3D direction);
 	bool IsAnchoring() const noexcept
 	{
-		return m_worldPending.valid() || m_queuedAnchor.has_value();
+		return m_requestedTheater.has_value() &&
+		       (!m_displayedTheater.has_value() || !(*m_requestedTheater == *m_displayedTheater));
 	}
+	bool HasTheaterAt(CartesianPoint3D direction) const noexcept
+	{
+		return m_worldMap != nullptr && m_worldMap->Find(direction) != nullptr;
+	}
+
 	unsigned GridVersion() const noexcept
 	{
 		return m_gridVersion;
@@ -80,7 +94,8 @@ public:
 		return m_pending.valid();
 	}
 
-	// Polls the worker and uploads finished images; needs the GL context.
+	// Polls the cache and the patch worker and uploads finished images; needs
+	// the GL context.
 	void Update();
 	void Draw(Rectangle bounds) const;
 
@@ -104,12 +119,16 @@ private:
 	static Built Build(const RegionGenerator &generator, const ColorFunction &color, const LocalGrid &grid,
 	                   RegionId focus, int radiusRegions);
 	bool PatchPoint(Vector2 mouse, Rectangle bounds, int &x, int &y) const;
-	void StartWorldGeneration(CartesianPoint3D direction);
+	void ApplyTheater(const TheaterKey &key, std::shared_ptr<const WorldMap> world);
 
+	TheaterCache &m_theaters;
 	std::shared_ptr<const WorldMap> m_worldMap;
 	RegionGenerator m_generator;
 	ColorFunction m_color;
 
+	std::optional<TheaterKey> m_requestedTheater;
+	std::optional<TheaterKey> m_displayedTheater;
+	std::optional<CartesianPoint3D> m_requestedFocus;
 	LocalGrid m_grid;
 	unsigned m_gridVersion = 0; // bumped whenever the anchor moves
 	RegionId m_focus{};         // requested
@@ -124,8 +143,5 @@ private:
 	RegionId m_pendingFocus{};
 	std::shared_ptr<const RegionPatch> m_patch;
 	UniqueTexture m_texture;
-	std::future<std::shared_ptr<const WorldMap>> m_worldPending;
-	std::optional<CartesianPoint3D> m_queuedAnchor;
-	CartesianPoint3D m_pendingAnchor{};
 };
 } // namespace Infinitesia

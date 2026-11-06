@@ -10,6 +10,7 @@
 #include "domains/natural/planetary/pipeline/PlanetPipeline.h"
 #include "domains/natural/planetary/region/Site.h"
 #include "domains/natural/planetary/region/WorldTerrain.h"
+#include "domains/natural/planetary/world/TheaterCache.h"
 #include "presentation/ui/RegionMapView.h"
 #include "presentation/ui/UniqueTexture.h"
 #include "presentation/ui/WorldMapView.h"
@@ -42,9 +43,16 @@ public:
 	{
 		m_foundingEnabled = enabled;
 	}
+	// The terrain of the active (site) theater, or the displayed preview while
+	// no site has fixed its theater yet. Without either it falls back to the
+	// planet fields, as WorldTerrain does with a null theater.
 	const WorldTerrain &GetRegionTerrain() const noexcept
 	{
-		return m_regionMap.GetTerrain();
+		return m_activeTheater != nullptr ? m_activeTerrain : m_regionMap.GetTerrain();
+	}
+	const std::optional<TheaterKey> &ActiveTheater() const noexcept
+	{
+		return m_activeTheaterKey;
 	}
 
 private:
@@ -54,10 +62,14 @@ private:
 	Matrix GetGlobeTransform() const;
 	void SyncGlobeMesh() const;
 	void WriteCellColors(Color *out, int row, int column, bool selected) const;
-	// Anchors the theater at the selected planet cell and opens the theater map.
+	// Anchors the preview theater at the selected planet cell and opens the
+	// theater map.
 	void EnterTheaterFromSelectedCell();
 	// Opens the site map for the current theater tile.
 	void EnterSiteMode();
+	// Fixes the displayed preview as the active theater of the site being
+	// founded. Merely browsing with the globe never changes the active theater.
+	void ActivateDisplayedTheater();
 	// Goes one level up: site -> theater -> planet.
 	void GoBackOneLevel();
 	void RotateGlobe(float yawDegrees, float pitchDegrees);
@@ -68,7 +80,12 @@ private:
 
 	StarSystem m_system;
 	PlanetMap m_planetMap;
+	TheaterCache m_theaterCache;
 	RegionMapView m_regionMap;
+	// The site's theater is independent of the preview the globe moves through.
+	WorldTerrain m_activeTerrain;
+	std::shared_ptr<const WorldMap> m_activeTheater;
+	std::optional<TheaterKey> m_activeTheaterKey;
 	WorldMapView m_worldMapView;
 	std::vector<Color> m_regionColors;
 	std::vector<float> m_regionBrightness;

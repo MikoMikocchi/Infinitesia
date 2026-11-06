@@ -171,7 +171,9 @@ void PlanetViewer::HandleInput()
 			if (std::abs(focus.i) > kRegionTilesPerWorldHalfSide - kEdgePanMargin ||
 			    std::abs(focus.j) > kRegionTilesPerWorldHalfSide - kEdgePanMargin)
 			{
-				m_regionMap.AnchorAsync(PlanetaryCoordinates::ToCartesian(m_regionMap.GetFocusCenter()));
+				// Pull the next preview window from the cache; the active site
+				// theater stays where it is.
+				m_regionMap.RequestTheaterAt(PlanetaryCoordinates::ToCartesian(m_regionMap.GetFocusCenter()));
 			}
 		}
 		m_draggingMap = false;

@@ -24,17 +24,19 @@ PlanetViewer::PlanetViewer(StarSystem system, LoadProgress *progress)
 
 PlanetViewer::PlanetViewer(StarSystem system, const PlanetPipeline &pipeline, LoadProgress *progress)
     : m_system(std::move(system)), m_planetMap(m_system.planet, ClimateInputsFor(m_system), pipeline, progress),
-      m_regionMap(m_planetMap,
+      m_theaterCache(m_planetMap),
+      m_regionMap(m_planetMap, m_theaterCache,
 	              [](const PlanetRegion &cell, float elevationMeters) {
-	                  // Tint by the local elevation, not the cell average, and
-	                  // skip the cell-wide lake wash: at this scale a lake is not
-	                  // the whole cell.
-	                  PlanetRegion local = cell;
-	                  local.elevationNormalized =
-	                      std::clamp(static_cast<double>(elevationMeters) / (kMaxElevationKm * 1000.0), -1.0, 1.0);
-	                  local.isLake = false;
-	                  return GetRegionColor(local);
-                  }),
+		              // Tint by the local elevation, not the cell average, and
+		              // skip the cell-wide lake wash: at this scale a lake is not
+		              // the whole cell.
+		              PlanetRegion local = cell;
+		              local.elevationNormalized =
+		                  std::clamp(static_cast<double>(elevationMeters) / (kMaxElevationKm * 1000.0), -1.0, 1.0);
+		              local.isLake = false;
+		              return GetRegionColor(local);
+	              }),
+      m_activeTerrain(m_planetMap),
       m_selectedLatitude(m_planetMap.GetLatitudeBandCount() / 2),
       m_selectedLongitude(m_planetMap.GetLongitudeSegmentCount() / 2)
 {
@@ -202,8 +204,9 @@ PlanetViewer::PlanetViewer(StarSystem system, const PlanetPipeline &pipeline, Lo
 	{
 		m_selectedLatitude = bestLatitude;
 		m_selectedLongitude = bestLongitude;
-		m_regionMap.Anchor(PlanetaryCoordinates::ToCartesian(
-		    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
+		const GeographicCoordinates center =
+		    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude);
+		m_regionMap.RequestTheater(m_theaterCache.KeyAt(center), PlanetaryCoordinates::ToCartesian(center));
 	}
 
 	m_regionGridVersion = m_regionMap.GridVersion();
@@ -344,6 +347,10 @@ void PlanetViewer::TryFoundSettlement()
 		return;
 	}
 
+	// The place founds its site in the displayed theater, which then becomes
+	// the active one. Later globe clicks only move the preview.
+	ActivateDisplayedTheater();
+
 	Site site;
 	site.kind = SiteKind::Settlement;
 	site.grid = grid;
@@ -381,30 +388,26 @@ void PlanetViewer::RotateGlobe(float yawDegrees, float pitchDegrees)
 
 void PlanetViewer::EnterTheaterFromSelectedCell()
 {
-	// Reuse the current theater when the click is inside it. Only a click outside
-	// starts a new theater, and that generation runs on a worker.
+	// Reuse the displayed theater when the click is inside it. Only a click
+	// outside asks the cache for a different preview theater; generation runs on
+	// a worker and never blocks the click. The active (site) theater is not
+	// touched: browsing with the globe is only a preview.
 	const GeographicCoordinates target =
 	    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude);
 	const CartesianPoint3D direction = PlanetaryCoordinates::ToCartesian(target);
+	const TheaterKey key = m_theaterCache.KeyAt(target);
+	const bool sameTheater =
+	    m_regionMap.DisplayedTheater().has_value() && *m_regionMap.DisplayedTheater() == key;
 
 	GeographicCoordinates focus = target;
-	bool focusedLocal = false;
-	if (!m_regionMap.IsAnchoring())
+	if (sameTheater && m_regionMap.HasTheaterAt(direction))
 	{
-		if (const auto world = m_regionMap.GetWorldMap(); world && world->Find(direction))
-		{
-			m_regionMap.FocusAt(direction);
-			focus = m_regionMap.GetFocusCenter();
-			focusedLocal = true;
-		}
-		else
-		{
-			m_regionMap.AnchorAsync(direction);
-		}
+		m_regionMap.FocusAt(direction);
+		focus = m_regionMap.GetFocusCenter();
 	}
 	else
 	{
-		m_regionMap.AnchorAsync(direction);
+		m_regionMap.RequestTheater(key, direction);
 	}
 
 	m_orientationTarget = QuaternionFromMatrix(MakeFacingMatrix(focus));
@@ -412,10 +415,23 @@ void PlanetViewer::EnterTheaterFromSelectedCell()
 	m_worldMapMode = true;
 	m_regionMode = false;
 	m_hasTheaterClick = false;
-	if (focusedLocal)
+	if (sameTheater && !m_regionMap.IsAnchoring())
 	{
 		SyncSelectionToRegion();
 	}
+}
+
+void PlanetViewer::ActivateDisplayedTheater()
+{
+	const auto &key = m_regionMap.DisplayedTheater();
+	std::shared_ptr<const WorldMap> world = m_regionMap.GetWorldMap();
+	if (!key.has_value() || world == nullptr)
+	{
+		return;
+	}
+	m_activeTheaterKey = *key;
+	m_activeTheater = std::move(world);
+	m_activeTerrain.SetWorld(m_activeTheater);
 }
 
 void PlanetViewer::EnterSiteMode()

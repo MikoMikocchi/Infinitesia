@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <utility>
 
-#include "domains/natural/planetary/world/WorldGenerator.h"
+#include "core/PlanetaryCoordinates.h"
 
 namespace Infinitesia
 {
@@ -43,66 +43,70 @@ double CellSizeForRadius(int radiusRegions) noexcept
 }
 } // namespace
 
-RegionMapView::RegionMapView(const PlanetMap &map, ColorFunction color)
-    : m_worldMap(std::make_shared<const WorldMap>(WorldGenerator(map).Generate(GeographicCoordinates{0.0, 0.0}))),
-      m_generator(map, m_worldMap), m_color(std::move(color))
+RegionMapView::RegionMapView(const PlanetMap &map, TheaterCache &theaters, ColorFunction color)
+    : m_theaters(theaters), m_generator(map), m_color(std::move(color))
 {
 	m_grid = m_generator.MakeGrid(PlanetaryCoordinates::ToCartesian({0.0, 0.0}));
 }
 
 RegionMapView::~RegionMapView()
 {
-	// The workers read m_generator and m_color; wait for them before members go
-	// away.
-	if (m_worldPending.valid())
-	{
-		m_worldPending.wait();
-	}
+	// The patch worker reads m_generator's planet and the world it captured;
+	// wait for it before members go away.
 	if (m_pending.valid())
 	{
 		m_pending.wait();
 	}
 }
 
-void RegionMapView::StartWorldGeneration(CartesianPoint3D direction)
+void RegionMapView::RequestTheater(const TheaterKey &key, std::optional<CartesianPoint3D> focus)
 {
-	m_pendingAnchor = direction;
-	const PlanetMap *planet = &m_generator.GetTerrain().GetPlanetMap();
-	m_worldPending = std::async(std::launch::async, [planet, direction] {
-		return std::make_shared<const WorldMap>(WorldGenerator(*planet).Generate(direction));
-	});
-}
+	m_requestedTheater = key;
+	m_requestedFocus = focus;
 
-void RegionMapView::AnchorAsync(CartesianPoint3D direction)
-{
-	if (m_worldPending.valid())
+	// Already showing this theater: just move the focus, no regeneration and no
+	// new grid.
+	if (m_displayedTheater.has_value() && *m_displayedTheater == key && m_worldMap != nullptr)
 	{
-		m_queuedAnchor = direction;
+		if (focus.has_value())
+		{
+			const RegionId id = m_grid.RegionAt(*focus);
+			if (LocalGrid::IsValid(id))
+			{
+				m_focus = id;
+			}
+		}
+		m_requestedFocus.reset();
 		return;
 	}
-	StartWorldGeneration(direction);
+
+	// Trigger a worker now; Update takes the map when it is ready. Until then
+	// the old theater and image stay in place.
+	m_theaters.GetOrCreate(key);
 }
 
-void RegionMapView::Anchor(CartesianPoint3D direction)
+void RegionMapView::RequestTheaterAt(CartesianPoint3D direction)
 {
-	if (m_worldPending.valid())
-	{
-		m_worldPending.wait();
-		m_worldPending = {};
-	}
-	// The worker reads the generator and its theater map; let it finish before the
-	// map is replaced.
-	if (m_pending.valid())
-	{
-		m_pending.wait();
-		m_pending = {};
-	}
-	m_worldMap =
-	    std::make_shared<const WorldMap>(WorldGenerator(m_generator.GetTerrain().GetPlanetMap()).Generate(direction));
+	RequestTheater(m_theaters.KeyAt(direction), direction);
+}
+
+void RegionMapView::ApplyTheater(const TheaterKey &key, std::shared_ptr<const WorldMap> world)
+{
+	m_worldMap = std::move(world);
+	m_displayedTheater = key;
 	m_generator.SetWorld(m_worldMap);
-	m_grid = m_generator.MakeGrid(direction);
+	m_grid = m_generator.MakeGrid(PlanetaryCoordinates::ToCartesian(m_theaters.Anchor(key)));
 	++m_gridVersion;
 	m_focus = RegionId{};
+	if (m_requestedFocus.has_value())
+	{
+		const RegionId id = m_grid.RegionAt(*m_requestedFocus);
+		if (LocalGrid::IsValid(id))
+		{
+			m_focus = id;
+		}
+	}
+	m_requestedFocus.reset();
 	m_hasImage = false;
 }
 
@@ -220,52 +224,51 @@ RegionMapView::Built RegionMapView::Build(const RegionGenerator &generator, cons
 
 void RegionMapView::Update()
 {
+	// The cache owns the generation. A miss returns nullptr and the previous
+	// theater stays on screen; the next frame polls again.
+	if (m_requestedTheater.has_value() && IsAnchoring())
+	{
+		if (std::shared_ptr<const WorldMap> world = m_theaters.GetOrCreate(*m_requestedTheater))
+		{
+			ApplyTheater(*m_requestedTheater, std::move(world));
+		}
+	}
+
 	if (m_pending.valid() && m_pending.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
 	{
 		Built built = m_pending.get();
-		const int points = built.patch.points;
-		const Image image{built.pixels.data(), points, points, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
-		const Texture2D texture = LoadTextureFromImage(image);
-		if (texture.id != 0)
+		// A theater switch or a new zoom may have happened while the worker was
+		// busy; dropping the result avoids showing the previous area.
+		if (m_pendingFocus == m_focus && m_pendingVersion == m_gridVersion && m_pendingRadius == m_patchRadius)
 		{
-			SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
-			m_texture = UniqueTexture(texture);
-			m_patch = std::make_shared<const RegionPatch>(std::move(built.patch));
-			m_displayed = m_pendingFocus;
-			m_displayedVersion = m_pendingVersion;
-			m_displayedRadius = built.patch.radiusRegions;
-			m_hasImage = true;
+			const int points = built.patch.points;
+			const Image image{built.pixels.data(), points, points, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+			const Texture2D texture = LoadTextureFromImage(image);
+			if (texture.id != 0)
+			{
+				SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
+				m_texture = UniqueTexture(texture);
+				m_patch = std::make_shared<const RegionPatch>(std::move(built.patch));
+				m_displayed = m_pendingFocus;
+				m_displayedVersion = m_pendingVersion;
+				m_displayedRadius = built.patch.radiusRegions;
+				m_hasImage = true;
+			}
 		}
 	}
 
-	if (m_worldPending.valid() && !m_pending.valid() &&
-	    m_worldPending.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-	{
-		// Apply a completed theater only after the previous patch worker has
-		// finished; this keeps the swap off the render thread's blocking path.
-		m_worldMap = m_worldPending.get();
-		m_generator.SetWorld(m_worldMap);
-		m_grid = m_generator.MakeGrid(m_pendingAnchor);
-		++m_gridVersion;
-		m_focus = RegionId{};
-		m_hasImage = false;
-		if (m_queuedAnchor.has_value())
-		{
-			const CartesianPoint3D next = *m_queuedAnchor;
-			m_queuedAnchor.reset();
-			StartWorldGeneration(next);
-		}
-	}
-
-	if (!m_pending.valid() && (!m_hasImage || !(m_displayed == m_focus) || m_displayedVersion != m_gridVersion ||
-	                           m_displayedRadius != m_patchRadius))
+	if (!m_pending.valid() && m_worldMap != nullptr && !IsAnchoring() &&
+	    (!m_hasImage || !(m_displayed == m_focus) || m_displayedVersion != m_gridVersion ||
+	     m_displayedRadius != m_patchRadius))
 	{
 		m_pendingFocus = m_focus;
 		m_pendingRadius = m_patchRadius;
 		m_pendingVersion = m_gridVersion;
-		m_pending = std::async(std::launch::async, [this, focus = m_focus, grid = m_grid, radius = m_pendingRadius] {
-			return Build(m_generator, m_color, grid, focus, radius);
-		});
+		// Copy the generator: the world pointer inside keeps the theater alive
+		// even if a new one is applied while this worker is still running.
+		m_pending = std::async(std::launch::async,
+		                       [generator = m_generator, color = m_color, focus = m_focus, grid = m_grid,
+		                        radius = m_pendingRadius] { return Build(generator, color, grid, focus, radius); });
 	}
 }
 

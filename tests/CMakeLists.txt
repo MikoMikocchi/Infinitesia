@@ -30,6 +30,10 @@ infinitesia_add_test(WorldMapTests MAIN
   SOURCES domains/natural/planetary/WorldMapTests.cpp
   LINK InfinitesiaPlanet)
 
+infinitesia_add_test(TheaterCacheTests MAIN
+  SOURCES domains/natural/planetary/TheaterCacheTests.cpp
+  LINK InfinitesiaPlanet)
+
 infinitesia_add_test(PlanetGeologyTests MAIN
   SOURCES
     domains/natural/planetary/GeologyFieldsTests.cpp

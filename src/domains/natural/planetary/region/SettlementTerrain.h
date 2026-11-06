@@ -82,6 +82,13 @@ public:
 	{
 		return m_terrain.GetPlanetMap();
 	}
+	// The theater this terrain was built with, or nullptr when it falls back to
+	// the planet fields. The value is shared with the source WorldTerrain, so it
+	// stays alive as long as this object does.
+	const WorldMap *World() const noexcept
+	{
+		return m_terrain.World();
+	}
 
 	// The origin column's centre, metres east and north of the grid's anchor.
 	double OriginEastMeters() const noexcept
