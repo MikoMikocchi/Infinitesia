@@ -1,8 +1,10 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <map>
+#include <unordered_map>
 #include <utility>
 
 #include "world/VoxelWorld.h"
@@ -22,6 +24,16 @@ public:
 
 private:
 	using ColumnKey = std::pair<int, int>;
+
+	struct ColumnKeyHash
+	{
+		std::size_t operator()(const ColumnKey &key) const noexcept
+		{
+			return (static_cast<std::size_t>(static_cast<std::uint32_t>(key.first)) << 32) ^
+			       static_cast<std::uint32_t>(key.second);
+		}
+	};
+
 	// The highest solid level of each cell of a chunk column at or under the top
 	// level; -1 when there is none or the chunks above are not generated yet.
 	using ColumnTops = std::array<int, kChunkSize * kChunkSize>;
@@ -40,7 +52,7 @@ private:
 	int m_topLevel = -1;
 	std::uint64_t m_terrainRevision = 0;
 	std::size_t m_chunkCount = 0;
-	std::map<ColumnKey, CachedColumn> m_columns;
+	std::unordered_map<ColumnKey, CachedColumn, ColumnKeyHash> m_columns;
 };
 } // namespace WorldGeometryRenderer
 } // namespace Infinitesia

@@ -70,7 +70,7 @@ public:
 	{
 		return m_terrain->Registry();
 	}
-	const std::map<ChunkCoordinate, WorldChunk> &GetChunks() const;
+	const std::unordered_map<ChunkCoordinate, WorldChunk, ChunkCoordinateHash> &GetChunks() const;
 	std::size_t GetLoadedChunkCount() const;
 	std::size_t GetTotalChunkCount() const;
 
@@ -82,7 +82,7 @@ private:
 	// per column and remembered: HasSkyAccess is then a lookup.
 	int SkyTopOf(int x, int z) const;
 
-	std::map<ChunkCoordinate, WorldChunk> m_chunks;
+	std::unordered_map<ChunkCoordinate, WorldChunk, ChunkCoordinateHash> m_chunks;
 	std::vector<ChunkCoordinate> m_pendingChunks;
 	// The view the pending list was built for; a view that did not move to another
 	// chunk needs no new list.

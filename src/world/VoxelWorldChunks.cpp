@@ -145,7 +145,7 @@ void VoxelWorld::UnloadChunksOutside(GridCell center, int horizontalRadius, int 
 	                      m_pendingChunks.end());
 }
 
-const std::map<ChunkCoordinate, WorldChunk> &VoxelWorld::GetChunks() const
+const std::unordered_map<ChunkCoordinate, WorldChunk, ChunkCoordinateHash> &VoxelWorld::GetChunks() const
 {
 	return m_chunks;
 }

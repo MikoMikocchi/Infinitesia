@@ -31,6 +31,24 @@ struct ChunkCoordinate
 	}
 };
 
+// Hashes a chunk coordinate for the unordered chunk table: GetBlock and the mesh
+// builder ask for one neighbour after another, so a tree is the wrong shape.
+struct ChunkCoordinateHash
+{
+	std::size_t operator()(const ChunkCoordinate &coordinate) const noexcept
+	{
+		std::uint64_t hash = 1469598103934665603ull; // FNV-1a
+		const auto mix = [&hash](std::uint32_t value) {
+			hash ^= value;
+			hash *= 1099511628211ull;
+		};
+		mix(static_cast<std::uint32_t>(coordinate.x));
+		mix(static_cast<std::uint32_t>(coordinate.y));
+		mix(static_cast<std::uint32_t>(coordinate.z));
+		return static_cast<std::size_t>(hash);
+	}
+};
+
 struct WorldChunk
 {
 	ChunkCoordinate coordinate;

@@ -102,16 +102,24 @@ bool TerrainOcclusion::IsHidden(const VoxelWorld &world, const WorldChunk &chunk
 
 	const int firstX = chunk.coordinate.x * kChunkSize - 1;
 	const int firstZ = chunk.coordinate.z * kChunkSize - 1;
+	const ColumnTops *column = nullptr;
+	ColumnKey columnKey{-1, -1};
 	for (int z = firstZ; z <= firstZ + chunk.depth + 1; ++z)
 	{
+		const int keyZ = z / kChunkSize;
 		for (int x = firstX; x <= firstX + chunk.width + 1; ++x)
 		{
 			if (x < 0 || z < 0)
 			{
 				return false; // the edge of the world shows its side
 			}
-			const ColumnTops &column = GetColumn(world, {x / kChunkSize, z / kChunkSize}, topLevel);
-			if (column[static_cast<std::size_t>((z % kChunkSize) * kChunkSize + x % kChunkSize)] <= chunkTop)
+			const ColumnKey key{x / kChunkSize, keyZ};
+			if (column == nullptr || key != columnKey)
+			{
+				column = &GetColumn(world, key, topLevel);
+				columnKey = key;
+			}
+			if ((*column)[static_cast<std::size_t>((z % kChunkSize) * kChunkSize + x % kChunkSize)] <= chunkTop)
 			{
 				return false;
 			}
