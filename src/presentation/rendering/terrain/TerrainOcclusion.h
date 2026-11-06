@@ -26,13 +26,21 @@ private:
 	// level; -1 when there is none or the chunks above are not generated yet.
 	using ColumnTops = std::array<int, kChunkSize * kChunkSize>;
 
+	struct CachedColumn
+	{
+		ColumnTops tops;
+		// Every cell found its solid block: a chunk generated later cannot change
+		// it, so it survives the next chunk.
+		bool complete = false;
+	};
+
 	const ColumnTops &GetColumn(const VoxelWorld &world, ColumnKey key, int topLevel);
 
 	const VoxelWorld *m_world = nullptr;
 	int m_topLevel = -1;
 	std::uint64_t m_terrainRevision = 0;
 	std::size_t m_chunkCount = 0;
-	std::map<ColumnKey, ColumnTops> m_columns;
+	std::map<ColumnKey, CachedColumn> m_columns;
 };
 } // namespace WorldGeometryRenderer
 } // namespace Infinitesia

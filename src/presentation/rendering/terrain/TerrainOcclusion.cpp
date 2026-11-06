@@ -1,6 +1,7 @@
 #include "presentation/rendering/terrain/TerrainOcclusion.h"
 
 #include <algorithm>
+#include <iterator>
 
 namespace Infinitesia
 {
@@ -19,7 +20,7 @@ const TerrainOcclusion::ColumnTops &TerrainOcclusion::GetColumn(const VoxelWorld
 	const auto cached = m_columns.find(key);
 	if (cached != m_columns.end())
 	{
-		return cached->second;
+		return cached->second.tops;
 	}
 
 	ColumnTops tops;
@@ -65,19 +66,31 @@ const TerrainOcclusion::ColumnTops &TerrainOcclusion::GetColumn(const VoxelWorld
 			}
 		}
 	}
-	return m_columns.emplace(key, tops).first->second;
+	CachedColumn column;
+	column.tops = tops;
+	column.complete = unresolved == 0;
+	return m_columns.emplace(key, column).first->second.tops;
 }
 
 bool TerrainOcclusion::IsHidden(const VoxelWorld &world, const WorldChunk &chunk, int topLevel)
 {
 	const std::size_t chunkCount = world.GetChunks().size();
-	if (m_world != &world || m_topLevel != topLevel || m_terrainRevision != world.GetTerrainRevision() ||
-	    m_chunkCount != chunkCount)
+	if (m_world != &world || m_topLevel != topLevel || m_terrainRevision != world.GetTerrainRevision())
 	{
 		m_columns.clear();
 		m_world = &world;
 		m_topLevel = topLevel;
 		m_terrainRevision = world.GetTerrainRevision();
+		m_chunkCount = chunkCount;
+	}
+	else if (m_chunkCount != chunkCount)
+	{
+		// A generated chunk can only complete columns that stopped at a missing
+		// chunk; the columns that already found their solid block cannot change.
+		for (auto column = m_columns.begin(); column != m_columns.end();)
+		{
+			column = column->second.complete ? std::next(column) : m_columns.erase(column);
+		}
 		m_chunkCount = chunkCount;
 	}
 
