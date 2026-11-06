@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <set>
 #include <stdexcept>
 
@@ -47,18 +48,41 @@ bool VoxelWorld::HasSkyAccess(GridCell cell) const
 		return false;
 	}
 
-	for (int y = cell.y + 1; y < m_gridHeight; ++y)
+	const BlockRegistry &registry = m_terrain->Registry();
+	int y = cell.y + 1;
+	// The cells of one chunk are looked up once and then indexed: an unbroken
+	// column used to cost a chunk lookup per metre, which matters for the deep
+	// chunks under the sea.
+	while (y < m_gridHeight)
 	{
-		const GridCell above{cell.x, y, cell.z};
-		const auto chunk = m_chunks.find(GetChunkCoordinate(above));
-		const BlockState state = chunk == m_chunks.end()
-		                             ? m_terrain->StateAt(above)
-		                             : chunk->second.blocks[GetBlockIndexHelper(chunk->second, above)].state;
-		// Air and water let the light through; anything that stops it shades the
-		// cell.
-		if (!m_terrain->Registry().LetsLightThrough(state))
+		const ChunkCoordinate coordinate = GetChunkCoordinate(GridCell{cell.x, y, cell.z});
+		const auto chunk = m_chunks.find(coordinate);
+		if (chunk == m_chunks.end())
 		{
-			return false;
+			// Not generated: there is no storage to index, so ask the source. The
+			// loop still advances a whole chunk at a time.
+			const int end = std::min(m_gridHeight, (coordinate.y + 1) * kChunkSize);
+			for (; y < end; ++y)
+			{
+				if (!registry.LetsLightThrough(m_terrain->StateAt(GridCell{cell.x, y, cell.z})))
+				{
+					return false;
+				}
+			}
+			continue;
+		}
+
+		const WorldChunk &loaded = chunk->second;
+		const int end = std::min(m_gridHeight, coordinate.y * kChunkSize + loaded.height);
+		for (; y < end; ++y)
+		{
+			const GridCell above{cell.x, y, cell.z};
+			// Air and water let the light through; anything that stops it shades the
+			// cell.
+			if (!registry.LetsLightThrough(loaded.blocks[GetBlockIndexHelper(loaded, above)].state))
+			{
+				return false;
+			}
 		}
 	}
 	return true;
@@ -106,15 +130,22 @@ void VoxelWorld::SetBlock(GridCell cell, BlockState state)
 		}
 	}
 
-	for (auto &[coordinate, affectedChunk] : m_chunks)
+	// Light from the sky changes for the chunks below in the same column; only
+	// that column has to be walked, not every loaded chunk.
+	for (int y = 0; y <= changedChunk.y; ++y)
 	{
-		// Light from the sky: the chunks below in the same column.
-		const bool affectedByLighting =
-		    coordinate.x == changedChunk.x && coordinate.z == changedChunk.z && coordinate.y <= changedChunk.y;
-
-		if (affectedByLighting || meshNeighbors.count(coordinate) != 0)
+		const auto below = m_chunks.find(ChunkCoordinate{changedChunk.x, y, changedChunk.z});
+		if (below != m_chunks.end())
 		{
-			++affectedChunk.terrainRevision;
+			++below->second.terrainRevision;
+		}
+	}
+	for (const ChunkCoordinate &coordinate : meshNeighbors)
+	{
+		const auto neighbor = m_chunks.find(coordinate);
+		if (neighbor != m_chunks.end())
+		{
+			++neighbor->second.terrainRevision;
 		}
 	}
 }
