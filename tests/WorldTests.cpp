@@ -765,11 +765,11 @@ TEST_CASE("UnloadDropsUnmodifiedFluidChunks")
 	const Settlement settlement = MakeSettlement(OceanAnchor());
 	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
 	const GridCell center{kWidth / 2, kAnchorLevel, kDepth / 2};
-	const GridCell far{240, kAnchorLevel, 240};
-	const ChunkCoordinate farChunk{far.x / kChunkSize, far.y / kChunkSize, far.z / kChunkSize};
+	const GridCell farCell{240, kAnchorLevel, 240};
+	const ChunkCoordinate farChunk{farCell.x / kChunkSize, farCell.y / kChunkSize, farCell.z / kChunkSize};
 	GameWorld world(grid, {{&WorkerKind(), center}}, settlement.source);
 
-	world.terrain.EnsureChunkContaining(far);
+	world.terrain.EnsureChunkContaining(farCell);
 	Require(world.terrain.Fluids().Chunks().find(farChunk) != world.terrain.Fluids().Chunks().end(),
 	        "The ocean chunk has no fluid.");
 	world.terrain.UnloadChunksOutside(center, 0, 0);
@@ -778,12 +778,12 @@ TEST_CASE("UnloadDropsUnmodifiedFluidChunks")
 	Require(world.terrain.Fluids().Chunks().find(farChunk) == world.terrain.Fluids().Chunks().end(),
 	        "An untouched ocean fluid chunk was kept.");
 
-	world.terrain.EnsureChunkContaining(far);
-	const FluidCell *fluid = world.terrain.GetFluid(far);
+	world.terrain.EnsureChunkContaining(farCell);
+	const FluidCell *fluid = world.terrain.GetFluid(farCell);
 	Require(fluid != nullptr, "The regenerated ocean chunk has no fluid.");
 	if (fluid != nullptr)
 	{
-		world.terrain.Fluids().Set(far, *fluid);
+		world.terrain.Fluids().Set(farCell, *fluid);
 	}
 	world.terrain.UnloadChunksOutside(center, 0, 0);
 	Require(world.terrain.GetChunks().find(farChunk) != world.terrain.GetChunks().end(),
