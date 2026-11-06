@@ -19,6 +19,18 @@ public:
 	virtual ~TerrainSource() = default;
 	virtual BlockState StateAt(GridCell cell) const = 0;
 
+	// Fills `out` with the states of the column (x, z) from `y0` to `y1`
+	// inclusive, ascending. The default asks StateAt for every cell; a terrain
+	// that works its columns out once overrides this to do it for the column
+	// instead of for each of its cells.
+	virtual void FillColumn(int x, int z, int y0, int y1, BlockState *out) const
+	{
+		for (int y = y0; y <= y1; ++y)
+		{
+			*out++ = StateAt(GridCell{x, y, z});
+		}
+	}
+
 	// What the cell would be without the plants that grow on the ground: where a
 	// felled tree stood the ground shows again (roots in the soil give way to
 	// soil, the air to air). The same as StateAt for a terrain without plants.

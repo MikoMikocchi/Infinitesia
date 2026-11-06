@@ -305,6 +305,100 @@ const FloraCell *PlanetTerrainSource::FloraAt(GridCell cell) const
 	return found != cells.end() && found->level == cell.y ? &*found : nullptr;
 }
 
+void PlanetTerrainSource::FillColumn(int x, int z, int y0, int y1, BlockState *out) const
+{
+	if (x < 0 || x >= m_width || z < 0 || z >= m_depth || y0 < 0 || y1 >= m_height || y1 < y0)
+	{
+		for (int y = y0; y <= y1; ++y)
+		{
+			*out++ = StateAt(GridCell{x, y, z});
+		}
+		return;
+	}
+
+	// A copy: the profile and flora lookups below may clear the column cache
+	// while this column is in use.
+	const Column column = ColumnAt(x, z);
+	const std::vector<FloraCell> *flora = m_flora != nullptr ? &m_flora->Column(x, z) : nullptr;
+	std::size_t plantIndex = 0;
+
+	const GeologyModel::ColumnProfile *primary = nullptr;
+	const GeologyModel::ColumnProfile *secondary = nullptr;
+	bool profilesReady = false;
+	const auto loadProfiles = [&]() {
+		profilesReady = true;
+		if (m_geology == nullptr)
+		{
+			return;
+		}
+		primary = &ProfileAt(x, z);
+		if (column.secondaryWeight > 0.0 && column.secondaryProvince != kNoProvince)
+		{
+			secondary = &SecondaryProfileAt(x, z);
+		}
+	};
+
+	for (int y = y0; y <= y1; ++y)
+	{
+		const FloraCell *plant = nullptr;
+		if (flora != nullptr)
+		{
+			while (plantIndex < flora->size() && (*flora)[plantIndex].level < y)
+			{
+				++plantIndex;
+			}
+			if (plantIndex < flora->size() && (*flora)[plantIndex].level == y)
+			{
+				plant = &(*flora)[plantIndex];
+			}
+		}
+
+		if (y > column.surface)
+		{
+			*out++ = {plant != nullptr ? plant->matter : kAirMatter, kShapeFull};
+			continue;
+		}
+		const Layer layer = LayerAt(column.kind, column.surface - y);
+		// Roots grow into the soil; rock stops them.
+		if (plant != nullptr && plant->part == TreePart::Root && layer != Layer::Rock)
+		{
+			*out++ = {plant->matter, kShapeFull};
+			continue;
+		}
+		switch (layer)
+		{
+		case Layer::Turf:
+			*out++ = {m_matter.turf, kShapeFull};
+			continue;
+		case Layer::Subsoil:
+			*out++ = {m_matter.subsoil, kShapeFull};
+			continue;
+		case Layer::Sand:
+			*out++ = {m_matter.sand, kShapeFull};
+			continue;
+		case Layer::Rock:
+			break;
+		}
+		if (m_geology == nullptr)
+		{
+			*out++ = {m_matter.bedrock, kShapeFull};
+			continue;
+		}
+		if (!profilesReady)
+		{
+			loadProfiles();
+		}
+		const int elevation = m_terrain->OriginElevationMeters() + (y - m_anchorLevel);
+		const GeologyModel::ColumnProfile *profile = primary;
+		if (secondary != nullptr &&
+		    UseSecondaryRock(column.secondaryWeight, x - m_width / 2, m_depth / 2 - z, elevation))
+		{
+			profile = secondary;
+		}
+		*out++ = {GeologyModel::RockAt(*profile, elevation), kShapeFull};
+	}
+}
+
 PlanetTerrainSource::Layer PlanetTerrainSource::LayerAt(SurfaceKind kind, int depthBelowSurface)
 {
 	if (depthBelowSurface <= 0)

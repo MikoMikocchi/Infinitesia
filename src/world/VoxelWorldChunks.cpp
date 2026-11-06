@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <stdexcept>
@@ -174,17 +175,27 @@ void VoxelWorld::EnsureChunkGenerated(ChunkCoordinate coordinate)
 	const int chunkHeight = std::min(kChunkSize, m_gridHeight - startY);
 	const int chunkDepth = std::min(kChunkSize, m_gridDepth - startZ);
 	WorldChunk chunk{coordinate, chunkWidth, chunkHeight, chunkDepth, 0, false, {}};
-	chunk.blocks.reserve(static_cast<std::size_t>(chunkWidth) * static_cast<std::size_t>(chunkHeight) *
-	                     static_cast<std::size_t>(chunkDepth));
+	chunk.blocks.resize(static_cast<std::size_t>(chunkWidth) * static_cast<std::size_t>(chunkHeight) *
+	                    static_cast<std::size_t>(chunkDepth));
 
+	// One column at a time: the terrain works out the column sample, its plants
+	// and its rock profile once instead of once per cell.
+	std::array<BlockState, kChunkSize> columnStates{};
 	for (int localZ = 0; localZ < chunkDepth; ++localZ)
 	{
-		for (int localY = 0; localY < chunkHeight; ++localY)
+		for (int localX = 0; localX < chunkWidth; ++localX)
 		{
-			for (int localX = 0; localX < chunkWidth; ++localX)
+			const int x = startX + localX;
+			const int z = startZ + localZ;
+			m_terrain->FillColumn(x, z, startY, startY + chunkHeight - 1, columnStates.data());
+			for (int localY = 0; localY < chunkHeight; ++localY)
 			{
-				const GridCell cell{startX + localX, startY + localY, startZ + localZ};
-				chunk.blocks.push_back({cell, m_terrain->StateAt(cell)});
+				const std::size_t index =
+				    (static_cast<std::size_t>(localZ) * static_cast<std::size_t>(chunkHeight) +
+				     static_cast<std::size_t>(localY)) *
+				        static_cast<std::size_t>(chunkWidth) +
+				    static_cast<std::size_t>(localX);
+				chunk.blocks[index] = Block{GridCell{x, startY + localY, z}, columnStates[localY]};
 			}
 		}
 	}

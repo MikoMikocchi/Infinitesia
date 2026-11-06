@@ -42,6 +42,9 @@ public:
 	                    std::shared_ptr<const SpeciesCatalog> flora = nullptr, std::uint64_t floraSeed = 0);
 
 	BlockState StateAt(GridCell cell) const override;
+	// One column sample, one flora lookup and one rock profile for the whole
+	// column, instead of the same work for every cell of it.
+	void FillColumn(int x, int z, int y0, int y1, BlockState *out) const override;
 	BlockState GroundStateAt(GridCell cell) const override;
 	FluidColumn FluidAt(int x, int z) const override;
 	const BlockRegistry &Registry() const override
