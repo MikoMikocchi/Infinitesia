@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <set>
+#include <vector>
 
 #include "presentation/rendering/ViewFrustum.h"
 #include "presentation/rendering/WorldGeometryRenderer.h"
@@ -118,6 +119,24 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 	                             std::chrono::duration<double, std::milli>(kMeshBuildBudgetMs));
 	int buildsLeft = kMeshBuildsPerFrame;
 	std::set<ChunkMeshKey> wantedMeshes;
+
+	// Stale meshes are built nearest first, so the ground under the view appears
+	// before the far edge.
+	struct PendingBuild
+	{
+		int distanceSquared;
+		const WorldChunk *chunk;
+		ChunkMeshKey key;
+	};
+	const auto distanceTo = [&](const ChunkCoordinate &coordinate, int level) {
+		const int dx = coordinate.x - centerChunkX;
+		const int dy = coordinate.y - level / kChunkSize;
+		const int dz = coordinate.z - centerChunkZ;
+		return dx * dx + dy * dy + dz * dz;
+	};
+	std::vector<PendingBuild> pending;
+	pending.reserve(64);
+
 	for (const auto &[coordinate, chunk] : world.GetChunks())
 	{
 		if (!isInRadius(coordinate) || !IsChunkShown(coordinate, viewLevel, mode))
@@ -132,34 +151,48 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 			continue;
 		}
 		const auto found = meshCache.find(key);
-		const bool isCurrent = found != meshCache.end() && found->second.terrainRevision == chunk.terrainRevision;
-		if (!isCurrent && IsBudgetSpent(buildDeadline, buildsLeft))
+		if (found != meshCache.end() && found->second.terrainRevision == chunk.terrainRevision)
 		{
-			// A stale mesh is drawn until its turn; a missing one is skipped.
-			if (found == meshCache.end() || found->second.mesh.vertexCount <= 0)
+			if (found->second.mesh.vertexCount > 0)
 			{
-				continue;
+				DrawChunkMesh(found->second.mesh, material);
 			}
-			DrawChunkMesh(found->second.mesh, material);
 			continue;
 		}
-		if (!isCurrent)
-		{
-			--buildsLeft;
-		}
-		const ChunkMeshCacheEntry &cachedMesh = GetOrBuildChunkMesh(grid, world, chunk, key, faceLooks, meshCache);
+		pending.push_back({distanceTo(coordinate, viewLevel), &chunk, key});
+	}
 
+	std::sort(pending.begin(), pending.end(), [](const PendingBuild &left, const PendingBuild &right) {
+		return left.distanceSquared < right.distanceSquared;
+	});
+	for (const PendingBuild &build : pending)
+	{
+		const auto found = meshCache.find(build.key);
+		if (IsBudgetSpent(buildDeadline, buildsLeft))
+		{
+			// A stale mesh is drawn until its turn; a missing one is skipped.
+			if (found != meshCache.end() && found->second.mesh.vertexCount > 0)
+			{
+				DrawChunkMesh(found->second.mesh, material);
+			}
+			continue;
+		}
+		--buildsLeft;
+		const ChunkMeshCacheEntry &cachedMesh =
+		    GetOrBuildChunkMesh(grid, world, *build.chunk, build.key, faceLooks, meshCache);
 		if (cachedMesh.mesh.vertexCount > 0)
 		{
 			DrawChunkMesh(cachedMesh.mesh, material);
 		}
 	}
 
-	// The meshes of the next levels up and down are built ahead, as far as this
-	// frame's build budget allows, so that paging through the levels does not
+	// The meshes of the next levels up and down are built ahead with what is left
+	// of this frame's build budget, so that paging through the levels does not
 	// stall on a whole layer of chunks.
 	if (mode == ViewMode::CutAtLevel)
 	{
+		std::vector<PendingBuild> ahead;
+		ahead.reserve(64);
 		for (const int adjacentLevel : {viewLevel - 1, viewLevel + 1})
 		{
 			if (adjacentLevel < 0 || adjacentLevel >= grid.GetHeight())
@@ -176,22 +209,39 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 				const ChunkMeshKey key = GetMeshKey(chunk, adjacentLevel, mode);
 				wantedMeshes.insert(key);
 				const auto cachedMesh = meshCache.find(key);
-				if (!IsBudgetSpent(buildDeadline, buildsLeft) &&
-				    (cachedMesh == meshCache.end() || cachedMesh->second.terrainRevision != chunk.terrainRevision))
+				if (cachedMesh != meshCache.end() && cachedMesh->second.terrainRevision == chunk.terrainRevision)
 				{
-					static_cast<void>(GetOrBuildChunkMesh(grid, world, chunk, key, faceLooks, meshCache));
-					--buildsLeft;
+					continue;
 				}
+				ahead.push_back({distanceTo(coordinate, viewLevel), &chunk, key});
 			}
+		}
+		std::sort(ahead.begin(), ahead.end(), [](const PendingBuild &left, const PendingBuild &right) {
+			return left.distanceSquared < right.distanceSquared;
+		});
+		for (const PendingBuild &build : ahead)
+		{
+			if (IsBudgetSpent(buildDeadline, buildsLeft))
+			{
+				break;
+			}
+			--buildsLeft;
+			static_cast<void>(GetOrBuildChunkMesh(grid, world, *build.chunk, build.key, faceLooks, meshCache));
 		}
 	}
 
 	for (auto cachedMesh = meshCache.begin(); cachedMesh != meshCache.end();)
 	{
 		const ChunkCoordinate &cachedCoordinate = cachedMesh->first.first;
-		const bool isRetained = cachedMesh->first.second == TerrainMeshBuilder::kNoCut &&
-		                        std::abs(cachedCoordinate.x - centerChunkX) <= chunkRadius + kRetainedChunkMargin &&
-		                        std::abs(cachedCoordinate.z - centerChunkZ) <= chunkRadius + kRetainedChunkMargin;
+		const int cachedCut = cachedMesh->first.second;
+		const bool inMargin = std::abs(cachedCoordinate.x - centerChunkX) <= chunkRadius + kRetainedChunkMargin &&
+		                      std::abs(cachedCoordinate.z - centerChunkZ) <= chunkRadius + kRetainedChunkMargin;
+		// The neighbouring levels are kept so that paging up and down is instant.
+		const bool isNeighbourCut = cachedCut != TerrainMeshBuilder::kNoCut &&
+		                            std::abs(cachedCut - viewLevel) <= 1 &&
+		                            std::abs(cachedCoordinate.x - centerChunkX) <= chunkRadius &&
+		                            std::abs(cachedCoordinate.z - centerChunkZ) <= chunkRadius;
+		const bool isRetained = (cachedCut == TerrainMeshBuilder::kNoCut && inMargin) || isNeighbourCut;
 		if (wantedMeshes.count(cachedMesh->first) != 0 || isRetained)
 		{
 			++cachedMesh;
