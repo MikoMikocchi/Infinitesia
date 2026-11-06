@@ -14,6 +14,7 @@
 #include "domains/natural/planetary/region/ProvinceMix.h"
 #include "domains/natural/planetary/region/RegionGenerator.h"
 #include "domains/natural/planetary/region/SettlementTerrain.h"
+#include "domains/natural/planetary/world/WorldGenerator.h"
 
 #define Require(condition, message)                                                                                    \
 	do                                                                                                                 \
@@ -819,4 +820,146 @@ TEST_CASE("SettlementTerrainFindsTheSea")
 		}
 	}
 	Require(foundOcean && foundHighland, "The test planet has no ocean or highland.");
+}
+
+
+TEST_CASE("DiagnosticRiverFlooding" * doctest::skip(false))
+{
+	PlanetParameters parameters;
+	parameters.latitudeBands = 90;
+	parameters.longitudeSegments = 180;
+	parameters.seed = 42;
+	const PlanetMap planet(parameters);
+
+	GeographicCoordinates anchor{};
+	double bestScore = -1.0;
+	for (int latitude = 0; latitude < planet.GetLatitudeBandCount(); ++latitude)
+	{
+		for (int longitude = 0; longitude < planet.GetLongitudeSegmentCount(); ++longitude)
+		{
+			const PlanetRegion &region = planet.GetRegion(latitude, longitude);
+			if (region.isOcean)
+			{
+				continue;
+			}
+			const double score = (region.hasRiver ? 4.0 : 0.0) + 2.0 * region.drainageAccumulation +
+			                     region.precipitationMm / 1000.0;
+			if (score > bestScore)
+			{
+				bestScore = score;
+				anchor = {region.latitudeDegrees, region.longitudeDegrees};
+			}
+		}
+	}
+
+	auto world = std::make_shared<const WorldMap>(WorldGenerator(planet).Generate(anchor));
+	std::printf("\n[DIAG] anchor %.2f %.2f rivers=%zu\n", anchor.latitudeDegrees, anchor.longitudeDegrees,
+	            world->Rivers().size());
+
+	RegionTileId riverTile{};
+	float widest = 0.0f;
+	for (int j = -40; j <= 40; ++j)
+	{
+		for (int i = -40; i <= 40; ++i)
+		{
+			const RegionTile &tile = world->At(i, j);
+			if (!tile.HasRiver() || tile.IsLake() || tile.IsOcean())
+			{
+				continue;
+			}
+			for (const RiverChannel &channel : world->RiversOf(tile))
+			{
+				if (channel.widthMeters > widest)
+				{
+					widest = channel.widthMeters;
+					riverTile = {i, j};
+				}
+			}
+		}
+	}
+	const RegionTile &tile = world->At(riverTile);
+	std::printf("[DIAG] river tile %d,%d elevation %.1f width %.1f depth %.1f channels %u lake %d\n", riverTile.i,
+	            riverTile.j, tile.elevationMeters, widest, tile.waterDepthMeters, tile.riverCount,
+	            tile.IsLake() ? 1 : 0);
+
+	const WorldTerrain terrain(planet, world);
+	const LocalGrid grid(planet.GetPlanet().GetRadius(), PlanetaryCoordinates::ToCartesian(anchor));
+	const SettlementTerrain settlement(terrain, grid, riverTile.i * kRegionTileSizeMeters,
+	                                   riverTile.j * kRegionTileSizeMeters);
+
+	constexpr int kStep = 4;
+	constexpr int kHalf = 384;
+	int total = 0;
+	int wet = 0;
+	int dryBelowLevel = 0;
+	int wetShore = 0;
+	int spillEdges = 0;
+	double maxDepth = 0.0;
+	double minGround = 1.0e30;
+	double maxGround = -1.0e30;
+	double minWetLevel = 1.0e30;
+	double maxWetLevel = -1.0e30;
+	std::vector<int> wetMask(static_cast<std::size_t>((2 * kHalf / kStep) * (2 * kHalf / kStep)), 0);
+	std::vector<double> groundMask(static_cast<std::size_t>((2 * kHalf / kStep) * (2 * kHalf / kStep)), 0.0);
+	std::vector<double> wetLevels(static_cast<std::size_t>((2 * kHalf / kStep) * (2 * kHalf / kStep)), 0.0);
+	constexpr int kSide = 2 * kHalf / kStep;
+	for (int z = -kHalf; z <= kHalf; z += kStep)
+	{
+		for (int x = -kHalf; x <= kHalf; x += kStep)
+		{
+			const SurfaceColumn column = settlement.Column(x, z);
+			const std::size_t index = static_cast<std::size_t>((z + kHalf) / kStep) * kSide + (x + kHalf) / kStep;
+			groundMask[index] = column.elevationMeters;
+			minGround = std::min(minGround, column.elevationMeters);
+			maxGround = std::max(maxGround, column.elevationMeters);
+			++total;
+			if (column.fluid != FluidOrigin::None)
+			{
+				++wet;
+				wetMask[index] = 1;
+				maxDepth = std::max(maxDepth, column.fluidDepthMeters);
+				minWetLevel = std::min(minWetLevel, column.fluidLevelMeters);
+				maxWetLevel = std::max(maxWetLevel, column.fluidLevelMeters);
+				wetLevels[index] = column.fluidLevelMeters;
+			}
+		}
+	}
+	for (int z = -kHalf; z <= kHalf; z += kStep)
+	{
+		for (int x = -kHalf; x <= kHalf; x += kStep)
+		{
+			const std::size_t index = static_cast<std::size_t>((z + kHalf) / kStep) * kSide + (x + kHalf) / kStep;
+			if (wetMask[index] == 0)
+			{
+				continue;
+			}
+			for (const auto [dx, dz] : {std::pair{kStep, 0}, std::pair{-kStep, 0}, std::pair{0, kStep}, std::pair{0, -kStep}})
+			{
+				const int nx = x + dx;
+				const int nz = z + dz;
+				if (nx < -kHalf || nx > kHalf || nz < -kHalf || nz > kHalf)
+				{
+					continue;
+				}
+				const std::size_t n = static_cast<std::size_t>((nz + kHalf) / kStep) * kSide + (nx + kHalf) / kStep;
+				if (wetMask[n] == 0)
+				{
+					++wetShore;
+					// The neighbour is dry. If its ground top is below this
+					// water level, the fluid step will spill sideways.
+					if (groundMask[n] + 1.0 < wetLevels[index])
+					{
+						++spillEdges;
+					}
+					if (groundMask[n] + 1.0 < wetLevels[index])
+					{
+						++dryBelowLevel;
+					}
+				}
+			}
+		}
+	}
+	std::printf("[DIAG] ground %.1f..%.1f wet=%d/%d (%.1f%%) depth max %.2f level %.2f..%.2f shore=%d spill=%d\n",
+	            minGround, maxGround, wet, total, 100.0 * wet / total, maxDepth, minWetLevel, maxWetLevel,
+	            wetShore, spillEdges);
 }
