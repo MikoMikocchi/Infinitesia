@@ -84,18 +84,18 @@ std::array<float, 4> ComputeCornerBrightness(const SolidQuery &isSolid, GridCell
 	return brightness;
 }
 
-Color GetBlockColor(const Block &block, const BlockRegistry &registry)
+Color GetBlockColor(MatterId matter, const BlockRegistry &registry)
 {
-	const RgbColor color = registry.ColorOf(block.state.matter);
+	const RgbColor color = registry.ColorOf(matter);
 	return {color.r, color.g, color.b, 255};
 }
 
-FaceLook GetFaceLook(const Block &block, const BlockRegistry &registry, const BlockTextureAtlas *atlas, FaceKind kind)
+FaceLook GetFaceLook(MatterId matter, const BlockRegistry &registry, const BlockTextureAtlas *atlas, FaceKind kind)
 {
 	if (atlas != nullptr && atlas->IsLoaded())
 	{
 		const Rectangle *tile = nullptr;
-		const MatterDef *material = registry.GetMatter(block.state.matter);
+		const MatterDef *material = registry.GetMatter(matter);
 		if (material != nullptr)
 		{
 			tile = atlas->Find(material->key + (kind == FaceKind::Top ? "_top" : "_side"));
@@ -108,9 +108,18 @@ FaceLook GetFaceLook(const Block &block, const BlockRegistry &registry, const Bl
 		{
 			return {WHITE, *tile};
 		}
-		return {GetBlockColor(block, registry), atlas->WhiteTile()};
+		return {GetBlockColor(matter, registry), atlas->WhiteTile()};
 	}
-	return {GetBlockColor(block, registry), Rectangle{}};
+	return {GetBlockColor(matter, registry), Rectangle{}};
+}
+
+void MeshData::ReserveFaces(std::size_t faces)
+{
+	vertices.reserve(faces * 12);
+	texcoords.reserve(faces * 8);
+	normals.reserve(faces * 12);
+	colors.reserve(faces * 16);
+	indices.reserve(faces * 6);
 }
 
 void MeshData::AppendFace(const std::array<Vector3, 4> &corners, Vector3 normal, const FaceLook &look,
@@ -147,9 +156,8 @@ void MeshData::AppendFace(const std::array<Vector3, 4> &corners, Vector3 normal,
 	AppendFaceIndices(corners, normal, firstVertex, splitAlongOddDiagonal, indices);
 }
 
-void MeshData::AppendExposedSideFaces(const VoxelWorld &world, const SolidQuery &isSolid, GridCell cell, float left,
-                                      float right, float front, float back, float bottomY, float topY,
-                                      const FaceLook &look)
+void MeshData::AppendExposedSideFaces(const SolidQuery &isSolid, GridCell cell, float left, float right, float front,
+                                      float back, float bottomY, float topY, const FaceLook &look)
 {
 	const std::array<GridCell, 4> neighbors{GridCell{cell.x - 1, cell.y, cell.z}, GridCell{cell.x + 1, cell.y, cell.z},
 	                                        GridCell{cell.x, cell.y, cell.z - 1}, GridCell{cell.x, cell.y, cell.z + 1}};
@@ -169,8 +177,7 @@ void MeshData::AppendExposedSideFaces(const VoxelWorld &world, const SolidQuery 
 	{
 		// A neighbour that is not loaded yet counts as open: a face hidden behind
 		// it later costs nothing, a missing one would leave a hole in the ground.
-		const Block *neighbor = world.GetBlock(neighbors[side]);
-		if (neighbor != nullptr && world.Registry().Occupied(neighbor->state))
+		if (isSolid(neighbors[side]))
 		{
 			continue;
 		}

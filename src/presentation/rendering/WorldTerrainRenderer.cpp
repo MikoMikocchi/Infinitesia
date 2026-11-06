@@ -1,4 +1,4 @@
-﻿#include <algorithm>
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
@@ -55,7 +55,7 @@ bool IsMeshLoaded(const Mesh &mesh)
 }
 
 ChunkMeshCacheEntry &GetOrBuildChunkMesh(const Grid &grid, const VoxelWorld &world, const WorldChunk &chunk,
-                                         const ChunkMeshKey &key, const BlockTextureAtlas &atlas,
+                                         const ChunkMeshKey &key, const TerrainMeshBuilder::FaceLookTable &faceLooks,
                                          ChunkMeshCache &meshCache)
 {
 	auto cachedMesh = meshCache.find(key);
@@ -69,7 +69,7 @@ ChunkMeshCacheEntry &GetOrBuildChunkMesh(const Grid &grid, const VoxelWorld &wor
 		UnloadMesh(cachedMesh->second.mesh);
 	}
 
-	ChunkMeshCacheEntry entry{TerrainMeshBuilder::BuildChunkMesh(grid, world, chunk, key.second, &atlas),
+	ChunkMeshCacheEntry entry{TerrainMeshBuilder::BuildChunkMesh(grid, world, chunk, key.second, faceLooks),
 	                          chunk.terrainRevision};
 	if (cachedMesh == meshCache.end())
 	{
@@ -90,7 +90,8 @@ void DrawChunkMesh(const Mesh &mesh, Material material)
 } // namespace
 
 void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, int chunkRadius, int viewLevel,
-                ViewMode mode, Material material, const BlockTextureAtlas &atlas, ChunkMeshCache &meshCache)
+                ViewMode mode, Material material, const TerrainMeshBuilder::FaceLookTable &faceLooks,
+                ChunkMeshCache &meshCache)
 {
 	const int centerChunkX = viewCenter.x / kChunkSize;
 	const int centerChunkZ = viewCenter.z / kChunkSize;
@@ -146,7 +147,7 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		{
 			--buildsLeft;
 		}
-		const ChunkMeshCacheEntry &cachedMesh = GetOrBuildChunkMesh(grid, world, chunk, key, atlas, meshCache);
+		const ChunkMeshCacheEntry &cachedMesh = GetOrBuildChunkMesh(grid, world, chunk, key, faceLooks, meshCache);
 
 		if (cachedMesh.mesh.vertexCount > 0)
 		{
@@ -178,7 +179,7 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 				if (!IsBudgetSpent(buildDeadline, buildsLeft) &&
 				    (cachedMesh == meshCache.end() || cachedMesh->second.terrainRevision != chunk.terrainRevision))
 				{
-					static_cast<void>(GetOrBuildChunkMesh(grid, world, chunk, key, atlas, meshCache));
+					static_cast<void>(GetOrBuildChunkMesh(grid, world, chunk, key, faceLooks, meshCache));
 					--buildsLeft;
 				}
 			}

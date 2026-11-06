@@ -24,8 +24,15 @@ struct ChunkMeshCacheEntry
 using ChunkMeshKey = std::pair<ChunkCoordinate, int>;
 using ChunkMeshCache = std::map<ChunkMeshKey, ChunkMeshCacheEntry>;
 
+// The tiles of the block faces, worked out once (see TerrainMeshBuilder).
+namespace TerrainMeshBuilder
+{
+struct FaceLookTable;
+}
+
 void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, int chunkRadius, int viewLevel,
-                ViewMode mode, Material material, const BlockTextureAtlas &atlas, ChunkMeshCache &meshCache);
+                ViewMode mode, Material material, const TerrainMeshBuilder::FaceLookTable &faceLooks,
+                ChunkMeshCache &meshCache);
 void DrawObjectShadows(const Grid &grid, const EntityStore &world, GridCell viewCenter, int chunkRadius, int viewLevel,
                        ViewMode mode);
 void DrawObjects(const Grid &grid, const EntityStore &world, Mesh cylinderMesh, Mesh sphereMesh, Material material,

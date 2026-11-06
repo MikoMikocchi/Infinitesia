@@ -116,6 +116,8 @@ void WorldRenderer::UnloadShaders()
 		}
 	}
 	m_chunkMeshes.clear();
+	m_faceLooks = {};
+	m_faceLookRegistry = nullptr;
 
 	for (auto &[coordinate, fluidMesh] : m_fluidMeshes)
 	{
@@ -215,8 +217,15 @@ void WorldRenderer::Draw(const Grid &grid, const GameWorld &world, std::optional
 	rlSetClipPlanes(kNearClipPlane, kFarClipPlane);
 	BeginMode3D(m_camera);
 	BeginShaderMode(m_worldShader);
+	const BlockRegistry &registry = world.terrain.Registry();
+	if (m_faceLookRegistry != &registry)
+	{
+		WorldGeometryRenderer::TerrainMeshBuilder::BuildFaceLookTable(registry, m_blockAtlas.IsLoaded() ? &m_blockAtlas : nullptr,
+		                                       m_faceLooks);
+		m_faceLookRegistry = &registry;
+	}
 	WorldGeometryRenderer::DrawBlocks(grid, world.terrain, chunkViewCenter, chunkRenderRadius, viewLevel, viewMode,
-	                                  m_worldMaterial, m_blockAtlas, m_chunkMeshes);
+	                                  m_worldMaterial, m_faceLooks, m_chunkMeshes);
 	EndShaderMode();
 
 	// Water is a separate, translucent layer over the opaque ground: it never

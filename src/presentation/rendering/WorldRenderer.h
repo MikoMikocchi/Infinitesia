@@ -8,6 +8,7 @@
 #include "presentation/rendering/WorldGeometryRenderer.h"
 #include "presentation/rendering/terrain/BlockTextureAtlas.h"
 #include "presentation/rendering/terrain/FluidMeshBuilder.h"
+#include "presentation/rendering/terrain/TerrainMeshBuilder.h"
 #include "raylib.h"
 #include "world/Grid.h"
 
@@ -49,6 +50,10 @@ private:
 	BlockTextureAtlas m_blockAtlas;
 	Mesh m_cylinderMesh{};
 	Mesh m_sphereMesh{};
+	// The tiles of the block faces for the registry in use; rebuilt when another
+	// settlement with another registry is drawn.
+	mutable WorldGeometryRenderer::TerrainMeshBuilder::FaceLookTable m_faceLooks;
+	mutable const BlockRegistry *m_faceLookRegistry = nullptr;
 	mutable WorldGeometryRenderer::ChunkMeshCache m_chunkMeshes;
 	mutable WorldGeometryRenderer::FluidMeshCache m_fluidMeshes;
 };

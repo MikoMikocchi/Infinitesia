@@ -50,24 +50,27 @@ struct MeshData
 	std::vector<unsigned char> colors;
 	std::vector<unsigned short> indices;
 
+	// Makes room for `faces` quads up front, so a chunk does not grow the arrays
+	// face by face.
+	void ReserveFaces(std::size_t faces);
 	// `cornerBrightness` multiplies the tint per corner; the quad is split along
 	// the diagonal whose corners differ least, so the shading does not show a
 	// seam.
 	void AppendFace(const std::array<Vector3, 4> &corners, Vector3 normal, const FaceLook &look,
 	                const std::array<float, 4> &cornerBrightness = {1.0f, 1.0f, 1.0f, 1.0f});
 	// The side faces of the block in the cell that no solid neighbour covers.
-	void AppendExposedSideFaces(const VoxelWorld &world, const SolidQuery &isSolid, GridCell cell, float left,
-	                            float right, float front, float back, float bottomY, float topY, const FaceLook &look);
+	void AppendExposedSideFaces(const SolidQuery &isSolid, GridCell cell, float left, float right, float front,
+	                            float back, float bottomY, float topY, const FaceLook &look);
 };
 
 // The colour of a block: its material's colour in the registry.
-Color GetBlockColor(const Block &block, const BlockRegistry &registry);
+Color GetBlockColor(MatterId matter, const BlockRegistry &registry);
 
 // The tile and tint of a block face. The tile is found by the material's key:
 // the face's own (rock.granite_top) first, then the plain one (rock.granite). A
 // material with no tile gets a flat tint of its colour. With no atlas the uv
 // stays zero and the default white texture leaves just the tint.
-FaceLook GetFaceLook(const Block &block, const BlockRegistry &registry, const BlockTextureAtlas *atlas, FaceKind kind);
+FaceLook GetFaceLook(MatterId matter, const BlockRegistry &registry, const BlockTextureAtlas *atlas, FaceKind kind);
 } // namespace TerrainMeshGeometry
 } // namespace WorldGeometryRenderer
 } // namespace Infinitesia
