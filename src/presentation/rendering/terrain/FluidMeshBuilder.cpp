@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "presentation/rendering/ViewFrustum.h"
 #include "presentation/rendering/terrain/internal/TerrainMeshGeometry.h"
 #include "raymath.h"
 #include "rlgl.h"
@@ -271,6 +272,9 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 	const int centerChunkX = viewCenter.x / kChunkSize;
 	const int centerChunkZ = viewCenter.z / kChunkSize;
 	int buildsLeft = kFluidBuildsPerFrame;
+	const Frustum frustum = Frustum::Current();
+	const float cellSize = grid.GetCellSize();
+	const float chunkWorldSize = static_cast<float>(kChunkSize) * cellSize;
 	std::set<FluidMeshKey> wanted;
 
 	for (const auto &[coordinate, chunk] : world.Fluids().Chunks())
@@ -284,6 +288,18 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 
 		const FluidMeshKey key = GetMeshKey(chunk, viewLevel, mode);
 		wanted.insert(key);
+		// Outside the view volume the mesh contributes no pixel: keep whatever is
+		// cached, but neither draw nor rebuild it.
+		const Vector3 min{-grid.GetWorldWidth() * 0.5f + static_cast<float>(coordinate.x) * chunkWorldSize,
+		                  static_cast<float>(coordinate.y) * chunkWorldSize,
+		                  -grid.GetWorldDepth() * 0.5f + static_cast<float>(coordinate.z) * chunkWorldSize};
+		const Vector3 max{min.x + chunkWorldSize, min.y + static_cast<float>(chunk.height) * cellSize,
+		                  min.z + chunkWorldSize};
+		if (!frustum.Intersects(min, max))
+		{
+			continue;
+		}
+
 		auto cached = meshCache.find(key);
 		if (key.second == kNoFluidCut && !chunk.hasSurface)
 		{

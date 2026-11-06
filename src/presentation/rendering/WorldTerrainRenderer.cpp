@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <set>
 
+#include "presentation/rendering/ViewFrustum.h"
 #include "presentation/rendering/WorldGeometryRenderer.h"
 #include "presentation/rendering/terrain/TerrainMeshBuilder.h"
 #include "presentation/rendering/terrain/TerrainOcclusion.h"
@@ -38,47 +39,6 @@ constexpr int kMeshBuildsPerFrame = 6;
 // Meshes of chunks this far past the drawn radius stay cached, so that moving
 // the view back and forth does not unload and rebuild the same chunks.
 constexpr int kRetainedChunkMargin = 4;
-
-// The six planes of the view volume, from the projection and view the draw runs
-// under.
-struct Frustum
-{
-	float planes[6][4];
-
-	static Frustum Current()
-	{
-		const Matrix m = MatrixMultiply(rlGetMatrixModelview(), rlGetMatrixProjection());
-		const float row[4][4] = {{m.m0, m.m4, m.m8, m.m12},
-		                         {m.m1, m.m5, m.m9, m.m13},
-		                         {m.m2, m.m6, m.m10, m.m14},
-		                         {m.m3, m.m7, m.m11, m.m15}};
-		Frustum frustum{};
-		for (int axis = 0; axis < 3; ++axis)
-		{
-			for (int i = 0; i < 4; ++i)
-			{
-				frustum.planes[axis * 2][i] = row[3][i] + row[axis][i];
-				frustum.planes[axis * 2 + 1][i] = row[3][i] - row[axis][i];
-			}
-		}
-		return frustum;
-	}
-
-	bool Intersects(const Vector3 &min, const Vector3 &max) const
-	{
-		for (const auto &plane : planes)
-		{
-			const float x = plane[0] >= 0.0f ? max.x : min.x;
-			const float y = plane[1] >= 0.0f ? max.y : min.y;
-			const float z = plane[2] >= 0.0f ? max.z : min.z;
-			if (plane[0] * x + plane[1] * y + plane[2] * z + plane[3] < 0.0f)
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-};
 
 bool IsMeshLoaded(const Mesh &mesh)
 {
