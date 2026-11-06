@@ -206,6 +206,7 @@ PlanetViewer::PlanetViewer(StarSystem system, const PlanetPipeline &pipeline, Lo
 		    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
 	}
 
+	m_regionGridVersion = m_regionMap.GridVersion();
 	m_globeOrientation = QuaternionFromMatrix(
 	    MatrixMultiply(MatrixRotateX(m_tiltDegrees * DEG2RAD), MatrixRotateY(m_rotationDegrees * DEG2RAD)));
 }
@@ -214,6 +215,12 @@ void PlanetViewer::Update()
 {
 	EnsureSurfaceTexture();
 	m_regionMap.Update();
+	if (m_regionGridVersion != m_regionMap.GridVersion())
+	{
+		m_regionGridVersion = m_regionMap.GridVersion();
+		SyncSelectionToRegion();
+		m_hasTheaterClick = false;
+	}
 	m_worldMapView.SetWorld(m_regionMap.GetWorldMap());
 	m_worldMapView.Update();
 	HandleInput();
@@ -241,13 +248,6 @@ void PlanetViewer::Update()
 		const Quaternion spin = QuaternionFromAxisAngle({0.0f, 1.0f, 0.0f}, frameTime * 8.0f * DEG2RAD);
 		m_globeOrientation = QuaternionNormalize(QuaternionMultiply(m_globeOrientation, spin));
 	}
-}
-
-void PlanetViewer::FocusRegionOnSelectedCell()
-{
-	// A fresh chessboard anchored at the middle of the selected cell.
-	m_regionMap.Anchor(PlanetaryCoordinates::ToCartesian(
-	    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
 }
 
 std::optional<GeographicCoordinates> PlanetViewer::FindDrySite(const LocalGrid &grid, RegionId tile) const
@@ -374,16 +374,41 @@ void PlanetViewer::RotateGlobe(float yawDegrees, float pitchDegrees)
 
 void PlanetViewer::EnterTheaterFromSelectedCell()
 {
-	// A new theater is anchored at the clicked planet cell. Tile (0, 0) is that
-	// cell, so the theater opens centred on the click.
-	FocusRegionOnSelectedCell();
-	m_regionMap.Focus({0, 0});
-	m_orientationTarget = QuaternionFromMatrix(MakeFacingMatrix(m_regionMap.GetFocusCenter()));
+	// Reuse the current theater when the click is inside it. Only a click outside
+	// starts a new theater, and that generation runs on a worker.
+	const GeographicCoordinates target =
+	    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude);
+	const CartesianPoint3D direction = PlanetaryCoordinates::ToCartesian(target);
+
+	GeographicCoordinates focus = target;
+	bool focusedLocal = false;
+	if (!m_regionMap.IsAnchoring())
+	{
+		if (const auto world = m_regionMap.GetWorldMap(); world && world->Find(direction))
+		{
+			m_regionMap.FocusAt(direction);
+			focus = m_regionMap.GetFocusCenter();
+			focusedLocal = true;
+		}
+		else
+		{
+			m_regionMap.AnchorAsync(direction);
+		}
+	}
+	else
+	{
+		m_regionMap.AnchorAsync(direction);
+	}
+
+	m_orientationTarget = QuaternionFromMatrix(MakeFacingMatrix(focus));
 	m_hasOrientationTarget = true;
 	m_worldMapMode = true;
 	m_regionMode = false;
 	m_hasTheaterClick = false;
-	SyncSelectionToRegion();
+	if (focusedLocal)
+	{
+		SyncSelectionToRegion();
+	}
 }
 
 void PlanetViewer::EnterSiteMode()
@@ -421,6 +446,10 @@ void PlanetViewer::SyncSelectionToRegion()
 	const int columns = m_planetMap.GetLongitudeSegmentCount();
 	m_selectedLatitude = std::clamp(static_cast<int>((center.latitudeDegrees + 90.0) / 180.0 * rows), 0, rows - 1);
 	m_selectedLongitude = std::clamp(static_cast<int>(center.longitudeDegrees / 360.0 * columns), 0, columns - 1);
+	// Any focus change (click, drag, new theater) turns the globe toward it
+	// smoothly instead of leaving the camera beside the selected place.
+	m_orientationTarget = QuaternionFromMatrix(MakeFacingMatrix(center));
+	m_hasOrientationTarget = true;
 }
 
 } // namespace Infinitesia

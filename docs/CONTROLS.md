@@ -22,6 +22,8 @@ Planet, theater and site map:
 | Click the planet map / globe | Open the theater at that point |
 | Drag the planet globe | Rotate it |
 | Click a theater tile | Focus that tile |
+| Drag across the theater map | Move the focus; at the edge the next theater window loads |
+| Click the globe in the theater | Move the theater to that point |
 | Double-click a theater tile | Open its site map |
 | WASD / arrows | Site map: move the focus one tile at a time |
 | Mouse wheel | Site map: zoom; planet/theater: zoom the globe |

@@ -46,8 +46,18 @@ public:
 	}
 
 	// Lays a new chessboard anchored at a point of the planet and focuses its
-	// middle region.
+	// middle region. `AnchorAsync` does the expensive world generation on a
+	// worker; the old image stays up until the new one is applied.
 	void Anchor(CartesianPoint3D direction);
+	void AnchorAsync(CartesianPoint3D direction);
+	bool IsAnchoring() const noexcept
+	{
+		return m_worldPending.valid() || m_queuedAnchor.has_value();
+	}
+	unsigned GridVersion() const noexcept
+	{
+		return m_gridVersion;
+	}
 	// Focus a region of the current grid, by id or by the point it contains.
 	void Focus(RegionId id);
 	void FocusAt(CartesianPoint3D direction);
@@ -94,6 +104,7 @@ private:
 	static Built Build(const RegionGenerator &generator, const ColorFunction &color, const LocalGrid &grid,
 	                   RegionId focus, int radiusRegions);
 	bool PatchPoint(Vector2 mouse, Rectangle bounds, int &x, int &y) const;
+	void StartWorldGeneration(CartesianPoint3D direction);
 
 	std::shared_ptr<const WorldMap> m_worldMap;
 	RegionGenerator m_generator;
@@ -113,5 +124,8 @@ private:
 	RegionId m_pendingFocus{};
 	std::shared_ptr<const RegionPatch> m_patch;
 	UniqueTexture m_texture;
+	std::future<std::shared_ptr<const WorldMap>> m_worldPending;
+	std::optional<CartesianPoint3D> m_queuedAnchor;
+	CartesianPoint3D m_pendingAnchor{};
 };
 } // namespace Infinitesia

@@ -52,20 +52,50 @@ RegionMapView::RegionMapView(const PlanetMap &map, ColorFunction color)
 
 RegionMapView::~RegionMapView()
 {
-	// The worker reads m_generator and m_color; wait for it before members go away.
+	// The workers read m_generator and m_color; wait for them before members go
+	// away.
+	if (m_worldPending.valid())
+	{
+		m_worldPending.wait();
+	}
 	if (m_pending.valid())
 	{
 		m_pending.wait();
 	}
 }
 
+void RegionMapView::StartWorldGeneration(CartesianPoint3D direction)
+{
+	m_pendingAnchor = direction;
+	const PlanetMap *planet = &m_generator.GetTerrain().GetPlanetMap();
+	m_worldPending = std::async(std::launch::async, [planet, direction] {
+		return std::make_shared<const WorldMap>(WorldGenerator(*planet).Generate(direction));
+	});
+}
+
+void RegionMapView::AnchorAsync(CartesianPoint3D direction)
+{
+	if (m_worldPending.valid())
+	{
+		m_queuedAnchor = direction;
+		return;
+	}
+	StartWorldGeneration(direction);
+}
+
 void RegionMapView::Anchor(CartesianPoint3D direction)
 {
+	if (m_worldPending.valid())
+	{
+		m_worldPending.wait();
+		m_worldPending = {};
+	}
 	// The worker reads the generator and its theater map; let it finish before the
 	// map is replaced.
 	if (m_pending.valid())
 	{
 		m_pending.wait();
+		m_pending = {};
 	}
 	m_worldMap =
 	    std::make_shared<const WorldMap>(WorldGenerator(m_generator.GetTerrain().GetPlanetMap()).Generate(direction));
@@ -73,6 +103,7 @@ void RegionMapView::Anchor(CartesianPoint3D direction)
 	m_grid = m_generator.MakeGrid(direction);
 	++m_gridVersion;
 	m_focus = RegionId{};
+	m_hasImage = false;
 }
 
 void RegionMapView::Focus(RegionId id)
@@ -204,6 +235,25 @@ void RegionMapView::Update()
 			m_displayedVersion = m_pendingVersion;
 			m_displayedRadius = built.patch.radiusRegions;
 			m_hasImage = true;
+		}
+	}
+
+	if (m_worldPending.valid() && !m_pending.valid() &&
+	    m_worldPending.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+	{
+		// Apply a completed theater only after the previous patch worker has
+		// finished; this keeps the swap off the render thread's blocking path.
+		m_worldMap = m_worldPending.get();
+		m_generator.SetWorld(m_worldMap);
+		m_grid = m_generator.MakeGrid(m_pendingAnchor);
+		++m_gridVersion;
+		m_focus = RegionId{};
+		m_hasImage = false;
+		if (m_queuedAnchor.has_value())
+		{
+			const CartesianPoint3D next = *m_queuedAnchor;
+			m_queuedAnchor.reset();
+			StartWorldGeneration(next);
 		}
 	}
 

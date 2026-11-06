@@ -64,7 +64,6 @@ private:
 	void TryFoundSettlement();
 	// A dry point inside (or very near) the tile, preferably close to water.
 	std::optional<GeographicCoordinates> FindDrySite(const LocalGrid &grid, RegionId tile) const;
-	void FocusRegionOnSelectedCell();
 	void SyncSelectionToRegion();
 
 	StarSystem m_system;
@@ -103,6 +102,8 @@ private:
 	Quaternion m_orientationTarget = {0.0f, 0.0f, 0.0f, 1.0f};
 	bool m_hasOrientationTarget = false;
 	bool m_draggingGlobe = false;
+	bool m_draggingMap = false;
+	unsigned m_regionGridVersion = 0;
 	Vector2 m_lastMousePosition{};
 	// A short click on the globe opens the theater; a drag only rotates.
 	Vector2 m_globePressPosition{};

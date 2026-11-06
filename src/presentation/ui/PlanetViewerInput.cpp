@@ -55,6 +55,7 @@ void PlanetViewer::HandleInput()
 	{
 		m_globePressHit = false;
 		m_globeDragged = false;
+		m_draggingMap = false;
 
 		if (m_regionMode && RectangleContains(layout.regionBounds, mousePosition))
 		{
@@ -63,6 +64,7 @@ void PlanetViewer::HandleInput()
 				m_regionMap.FocusAt(*direction);
 				SyncSelectionToRegion();
 			}
+			m_draggingMap = true;
 			m_draggingGlobe = false;
 		}
 		else if (m_worldMapMode && RectangleContains(layout.worldBounds, mousePosition))
@@ -87,6 +89,7 @@ void PlanetViewer::HandleInput()
 					m_hasTheaterClick = true;
 				}
 			}
+			m_draggingMap = true;
 			m_draggingGlobe = false;
 		}
 		else if (!m_regionMode && !m_worldMapMode && RectangleContains(layout.mapBounds, mousePosition))
@@ -96,13 +99,14 @@ void PlanetViewer::HandleInput()
 			m_selectedLongitude = std::clamp(static_cast<int>(normalizedX * columns), 0, columns - 1);
 			m_selectedLatitude = rows - 1 - std::clamp(static_cast<int>(normalizedY * rows), 0, rows - 1);
 			EnterTheaterFromSelectedCell();
+			m_draggingMap = false;
 			m_draggingGlobe = false;
 		}
-		else if (!m_regionMode && !m_worldMapMode && RectangleContains(layout.globePanel, mousePosition))
+		else if (!m_regionMode && RectangleContains(layout.globePanel, mousePosition))
 		{
-			// On the planet the globe is a click target. A press starts a
-			// potential drag; a release without movement opens the theater at
-			// that point. In the theater/site views the globe is only context.
+			// The globe is a click target in the planet and theater views. A press
+			// starts a potential drag; a release without movement moves the theater
+			// to that point.
 			const Camera3D camera = MakeCamera();
 			const Ray ray = GetMouseRay(mousePosition, camera);
 			const RayCollision collision = GetRayCollisionSphere(ray, {0.0f, 0.0f, 0.0f}, 1.0f);
@@ -112,7 +116,8 @@ void PlanetViewer::HandleInput()
 				m_globePressCoordinates = PlanetaryCoordinates::ToGeographic({local.x, local.y, -local.z});
 				m_globePressPosition = mousePosition;
 				m_globePressHit = true;
-				m_draggingGlobe = !m_worldMapMode;
+				m_draggingMap = false;
+				m_draggingGlobe = true;
 				m_lastMousePosition = mousePosition;
 			}
 		}
@@ -132,8 +137,45 @@ void PlanetViewer::HandleInput()
 		m_lastMousePosition = mousePosition;
 	}
 
+	if (m_draggingMap && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+	{
+		// Drag the selection across the theater/site map. The globe follows the
+		// focus smoothly; no new theater is generated until the focus reaches an
+		// edge (see the release handler).
+		if (m_regionMode && RectangleContains(layout.regionBounds, mousePosition))
+		{
+			if (const auto direction = m_regionMap.DirectionAt(mousePosition, layout.regionBounds))
+			{
+				m_regionMap.FocusAt(*direction);
+				SyncSelectionToRegion();
+			}
+		}
+		else if (m_worldMapMode && RectangleContains(layout.worldBounds, mousePosition))
+		{
+			if (const auto tile = m_worldMapView.TileAt(mousePosition, layout.worldBounds))
+			{
+				m_regionMap.Focus({tile->i, tile->j});
+				SyncSelectionToRegion();
+			}
+		}
+	}
+
 	if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
 	{
+		if (m_draggingMap && (m_regionMode || m_worldMapMode))
+		{
+			// Pushing the selection to the edge of the known theater pulls in the
+			// next window on a worker; the old map stays up meanwhile.
+			constexpr int kEdgePanMargin = 12;
+			const RegionId focus = m_regionMap.GetFocus();
+			if (std::abs(focus.i) > kRegionTilesPerWorldHalfSide - kEdgePanMargin ||
+			    std::abs(focus.j) > kRegionTilesPerWorldHalfSide - kEdgePanMargin)
+			{
+				m_regionMap.AnchorAsync(PlanetaryCoordinates::ToCartesian(m_regionMap.GetFocusCenter()));
+			}
+		}
+		m_draggingMap = false;
+
 		if (m_globePressHit && !m_globeDragged && !m_regionMode)
 		{
 			m_selectedLatitude =
