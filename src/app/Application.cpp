@@ -33,7 +33,8 @@ std::shared_ptr<const GameContent> LoadGameContent()
 } // namespace
 
 Application::Application(ApplicationConfig config)
-    : m_config(std::move(config)), m_content(LoadGameContent()), m_worldRenderer(m_config.camera),
+    : m_config(std::move(config)), m_content(LoadGameContent()),
+      m_campaign(m_config.simulationTicksPerSecond), m_worldRenderer(m_config.camera),
       m_cameraController(m_config.cameraControls), m_showPathDebug(m_config.showPathDebug)
 {
 	if (m_config.camera.distance < m_config.cameraControls.minimumDistance ||
@@ -86,6 +87,15 @@ void Application::EnterSite(SiteId id)
 		return;
 	}
 
+	// Only the site being played keeps its work and fluid systems enabled.
+	if (m_activeSite != kNoSite && m_activeSite != id)
+	{
+		if (LocalGame *previous = ActiveGame())
+		{
+			previous->SetEnabled(false);
+		}
+	}
+	found->game->SetEnabled(true);
 	m_activeSite = id;
 	// A selection from the previous site points into that site's object store.
 	m_worldInteraction = WorldInteractionController{};
@@ -106,6 +116,10 @@ void Application::EnterSite(SiteId id)
 
 void Application::LeaveSite()
 {
+	if (LocalGame *game = ActiveGame())
+	{
+		game->SetEnabled(false);
+	}
 	m_screen = Screen::Planet;
 }
 
@@ -142,8 +156,10 @@ void Application::CreateLocalGame(SiteRuntime &runtime)
 	auto source = std::make_shared<PlanetTerrainSource>(settlement, gridConfig.width, gridConfig.height,
 	                                                    gridConfig.depth, m_config.settlementAnchorLevel, registry,
 	                                                    geology, flora, m_config.worldSeed);
-	runtime.game = std::make_unique<LocalGame>(
-	    m_content, LocalGameConfig{gridConfig, m_config.worker, m_config.simulationTicksPerSecond}, source);
+	const std::string systemPrefix = "site." + std::to_string(runtime.site.id);
+	runtime.game =
+	    std::make_unique<LocalGame>(m_content, LocalGameConfig{gridConfig, m_config.worker}, source,
+	                               m_campaign.Runtime(), systemPrefix);
 	// The terrain caches are filled by one worker while the main thread draws.
 	runtime.game->GetWorld().terrain.SetBackgroundGeneration(true);
 }

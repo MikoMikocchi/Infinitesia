@@ -38,6 +38,21 @@ TEST_CASE("registry rejects bad registrations")
 	CHECK(registry.Size() == 0);
 }
 
+TEST_CASE("registry unregisters a system and keeps the rest addressable")
+{
+	SystemRegistry registry;
+	AddRecording(registry, Describe("system.a"));
+	AddRecording(registry, Describe("system.b"));
+	AddRecording(registry, Describe("system.c"));
+
+	CHECK(registry.Unregister(SystemId("system.b")));
+	CHECK_FALSE(registry.Contains(SystemId("system.b")));
+	CHECK(registry.Size() == 2);
+	REQUIRE(registry.Find(SystemId("system.c")) != nullptr);
+	CHECK(registry.Find(SystemId("system.c"))->sequence == 1);
+	CHECK_FALSE(registry.Unregister(SystemId("system.b")));
+}
+
 TEST_CASE("registry enables and disables systems")
 {
 	SystemRegistry registry;

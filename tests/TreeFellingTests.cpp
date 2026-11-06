@@ -10,6 +10,7 @@
 #include "domains/natural/biology/catalog/SpeciesCatalog.h"
 #include "domains/natural/biology/flora/Tree.h"
 #include "gameplay/LocalGame.h"
+#include "gameplay/campaign/Campaign.h"
 #include "gameplay/content/GameContent.h"
 #include "gameplay/work/TreeFelling.h"
 #include "matter/MatterCatalog.h"
@@ -254,10 +255,11 @@ TEST_CASE("AWorkerFellsATreeAndCarriesTheLogsAway")
 	// The tree stands four columns east of the worker, who starts in the middle.
 	const auto terrain =
 	    std::make_shared<ForestTerrain>(std::vector<PlantedTree>{{&OakSpecies(), 7, kSize / 2 + 4, kSize / 2}});
+	Campaign campaign;
 	LocalGame game(
 	    content,
-	    LocalGameConfig{GridConfig{kSize, kHeight, kSize, 1.0f}, WorkerConfig{3.0f, 4.0f, 3.0f, 7000.0f}, 20.0f},
-	    terrain);
+	    LocalGameConfig{GridConfig{kSize, kHeight, kSize, 1.0f}, WorkerConfig{3.0f, 4.0f, 3.0f, 7000.0f}},
+	    terrain, campaign.Runtime(), "test");
 
 	GameWorld &world = game.GetWorld();
 	const GridCell start = game.GetStartingCells().worker;
@@ -280,8 +282,15 @@ TEST_CASE("AWorkerFellsATreeAndCarriesTheLogsAway")
 	// order.
 	CHECK(game.GetWorkSystem().AssignChopOrder(*worker, trunk, world, game.GetGrid()) == WorkOrderResult::WorkerBusy);
 
+	// A site that is not being played keeps its systems disabled.
+	game.SetEnabled(false);
+	for (int frame = 0; frame < 20; ++frame)
+		campaign.AdvanceFrame(0.05f);
+	CHECK(IsTreeWood(world.terrain, trunk));
+	game.SetEnabled(true);
+
 	for (int frame = 0; frame < 20 * 60 && IsTreeWood(world.terrain, trunk); ++frame)
-		game.AdvanceFrame(0.05f);
+		campaign.AdvanceFrame(0.05f);
 	CHECK(Count(world.terrain, IsTreeWood) == 0);
 	CHECK(Count(world.terrain, IsTreeLeaves) == 0);
 	CHECK(woodBefore > 50);
@@ -307,7 +316,7 @@ TEST_CASE("AWorkerFellsATreeAndCarriesTheLogsAway")
 	const CommandResult pickUp = game.GetCommands().Execute("pick_up_item", worker, *pile, world);
 	REQUIRE(pickUp.accepted);
 	for (int frame = 0; frame < 20 * 60 && world.entities.FindObject(*pile) != nullptr; ++frame)
-		game.AdvanceFrame(0.05f);
+		campaign.AdvanceFrame(0.05f);
 	CHECK(world.entities.FindObject(*pile) == nullptr);
 }
 
@@ -316,10 +325,11 @@ TEST_CASE("ATreeCannotBeDugBlockByBlock")
 	const auto content = GameContent::LoadFromDirectory(INFINITESIA_GAMEPLAY_ASSET_DIR);
 	const auto terrain =
 	    std::make_shared<ForestTerrain>(std::vector<PlantedTree>{{&OakSpecies(), 7, kSize / 2 + 4, kSize / 2}});
+	Campaign campaign;
 	LocalGame game(
 	    content,
-	    LocalGameConfig{GridConfig{kSize, kHeight, kSize, 1.0f}, WorkerConfig{3.0f, 4.0f, 3.0f, 7000.0f}, 20.0f},
-	    terrain);
+	    LocalGameConfig{GridConfig{kSize, kHeight, kSize, 1.0f}, WorkerConfig{3.0f, 4.0f, 3.0f, 7000.0f}},
+	    terrain, campaign.Runtime(), "test");
 	GameWorld &world = game.GetWorld();
 	const GridCell start = game.GetStartingCells().worker;
 	const auto worker = world.entities.FindObjectAt(start);
@@ -366,10 +376,11 @@ TEST_CASE("AWorkerWithNoGroundToStandOnCannotReachATree")
 		}
 		ForestTerrain m_forest;
 	};
+	Campaign campaign;
 	LocalGame game(
 	    content,
-	    LocalGameConfig{GridConfig{kSize, kHeight, kSize, 1.0f}, WorkerConfig{3.0f, 4.0f, 3.0f, 7000.0f}, 20.0f},
-	    std::make_shared<Island>());
+	    LocalGameConfig{GridConfig{kSize, kHeight, kSize, 1.0f}, WorkerConfig{3.0f, 4.0f, 3.0f, 7000.0f}},
+	    std::make_shared<Island>(), campaign.Runtime(), "test");
 	GameWorld &world = game.GetWorld();
 	const GridCell start = game.GetStartingCells().worker;
 	const auto worker = world.entities.FindObjectAt(start);

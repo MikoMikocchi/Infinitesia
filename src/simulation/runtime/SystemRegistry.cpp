@@ -36,6 +36,25 @@ const RegisteredSystem &SystemRegistry::Register(SystemDescriptor descriptor, st
 	return *m_systems.back();
 }
 
+bool SystemRegistry::Unregister(const SystemId &id)
+{
+	const auto found = m_indexByKey.find(id.Key());
+	if (found == m_indexByKey.end())
+	{
+		return false;
+	}
+
+	m_systems.erase(m_systems.begin() + static_cast<std::ptrdiff_t>(found->second));
+	m_indexByKey.clear();
+	for (std::size_t index = 0; index < m_systems.size(); ++index)
+	{
+		m_systems[index]->sequence = index;
+		m_indexByKey.emplace(m_systems[index]->descriptor.id.Key(), index);
+	}
+	++m_revision;
+	return true;
+}
+
 bool SystemRegistry::Contains(const SystemId &id) const
 {
 	return m_indexByKey.contains(id.Key());

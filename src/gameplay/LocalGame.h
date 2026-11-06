@@ -2,13 +2,14 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
-#include "core/Simulation.h"
 #include "gameplay/GameWorld.h"
 #include "gameplay/StartingCells.h"
 #include "gameplay/commands/CommandRegistry.h"
 #include "gameplay/content/GameContent.h"
 #include "gameplay/work/WorkSystem.h"
+#include "simulation/api/SystemId.h"
 #include "simulation/runtime/SimulationRuntime.h"
 #include "world/Grid.h"
 #include "world/TerrainSource.h"
@@ -19,29 +20,31 @@ struct LocalGameConfig
 {
 	GridConfig grid;
 	WorkerConfig worker;
-	float simulationTicksPerSecond = 20.0f;
 };
 
 // One settlement being played: its grid, the world on it, the work being done
 // and the commands that can be given. No window, no input; the application
-// feeds it time and orders. It holds references to its own members (commands
-// point at the work system and the grid), so it can be neither copied nor
-// moved: build it in place.
+// feeds it orders and enables its systems on the campaign clock. It holds
+// references to its own members (commands point at the work system and the
+// grid), so it can be neither copied nor moved: build it in place.
 class LocalGame
 {
 public:
 	// Puts the first worker on the terrain. The content must define
 	// "object.worker" and "object.item" with "item.logs" (what a felled tree
-	// leaves).
+	// leaves). The local systems register on `runtime` under `systemPrefix`;
+	// the runtime must outlive this game.
 	LocalGame(std::shared_ptr<const GameContent> content, const LocalGameConfig &config,
-	          std::shared_ptr<const TerrainSource> terrain);
+	          std::shared_ptr<const TerrainSource> terrain, SimulationRuntime &runtime, std::string systemPrefix);
+	~LocalGame();
 
 	LocalGame(const LocalGame &) = delete;
 	LocalGame &operator=(const LocalGame &) = delete;
 
-	// Feeds a frame's time to the simulation and runs the steps that fell due;
-	// returns their number.
-	std::uint64_t AdvanceFrame(float frameDelta);
+	// Enables or disables this site's work and fluid systems on the campaign
+	// clock. Only the active site should be enabled.
+	void SetEnabled(bool enabled);
+	bool IsEnabled() const;
 
 	const Grid &GetGrid() const
 	{
@@ -71,19 +74,6 @@ public:
 	{
 		return m_commands;
 	}
-	const Simulation &GetSimulation() const
-	{
-		return m_simulation;
-	}
-	// Systems registered here run on every fixed tick the simulation produces.
-	SimulationRuntime &GetRuntime()
-	{
-		return m_runtime;
-	}
-	const SimulationRuntime &GetRuntime() const
-	{
-		return m_runtime;
-	}
 	// Where the first worker stands.
 	const StartingCells &GetStartingCells() const
 	{
@@ -96,12 +86,12 @@ private:
 	Grid m_grid;
 	StartingCells m_start;
 	GameWorld m_world;
-	// Owned by the runtime's registry; declared before it only in that it is
-	// created in the constructor.
+	// Owned by the campaign runtime's registry, which must outlive this game.
 	WorkSystem *m_workSystem = nullptr;
 	CommandRegistry m_commands;
-	Simulation m_simulation;
-	// After the simulation, which it listens to.
-	SimulationRuntime m_runtime;
+	SimulationRuntime *m_runtime = nullptr;
+	SystemId m_workSystemId;
+	SystemId m_fluidSystemId;
+	std::string m_systemPrefix;
 };
 } // namespace Infinitesia

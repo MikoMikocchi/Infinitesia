@@ -33,6 +33,7 @@ struct ApplicationConfig
 	CameraControlConfig cameraControls{};
 	WorkerConfig worker{3.0f, 4.0f, 3.0f, 7000.0f};
 	bool showPathDebug = false;
+	// The campaign clock: one fixed tick for the planet and every site.
 	float simulationTicksPerSecond = 20.0f;
 	std::uint32_t worldSeed = 1;
 };

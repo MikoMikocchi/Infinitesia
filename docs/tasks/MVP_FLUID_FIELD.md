@@ -223,8 +223,9 @@ struct FluidColumn {
   `m_fluids.InitializeChunk(chunk, *m_terrain);`
 - добавить `GetFluid(GridCell)` и `StepFluids()`.
 
-`StepFluids()` вызывать в фиксированном тике игры (`LocalGame::AdvanceFrame` /
+`StepFluids()` вызывать в фиксированном тике игры (`Campaign::AdvanceFrame` /
 `Simulation`), а не в каждом кадре. Иначе скорость воды будет зависеть от FPS.
+Сейчас это делает `system.site.<id>.fluid` на общем runtime кампании.
 
 В `VoxelWorld::SetBlock`:
 

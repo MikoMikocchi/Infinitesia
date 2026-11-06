@@ -46,6 +46,11 @@ public:
 		return m_systems;
 	}
 
+	// Removes a system and destroys it. Returns false when the id is unknown.
+	// The caller must not hold a RegisteredSystem* across this call; the
+	// scheduler notices the new revision and rebuilds its plan on the next tick.
+	bool Unregister(const SystemId &id);
+
 	// Throws std::out_of_range for an unknown id.
 	void SetEnabled(const SystemId &id, bool enabled);
 	bool IsEnabled(const SystemId &id) const;

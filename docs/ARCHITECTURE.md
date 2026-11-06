@@ -49,17 +49,19 @@ in step.
 
 ## Simulation runtime
 
-`Simulation` (foundation) owns the one clock: a fixed timestep that counts ticks. `SimulationRuntime`
-(`src/simulation/`) listens to it and, on every tick, runs the registered `SimulationSystem`s. It
-adds no clock of its own: `GameCalendar` turns the tick number into game seconds, days and months
-with integer arithmetic.
+`Campaign` (`src/gameplay/campaign/`) owns the one clock: a fixed timestep that counts ticks.
+It owns `Simulation`, `SimulationRuntime` and the campaign `GameCalendar`; the application
+advances the campaign once per frame. The planet and every site share that clock.
 
 - `api/` is what a system sees: `SystemId`, `SystemPhase` (PreUpdate, Update, PostUpdate),
   `Cadence` (every tick, N ticks, game seconds, days, months), `SystemDescriptor`, `SystemContext`.
 - `runtime/`: `SystemRegistry` (unique ids), `SystemScheduler` (phase, then `order`, then
   registration order; skips disabled and not-due systems), `SystemExecutor` (context, error
   policy `Disable`/`Continue`/`Rethrow`, tick and phase sequence checks).
-- Register through `LocalGame::GetRuntime().Registry()`; `LocalGame` registers `WorkSystem` there.
+- `Campaign` registers `system.planet.clock` (PostUpdate, every game month).
+- A `LocalGame` registers `system.site.<id>.work` and `system.site.<id>.fluid` on the campaign
+  runtime and enables them only while that site is active. Its destructor unregisters them.
+- `ApplicationRun` calls `Campaign::AdvanceFrame`; `LocalGame` no longer owns a simulation.
 
 ## Planet generation
 
@@ -71,5 +73,5 @@ domains add stages and layers instead of editing it. See `docs/05_PLANET_PIPELIN
 
 ## Planned (not done yet)
 
-- Nothing at the moment. `WorkSystem` runs on the scheduler (`system.work`, Update phase, every
-  tick); later systems register the same way.
+- Macro systems (population, founding, trade, diplomacy) register on the same campaign clock.
+- Multiple sites keep their local systems registered but disabled while another is active.

@@ -86,6 +86,10 @@ infinitesia_add_test(LocalGameTests GAMEPLAY_ASSET_DIR
   SOURCES LocalGameTests.cpp
   LINK InfinitesiaGameplay)
 
+infinitesia_add_test(CampaignTests
+  SOURCES gameplay/CampaignTests.cpp
+  LINK InfinitesiaGameplay)
+
 infinitesia_add_test(TreeFellingTests ASSET_DIR GAMEPLAY_ASSET_DIR
   SOURCES TreeFellingTests.cpp
   LINK InfinitesiaGameplay)

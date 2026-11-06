@@ -13,6 +13,7 @@
 #include "domains/natural/planetary/region/SettlementTerrain.h"
 #include "domains/natural/planetary/region/Site.h"
 #include "gameplay/LocalGame.h"
+#include "gameplay/campaign/Campaign.h"
 #include "gameplay/content/GameContent.h"
 #include "matter/MatterCatalog.h"
 #include "presentation/assets/TextureAssetManager.h"
@@ -25,7 +26,8 @@
 namespace Infinitesia
 {
 // A site and its loaded local game. Only one game is active at a time, but the
-// others stay alive so their chunks and changes survive a visit elsewhere.
+// others stay alive so their chunks and changes survive a visit elsewhere;
+// their systems are registered on the campaign clock and disabled meanwhile.
 struct SiteRuntime
 {
 	Site site;
@@ -66,6 +68,9 @@ private:
 
 	ApplicationConfig m_config;
 	std::shared_ptr<const GameContent> m_content;
+	// One clock for the planet and every site. Declared before the sites so it
+	// outlives them: LocalGame unregisters its systems on destruction.
+	Campaign m_campaign;
 	// Every site the player has founded, and which one is being played.
 	std::vector<SiteRuntime> m_sites;
 	SiteId m_activeSite = kNoSite;

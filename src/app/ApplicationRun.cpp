@@ -98,12 +98,12 @@ void Application::Run()
 		while (!WindowShouldClose() && !m_exitRequested)
 		{
 			m_time.Advance(GetFrameTime());
-			if (m_screen == Screen::Local)
+			// One clock for the whole campaign: the planet keeps ticking while
+			// the player is on the map, and the active site adds its local
+			// systems to the same tick. Nothing ticks before the planet exists.
+			if (m_planetViewer)
 			{
-				if (LocalGame *game = ActiveGame())
-				{
-					game->AdvanceFrame(m_time.GetDeltaTime());
-				}
+				m_campaign.AdvanceFrame(m_time.GetDeltaTime());
 			}
 			Update();
 			Render();

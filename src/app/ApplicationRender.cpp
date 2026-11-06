@@ -86,7 +86,7 @@ void Application::DrawDebugOverlay()
 		}
 	}
 
-	m_debugOverlay.Draw({GetFPS(), m_time.GetTotalTime(), game.GetSimulation().GetTickCount(),
+	m_debugOverlay.Draw({GetFPS(), m_time.GetTotalTime(), m_campaign.Clock().GetTickCount(),
 	                     game.GetGrid().GetWidth(), game.GetGrid().GetHeight(), game.GetGrid().GetDepth(),
 	                     m_worldInteraction.GetHoveredCell(), selectedObjectKind, workerActivity, workProgress,
 	                     m_showPathDebug, m_config.window.height, m_worldInteraction.GetActionNotice(),
