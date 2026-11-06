@@ -190,6 +190,7 @@ GroundColumn PlanetTerrainSource::Ground::ColumnAt(int x, int z) const
 
 int PlanetTerrainSource::SurfaceLevelAt(int x, int z) const
 {
+	const std::lock_guard<std::recursive_mutex> lock(m_cacheMutex);
 	x = std::clamp(x, 0, m_width - 1);
 	z = std::clamp(z, 0, m_depth - 1);
 	return ColumnAt(x, z).surface;
@@ -213,6 +214,7 @@ int PlanetTerrainSource::FluidTopBlocksFor(double fluidLevelMeters) const
 
 FluidColumn PlanetTerrainSource::FluidAt(int x, int z) const
 {
+	const std::lock_guard<std::recursive_mutex> lock(m_cacheMutex);
 	if (x < 0 || x >= m_width || z < 0 || z >= m_depth)
 	{
 		return {};
@@ -239,11 +241,13 @@ FluidColumn PlanetTerrainSource::FluidAt(int x, int z) const
 
 BlockState PlanetTerrainSource::StateAt(GridCell cell) const
 {
+	const std::lock_guard<std::recursive_mutex> lock(m_cacheMutex);
 	return StateOf(cell, true);
 }
 
 BlockState PlanetTerrainSource::GroundStateAt(GridCell cell) const
 {
+	const std::lock_guard<std::recursive_mutex> lock(m_cacheMutex);
 	return StateOf(cell, false);
 }
 
@@ -307,6 +311,7 @@ const FloraCell *PlanetTerrainSource::FloraAt(GridCell cell) const
 
 void PlanetTerrainSource::FillColumn(int x, int z, int y0, int y1, BlockState *out) const
 {
+	const std::lock_guard<std::recursive_mutex> lock(m_cacheMutex);
 	if (x < 0 || x >= m_width || z < 0 || z >= m_depth || y0 < 0 || y1 >= m_height || y1 < y0)
 	{
 		for (int y = y0; y <= y1; ++y)

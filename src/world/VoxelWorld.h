@@ -1,9 +1,13 @@
 #pragma once
 
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <map>
 #include <memory>
+#include <mutex>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -22,12 +26,29 @@ class VoxelWorld
 public:
 	VoxelWorld(const Grid &grid, std::uint32_t seed = 1);
 	VoxelWorld(const Grid &grid, std::shared_ptr<const TerrainSource> terrain);
+	~VoxelWorld();
+
+	VoxelWorld(const VoxelWorld &) = delete;
+	VoxelWorld &operator=(const VoxelWorld &) = delete;
 
 	void RequestChunksAround(GridCell center, int horizontalRadius, int verticalRadius = 0);
 	// Generates the pending chunks, at most `maximumChunks` and for at most
 	// `budgetMs` milliseconds (0 = no time limit): a fast frame fills the view
 	// quickly, a slow one does not stall. Returns how many chunks were generated.
+	// With background generation on, the work happens in PumpChunkGeneration
+	// instead.
 	std::size_t GeneratePendingChunks(std::size_t maximumChunks, double budgetMs = 0.0);
+	// Generates the blocks of pending chunks on a worker thread. Off by default:
+	// tests and tools generate on the calling thread.
+	void SetBackgroundGeneration(bool enabled);
+	bool IsBackgroundGeneration() const
+	{
+		return m_background;
+	}
+	// Hands pending chunks to the worker and installs the finished ones. Call it
+	// once per frame on the main thread; does nothing when background generation
+	// is off.
+	void PumpChunkGeneration();
 	// Drops chunks outside the view that nobody has changed and that have no
 	// fluid to keep alive. They are regenerated from the terrain source when
 	// the camera returns. Modified chunks and chunks owning fluid stay.
@@ -75,6 +96,14 @@ public:
 	std::size_t GetTotalChunkCount() const;
 
 private:
+	// The blocks of a chunk, built off the chunk table so a worker can fill them:
+	// it only reads the terrain source.
+	std::unique_ptr<WorldChunk> BuildChunkBlocks(ChunkCoordinate coordinate) const;
+	// Puts a finished chunk into the table, its fluid and its neighbours'
+	// revisions. Main thread only.
+	void InstallChunk(std::unique_ptr<WorldChunk> chunk);
+	void RunChunkWorker();
+	void StopChunkWorker();
 	void EnsureChunkGenerated(ChunkCoordinate coordinate);
 	ChunkCoordinate GetChunkCoordinate(GridCell cell) const;
 	std::size_t GetBlockIndex(const WorldChunk &chunk, GridCell cell) const;
@@ -102,5 +131,18 @@ private:
 	int m_gridDepth;
 	std::shared_ptr<const TerrainSource> m_terrain;
 	std::uint64_t m_terrainRevision = 0;
+
+	// Background chunk generation: the worker fills blocks, the main thread
+	// installs them. The chunks in flight are capped so a fast worker does not
+	// keep a whole view of finished chunks in memory.
+	static constexpr std::size_t kMaxChunksInFlight = 8;
+	bool m_background = false;
+	std::thread m_chunkWorker;
+	std::mutex m_chunkWorkerMutex;
+	std::condition_variable m_chunkWorkerCv;
+	std::deque<ChunkCoordinate> m_chunkWork;
+	std::deque<std::unique_ptr<WorldChunk>> m_chunkReady;
+	std::size_t m_chunksInFlight = 0;
+	bool m_stopChunkWorker = false;
 };
 } // namespace Infinitesia

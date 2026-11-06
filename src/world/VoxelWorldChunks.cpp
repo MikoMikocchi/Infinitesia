@@ -168,22 +168,18 @@ std::size_t VoxelWorld::GetTotalChunkCount() const
 	       static_cast<std::size_t>(GetChunkCount(m_gridHeight)) * static_cast<std::size_t>(GetChunkCount(m_gridDepth));
 }
 
-void VoxelWorld::EnsureChunkGenerated(ChunkCoordinate coordinate)
+std::unique_ptr<WorldChunk> VoxelWorld::BuildChunkBlocks(ChunkCoordinate coordinate) const
 {
-	if (m_chunks.find(coordinate) != m_chunks.end())
-	{
-		return;
-	}
-
 	const int startX = coordinate.x * kChunkSize;
 	const int startY = coordinate.y * kChunkSize;
 	const int startZ = coordinate.z * kChunkSize;
 	const int chunkWidth = std::min(kChunkSize, m_gridWidth - startX);
 	const int chunkHeight = std::min(kChunkSize, m_gridHeight - startY);
 	const int chunkDepth = std::min(kChunkSize, m_gridDepth - startZ);
-	WorldChunk chunk{coordinate, chunkWidth, chunkHeight, chunkDepth, 0, false, {}};
-	chunk.blocks.resize(static_cast<std::size_t>(chunkWidth) * static_cast<std::size_t>(chunkHeight) *
-	                    static_cast<std::size_t>(chunkDepth));
+	auto chunk =
+	    std::make_unique<WorldChunk>(WorldChunk{coordinate, chunkWidth, chunkHeight, chunkDepth, 0, false, {}});
+	chunk->blocks.resize(static_cast<std::size_t>(chunkWidth) * static_cast<std::size_t>(chunkHeight) *
+	                     static_cast<std::size_t>(chunkDepth));
 
 	// One column at a time: the terrain works out the column sample, its plants
 	// and its rock profile once instead of once per cell.
@@ -202,12 +198,25 @@ void VoxelWorld::EnsureChunkGenerated(ChunkCoordinate coordinate)
 				     static_cast<std::size_t>(localY)) *
 				        static_cast<std::size_t>(chunkWidth) +
 				    static_cast<std::size_t>(localX);
-				chunk.blocks[index] = Block{GridCell{x, startY + localY, z}, columnStates[localY]};
+				chunk->blocks[index] = Block{GridCell{x, startY + localY, z}, columnStates[localY]};
 			}
 		}
 	}
+	return chunk;
+}
 
-	const auto inserted = m_chunks.emplace(coordinate, std::move(chunk));
+void VoxelWorld::InstallChunk(std::unique_ptr<WorldChunk> chunk)
+{
+	if (chunk == nullptr)
+	{
+		return;
+	}
+	const ChunkCoordinate coordinate = chunk->coordinate;
+	if (m_chunks.find(coordinate) != m_chunks.end())
+	{
+		return;
+	}
+	const auto inserted = m_chunks.emplace(coordinate, std::move(*chunk));
 	m_fluids.InitializeChunk(inserted.first->second, *m_terrain);
 
 	// The meshes of the loaded neighbours were built with this chunk counted as
@@ -225,6 +234,119 @@ void VoxelWorld::EnsureChunkGenerated(ChunkCoordinate coordinate)
 			++neighbor->second.terrainRevision;
 		}
 	}
+}
+
+void VoxelWorld::EnsureChunkGenerated(ChunkCoordinate coordinate)
+{
+	if (m_chunks.find(coordinate) != m_chunks.end())
+	{
+		return;
+	}
+	InstallChunk(BuildChunkBlocks(coordinate));
+}
+
+VoxelWorld::~VoxelWorld()
+{
+	StopChunkWorker();
+}
+
+void VoxelWorld::SetBackgroundGeneration(bool enabled)
+{
+	if (enabled == m_background)
+	{
+		return;
+	}
+	if (enabled)
+	{
+		StopChunkWorker();
+		m_stopChunkWorker = false;
+		m_background = true;
+		m_chunkWorker = std::thread(&VoxelWorld::RunChunkWorker, this);
+		return;
+	}
+	m_background = false;
+	StopChunkWorker();
+}
+
+void VoxelWorld::RunChunkWorker()
+{
+	for (;;)
+	{
+		ChunkCoordinate coordinate{};
+		{
+			std::unique_lock<std::mutex> lock(m_chunkWorkerMutex);
+			m_chunkWorkerCv.wait(lock, [this] { return m_stopChunkWorker || !m_chunkWork.empty(); });
+			if (m_chunkWork.empty())
+			{
+				if (m_stopChunkWorker)
+				{
+					return;
+				}
+				continue;
+			}
+			coordinate = m_chunkWork.front();
+			m_chunkWork.pop_front();
+		}
+		std::unique_ptr<WorldChunk> chunk = BuildChunkBlocks(coordinate);
+		{
+			std::lock_guard<std::mutex> lock(m_chunkWorkerMutex);
+			m_chunkReady.push_back(std::move(chunk));
+		}
+	}
+}
+
+void VoxelWorld::StopChunkWorker()
+{
+	{
+		std::lock_guard<std::mutex> lock(m_chunkWorkerMutex);
+		m_stopChunkWorker = true;
+		m_chunkWork.clear();
+	}
+	m_chunkWorkerCv.notify_all();
+	if (m_chunkWorker.joinable())
+	{
+		m_chunkWorker.join();
+	}
+	std::lock_guard<std::mutex> lock(m_chunkWorkerMutex);
+	m_chunkReady.clear();
+	m_chunksInFlight = 0;
+}
+
+void VoxelWorld::PumpChunkGeneration()
+{
+	if (!m_background)
+	{
+		return;
+	}
+
+	std::deque<std::unique_ptr<WorldChunk>> ready;
+	{
+		std::lock_guard<std::mutex> lock(m_chunkWorkerMutex);
+		ready.swap(m_chunkReady);
+	}
+	for (std::unique_ptr<WorldChunk> &chunk : ready)
+	{
+		if (m_chunksInFlight > 0)
+		{
+			--m_chunksInFlight;
+		}
+		InstallChunk(std::move(chunk));
+	}
+
+	// Keep the worker fed without letting it run a whole view ahead of the
+	// renderer.
+	while (m_chunksInFlight < kMaxChunksInFlight && m_pendingNext < m_pendingChunks.size())
+	{
+		const ChunkCoordinate coordinate = m_pendingChunks[m_pendingNext++];
+		if (m_chunks.find(coordinate) != m_chunks.end())
+		{
+			continue;
+		}
+		std::lock_guard<std::mutex> lock(m_chunkWorkerMutex);
+		m_chunkWork.push_back(coordinate);
+		++m_chunksInFlight;
+	}
+	m_chunkWorkerCv.notify_one();
 }
 
 ChunkCoordinate VoxelWorld::GetChunkCoordinate(GridCell cell) const

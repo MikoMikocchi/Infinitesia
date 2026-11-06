@@ -144,6 +144,8 @@ void Application::CreateLocalGame(SiteRuntime &runtime)
 	                                                    geology, flora, m_config.worldSeed);
 	runtime.game = std::make_unique<LocalGame>(
 	    m_content, LocalGameConfig{gridConfig, m_config.worker, m_config.simulationTicksPerSecond}, source);
+	// The terrain caches are filled by one worker while the main thread draws.
+	runtime.game->GetWorld().terrain.SetBackgroundGeneration(true);
 }
 
 LocalGame *Application::ActiveGame()

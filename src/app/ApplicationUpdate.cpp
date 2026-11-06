@@ -179,7 +179,15 @@ void Application::UpdateLocal()
 	const int verticalChunkRadius = kVerticalChunkRadius;
 	game.GetWorld().terrain.RequestChunksAround(m_chunkViewCenter, m_chunkRenderRadius, verticalChunkRadius);
 	game.GetWorld().terrain.UnloadChunksOutside(m_chunkViewCenter, m_chunkRenderRadius + 2, verticalChunkRadius + 1);
-	game.GetWorld().terrain.GeneratePendingChunks(kChunksGeneratedPerFrame, kChunkGenerationBudgetMs);
+	VoxelWorld &terrain = game.GetWorld().terrain;
+	if (terrain.IsBackgroundGeneration())
+	{
+		terrain.PumpChunkGeneration();
+	}
+	else
+	{
+		terrain.GeneratePendingChunks(kChunksGeneratedPerFrame, kChunkGenerationBudgetMs);
+	}
 	m_worldInteraction.Update({GetMousePosition(), IsMouseButtonPressed(MOUSE_BUTTON_RIGHT),
 	                           IsMouseButtonPressed(MOUSE_BUTTON_LEFT), IsKeyPressed(KEY_ESCAPE)},
 	                          game.GetGrid(), game.GetWorld(), game.GetWorkSystem(), m_worldRenderer.GetCamera(),

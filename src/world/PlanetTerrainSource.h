@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -135,6 +136,11 @@ private:
 	// Columns and rock profiles are worked out the first time a chunk touches
 	// them, so they are stored sparsely: the world is far larger than what is
 	// ever loaded at once.
+	// The caches are filled on demand and a worker may generate chunks while the
+	// main thread reads the terrain, so every entry point that touches them is
+	// serialised; the default recursive mutex lets the nested lookups of a column
+	// take it again.
+	mutable std::recursive_mutex m_cacheMutex;
 	mutable std::unordered_map<std::size_t, Column> m_columns;
 	mutable std::unordered_map<std::size_t, GeologyModel::ColumnProfile> m_profiles;
 	mutable std::unordered_map<std::size_t, GeologyModel::ColumnProfile> m_secondaryProfiles;
