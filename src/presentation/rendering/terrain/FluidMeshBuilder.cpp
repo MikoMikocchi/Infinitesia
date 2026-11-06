@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstring>
 #include <limits>
 #include <new>
@@ -21,9 +22,11 @@ namespace WorldGeometryRenderer
 namespace
 {
 constexpr unsigned char kFluidOpacity = 150;
-// Meshes built in one frame; the rest keep their previous mesh for a frame or
-// two, so streaming a whole sea does not stall a single frame.
-constexpr int kFluidBuildsPerFrame = 6;
+// Meshes built in one frame (and for no longer than the time budget); the rest
+// keep their previous mesh for a frame or two, so streaming a whole sea does not
+// stall a single frame.
+constexpr int kFluidBuildsPerFrame = 24;
+constexpr double kFluidBuildBudgetMs = 2.0;
 
 template <typename T> T *CopyMeshData(const std::vector<T> &data)
 {
@@ -271,11 +274,26 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 {
 	const int centerChunkX = viewCenter.x / kChunkSize;
 	const int centerChunkZ = viewCenter.z / kChunkSize;
+	const auto buildDeadline = std::chrono::steady_clock::now() +
+	                           std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+	                               std::chrono::duration<double, std::milli>(kFluidBuildBudgetMs));
 	int buildsLeft = kFluidBuildsPerFrame;
 	const Frustum frustum = Frustum::Current();
 	const float cellSize = grid.GetCellSize();
 	const float chunkWorldSize = static_cast<float>(kChunkSize) * cellSize;
 	std::set<FluidMeshKey> wanted;
+
+	// Stale meshes are built nearest first and for no longer than the budget: a
+	// streaming sea must not rebuild a whole layer in one frame, and the water
+	// under the camera must appear before the far edge.
+	struct PendingBuild
+	{
+		int distanceSquared;
+		const FluidChunk *chunk;
+		FluidMeshKey key;
+	};
+	std::vector<PendingBuild> pending;
+	pending.reserve(64);
 
 	for (const auto &[coordinate, chunk] : world.Fluids().Chunks())
 	{
@@ -317,7 +335,19 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 			DrawFluidMesh(cached->second.mesh, material);
 			continue;
 		}
-		if (buildsLeft == 0)
+		const int dx = coordinate.x - centerChunkX;
+		const int dz = coordinate.z - centerChunkZ;
+		pending.push_back({dx * dx + dz * dz, &chunk, key});
+	}
+
+	std::sort(pending.begin(), pending.end(), [](const PendingBuild &left, const PendingBuild &right) {
+		return left.distanceSquared < right.distanceSquared;
+	});
+	for (const PendingBuild &build : pending)
+	{
+		auto cached = meshCache.find(build.key);
+		const bool budgetSpent = buildsLeft <= 0 || std::chrono::steady_clock::now() >= buildDeadline;
+		if (budgetSpent)
 		{
 			// A stale mesh is drawn until its turn; a missing one is skipped.
 			if (cached != meshCache.end())
@@ -329,10 +359,10 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		--buildsLeft;
 		if (cached == meshCache.end())
 		{
-			cached = meshCache.emplace(key, FluidMeshCacheEntry{}).first;
+			cached = meshCache.emplace(build.key, FluidMeshCacheEntry{}).first;
 		}
-		ReplaceFluidMesh(cached->second, BuildFluidMeshData(grid, world, chunk, key.second, &atlas));
-		cached->second.fluidRevision = chunk.revision;
+		ReplaceFluidMesh(cached->second, BuildFluidMeshData(grid, world, *build.chunk, build.key.second, &atlas));
+		cached->second.fluidRevision = build.chunk->revision;
 		DrawFluidMesh(cached->second.mesh, material);
 	}
 
