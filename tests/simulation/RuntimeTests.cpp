@@ -56,6 +56,23 @@ TEST_CASE("the runtime runs systems on the fixed ticks of the simulation")
 	CHECK(system.contexts[0].fixedDeltaTime == simulation.GetFixedDeltaTime());
 }
 
+TEST_CASE("a stalled frame catches up with at most a few ticks")
+{
+	Simulation simulation(20.0f);
+	SimulationRuntime runtime(simulation);
+	RecordingSystem &system = AddRecording(runtime.Registry(), Describe("s"));
+
+	// Three seconds of stall: sixty ticks are due, but only the cap may run and
+	// the backlog is dropped instead of amplifying the next frames.
+	const std::uint64_t ticks = simulation.AdvanceFrame(3.0f);
+	CHECK(ticks == Simulation::kMaxTicksPerFrame);
+	CHECK(system.contexts.size() == Simulation::kMaxTicksPerFrame);
+	CHECK(simulation.GetTickCount() == Simulation::kMaxTicksPerFrame);
+
+	// The next ordinary frame runs exactly one tick, not the remaining backlog.
+	CHECK(simulation.AdvanceFrame(simulation.GetFixedDeltaTime()) == 1);
+}
+
 TEST_CASE("the runtime adds no clock: game time follows the tick count")
 {
 	Simulation simulation(20.0f);

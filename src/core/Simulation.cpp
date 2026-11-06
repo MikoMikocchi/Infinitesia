@@ -30,11 +30,18 @@ std::uint64_t Simulation::AdvanceFrame(float frameDelta)
 	std::uint64_t advancedTicks = 0;
 	m_accumulator += frameDelta;
 
-	while (m_accumulator >= m_fixedDeltaTime)
+	while (m_accumulator >= m_fixedDeltaTime && advancedTicks < kMaxTicksPerFrame)
 	{
 		Tick();
 		m_accumulator -= m_fixedDeltaTime;
 		++advancedTicks;
+	}
+
+	// A frame this slow is already the problem; carrying its backlog into the
+	// next frame would only make it slower.
+	if (m_accumulator >= m_fixedDeltaTime)
+	{
+		m_accumulator = 0.0f;
 	}
 
 	return advancedTicks;

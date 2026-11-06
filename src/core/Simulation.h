@@ -13,6 +13,11 @@ public:
 	// AdvanceFrame.
 	using TickListener = std::function<void(std::uint64_t tick)>;
 
+	// A stalled frame catches up with at most this many ticks. The rest of the
+	// accumulated time is dropped: a frame slower than a few ticks per second
+	// would otherwise ask for more and more work every frame and never recover.
+	static constexpr std::uint64_t kMaxTicksPerFrame = 5;
+
 	explicit Simulation(float ticksPerSecond = 20.0f);
 
 	// One listener at a time; an empty one removes it.
