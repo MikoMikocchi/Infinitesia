@@ -7,6 +7,7 @@
 #include "presentation/ui/PlanetViewerLayout.h"
 #include "raylib.h"
 #include "raymath.h"
+#include "rlgl.h"
 
 namespace Infinitesia
 {
@@ -34,10 +35,10 @@ void PlanetViewer::Draw() const
 
 	DrawRectangleRounded(layout.mapPanel, 0.035f, 8, {19, 28, 40, 255});
 	DrawRectangleRounded(layout.globePanel, 0.035f, 8, {19, 28, 40, 255});
-	const char *mapTitle = m_regionMode ? "SITE MAP" : (m_worldMapMode ? "THEATER MAP" : "SURFACE MAP");
+	const char *mapTitle = m_regionMode ? "SITE MAP" : (m_worldMapMode ? "THEATER MAP" : "PLANET MAP");
 	DrawText(mapTitle, static_cast<int>(layout.mapPanel.x + 18.0f), static_cast<int>(layout.mapPanel.y + 16.0f), 16,
 	         SKYBLUE);
-	DrawText("ROTATING GLOBE", static_cast<int>(layout.globePanel.x + 18.0f),
+	DrawText("PLANET GLOBE", static_cast<int>(layout.globePanel.x + 18.0f),
 	         static_cast<int>(layout.globePanel.y + 16.0f), 16, SKYBLUE);
 
 	if (m_regionMode)
@@ -114,56 +115,27 @@ void PlanetViewer::Draw() const
 	const Camera3D camera = MakeCamera();
 	BeginScissorMode(static_cast<int>(layout.globePanel.x), static_cast<int>(layout.globePanel.y),
 	                 static_cast<int>(layout.globePanel.width), static_cast<int>(layout.globePanel.height));
+	// At the theater/site depth the camera sits close to the surface; the default
+	// near plane would clip the front of the globe.
+	rlSetClipPlanes(0.05, 1000.0);
 	BeginMode3D(camera);
 	SyncGlobeMesh();
 	const Matrix globeTransform = GetGlobeTransform();
 	DrawMesh(m_globeMesh, m_globeMaterial, globeTransform);
-	if (m_worldMapMode)
-	{
-		if (const auto world = m_regionMap.GetWorldMap())
-		{
-			// The tile centres run [-half .. half - 1], so the window is
-			// asymmetric by half a tile: [-half - 0.5 .. half - 0.5].
-			const double minExtent = -(kRegionTilesPerWorldHalfSide + 0.5) * kRegionTileSizeMeters;
-			const double maxExtent = (kRegionTilesPerWorldHalfSide - 0.5) * kRegionTileSizeMeters;
-			const CartesianPoint3D corners[4] = {
-			    world->Grid().Direction(minExtent, minExtent),
-			    world->Grid().Direction(maxExtent, minExtent),
-			    world->Grid().Direction(maxExtent, maxExtent),
-			    world->Grid().Direction(minExtent, maxExtent),
-			};
-			Vector3 screenCorners[4];
-			for (int index = 0; index < 4; ++index)
-			{
-				const CartesianPoint3D &corner = corners[index];
-				screenCorners[index] =
-				    Vector3Transform({static_cast<float>(corner.x) * 1.006f, static_cast<float>(corner.y) * 1.006f,
-					                  -static_cast<float>(corner.z) * 1.006f},
-					                 globeTransform);
-			}
-			for (int index = 0; index < 4; ++index)
-			{
-				DrawLine3D(screenCorners[index], screenCorners[(index + 1) % 4], kSelectedCellColor);
-			}
-			const CartesianPoint3D center = world->Grid().CenterDirection({});
-			DrawSphere(Vector3Transform({static_cast<float>(center.x) * 1.006f, static_cast<float>(center.y) * 1.006f,
-			                             -static_cast<float>(center.z) * 1.006f},
-			                            globeTransform),
-			           0.006f, kSelectedCellColor);
-		}
-	}
-	if (m_regionBlend > 0.01f)
-	{
-		// Mesh longitude runs opposite to geographic longitude, hence the -z.
-		const GeographicCoordinates focus = m_regionMap.GetFocusCenter();
-		const CartesianPoint3D unit = PlanetaryCoordinates::ToCartesian(focus);
-		const Vector3 marker =
-		    Vector3Transform({static_cast<float>(unit.x) * 1.004f, static_cast<float>(unit.y) * 1.004f,
-			                  -static_cast<float>(unit.z) * 1.004f},
-			                 globeTransform);
-		DrawSphere(marker, 0.007f, kSelectedCellColor);
-	}
 	EndMode3D();
+	rlSetClipPlanes(RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+	if (m_worldMapMode || m_regionMode)
+	{
+		// The camera centres the selected point; this small cross shows exactly
+		// where it is without painting a marker onto the surface.
+		const float centreX = layout.globeCenter.x;
+		const float centreY = layout.globeCenter.y;
+		const Color cross = Fade(RAYWHITE, 0.55f);
+		DrawLine(static_cast<int>(centreX - 9.0f), static_cast<int>(centreY),
+		         static_cast<int>(centreX + 9.0f), static_cast<int>(centreY), cross);
+		DrawLine(static_cast<int>(centreX), static_cast<int>(centreY - 9.0f),
+		         static_cast<int>(centreX), static_cast<int>(centreY + 9.0f), cross);
+	}
 	EndScissorMode();
 
 	const int footerY = screenHeight - 70;
@@ -201,9 +173,8 @@ void PlanetViewer::Draw() const
 		              "Theater %d x %d tiles  |  %.0f km across  |  %.0f m per tile", kRegionTilesPerWorldSide,
 		              kRegionTilesPerWorldSide, kWorldSizeMeters / 1000.0, kRegionTileSizeMeters);
 		DrawText(worldDetail, 30, footerY + 20, 14, {180, 195, 210, 255});
-		DrawText(m_foundingEnabled
-		             ? "Click a tile to focus  |  Enter: found here  |  R: zoom tile  |  W/Backspace: surface map"
-					 : "Click a tile to focus  |  R: zoom tile  |  W/Backspace: surface map",
+		DrawText("Click a tile to focus  |  Double-click a tile to choose a site  |  "
+		         "RMB/Esc: planet",
 		         30, footerY + 40, 12, {100, 118, 140, 255});
 		return;
 	}
@@ -214,7 +185,7 @@ void PlanetViewer::Draw() const
 	const char *biomeName = BiomeName(selectedRegion.biome);
 
 	std::snprintf(selectionText, sizeof(selectionText),
-	              "Region %d, %d  |  %.1f deg, %.1f deg  |  %.2f km  |  %.1f C  |  %.0f "
+	              "Planet cell %d, %d  |  %.1f deg, %.1f deg  |  %.2f km  |  %.1f C  |  %.0f "
 	              "mm/yr  |  %s",
 	              m_selectedLatitude, m_selectedLongitude, selectedRegion.latitudeDegrees,
 	              selectedRegion.longitudeDegrees,
@@ -291,9 +262,9 @@ void PlanetViewer::Draw() const
 		}
 		DrawText(regionText, 30, footerY + 40, 13, kSelectedCellColor);
 		DrawText(m_foundingEnabled ? "Wheel: zoom  |  Click / WASD / arrows: pick a site  |  "
-		                             "Enter: found  |  R/Backspace: Theater Map"
+		                             "Enter: found  |  RMB/Esc: theater"
 		                           : "Wheel: zoom  |  Click / WASD / arrows: pick a site  |  "
-		                             "M: settlement  |  R/Backspace: Theater Map",
+		                             "M: settlement  |  RMB/Esc: theater",
 		         30, footerY + 57, 12, {100, 118, 140, 255});
 		if (m_noticeSeconds > 0.0f)
 		{
@@ -317,8 +288,7 @@ void PlanetViewer::Draw() const
 	              selectedRegion.monthlyTemperatureCelsius[kSeasonMonths[3]],
 	              selectedRegion.monthlyPrecipitationMm[kSeasonMonths[3]]);
 	DrawText(seasonalText, 30, footerY + 40, 13, {100, 118, 140, 255});
-	DrawText("Click the map or globe to select a tile  |  W: theater map  |  R: open site map  |  "
-	         "Drag to rotate  |  Scroll to zoom",
+	DrawText("Click the map or globe to open a theater  |  Drag the globe to rotate  |  Scroll to zoom",
 	         30, footerY + 57, 12, {100, 118, 140, 255});
 }
 

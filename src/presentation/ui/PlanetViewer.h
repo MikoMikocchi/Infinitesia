@@ -14,6 +14,7 @@
 #include "presentation/ui/UniqueTexture.h"
 #include "presentation/ui/WorldMapView.h"
 #include "raylib.h"
+#include "raymath.h"
 
 namespace Infinitesia
 {
@@ -28,6 +29,12 @@ public:
 	void Update();
 	void Draw() const;
 	void ReleaseRenderResources() noexcept;
+
+	// Opens the theater at a point. Used by the dev screenshot hooks and by the
+	// normal planet click path.
+	void OpenTheaterAt(const GeographicCoordinates &point);
+	// Opens the site map for the theater at a point.
+	void OpenSiteAt(const GeographicCoordinates &point);
 
 	// Set when the player founds a site; handed over once.
 	std::optional<Site> TakeFoundedSite();
@@ -47,7 +54,13 @@ private:
 	Matrix GetGlobeTransform() const;
 	void SyncGlobeMesh() const;
 	void WriteCellColors(Color *out, int row, int column, bool selected) const;
-	void EnterRegionMode();
+	// Anchors the theater at the selected planet cell and opens the theater map.
+	void EnterTheaterFromSelectedCell();
+	// Opens the site map for the current theater tile.
+	void EnterSiteMode();
+	// Goes one level up: site -> theater -> planet.
+	void GoBackOneLevel();
+	void RotateGlobe(float yawDegrees, float pitchDegrees);
 	void TryFoundSettlement();
 	// A dry point inside (or very near) the tile, preferably close to water.
 	std::optional<GeographicCoordinates> FindDrySite(const LocalGrid &grid, RegionId tile) const;
@@ -78,10 +91,27 @@ private:
 	std::optional<Site> m_foundedSite;
 	std::string m_notice;
 	float m_noticeSeconds = 0.0f;
+	// The game starts on the planet; a click opens the theater, a double-click
+	// on a theater tile opens the site map.
 	bool m_regionMode = false;
-	bool m_worldMapMode = true;
-	float m_regionBlend = 0.0f; // 0 = whole globe, 1 = zoomed onto the focused region
+	bool m_worldMapMode = false;
+	float m_levelBlend = 0.0f; // 0 = planet, 1 = theater, 2 = site
+	// The globe has one continuous orientation. Entering a region slerps it to
+	// face the selected point; leaving a region keeps the current orientation
+	// and resumes free rotation from there.
+	Quaternion m_globeOrientation = {0.0f, 0.0f, 0.0f, 1.0f};
+	Quaternion m_orientationTarget = {0.0f, 0.0f, 0.0f, 1.0f};
+	bool m_hasOrientationTarget = false;
 	bool m_draggingGlobe = false;
 	Vector2 m_lastMousePosition{};
+	// A short click on the globe opens the theater; a drag only rotates.
+	Vector2 m_globePressPosition{};
+	GeographicCoordinates m_globePressCoordinates{};
+	bool m_globePressHit = false;
+	bool m_globeDragged = false;
+	// Double-click on the theater map selects the site region.
+	double m_lastTheaterClickTime = -1.0;
+	RegionTileId m_lastTheaterClickTile{};
+	bool m_hasTheaterClick = false;
 };
 } // namespace Infinitesia

@@ -205,6 +205,9 @@ PlanetViewer::PlanetViewer(StarSystem system, const PlanetPipeline &pipeline, Lo
 		m_regionMap.Anchor(PlanetaryCoordinates::ToCartesian(
 		    m_planetMap.GetPlanet().GetRegionCenter(m_selectedLatitude, m_selectedLongitude)));
 	}
+
+	m_globeOrientation = QuaternionFromMatrix(
+	    MatrixMultiply(MatrixRotateX(m_tiltDegrees * DEG2RAD), MatrixRotateY(m_rotationDegrees * DEG2RAD)));
 }
 
 void PlanetViewer::Update()
@@ -217,16 +220,26 @@ void PlanetViewer::Update()
 
 	const float frameTime = GetFrameTime();
 	m_noticeSeconds = std::max(0.0f, m_noticeSeconds - frameTime);
-	const float blendTarget = m_regionMode ? 1.0f : 0.0f;
-	m_regionBlend += (blendTarget - m_regionBlend) * std::min(1.0f, frameTime * 4.0f);
-	if (std::abs(blendTarget - m_regionBlend) < 0.002f)
+	const float levelTarget = m_regionMode ? 2.0f : (m_worldMapMode ? 1.0f : 0.0f);
+	m_levelBlend += (levelTarget - m_levelBlend) * std::min(1.0f, frameTime * 4.0f);
+	if (std::abs(levelTarget - m_levelBlend) < 0.002f)
 	{
-		m_regionBlend = blendTarget;
+		m_levelBlend = levelTarget;
 	}
 
-	if (!m_draggingGlobe)
+	if (m_hasOrientationTarget)
 	{
-		m_rotationDegrees = std::fmod(m_rotationDegrees + frameTime * 8.0f, 360.0f);
+		// Smoothly turn the globe to the selected place. The same path is used
+		// when entering a theater after a previous visit, so it never jumps.
+		m_globeOrientation = QuaternionNormalize(
+		    QuaternionSlerp(m_globeOrientation, m_orientationTarget, std::min(1.0f, frameTime * 6.0f)));
+	}
+	else if (!m_draggingGlobe && !m_worldMapMode && !m_regionMode)
+	{
+		// Free globe: keep drifting from the current orientation, never from a
+		// remembered camera position.
+		const Quaternion spin = QuaternionFromAxisAngle({0.0f, 1.0f, 0.0f}, frameTime * 8.0f * DEG2RAD);
+		m_globeOrientation = QuaternionNormalize(QuaternionMultiply(m_globeOrientation, spin));
 	}
 }
 
@@ -333,11 +346,72 @@ void PlanetViewer::TryFoundSettlement()
 	m_foundedSite = site;
 }
 
-void PlanetViewer::EnterRegionMode()
+void PlanetViewer::OpenTheaterAt(const GeographicCoordinates &point)
 {
+	const int rows = m_planetMap.GetLatitudeBandCount();
+	const int columns = m_planetMap.GetLongitudeSegmentCount();
+	m_selectedLatitude =
+	    std::clamp(static_cast<int>((point.latitudeDegrees + 90.0) / 180.0 * rows), 0, rows - 1);
+	m_selectedLongitude =
+	    std::clamp(static_cast<int>(point.longitudeDegrees / 360.0 * columns), 0, columns - 1);
+	EnterTheaterFromSelectedCell();
+}
+
+void PlanetViewer::OpenSiteAt(const GeographicCoordinates &point)
+{
+	OpenTheaterAt(point);
+	EnterSiteMode();
+}
+
+void PlanetViewer::RotateGlobe(float yawDegrees, float pitchDegrees)
+{
+	m_hasOrientationTarget = false;
+	const Quaternion yaw = QuaternionFromAxisAngle({0.0f, 1.0f, 0.0f}, yawDegrees * DEG2RAD);
+	const Quaternion pitch = QuaternionFromAxisAngle({1.0f, 0.0f, 0.0f}, pitchDegrees * DEG2RAD);
+	m_globeOrientation = QuaternionNormalize(
+	    QuaternionMultiply(m_globeOrientation, QuaternionMultiply(yaw, pitch)));
+}
+
+void PlanetViewer::EnterTheaterFromSelectedCell()
+{
+	// A new theater is anchored at the clicked planet cell. Tile (0, 0) is that
+	// cell, so the theater opens centred on the click.
+	FocusRegionOnSelectedCell();
+	m_regionMap.Focus({0, 0});
+	m_orientationTarget = QuaternionFromMatrix(MakeFacingMatrix(m_regionMap.GetFocusCenter()));
+	m_hasOrientationTarget = true;
+	m_worldMapMode = true;
+	m_regionMode = false;
+	m_hasTheaterClick = false;
+	SyncSelectionToRegion();
+}
+
+void PlanetViewer::EnterSiteMode()
+{
+	if (!m_worldMapMode)
+	{
+		return;
+	}
+	// The theater tile stays focused; the site map is its close-up.
 	m_worldMapMode = false;
 	m_regionMode = true;
-	FocusRegionOnSelectedCell();
+	m_hasTheaterClick = false;
+}
+
+void PlanetViewer::GoBackOneLevel()
+{
+	if (m_regionMode)
+	{
+		m_regionMode = false;
+		m_worldMapMode = true;
+	}
+	else if (m_worldMapMode)
+	{
+		m_worldMapMode = false;
+		// Pull back from the current orientation; never fly to the old one.
+		m_hasOrientationTarget = false;
+	}
+	m_hasTheaterClick = false;
 }
 
 void PlanetViewer::SyncSelectionToRegion()

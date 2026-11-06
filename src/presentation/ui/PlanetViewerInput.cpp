@@ -17,46 +17,19 @@ void PlanetViewer::HandleInput()
 	const int rows = m_planetMap.GetLatitudeBandCount();
 	const int columns = m_planetMap.GetLongitudeSegmentCount();
 
-	if (!m_regionMode && IsKeyPressed(KEY_W))
+	// One level up: site -> theater -> planet. Right click, Esc or Backspace.
+	if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) ||
+	    IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
 	{
-		if (m_worldMapMode)
+		if (m_regionMode || m_worldMapMode)
 		{
-			m_worldMapMode = false;
-		}
-		else
-		{
-			m_worldMapMode = true;
+			GoBackOneLevel();
+			return;
 		}
 	}
-	if (m_worldMapMode && IsKeyPressed(KEY_BACKSPACE))
-	{
-		m_worldMapMode = false;
-	}
-	if (IsKeyPressed(KEY_R))
-	{
-		if (m_regionMode)
-		{
-			m_regionMode = false;
-			m_worldMapMode = true;
-		}
-		else if (m_worldMapMode)
-		{
-			// Region map is a zoom of the current world tile, not a new world.
-			m_worldMapMode = false;
-			m_regionMode = true;
-		}
-		else
-		{
-			EnterRegionMode();
-		}
-	}
+
 	if (m_regionMode)
 	{
-		if (IsKeyPressed(KEY_BACKSPACE))
-		{
-			m_regionMode = false;
-			m_worldMapMode = true;
-		}
 		if (m_foundingEnabled && IsKeyPressed(KEY_ENTER))
 		{
 			TryFoundSettlement();
@@ -70,7 +43,7 @@ void PlanetViewer::HandleInput()
 		const int stepY = (pressed(KEY_UP, KEY_W) ? 1 : 0) - (pressed(KEY_DOWN, KEY_S) ? 1 : 0);
 		if (stepX != 0 || stepY != 0)
 		{
-			// The map is north-up, so arrows move along the compass, one region at a
+			// The map is north-up, so arrows move along the compass, one tile at a
 			// time.
 			const RegionId focus = m_regionMap.GetFocus();
 			m_regionMap.Focus({focus.i + stepX, focus.j + stepY});
@@ -78,13 +51,11 @@ void PlanetViewer::HandleInput()
 		}
 	}
 
-	if (m_foundingEnabled && m_worldMapMode && IsKeyPressed(KEY_ENTER))
-	{
-		TryFoundSettlement();
-	}
-
 	if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
 	{
+		m_globePressHit = false;
+		m_globeDragged = false;
+
 		if (m_regionMode && RectangleContains(layout.regionBounds, mousePosition))
 		{
 			if (const auto direction = m_regionMap.DirectionAt(mousePosition, layout.regionBounds))
@@ -98,8 +69,23 @@ void PlanetViewer::HandleInput()
 		{
 			if (const auto tile = m_worldMapView.TileAt(mousePosition, layout.worldBounds))
 			{
+				const double now = GetTime();
+				const bool doubleClick = m_hasTheaterClick && now - m_lastTheaterClickTime <= 0.35 &&
+				                         tile->i == m_lastTheaterClickTile.i && tile->j == m_lastTheaterClickTile.j;
+
 				m_regionMap.Focus({tile->i, tile->j});
 				SyncSelectionToRegion();
+
+				if (doubleClick)
+				{
+					EnterSiteMode();
+				}
+				else
+				{
+					m_lastTheaterClickTime = now;
+					m_lastTheaterClickTile = *tile;
+					m_hasTheaterClick = true;
+				}
 			}
 			m_draggingGlobe = false;
 		}
@@ -109,30 +95,25 @@ void PlanetViewer::HandleInput()
 			const float normalizedY = (mousePosition.y - layout.mapBounds.y) / layout.mapBounds.height;
 			m_selectedLongitude = std::clamp(static_cast<int>(normalizedX * columns), 0, columns - 1);
 			m_selectedLatitude = rows - 1 - std::clamp(static_cast<int>(normalizedY * rows), 0, rows - 1);
-			FocusRegionOnSelectedCell();
+			EnterTheaterFromSelectedCell();
 			m_draggingGlobe = false;
 		}
-		else
+		else if (!m_regionMode && !m_worldMapMode && RectangleContains(layout.globePanel, mousePosition))
 		{
+			// On the planet the globe is a click target. A press starts a
+			// potential drag; a release without movement opens the theater at
+			// that point. In the theater/site views the globe is only context.
 			const Camera3D camera = MakeCamera();
 			const Ray ray = GetMouseRay(mousePosition, camera);
 			const RayCollision collision = GetRayCollisionSphere(ray, {0.0f, 0.0f, 0.0f}, 1.0f);
-			// In region mode the globe is locked onto the focused region.
-			m_draggingGlobe = collision.hit && !m_regionMode;
-			m_lastMousePosition = mousePosition;
-
 			if (collision.hit)
 			{
-				// Undo the transform the globe is drawn with, then flip z back (mesh
-				// longitude runs opposite to geographic longitude).
 				const Vector3 local = Vector3Transform(collision.point, MatrixInvert(GetGlobeTransform()));
-				const GeographicCoordinates coordinates =
-				    PlanetaryCoordinates::ToGeographic({local.x, local.y, -local.z});
-				m_selectedLatitude =
-				    std::clamp(static_cast<int>((coordinates.latitudeDegrees + 90.0) / 180.0 * rows), 0, rows - 1);
-				m_selectedLongitude =
-				    std::clamp(static_cast<int>(coordinates.longitudeDegrees / 360.0 * columns), 0, columns - 1);
-				FocusRegionOnSelectedCell();
+				m_globePressCoordinates = PlanetaryCoordinates::ToGeographic({local.x, local.y, -local.z});
+				m_globePressPosition = mousePosition;
+				m_globePressHit = true;
+				m_draggingGlobe = !m_worldMapMode;
+				m_lastMousePosition = mousePosition;
 			}
 		}
 	}
@@ -140,12 +121,31 @@ void PlanetViewer::HandleInput()
 	if (m_draggingGlobe && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
 	{
 		const Vector2 delta{mousePosition.x - m_lastMousePosition.x, mousePosition.y - m_lastMousePosition.y};
-		m_rotationDegrees = std::fmod(m_rotationDegrees + delta.x * 0.35f, 360.0f);
-		m_tiltDegrees = std::clamp(m_tiltDegrees + delta.y * 0.35f, -75.0f, 75.0f);
+		if (Vector2Distance(mousePosition, m_globePressPosition) > 4.0f)
+		{
+			m_globeDragged = true;
+		}
+		if (m_globeDragged)
+		{
+			RotateGlobe(delta.x * 0.35f, delta.y * 0.35f);
+		}
 		m_lastMousePosition = mousePosition;
 	}
-	if (!IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+
+	if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
 	{
+		if (m_globePressHit && !m_globeDragged && !m_regionMode)
+		{
+			m_selectedLatitude =
+			    std::clamp(static_cast<int>((m_globePressCoordinates.latitudeDegrees + 90.0) / 180.0 * rows), 0,
+			               rows - 1);
+			m_selectedLongitude =
+			    std::clamp(static_cast<int>(m_globePressCoordinates.longitudeDegrees / 360.0 * columns), 0,
+			               columns - 1);
+			EnterTheaterFromSelectedCell();
+		}
+		m_globePressHit = false;
+		m_globeDragged = false;
 		m_draggingGlobe = false;
 	}
 

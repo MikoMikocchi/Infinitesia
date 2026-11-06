@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <stdexcept>
 
 #include "presentation/ui/PlanetGlobeGeometry.h"
@@ -76,7 +77,9 @@ void PlanetViewer::SyncGlobeMesh() const
 {
 	const int rows = m_planetMap.GetLatitudeBandCount();
 	const int columns = m_planetMap.GetLongitudeSegmentCount();
-	const int selectedCell = (rows - 1 - m_selectedLatitude) * columns + m_selectedLongitude;
+	// The selected place is shown by the camera centre and the crosshair, not
+	// by recolouring a planet cell: that read as a glowing hole in the surface.
+	const int selectedCell = -1;
 
 	if (m_globeMesh.vaoId == 0)
 	{
@@ -114,7 +117,7 @@ void PlanetViewer::SyncGlobeMesh() const
 					*dst++ = vertex.y;
 					*dst++ = vertex.z;
 				}
-				WriteCellColors(colors + static_cast<std::size_t>(cell) * 6, row, column, cell == selectedCell);
+				WriteCellColors(colors + static_cast<std::size_t>(cell) * 6, row, column, false);
 			}
 		}
 
@@ -164,20 +167,7 @@ void PlanetViewer::ReleaseRenderResources() noexcept
 
 Matrix PlanetViewer::GetGlobeTransform() const
 {
-	const Matrix overview =
-	    MatrixMultiply(MatrixRotateX(m_tiltDegrees * DEG2RAD), MatrixRotateY(m_rotationDegrees * DEG2RAD));
-	if (m_regionBlend <= 0.0f)
-	{
-		return overview;
-	}
-
-	const Matrix facing = MakeFacingMatrix(m_regionMap.GetFocusCenter());
-	if (m_regionBlend >= 1.0f)
-	{
-		return facing;
-	}
-	return QuaternionToMatrix(
-	    QuaternionSlerp(QuaternionFromMatrix(overview), QuaternionFromMatrix(facing), SmootherStepF(m_regionBlend)));
+	return QuaternionToMatrix(m_globeOrientation);
 }
 
 Camera3D PlanetViewer::MakeCamera() const
@@ -185,22 +175,34 @@ Camera3D PlanetViewer::MakeCamera() const
 	const ViewerLayout layout = GetLayout(GetScreenWidth(), GetScreenHeight(), m_planetMap);
 	const float fieldOfViewRadians = kCameraFieldOfView * kPi / 180.0f;
 	const float focalLength = static_cast<float>(GetScreenHeight()) / (2.0f * std::tan(fieldOfViewRadians * 0.5f));
-	// The globe stays a planet-scale view in both modes. Zooming it to the
-	// focused region only magnified a 360x720 cell texture into a blur; the
-	// region map is the close-up, and the globe gives the planet context with a
-	// marker at the focused cell.
-	const float cameraDistance = std::max(2.4f, focalLength / layout.globeRadius * 1.08f) * m_zoom;
-	// Shift the view so the globe centre lands on the panel centre; the needed
-	// shift grows with the camera distance.
-	const float anchorDepth = cameraDistance;
+	// Move from the whole planet to the selected surface point. At the theater
+	// and site levels the camera looks at that point, not at the globe's centre,
+	// so the selection stays in the middle of the panel as the camera closes in.
+	const float close = std::clamp(m_levelBlend, 0.0f, 1.0f);
+	const GeographicCoordinates focus = m_regionMap.GetFocusCenter();
+	const CartesianPoint3D focusUnit = PlanetaryCoordinates::ToCartesian(focus);
+	const Matrix globeTransform = GetGlobeTransform();
+	const Vector3 focusDirection =
+	    Vector3Transform({static_cast<float>(focusUnit.x), static_cast<float>(focusUnit.y),
+	                      -static_cast<float>(focusUnit.z)},
+	                     globeTransform);
+	const Vector3 focusPoint = Vector3Scale(focusDirection, close);
+
+	const float planetDistance = std::max(2.4f, focalLength / layout.globeRadius * 1.08f) * m_zoom;
+	const float cameraDistance =
+	    m_levelBlend <= 1.0f ? planetDistance + (1.70f - planetDistance) * close
+	                         : 1.70f - 0.15f * (m_levelBlend - 1.0f);
+	const float targetDistance = std::max(0.02f, cameraDistance - close);
+
+	// Shift the whole view so the target lands on the globe panel's centre.
 	const float targetZ =
-	    (static_cast<float>(GetScreenWidth()) * 0.5f - layout.globeCenter.x) * anchorDepth / focalLength;
+	    (static_cast<float>(GetScreenWidth()) * 0.5f - layout.globeCenter.x) * targetDistance / focalLength;
 	const float targetY =
-	    (layout.globeCenter.y - static_cast<float>(GetScreenHeight()) * 0.5f) * anchorDepth / focalLength;
+	    (layout.globeCenter.y - static_cast<float>(GetScreenHeight()) * 0.5f) * targetDistance / focalLength;
 
 	Camera3D camera{};
-	camera.position = {-cameraDistance, targetY, targetZ};
-	camera.target = {0.0f, targetY, targetZ};
+	camera.position = {-cameraDistance, focusPoint.y + targetY, focusPoint.z + targetZ};
+	camera.target = {focusPoint.x, focusPoint.y + targetY, focusPoint.z + targetZ};
 	camera.up = {0.0f, 1.0f, 0.0f};
 	camera.fovy = kCameraFieldOfView;
 	camera.projection = CAMERA_PERSPECTIVE;

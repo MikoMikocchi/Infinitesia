@@ -51,15 +51,19 @@ int GetChunkRenderRadius(const Camera3D &camera, const Grid &grid)
 }
 } // namespace
 
-// Development hooks, driven by environment variables so that the local world
-// can be checked without clicking through the planet viewer:
-//   INFINITESIA_DEV_FOUND="lat,lon"      found the settlement at that place on
-//   startup INFINITESIA_DEV_SCREENSHOT=name.png  save a screenshot of the local
-//   world, then quit INFINITESIA_DEV_VIEW=all             show the whole world,
-//   not only the part below the selected level
+// Development hooks, driven by environment variables so that screens can be
+// checked without clicking through the viewer:
+//   INFINITESIA_DEV_FOUND="lat,lon"      found a settlement there on startup
+//   INFINITESIA_DEV_THEATER="lat,lon"    open the theater there
+//   INFINITESIA_DEV_SITE="lat,lon"       open its site map
+//   INFINITESIA_DEV_SCREENSHOT=name.png  save the current screen, then quit
+//   INFINITESIA_DEV_VIEW=all             show the whole local world, not only
+//                                        the part below the selected level
 void Application::UpdateDevHooks()
 {
 	static const char *const found = std::getenv("INFINITESIA_DEV_FOUND");
+	static const char *const theater = std::getenv("INFINITESIA_DEV_THEATER");
+	static const char *const site = std::getenv("INFINITESIA_DEV_SITE");
 	static const char *const screenshot = std::getenv("INFINITESIA_DEV_SCREENSHOT");
 	static const char *const view = std::getenv("INFINITESIA_DEV_VIEW");
 
@@ -79,13 +83,29 @@ void Application::UpdateDevHooks()
 		StartSettlement(site);
 	}
 
+	static bool theaterOpened = false;
+	if (theater != nullptr && m_planetViewer && m_screen == Screen::Planet && !theaterOpened &&
+	    std::sscanf(theater, "%lf,%lf", &latitude, &longitude) == 2)
+	{
+		m_planetViewer->OpenTheaterAt({latitude, longitude});
+		theaterOpened = true;
+	}
+
+	static bool siteOpened = false;
+	if (site != nullptr && m_planetViewer && m_screen == Screen::Planet && !siteOpened &&
+	    std::sscanf(site, "%lf,%lf", &latitude, &longitude) == 2)
+	{
+		m_planetViewer->OpenSiteAt({latitude, longitude});
+		siteOpened = true;
+	}
+
 	if (view != nullptr && std::string_view(view) == "all" && m_screen == Screen::Local &&
 	    m_devFramesInLocalScreen == 0)
 	{
 		m_viewMode = ViewMode::ShowAll;
 	}
 
-	if (screenshot != nullptr && m_screen == Screen::Local && ++m_devFramesInLocalScreen == 150)
+	if (screenshot != nullptr && m_planetViewer && ++m_devFramesInLocalScreen == 150)
 	{
 		TakeScreenshot(screenshot);
 		m_exitRequested = true;

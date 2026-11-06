@@ -170,9 +170,25 @@ void WorldMapView::Draw(Rectangle bounds, RegionId focus) const
 
 	if (WorldMap::Contains({focus.i, focus.j}))
 	{
-		const float x = square.x + static_cast<float>(focus.i + kRegionTilesPerWorldHalfSide) * cell;
-		const float y = square.y + static_cast<float>(kRegionTilesPerWorldHalfSide - 1 - focus.j) * cell;
-		DrawRectangleLinesEx({x, y, std::max(2.0f, cell), std::max(2.0f, cell)}, 2.0f, kSelectedCellColor);
+		const float tileX = square.x + static_cast<float>(focus.i + kRegionTilesPerWorldHalfSide) * cell;
+		const float tileY = square.y + static_cast<float>(kRegionTilesPerWorldHalfSide - 1 - focus.j) * cell;
+		// A tile is only a few pixels at the full theater scale. Draw a pulsing
+		// reticle that is always large enough to see.
+		const float pulse = 0.5f + 0.5f * std::sin(static_cast<float>(GetTime()) * 4.0f);
+		const float marker = std::max(18.0f, cell * 3.5f) + pulse * 2.0f;
+		const float markerX =
+		    std::clamp(tileX + cell * 0.5f - marker * 0.5f, square.x, square.x + square.width - marker);
+		const float markerY =
+		    std::clamp(tileY + cell * 0.5f - marker * 0.5f, square.y, square.y + square.height - marker);
+		const Rectangle reticle{markerX, markerY, marker, marker};
+		DrawRectangleRec(reticle, Fade(kSelectedCellColor, 0.10f + 0.08f * pulse));
+		DrawRectangleLinesEx(reticle, 2.0f, kSelectedCellColor);
+		const float centreX = reticle.x + reticle.width * 0.5f;
+		const float centreY = reticle.y + reticle.height * 0.5f;
+		DrawLine(static_cast<int>(reticle.x), static_cast<int>(centreY),
+		         static_cast<int>(reticle.x + reticle.width), static_cast<int>(centreY), kSelectedCellColor);
+		DrawLine(static_cast<int>(centreX), static_cast<int>(reticle.y), static_cast<int>(centreX),
+		         static_cast<int>(reticle.y + reticle.height), kSelectedCellColor);
 	}
 
 	DrawRectangleLinesEx(square, 1.0f, {129, 158, 180, 255});
