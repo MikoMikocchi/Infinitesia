@@ -16,17 +16,27 @@ namespace
 constexpr double kRiverFreeboardMeters = 0.25;
 // The part of the channel where there is actual water, and the dry bank around
 // it. The narrow strip at the water's edge slopes up to the surface, like a
-// shore, instead of ending in a vertical wall.
+// shore, instead of ending in a vertical wall. Beyond the bank crest the ground
+// blends back into the natural terrain over a wide valley, so the channel does
+// not look like a walled canal.
 constexpr double kMinimumWaterHalfWidthMeters = 0.5;
-constexpr double kMinimumBankWidthMeters = 3.0;
-constexpr double kMaximumBankWidthMeters = 8.0;
+constexpr double kMinimumBankWidthMeters = 6.0;
+constexpr double kMaximumBankWidthMeters = 24.0;
 constexpr double kMinimumShoreWidthMeters = 1.0;
+// Share of the bank width that rises to the crest. The rest is the outer
+// valley slope that fades the levee back into the landscape.
+constexpr double kBankCrestFraction = 0.6;
 // A bank must stand above the water surface, otherwise the fluid field is free
-// to level the river across the surrounding land. The lip is small; the rise
-// gives the bank a natural profile and keeps a continuous ridge along the
-// channel.
+// to level the river across the surrounding land. The crest is a little more
+// than one full block above the water, so even a completely full top fluid cell
+// cannot stand above the crest; the lip keeps the crest just clear of the
+// blocks below it.
 constexpr double kBankLipMeters = 0.05;
-constexpr double kBankRiseMeters = 0.75;
+constexpr double kBankRiseMeters = 1.55;
+// A river that crosses a region-tile corner must still be continuous on the
+// other side. Near a tile border, neighbouring tiles' channels are considered
+// too, so the water and the carved valley are not clipped by the tile edge.
+constexpr double kChannelSearchMarginMeters = 80.0;
 
 struct ChannelSample
 {
@@ -38,8 +48,10 @@ struct ChannelSample
 	double centerX = 0.0;
 	double centerY = 0.0;
 	double waterHalfWidth = 0.0;
-	double bankWidth = 0.0;
-	double bankHalfWidth = 0.0;
+	// Radius where the dry bank reaches its crest, and where the outer valley
+	// slope has faded completely into the natural terrain.
+	double crestHalfWidth = 0.0;
+	double valleyHalfWidth = 0.0;
 };
 
 double SmoothStep(double t) noexcept
@@ -144,14 +156,15 @@ ChannelSample SampleChannel(const RiverChannel &river, double localX, double loc
 	const double waterHalfWidth = std::max(kMinimumWaterHalfWidthMeters, static_cast<double>(river.widthMeters) * 0.5);
 	const double bankWidth =
 	    std::clamp(static_cast<double>(river.widthMeters) * 0.5, kMinimumBankWidthMeters, kMaximumBankWidthMeters);
-	const double bankHalfWidth = waterHalfWidth + bankWidth;
+	const double crestHalfWidth = waterHalfWidth + bankWidth * kBankCrestFraction;
+	const double valleyHalfWidth = waterHalfWidth + 2.0 * bankWidth;
 
 	if (river.HasBend())
 	{
 		const double controlX = static_cast<double>(river.bendX) * kRegionTileSizeMeters;
 		const double controlY = static_cast<double>(river.bendY) * kRegionTileSizeMeters;
 		const double maxBendOffset = DistanceToSegment(controlX, controlY, fromX, fromY, toX, toY);
-		if (DistanceToSegment(localX, localY, fromX, fromY, toX, toY) > bankHalfWidth + maxBendOffset + 1.0)
+		if (DistanceToSegment(localX, localY, fromX, fromY, toX, toY) > valleyHalfWidth + maxBendOffset + 1.0)
 		{
 			return sample;
 		}
@@ -169,7 +182,7 @@ ChannelSample SampleChannel(const RiverChannel &river, double localX, double loc
 		sample.distanceMeters = std::hypot(localX - sample.centerX, localY - sample.centerY);
 	}
 
-	if (sample.distanceMeters >= bankHalfWidth)
+	if (sample.distanceMeters >= valleyHalfWidth)
 	{
 		return sample;
 	}
@@ -177,8 +190,8 @@ ChannelSample SampleChannel(const RiverChannel &river, double localX, double loc
 	sample.inChannel = true;
 	sample.inWater = sample.distanceMeters <= waterHalfWidth;
 	sample.waterHalfWidth = waterHalfWidth;
-	sample.bankWidth = bankWidth;
-	sample.bankHalfWidth = bankHalfWidth;
+	sample.crestHalfWidth = crestHalfWidth;
+	sample.valleyHalfWidth = valleyHalfWidth;
 	return sample;
 }
 } // namespace
@@ -307,15 +320,15 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double n
 		water.depthMeters = tile.waterDepthMeters;
 		return water;
 	}
-	if (!tile.HasRiver())
-	{
-		return water;
-	}
 
 	const double localX = location.x * kRegionTileSizeMeters;
 	const double localY = location.y * kRegionTileSizeMeters;
-	const auto channels = m_world->RiversOf(tile);
-	if (channels.empty())
+	const bool nearWest = localX <= kChannelSearchMarginMeters;
+	const bool nearEast = kRegionTileSizeMeters - localX <= kChannelSearchMarginMeters;
+	const bool nearSouth = localY <= kChannelSearchMarginMeters;
+	const bool nearNorth = kRegionTileSizeMeters - localY <= kChannelSearchMarginMeters;
+	const bool nearBorder = nearWest || nearEast || nearSouth || nearNorth;
+	if (!tile.HasRiver() && !nearBorder)
 	{
 		return water;
 	}
@@ -327,41 +340,101 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double n
 	// of independent pools.
 	const RiverChannel *nearestChannel = nullptr;
 	ChannelSample nearestSample;
+	RegionTileId nearestTileId = location.id;
 	double nearestDistance = std::numeric_limits<double>::infinity();
 	const RiverChannel *waterChannel = nullptr;
 	ChannelSample waterSample;
+	RegionTileId waterTileId = location.id;
 	double waterDistance = std::numeric_limits<double>::infinity();
-	for (const RiverChannel &river : channels)
+
+	// Consider one tile's channels. `pointX/pointY` are in that tile's local
+	// coordinates, so a channel from a neighbour can be measured without a
+	// second conversion.
+	const auto considerTile = [&](const RegionTile &candidateTile, RegionTileId candidateId) {
+		const double pointX =
+		    localX - static_cast<double>(candidateId.i - location.id.i) * kRegionTileSizeMeters;
+		const double pointY =
+		    localY - static_cast<double>(candidateId.j - location.id.j) * kRegionTileSizeMeters;
+		for (const RiverChannel &river : m_world->RiversOf(candidateTile))
+		{
+			const ChannelSample channel = SampleChannel(river, pointX, pointY);
+			if (!channel.inChannel)
+			{
+				continue;
+			}
+			if (channel.distanceMeters < nearestDistance)
+			{
+				nearestDistance = channel.distanceMeters;
+				nearestChannel = &river;
+				nearestSample = channel;
+				nearestTileId = candidateId;
+			}
+			if (channel.inWater && channel.distanceMeters < waterDistance)
+			{
+				waterDistance = channel.distanceMeters;
+				waterChannel = &river;
+				waterSample = channel;
+				waterTileId = candidateId;
+			}
+		}
+	};
+
+	considerTile(tile, location.id);
+	if (nearBorder)
 	{
-		const ChannelSample channel = SampleChannel(river, localX, localY);
-		if (!channel.inChannel)
+		for (int deltaJ = -1; deltaJ <= 1; ++deltaJ)
 		{
-			continue;
-		}
-		if (channel.distanceMeters < nearestDistance)
-		{
-			nearestDistance = channel.distanceMeters;
-			nearestChannel = &river;
-			nearestSample = channel;
-		}
-		if (channel.inWater && channel.distanceMeters < waterDistance)
-		{
-			waterDistance = channel.distanceMeters;
-			waterChannel = &river;
-			waterSample = channel;
+			if ((deltaJ < 0 && !nearSouth) || (deltaJ > 0 && !nearNorth))
+			{
+				continue;
+			}
+			for (int deltaI = -1; deltaI <= 1; ++deltaI)
+			{
+				if ((deltaI == 0 && deltaJ == 0) || (deltaI < 0 && !nearWest) || (deltaI > 0 && !nearEast))
+				{
+					continue;
+				}
+				const RegionTileId neighbourId{location.id.i + deltaI, location.id.j + deltaJ};
+				if (WorldMap::Contains(neighbourId))
+				{
+					considerTile(m_world->At(neighbourId), neighbourId);
+				}
+			}
 		}
 	}
 	if (nearestChannel == nullptr)
 	{
 		return water;
 	}
+	// Water wins over a nearby bank of another channel: a point covered by a
+	// river must be wet even if the closest centreline belongs to a neighbour's
+	// bank. This is what closes the gap where two channels meet at a region-tile
+	// corner.
+	if (waterChannel != nullptr)
+	{
+		nearestChannel = waterChannel;
+		nearestSample = waterSample;
+		nearestTileId = waterTileId;
+	}
+
+	// At a tile border the nearest channel can belong to the neighbour. Its
+	// flow is the one that should travel with the water there.
+	const RegionTile &flowTile = m_world->At(nearestTileId);
+	const double riverFlowLength = std::sqrt(static_cast<double>(flowTile.flowEast) * flowTile.flowEast +
+	                                         static_cast<double>(flowTile.flowNorth) * flowTile.flowNorth);
+	if (riverFlowLength > 0.0)
+	{
+		water.flowEast = static_cast<double>(flowTile.flowEast) / riverFlowLength;
+		water.flowNorth = static_cast<double>(flowTile.flowNorth) / riverFlowLength;
+	}
 
 	// The water surface follows the centreline ground, smoothed by the same
 	// tile blend the terrain uses, so the river runs downhill with the land and
 	// neighbouring tiles agree at the border.
-	const double eastMeters = (static_cast<double>(location.id.i) - 0.5) * kRegionTileSizeMeters + nearestSample.centerX;
+	const double eastMeters =
+	    (static_cast<double>(nearestTileId.i) - 0.5) * kRegionTileSizeMeters + nearestSample.centerX;
 	const double northMeters =
-	    (static_cast<double>(location.id.j) - 0.5) * kRegionTileSizeMeters + nearestSample.centerY;
+	    (static_cast<double>(nearestTileId.j) - 0.5) * kRegionTileSizeMeters + nearestSample.centerY;
 	const GeographicCoordinates centerPosition =
 	    PlanetaryCoordinates::ToGeographic(m_world->Grid().Direction(eastMeters, northMeters));
 
@@ -398,16 +471,33 @@ LocalWater WorldTerrain::WaterAt(const GeographicCoordinates &position, double n
 	}
 	else
 	{
-		// Dry bank: it must stand above the water. A natural bank that is
-		// already high enough is left alone; a low one is raised into a levee
-		// so the fluid field cannot level the river across the fields.
-		const double bankT = std::clamp((nearestSample.distanceMeters - nearestSample.waterHalfWidth) /
-		                                    std::max(nearestSample.bankWidth, 1.0e-6),
-		                                0.0, 1.0);
-		const double crest = surfaceMeters + kBankLipMeters + kBankRiseMeters * SmoothStep(bankT);
-		if (naturalGroundMeters < crest)
+		// Dry bank. The inner part rises to a crest just above the water; the
+		// outer part fades that crest back into the natural terrain over a
+		// wide valley, so the result reads as a river bank rather than a walled
+		// canal. The crest is more than one block above the water, so even a
+		// full top fluid cell stays below it; the block grid, not a special
+		// fluid rule, is what contains the river.
+		const double crestLevel = surfaceMeters + kBankLipMeters + kBankRiseMeters;
+		if (nearestSample.distanceMeters <= nearestSample.crestHalfWidth)
 		{
-			water.bankRaiseMeters = crest - naturalGroundMeters;
+			const double innerWidth =
+			    std::max(nearestSample.crestHalfWidth - nearestSample.waterHalfWidth, 1.0e-6);
+			const double bankT = std::clamp(
+			    (nearestSample.distanceMeters - nearestSample.waterHalfWidth) / innerWidth, 0.0, 1.0);
+			const double crest = surfaceMeters + kBankLipMeters + kBankRiseMeters * SmoothStep(bankT);
+			if (naturalGroundMeters < crest)
+			{
+				water.bankRaiseMeters = crest - naturalGroundMeters;
+			}
+		}
+		else
+		{
+			const double outerWidth =
+			    std::max(nearestSample.valleyHalfWidth - nearestSample.crestHalfWidth, 1.0e-6);
+			const double valleyT = std::clamp(
+			    (nearestSample.distanceMeters - nearestSample.crestHalfWidth) / outerWidth, 0.0, 1.0);
+			const double decay = 1.0 - SmoothStep(valleyT);
+			water.bankRaiseMeters = std::max(0.0, crestLevel - naturalGroundMeters) * decay;
 		}
 	}
 

@@ -334,6 +334,7 @@ TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
 		{
 			++channelCount;
 			CHECK(channel.widthMeters >= 3.0f);
+			CHECK(channel.widthMeters <= 40.0f);
 			CHECK(channel.depthMeters >= 1.0f);
 			CHECK_GE(channel.fromX, 0.0f);
 			CHECK_LE(channel.fromX, 1.0f);

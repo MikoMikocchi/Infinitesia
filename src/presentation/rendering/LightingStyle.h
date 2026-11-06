@@ -13,8 +13,9 @@ namespace LightingStyle
 // light.
 inline constexpr float kSunDirection[3]{-0.45f, 0.82f, 0.35f};
 inline constexpr float kSunColor[3]{0.85f, 0.78f, 0.65f};       // warm
-inline constexpr float kAmbientSky[3]{0.20f, 0.24f, 0.32f};     // cool, for faces turned up
-inline constexpr float kAmbientGround[3]{0.09f, 0.085f, 0.08f}; // for faces turned down
+inline constexpr float kAmbientSky[3]{0.28f, 0.32f, 0.40f};     // cool, for faces turned up
+inline constexpr float kAmbientGround[3]{0.18f, 0.17f, 0.16f};  // for faces turned down;
+                                                                // a vertical face gets half of it
 
 // Haze with distance from the camera. The distances are multiples of the
 // distance from the camera to its target, so the haze looks the same at any

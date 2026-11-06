@@ -168,8 +168,9 @@ Mesh BuildFluidMeshData(const Grid &grid, const VoxelWorld &world, const FluidCh
 				continue;
 			}
 
-			// One block adds at most 20 vertices; indices are 16-bit.
-			if (meshData.vertices.size() / 3 + 4 > std::numeric_limits<unsigned short>::max())
+			// One block can add a top and four side faces: 20 vertices. Indices
+			// are 16-bit, so stop before the buffer wraps.
+			if (meshData.vertices.size() / 3 + 20 > std::numeric_limits<unsigned short>::max())
 			{
 				break;
 			}
@@ -179,7 +180,106 @@ Mesh BuildFluidMeshData(const Grid &grid, const VoxelWorld &world, const FluidCh
 			const std::array<Vector3, 4> corners{
 			    Vector3{left, surfaceY, front}, Vector3{left + cellSize, surfaceY, front},
 			    Vector3{left + cellSize, surfaceY, front + cellSize}, Vector3{left, surfaceY, front + cellSize}};
-			meshData.AppendFace(corners, Vector3{0.0f, 1.0f, 0.0f}, GetFluidLook(*topFluid, registry, atlas));
+			const TerrainMeshGeometry::FaceLook look = GetFluidLook(*topFluid, registry, atlas);
+			meshData.AppendFace(corners, Vector3{0.0f, 1.0f, 0.0f}, look);
+
+			// A water surface that steps down to a lower surface otherwise
+			// leaves an open edge between the two top quads. Fill it with the
+			// side of the water cell; a solid neighbour hides the side anyway.
+			const float bottomY = static_cast<float>(topY) * cellSize;
+			float currentBottomY = bottomY;
+			for (int cy = topY; cy >= topY - 6; --cy)
+			{
+				const Block *block = world.GetBlock({x, cy, z});
+				if (block == nullptr)
+				{
+					break;
+				}
+				if (registry.Occupied(block->state))
+				{
+					currentBottomY = static_cast<float>(cy + 1) * cellSize;
+					break;
+				}
+			}
+			const std::array<GridCell, 4> sideOffsets{GridCell{x - 1, topY, z}, GridCell{x + 1, topY, z},
+			                                          GridCell{x, topY, z - 1}, GridCell{x, topY, z + 1}};
+			const std::array<Vector3, 4> sideNormals{Vector3{-1.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f},
+			                                         Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.0f, 0.0f, 1.0f}};
+			for (std::size_t side = 0; side < sideOffsets.size(); ++side)
+			{
+				const int nx = sideOffsets[side].x;
+				const int nz = sideOffsets[side].z;
+				const Block *neighbourBlock = world.GetBlock(sideOffsets[side]);
+				if (neighbourBlock == nullptr)
+				{
+					// The neighbouring chunk has not loaded: do not create a
+					// wall at the streaming edge.
+					continue;
+				}
+				if (registry.Occupied(neighbourBlock->state))
+				{
+					continue;
+				}
+
+				// Find the first water surface or solid ground below the
+				// neighbour's air cell. A one-cell step needs the side of the
+				// water column, not just the side of its top cell.
+				float lowerY = bottomY;
+				bool available = true;
+				for (int ny = topY; ny >= topY - 6; --ny)
+				{
+					const Block *block = world.GetBlock({nx, ny, nz});
+					if (block == nullptr)
+					{
+						available = false;
+						break;
+					}
+					if (registry.Occupied(block->state))
+					{
+						lowerY = std::max(lowerY, static_cast<float>(ny + 1) * cellSize);
+						break;
+					}
+					const FluidCell *fluid = world.GetFluid({nx, ny, nz});
+					if (fluid != nullptr && fluid->amountMb > 0)
+					{
+						lowerY = std::max(lowerY, static_cast<float>(ny) * cellSize +
+						                              static_cast<float>(fluid->amountMb) /
+						                                  static_cast<float>(kFullFluidCellMb) *
+						                                  cellSize);
+						break;
+					}
+				}
+				lowerY = std::max(lowerY, currentBottomY);
+				if (!available || lowerY >= surfaceY - 1.0e-4f)
+				{
+					continue;
+				}
+
+				std::array<Vector3, 4> sideCorners;
+				switch (side)
+				{
+				case 0:
+					sideCorners = {Vector3{left, lowerY, front}, Vector3{left, lowerY, front + cellSize},
+					               Vector3{left, surfaceY, front + cellSize}, Vector3{left, surfaceY, front}};
+					break;
+				case 1:
+					sideCorners = {Vector3{left + cellSize, lowerY, front + cellSize},
+					               Vector3{left + cellSize, lowerY, front}, Vector3{left + cellSize, surfaceY, front},
+					               Vector3{left + cellSize, surfaceY, front + cellSize}};
+					break;
+				case 2:
+					sideCorners = {Vector3{left + cellSize, lowerY, front}, Vector3{left, lowerY, front},
+					               Vector3{left, surfaceY, front}, Vector3{left + cellSize, surfaceY, front}};
+					break;
+				default:
+					sideCorners = {Vector3{left, lowerY, front + cellSize},
+					               Vector3{left + cellSize, lowerY, front + cellSize},
+					               Vector3{left + cellSize, surfaceY, front + cellSize},
+					               Vector3{left, surfaceY, front + cellSize}};
+					break;
+				}
+				meshData.AppendFace(sideCorners, sideNormals[side], look);
+			}
 		}
 	}
 

@@ -21,11 +21,18 @@ constexpr float kTileAreaKm2 = static_cast<float>((kRegionTileSizeMeters / 1000.
 constexpr float kRiverFreeboardMeters = 0.25f;
 
 // A river occupies a channel in its region tile. Width follows the square root
-// of the catchment (a river twice as wide drains four times the area), and the
-// incision grows slowly with width.
+// of the catchment (a river twice as wide drains four times the area). The
+// result approaches a DF-like major-river width of 40 m instead of clamping
+// every large river to the same value, so tributaries and the main stem keep
+// their differences. The half-value is at raw = 40 (a catchment of about
+// 256 km2); the 40 m asymptote is only reached by the largest systems.
+constexpr float kMaximumRiverWidthMeters = 40.0f;
+
 float RiverWidthMeters(float catchmentKm2) noexcept
 {
-	return std::clamp(2.5f * std::sqrt(std::max(catchmentKm2, 0.0f)), 3.0f, 100.0f);
+	const float raw = 2.5f * std::sqrt(std::max(catchmentKm2, 0.0f));
+	const float saturated = raw * kMaximumRiverWidthMeters / (raw + kMaximumRiverWidthMeters);
+	return std::clamp(saturated, 3.0f, kMaximumRiverWidthMeters);
 }
 
 float RiverDepthMeters(float widthMeters) noexcept

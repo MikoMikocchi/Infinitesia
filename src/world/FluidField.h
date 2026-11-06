@@ -113,12 +113,28 @@ private:
 	std::uint16_t Transfer(GridCell from, GridCell to, std::uint16_t maximumMb, const VoxelWorld &world);
 	// Puts fluid into a cell, up to its free room; returns how much is left over.
 	std::uint16_t Deposit(FluidCell fluid, GridCell to, const VoxelWorld &world);
+	// A river cell may enter its own channel, a lake or the sea downstream, a
+	// dug-out cell (a breach), a cell below it (a fall), or a natural-air cell
+	// with a dry drop below it downstream (a waterfall). It may not crawl
+	// sideways over natural air: that is the thin film the channel profile is
+	// supposed to prevent.
+	bool CanRiverFlowInto(GridCell from, GridCell to, const FluidCell &river, const VoxelWorld &world) const;
 
 	// Dwarf Fortress-style pressure: water that cannot go down traces a path
 	// through full 7/7 water and teleports a level to an open cell at or below
-	// the first full cell of that path. It never rises above its source.
+	// the first full cell of that path. It never rises above its source. A
+	// pressure path may not enter or cross a river channel: the river is fed by
+	// its upstream source and gravity, not by a distant sea or lake.
 	void PropagatePressure(GridCell cell, const VoxelWorld &world);
 	void PressurizeAround(GridCell cell);
+	// An open sink (the outer edge of the site window or the sea) in the
+	// direction the water is actually flowing. A river running parallel to the
+	// coast is not cut; a river flowing off the edge or into the sea is.
+	bool IsOpenBoundary(GridCell cell, const FluidCell &fluid) const;
+	// Removes the water of open-boundary cells. The cell itself is kept (and a
+	// river cell keeps its channel flag and source), so the upstream flow can
+	// refill it in the same tick instead of leaving a permanent dry notch.
+	void DrainOpenBoundaries(const std::vector<GridCell> &active);
 
 	std::map<ChunkCoordinate, FluidChunk> m_chunks;
 	std::set<GridCell> m_active;

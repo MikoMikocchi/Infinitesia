@@ -213,12 +213,13 @@ public:
 	}
 };
 
-// The top or bottom fluid cell of the first column of a given origin.
-std::optional<GridCell> FindFluidCell(const TerrainSource &source, FluidOrigin origin, bool bottom)
+// The top or bottom fluid cell of the first column of a given origin. `margin`
+// keeps the search away from the open edge of the world grid.
+std::optional<GridCell> FindFluidCell(const TerrainSource &source, FluidOrigin origin, bool bottom, int margin = 0)
 {
-	for (int x = 0; x < kWidth; x += 2)
+	for (int x = margin; x < kWidth - margin; x += 2)
 	{
-		for (int z = 0; z < kDepth; z += 2)
+		for (int z = margin; z < kDepth - margin; z += 2)
 		{
 			const FluidColumn fluid = source.FluidAt(x, z);
 			if (fluid.origin != origin || fluid.topBlock <= fluid.groundBlock)
@@ -421,8 +422,9 @@ TEST_CASE("RiverWaterStaysInsideItsCarvedChannel")
 	}
 
 	// The old channel profile left the bank under the water surface, so a
-	// handful of ticks were enough to level the river across the fields.
-	for (int tick = 0; tick < 100; ++tick)
+	// handful of ticks were enough to level the river across the fields. Run
+	// long enough for the old per-cell sources to have raised the surface.
+	for (int tick = 0; tick < 500; ++tick)
 	{
 		world.StepFluids();
 	}
@@ -457,7 +459,52 @@ TEST_CASE("RiverWaterStaysInsideItsCarvedChannel")
 	CHECK(channelHasWater);
 }
 
-TEST_CASE("ARiverRefillsItsDrainedSurfaceFromUpstream")
+TEST_CASE("TheWholeRiverStaysInsideItsChannel")
+{
+	const Settlement settlement = MakeRiverSettlement();
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+	const int centerZ = kDepth / 2;
+	const int y = settlement.source->FluidAt(kWidth / 2, centerZ).topBlock;
+
+	// Load the river across the whole window. The older channel test only looks
+	// at a short band; a bank that is one block low at a meander can leak far
+	// from the centre.
+	for (int x = 0; x < kWidth; x += kChunkSize)
+	{
+		for (int z = centerZ - 3 * kChunkSize; z <= centerZ + 3 * kChunkSize; z += kChunkSize)
+		{
+			world.EnsureChunkContaining({x, y, z});
+		}
+	}
+	for (int tick = 0; tick < 300; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	int outside = 0;
+	for (int x = 0; x < kWidth; ++x)
+	{
+		for (int z = centerZ - 3 * kChunkSize; z <= centerZ + 3 * kChunkSize; ++z)
+		{
+			if (settlement.source->FluidAt(x, z).origin == FluidOrigin::River)
+			{
+				continue;
+			}
+			for (int yy = y - 2; yy <= y + 2; ++yy)
+			{
+				const FluidCell *fluid = world.GetFluid({x, yy, z});
+				if (fluid != nullptr && fluid->amountMb > 0)
+				{
+					++outside;
+				}
+			}
+		}
+	}
+	CHECK(outside == 0);
+}
+
+TEST_CASE("ARiverRefillsADrainedCellFromItsNeighbours")
 {
 	const Settlement settlement = MakeRiverSettlement();
 	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
@@ -466,22 +513,404 @@ TEST_CASE("ARiverRefillsItsDrainedSurfaceFromUpstream")
 	const FluidColumn channel = settlement.source->FluidAt(kWidth / 2, kDepth / 2);
 	REQUIRE(channel.origin == FluidOrigin::River);
 	const GridCell cell{kWidth / 2, channel.topBlock, kDepth / 2};
-	world.EnsureChunkContaining(cell);
+	// Load the cell and its neighbours so the flow can reach the drained cell.
+	for (int dx = -kChunkSize; dx <= kChunkSize; dx += kChunkSize)
+	{
+		for (int dz = -kChunkSize; dz <= kChunkSize; dz += kChunkSize)
+		{
+			world.EnsureChunkContaining({cell.x + dx, cell.y, cell.z + dz});
+		}
+	}
 
 	const FluidCell *original = world.GetFluid(cell);
 	REQUIRE(original != nullptr);
-	REQUIRE(original->origin == FluidOrigin::River);
-	REQUIRE(original->sourceAmountMb > 0);
+	REQUIRE(original->river);
+	// Only the upstream end of the river is a source now; the rest is fed by
+	// the flow, so a dam can stop the section below it.
+	REQUIRE(original->sourceAmountMb == 0);
 
-	FluidCell drained = *original;
-	drained.amountMb = 0;
-	world.Fluids().Set(cell, drained);
+	// Drain the surface directly, without the pressure wake-up that Set would
+	// add: this test is about the flow from the neighbours.
+	FluidCell *drained = world.Fluids().At(cell);
+	REQUIRE(drained != nullptr);
+	drained->amountMb = 0;
 	world.StepFluids();
 
 	const FluidCell *after = world.GetFluid(cell);
 	REQUIRE(after != nullptr);
-	CHECK(after->origin == FluidOrigin::River);
-	CHECK(after->amountMb > 0); // the upstream feed filled the channel again
+	CHECK(after->river);
+	CHECK(after->amountMb > 0);
+}
+
+TEST_CASE("ARemovedBlockInTheChannelRefillsInsteadOfLeavingAHole")
+{
+	const Grid grid(GridConfig{12, 10, 9, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	const MatterId bedrock = SharedRegistry()->FindMatter("bedrock")->id;
+	const MatterId sand = SharedRegistry()->FindMatter("sand")->id;
+	world.EnsureChunkContaining({1, 2, 4});
+
+	// A one-cell channel with solid walls, a source only at its west end.
+	for (int x = 1; x <= 9; ++x)
+	{
+		for (int z : {3, 5})
+		{
+			for (int y = 2; y <= 3; ++y)
+			{
+				world.SetBlock({x, y, z}, {bedrock, kShapeFull});
+			}
+		}
+		for (int y = 2; y <= 3; ++y)
+		{
+			const bool source = x == 1 && y == 3;
+			world.Fluids().Set({x, y, 4},
+			                   {water, kFullFluidCellMb, FluidOrigin::River, 1.0, 0.0,
+			                    static_cast<std::uint16_t>(source ? kFullFluidCellMb : 0), true});
+		}
+	}
+	for (int i = 0; i < 10; ++i)
+	{
+		world.StepFluids();
+	}
+
+	// Put a block into the river bed and take it out again: the cell must stay
+	// a river cell and refill, not become a permanent dry hole.
+	world.SetBlock({5, 2, 4}, {sand, kShapeFull});
+	world.SetBlock({5, 2, 4}, {kAirMatter, kShapeFull});
+	for (int i = 0; i < 20; ++i)
+	{
+		world.StepFluids();
+	}
+
+	const FluidCell *after = world.GetFluid({5, 2, 4});
+	REQUIRE(after != nullptr);
+	CHECK(after->river);
+	CHECK(after->amountMb > 0);
+}
+
+TEST_CASE("ADugBankFloodsFromTheRiver")
+{
+	const Settlement settlement = MakeRiverSettlement();
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+
+	const int x = kWidth / 2;
+	const int centerZ = kDepth / 2;
+	const FluidColumn channel = settlement.source->FluidAt(x, centerZ);
+	REQUIRE(channel.origin == FluidOrigin::River);
+	const int y = channel.topBlock;
+
+	for (int z = centerZ - 3 * kChunkSize; z <= centerZ + 3 * kChunkSize; z += kChunkSize)
+	{
+		world.EnsureChunkContaining({x, y, z});
+	}
+
+	// Find a solid bank cell next to the water and cut it open.
+	GridCell breach{-1, -1, -1};
+	for (int z = centerZ - 20; z <= centerZ + 20; ++z)
+	{
+		if (settlement.source->FluidAt(x, z).origin == FluidOrigin::River)
+		{
+			continue;
+		}
+		const int innerZ = z < centerZ ? z + 1 : z - 1;
+		if (settlement.source->FluidAt(x, innerZ).origin != FluidOrigin::River)
+		{
+			continue;
+		}
+		const Block *block = world.GetBlock({x, y, z});
+		if (block != nullptr && world.Registry().Occupied(block->state))
+		{
+			breach = GridCell{x, y, z};
+			break;
+		}
+	}
+	REQUIRE(breach.x >= 0);
+
+	world.SetBlock(breach, {kAirMatter, kShapeFull});
+	for (int tick = 0; tick < 50; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	const FluidCell *water = world.GetFluid(breach);
+	REQUIRE(water != nullptr);
+	CHECK(water->amountMb > 0); // the river is ordinary water and floods a breach
+}
+
+TEST_CASE("RiverWaterSurvivesAnUnloadedNeighbourChunk")
+{
+	// A river cell on the edge of a generated chunk must not be drained just
+	// because the next chunk has not loaded yet. That is a streaming boundary,
+	// not a physical one; draining there leaves a grid of holes in the river.
+	const Grid grid(GridConfig{32, 9, 32, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	const GridCell river{15, 2, 15};
+	world.EnsureChunkContaining(river);
+	REQUIRE(world.GetBlock({16, 2, 15}) == nullptr); // the next chunk is not loaded
+
+	world.Fluids().Set(river,
+	                   {water, kFullFluidCellMb, FluidOrigin::River, 1.0, 0.0, kFullFluidCellMb, true});
+	for (int tick = 0; tick < 10; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	const FluidCell *after = world.GetFluid(river);
+	REQUIRE(after != nullptr);
+	CHECK(after->river);
+	CHECK(after->amountMb > 0);
+}
+
+TEST_CASE("TheUpstreamEdgeFeedsTheRiverAndTheDownstreamEdgeDrainsIt")
+{
+	const Settlement settlement = MakeRiverSettlement();
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+	const int z = kDepth / 2;
+
+	const FluidColumn upstreamColumn = settlement.source->FluidAt(0, z);
+	const FluidColumn downstreamColumn = settlement.source->FluidAt(kWidth - 1, z);
+	REQUIRE(upstreamColumn.origin == FluidOrigin::River);
+	REQUIRE(downstreamColumn.origin == FluidOrigin::River);
+	const int upstreamY = upstreamColumn.topBlock;
+	const int downstreamY = downstreamColumn.topBlock;
+
+	// Load the river along the whole window so its flow is connected.
+	for (int x = 0; x < kWidth; x += kChunkSize)
+	{
+		world.EnsureChunkContaining({x, upstreamY, z});
+	}
+	for (int tick = 0; tick < 20; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	const FluidCell *upstream = world.GetFluid({0, upstreamY, z});
+	REQUIRE(upstream != nullptr);
+	CHECK(upstream->river);
+	CHECK(upstream->sourceAmountMb > 0); // the west edge is the upstream end
+	CHECK(upstream->amountMb > 0);
+
+	const FluidCell *downstream = world.GetFluid({kWidth - 1, downstreamY, z});
+	REQUIRE(downstream != nullptr);
+	CHECK(downstream->river);
+	CHECK(downstream->sourceAmountMb == 0); // a downstream cell is not a source
+}
+
+TEST_CASE("TheSeaDrainsTheRiverAndStaysFull")
+{
+	const Grid grid(GridConfig{16, 10, 9, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	const MatterId bedrock = SharedRegistry()->FindMatter("bedrock")->id;
+	world.EnsureChunkContaining({1, 2, 4});
+
+	// Walls keep the sea away from the bank except through the river mouth.
+	for (int x = 1; x <= 15; ++x)
+	{
+		for (int z : {3, 5})
+		{
+			for (int y = 2; y <= 3; ++y)
+			{
+				world.SetBlock({x, y, z}, {bedrock, kShapeFull});
+			}
+		}
+	}
+	for (int x = 1; x <= 10; ++x)
+	{
+		for (int y = 2; y <= 3; ++y)
+		{
+			const bool source = x == 1 && y == 3;
+			world.Fluids().Set({x, y, 4},
+			                   {water, kFullFluidCellMb, FluidOrigin::River, 1.0, 0.0,
+			                    static_cast<std::uint16_t>(source ? kFullFluidCellMb : 0), true});
+		}
+	}
+	for (int x = 11; x <= 15; ++x)
+	{
+		for (int y = 2; y <= 3; ++y)
+		{
+			world.Fluids().Set({x, y, 4}, {water, kFullFluidCellMb, FluidOrigin::Sea, 0.0, 0.0, 0});
+		}
+	}
+
+	for (int tick = 0; tick < 50; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	const FluidCell *mouth = world.GetFluid({10, 3, 4});
+	REQUIRE(mouth != nullptr);
+	CHECK(mouth->river);
+	CHECK(mouth->amountMb > 0);
+
+	for (int x = 11; x <= 15; ++x)
+	{
+		const FluidCell *sea = world.GetFluid({x, 3, 4});
+		REQUIRE(sea != nullptr);
+		CHECK(sea->origin == FluidOrigin::Sea);
+		CHECK(sea->amountMb >= kFullFluidCellMb); // the sea is not drained by the mouth
+	}
+
+	for (int x = 8; x <= 10; ++x)
+	{
+		for (int y = 2; y <= 3; ++y)
+		{
+			const FluidCell *bank = world.GetFluid({x, y, 5});
+			CHECK((bank == nullptr || bank->amountMb == 0));
+		}
+	}
+}
+
+TEST_CASE("TheSeaCannotPressureThroughARiver")
+{
+	const Grid grid(GridConfig{16, 10, 9, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	const MatterId bedrock = SharedRegistry()->FindMatter("bedrock")->id;
+	world.EnsureChunkContaining({1, 2, 4});
+
+	// The only path from the sea to the open cell above the river is through
+	// full water; normal flow cannot climb, so only pressure could put water
+	// there. The river must not act as that pipe.
+	for (int x = 1; x <= 15; ++x)
+	{
+		for (int z : {3, 5})
+		{
+			for (int y = 2; y <= 3; ++y)
+			{
+				world.SetBlock({x, y, z}, {bedrock, kShapeFull});
+			}
+		}
+	}
+	world.SetBlock({10, 3, 4}, {bedrock, kShapeFull}); // wall between sea and the open cell
+	for (int y = 2; y <= 3; ++y)
+	{
+		world.SetBlock({12, y, 4}, {bedrock, kShapeFull}); // seal the sea on the east
+	}
+	world.Fluids().Set({11, 3, 4}, {water, kFullFluidCellMb, FluidOrigin::Sea, 0.0, 0.0, 0});
+	for (int x = 10; x <= 11; ++x)
+	{
+		world.Fluids().Set({x, 2, 4}, {water, kFullFluidCellMb, FluidOrigin::None, 0.0, 0.0, 0});
+	}
+	for (int x = 1; x <= 9; ++x)
+	{
+		const bool source = x == 1;
+		world.Fluids().Set({x, 2, 4},
+		                   {water, kFullFluidCellMb, FluidOrigin::River, 1.0, 0.0,
+		                    static_cast<std::uint16_t>(source ? kFullFluidCellMb : 0), true});
+	}
+
+	for (int tick = 0; tick < 50; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	// The cells above the river stay dry: normal flow cannot rise, and the
+	// pressure pass must not cross the river cells.
+	for (int x = 7; x <= 9; ++x)
+	{
+		const FluidCell *above = world.GetFluid({x, 3, 4});
+		CHECK((above == nullptr || above->amountMb == 0));
+	}
+}
+
+TEST_CASE("ARiverDamStopsTheDownstreamFlow")
+{
+	const Grid grid(GridConfig{14, 10, 9, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	const MatterId bedrock = SharedRegistry()->FindMatter("bedrock")->id;
+	const MatterId sand = SharedRegistry()->FindMatter("sand")->id;
+	world.EnsureChunkContaining({1, 2, 4});
+
+	// A one-cell channel from the source at x=1 to the open sink at x=13.
+	for (int x = 1; x <= 13; ++x)
+	{
+		for (int z : {3, 5})
+		{
+			for (int y = 2; y <= 3; ++y)
+			{
+				world.SetBlock({x, y, z}, {bedrock, kShapeFull});
+			}
+		}
+		for (int y = 2; y <= 3; ++y)
+		{
+			const bool source = x == 1 && y == 3;
+			world.Fluids().Set({x, y, 4},
+			                   {water, kFullFluidCellMb, FluidOrigin::River, 1.0, 0.0,
+			                    static_cast<std::uint16_t>(source ? kFullFluidCellMb : 0), true});
+		}
+	}
+	for (int i = 0; i < 100; ++i)
+	{
+		world.StepFluids();
+	}
+
+	// Dam the middle of the channel. The upstream section keeps its source;
+	// the downstream section can now only drain into the open sink.
+	world.SetBlock({5, 2, 4}, {sand, kShapeFull});
+	world.SetBlock({5, 3, 4}, {sand, kShapeFull});
+	for (int i = 0; i < 500; ++i)
+	{
+		world.StepFluids();
+	}
+
+	const FluidCell *upstream = world.GetFluid({3, 3, 4});
+	REQUIRE(upstream != nullptr);
+	CHECK(upstream->amountMb > 0);
+
+	const FluidCell *downstream = world.GetFluid({9, 3, 4});
+	REQUIRE(downstream != nullptr);
+	CHECK(downstream->amountMb == 0);
+}
+
+TEST_CASE("AWaterfallFallsOffAStep")
+{
+	const Grid grid(GridConfig{12, 10, 9, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	const MatterId bedrock = SharedRegistry()->FindMatter("bedrock")->id;
+	world.EnsureChunkContaining({1, 3, 4});
+
+	// A high channel that ends at x=4; the water is free to fall at x=5.
+	for (int x = 1; x <= 4; ++x)
+	{
+		for (int z : {3, 5})
+		{
+			world.SetBlock({x, 3, z}, {bedrock, kShapeFull});
+		}
+		const bool source = x == 1;
+		world.Fluids().Set({x, 3, 4},
+		                   {water, kFullFluidCellMb, FluidOrigin::River, 1.0, 0.0,
+		                    static_cast<std::uint16_t>(source ? kFullFluidCellMb : 0), true});
+	}
+
+	for (int tick = 0; tick < 40; ++tick)
+	{
+		world.StepFluids();
+	}
+
+	const FluidCell *lower = world.GetFluid({5, 2, 4});
+	REQUIRE(lower != nullptr);
+	CHECK(lower->amountMb > 0); // the waterfall reaches the lower level
+}
+
+TEST_CASE("ALakeAtTheWorldEdgeIsNotDrained")
+{
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	const GridCell lake{0, 2, 20};
+	world.EnsureChunkContaining(lake);
+	world.Fluids().Set(lake, {water, kFullFluidCellMb / 2, FluidOrigin::Lake, 0.0, 0.0, 0});
+	world.StepFluids();
+	const FluidCell *after = world.GetFluid(lake);
+	REQUIRE(after != nullptr);
+	CHECK(after->amountMb > 0);
 }
 
 TEST_CASE("TheSeaIsInfiniteAndALakeIsFinite")
@@ -527,7 +956,7 @@ TEST_CASE("WaterFillsADugHole")
 	const Settlement settlement = MakeSettlement(OceanAnchor());
 	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
 	VoxelWorld world(grid, settlement.source);
-	const std::optional<GridCell> wetCell = FindFluidCell(*settlement.source, FluidOrigin::Sea, true);
+	const std::optional<GridCell> wetCell = FindFluidCell(*settlement.source, FluidOrigin::Sea, true, 16);
 	REQUIRE(wetCell.has_value());
 	const int x = wetCell->x;
 	const int z = wetCell->z;

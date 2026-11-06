@@ -377,6 +377,64 @@ TEST_CASE("WorldRiversFollowTheMeanderControlPoint")
 	CHECK(dry.origin == FluidOrigin::None);
 }
 
+TEST_CASE("WorldRiversContinueAcrossARegionTileCorner")
+{
+	const PlanetMap &planet = SharedMap();
+	const CartesianPoint3D anchor = Place(35.0, 80.0);
+	const LocalGrid grid(kRadius, anchor);
+
+	std::vector<RegionTile> tiles(static_cast<std::size_t>(kRegionTilesPerWorldSide) *
+	                              static_cast<std::size_t>(kRegionTilesPerWorldSide));
+	for (RegionTile &tile : tiles)
+	{
+		tile.elevationMeters = 100.0f;
+		tile.temperatureCelsius = 15.0f;
+		tile.precipitationMm = 1000.0f;
+		tile.flags = 0;
+	}
+
+	// A river enters tile (0, 0) from the south-west and leaves through its
+	// north-east corner; it continues through tile (1, 1) from its south-west
+	// corner. The two side tiles, (1, 0) and (0, 1), carry no channel of their
+	// own: the water at the shared corner must still come from the neighbours.
+	const auto makeRiver = [&](RegionTileId id, std::uint32_t first) {
+		RegionTile &tile = tiles[WorldMap::Index(id)];
+		SetFlag(tile.flags, RegionTileFlag::River);
+		tile.riverFirst = first;
+		tile.riverCount = 1;
+		tile.flowEast = 1;
+		tile.flowNorth = 1;
+	};
+	makeRiver({0, 0}, 0);
+	makeRiver({1, 1}, 1);
+	std::vector<RiverChannel> channels{
+	    RiverChannel{0.0f, 0.0f, 1.0f, 1.0f, 20.0f, 2.0f},
+	    RiverChannel{0.0f, 0.0f, 1.0f, 1.0f, 20.0f, 2.0f},
+	};
+
+	const auto world = std::make_shared<const WorldMap>(grid, std::move(tiles), std::move(channels));
+	const WorldTerrain terrain(planet, world);
+
+	// The four tiles meet at local (384, 384) m from the anchor. A point four
+	// metres inside the side tile is in the water disc around that corner.
+	const GeographicCoordinates eastSide =
+	    PlanetaryCoordinates::ToGeographic(grid.Direction(384.0 + 4.0, 384.0 - 4.0));
+	const GeographicCoordinates northSide =
+	    PlanetaryCoordinates::ToGeographic(grid.Direction(384.0 - 4.0, 384.0 + 4.0));
+	const LocalWater eastWater = terrain.WaterAt(eastSide, 2.0);
+	const LocalWater northWater = terrain.WaterAt(northSide, 2.0);
+	REQUIRE(eastWater.origin == FluidOrigin::River);
+	REQUIRE(northWater.origin == FluidOrigin::River);
+
+	const SettlementTerrain settlement(terrain, grid, 0.0, 0.0);
+	CHECK(settlement.Column(388, 380).fluid == FluidOrigin::River);
+	CHECK(settlement.Column(380, 388).fluid == FluidOrigin::River);
+
+	// Far inside the side tile the river is not smeared over the whole tile.
+	const GeographicCoordinates dry = PlanetaryCoordinates::ToGeographic(grid.Direction(768.0, 0.0));
+	CHECK(terrain.WaterAt(dry, 2.0).origin == FluidOrigin::None);
+}
+
 TEST_CASE("WorldLakesFillLocalDepressionsToTheSpillLevel")
 {
 	const PlanetMap &planet = SharedMap();

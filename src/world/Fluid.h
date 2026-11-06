@@ -55,9 +55,15 @@ struct FluidCell
 	double flowEast = 0.0;
 	double flowNorth = 0.0;
 	// A river's surface cell is fed from upstream: it refills to this amount
-	// when it drains, and never above it. Zero for every other fluid (a lake or
-	// a sea cell does not use this).
+	// when it drains. Only the upstream boundary cells of a river carry it; a
+	// downstream cell is fed by the flow, not by its own source. Zero for every
+	// other fluid (a lake or a sea cell does not use this).
 	std::uint16_t sourceAmountMb = 0;
+	// The cell belongs to a river channel. It survives draining and block
+	// changes, so a dug-out channel can fill again; it is not the same as the
+	// fluid's origin, because water that flowed downstream keeps the channel
+	// flag but its origin becomes None.
+	bool river = false;
 
 	bool HasFluid() const noexcept
 	{
