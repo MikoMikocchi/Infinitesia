@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <stdexcept>
 #include <utility>
@@ -84,11 +85,18 @@ void VoxelWorld::RequestChunksAround(GridCell center, int horizontalRadius, int 
 	m_pendingVerticalRadius = verticalRadius;
 }
 
-std::size_t VoxelWorld::GeneratePendingChunks(std::size_t maximumChunks)
+std::size_t VoxelWorld::GeneratePendingChunks(std::size_t maximumChunks, double budgetMs)
 {
+	const auto started = std::chrono::steady_clock::now();
+	const auto budget = std::chrono::duration<double, std::milli>(budgetMs);
 	std::size_t generatedChunks = 0;
 	while (generatedChunks < maximumChunks && !m_pendingChunks.empty())
 	{
+		if (budgetMs > 0.0 && generatedChunks > 0 &&
+		    std::chrono::steady_clock::now() - started >= budget)
+		{
+			break;
+		}
 		const ChunkCoordinate coordinate = m_pendingChunks.front();
 		m_pendingChunks.erase(m_pendingChunks.begin());
 		EnsureChunkGenerated(coordinate);

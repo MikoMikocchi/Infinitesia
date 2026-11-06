@@ -15,7 +15,11 @@ namespace Infinitesia
 namespace
 {
 constexpr float kDegreesToRadians = PI / 180.0f;
-constexpr std::size_t kChunksGeneratedPerFrame = 4;
+// Chunk work per frame: a hard cap and a time budget. The cap keeps a very fast
+// machine from spending the whole frame on streaming; the budget keeps a slow
+// one smooth. Both leave most of the frame for drawing.
+constexpr std::size_t kChunksGeneratedPerFrame = 24;
+constexpr double kChunkGenerationBudgetMs = 2.0;
 constexpr int kVerticalChunkRadius = 4;
 
 GridCell GetCameraGridCell(const Grid &grid, Vector3 cameraTarget, int selectedLevel)
@@ -175,7 +179,7 @@ void Application::UpdateLocal()
 	const int verticalChunkRadius = kVerticalChunkRadius;
 	game.GetWorld().terrain.RequestChunksAround(m_chunkViewCenter, m_chunkRenderRadius, verticalChunkRadius);
 	game.GetWorld().terrain.UnloadChunksOutside(m_chunkViewCenter, m_chunkRenderRadius + 2, verticalChunkRadius + 1);
-	game.GetWorld().terrain.GeneratePendingChunks(kChunksGeneratedPerFrame);
+	game.GetWorld().terrain.GeneratePendingChunks(kChunksGeneratedPerFrame, kChunkGenerationBudgetMs);
 	m_worldInteraction.Update({GetMousePosition(), IsMouseButtonPressed(MOUSE_BUTTON_RIGHT),
 	                           IsMouseButtonPressed(MOUSE_BUTTON_LEFT), IsKeyPressed(KEY_ESCAPE)},
 	                          game.GetGrid(), game.GetWorld(), game.GetWorkSystem(), m_worldRenderer.GetCamera(),

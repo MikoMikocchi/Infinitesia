@@ -23,7 +23,10 @@ public:
 	VoxelWorld(const Grid &grid, std::shared_ptr<const TerrainSource> terrain);
 
 	void RequestChunksAround(GridCell center, int horizontalRadius, int verticalRadius = 0);
-	std::size_t GeneratePendingChunks(std::size_t maximumChunks);
+	// Generates the pending chunks, at most `maximumChunks` and for at most
+	// `budgetMs` milliseconds (0 = no time limit): a fast frame fills the view
+	// quickly, a slow one does not stall. Returns how many chunks were generated.
+	std::size_t GeneratePendingChunks(std::size_t maximumChunks, double budgetMs = 0.0);
 	// Drops chunks outside the view that nobody has changed and that have no
 	// fluid to keep alive. They are regenerated from the terrain source when
 	// the camera returns. Modified chunks and chunks owning fluid stay.

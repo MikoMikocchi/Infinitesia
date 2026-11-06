@@ -1,4 +1,5 @@
 ﻿#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <set>
@@ -32,13 +33,21 @@ bool IsChunkShown(const ChunkCoordinate &coordinate, int viewLevel, ViewMode mod
 	return IsLevelShown(mode, coordinate.y * kChunkSize, viewLevel);
 }
 
-// Chunk meshes built in one frame; more would stall the frame, so the rest
-// follow on the next ones and a chunk without a mesh yet is left out for a
-// moment.
-constexpr int kMeshBuildsPerFrame = 6;
+// Chunk meshes may be built for this long in one frame (and never more than the
+// hard cap): a fast frame fills the view quickly, a slow one does not stall, and
+// a chunk without a mesh yet is left out for a moment.
+constexpr double kMeshBuildBudgetMs = 2.0;
+constexpr int kMeshBuildsPerFrame = 24;
 // Meshes of chunks this far past the drawn radius stay cached, so that moving
 // the view back and forth does not unload and rebuild the same chunks.
 constexpr int kRetainedChunkMargin = 4;
+
+using BuildClock = std::chrono::steady_clock;
+
+bool IsBudgetSpent(const BuildClock::time_point &deadline, int buildsLeft)
+{
+	return buildsLeft <= 0 || BuildClock::now() >= deadline;
+}
 
 bool IsMeshLoaded(const Mesh &mesh)
 {
@@ -103,6 +112,9 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		return frustum.Intersects(min, max) && !occlusion.IsHidden(world, chunk, topShownLevel);
 	};
 
+	const BuildClock::time_point buildDeadline =
+	    BuildClock::now() + std::chrono::duration_cast<BuildClock::duration>(
+	                             std::chrono::duration<double, std::milli>(kMeshBuildBudgetMs));
 	int buildsLeft = kMeshBuildsPerFrame;
 	std::set<ChunkMeshKey> wantedMeshes;
 	for (const auto &[coordinate, chunk] : world.GetChunks())
@@ -120,7 +132,7 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		}
 		const auto found = meshCache.find(key);
 		const bool isCurrent = found != meshCache.end() && found->second.terrainRevision == chunk.terrainRevision;
-		if (!isCurrent && buildsLeft == 0)
+		if (!isCurrent && IsBudgetSpent(buildDeadline, buildsLeft))
 		{
 			// A stale mesh is drawn until its turn; a missing one is skipped.
 			if (found == meshCache.end() || found->second.mesh.vertexCount <= 0)
@@ -142,9 +154,9 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		}
 	}
 
-	// The meshes of the next levels up and down are built ahead, one chunk each a
-	// frame, so that paging through the levels does not stall on a whole layer of
-	// chunks.
+	// The meshes of the next levels up and down are built ahead, as far as this
+	// frame's build budget allows, so that paging through the levels does not
+	// stall on a whole layer of chunks.
 	if (mode == ViewMode::CutAtLevel)
 	{
 		for (const int adjacentLevel : {viewLevel - 1, viewLevel + 1})
@@ -153,7 +165,6 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 			{
 				continue;
 			}
-			bool builtAhead = false;
 			for (const auto &[coordinate, chunk] : world.GetChunks())
 			{
 				if (!isInRadius(coordinate) || !IsChunkShown(coordinate, adjacentLevel, mode))
@@ -164,11 +175,10 @@ void DrawBlocks(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 				const ChunkMeshKey key = GetMeshKey(chunk, adjacentLevel, mode);
 				wantedMeshes.insert(key);
 				const auto cachedMesh = meshCache.find(key);
-				if (!builtAhead && buildsLeft > 0 &&
+				if (!IsBudgetSpent(buildDeadline, buildsLeft) &&
 				    (cachedMesh == meshCache.end() || cachedMesh->second.terrainRevision != chunk.terrainRevision))
 				{
 					static_cast<void>(GetOrBuildChunkMesh(grid, world, chunk, key, atlas, meshCache));
-					builtAhead = true;
 					--buildsLeft;
 				}
 			}
