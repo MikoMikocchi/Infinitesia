@@ -35,7 +35,12 @@ const TerrainOcclusion::ColumnTops &TerrainOcclusion::GetColumn(const VoxelWorld
 		const auto found = chunks.find(ChunkCoordinate{key.first, chunkY, key.second});
 		if (found == chunks.end())
 		{
-			break;
+			// The chunk is not generated. Skipping it is safe for hiding: a solid
+			// block found lower in the column still covers everything under it,
+			// and a column with no solid block below stays open. Stopping here
+			// instead would leave the whole column "open" while the top of the
+			// world is not loaded, which is exactly the "all levels" view.
+			continue;
 		}
 		const WorldChunk &chunk = found->second;
 		const int firstLevel = chunkY * kChunkSize;
