@@ -116,7 +116,14 @@ bool FluidField::WriteCell(GridCell cell, FluidCell value)
 	{
 		return false;
 	}
-	FluidCell *current = AtRaw(cell);
+	const ChunkCoordinate coordinate{cell.x / kChunkSize, cell.y / kChunkSize, cell.z / kChunkSize};
+	FluidChunk *chunk = nullptr;
+	const auto found = m_chunks.find(coordinate);
+	if (found != m_chunks.end())
+	{
+		chunk = &found->second;
+	}
+	FluidCell *current = chunk != nullptr ? &chunk->cells[IndexIn(*chunk, cell)] : nullptr;
 	if (current != nullptr && *current == value)
 	{
 		return false;
@@ -128,12 +135,28 @@ bool FluidField::WriteCell(GridCell cell, FluidCell value)
 		{
 			return false;
 		}
-		FluidChunk &chunk = GetOrCreateChunk({cell.x / kChunkSize, cell.y / kChunkSize, cell.z / kChunkSize});
-		current = &chunk.cells[IndexIn(chunk, cell)];
+		chunk = &GetOrCreateChunk(coordinate);
+		current = &chunk->cells[IndexIn(*chunk, cell)];
 	}
 	*current = value;
 	++m_revision;
+	++chunk->revision;
+	// The top row of a chunk is the cell above the chunk below: the surface quad
+	// of that chunk depends on it too.
+	if (cell.y % kChunkSize == 0)
+	{
+		TouchChunk(ChunkCoordinate{coordinate.x, coordinate.y - 1, coordinate.z});
+	}
 	return true;
+}
+
+void FluidField::TouchChunk(ChunkCoordinate coordinate)
+{
+	const auto found = m_chunks.find(coordinate);
+	if (found != m_chunks.end())
+	{
+		++found->second.revision;
+	}
 }
 
 void FluidField::Activate(GridCell cell)
@@ -204,6 +227,9 @@ void FluidField::RemoveChunk(ChunkCoordinate coordinate)
 		cell = inChunk(*cell) ? m_pressure.erase(cell) : std::next(cell);
 	}
 	++m_revision;
+	// Without this chunk the one below loses the water that covered its top row,
+	// so its surface may appear again.
+	TouchChunk(ChunkCoordinate{coordinate.x, coordinate.y - 1, coordinate.z});
 }
 
 void FluidField::InitializeChunk(const WorldChunk &chunk, const TerrainSource &terrain)
@@ -277,6 +303,9 @@ void FluidField::InitializeChunk(const WorldChunk &chunk, const TerrainSource &t
 	}
 	m_chunks.emplace(chunk.coordinate, std::move(fluidChunk));
 	++m_revision;
+	// The chunk below used to see open air (or no fluid) above itself; with this
+	// chunk loaded its top rows may now be covered by water.
+	TouchChunk(ChunkCoordinate{chunk.coordinate.x, chunk.coordinate.y - 1, chunk.coordinate.z});
 }
 
 bool FluidField::CanAccept(GridCell cell, MatterId matter, const VoxelWorld &world) const

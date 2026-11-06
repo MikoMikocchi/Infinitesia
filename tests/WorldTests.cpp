@@ -631,6 +631,43 @@ TEST_CASE("FluidFlowIsDeterministic")
 	}
 }
 
+TEST_CASE("AFluidChangeDirtiesOnlyItsOwnChunk")
+{
+	const MatterId water = SharedRegistry()->FindMatter("water")->id;
+	const Grid grid(GridConfig{40, 40, 40, 1.0f});
+	VoxelWorld world(grid, std::make_shared<FlatTestTerrain>());
+	// One body of water per chunk of the first column: (0,0,0), (2,0,0) and the
+	// chunk above the first one.
+	world.Fluids().Set({2, 2, 2}, {water, 500, FluidOrigin::None});
+	world.Fluids().Set({34, 2, 2}, {water, 500, FluidOrigin::None});
+	world.Fluids().Set({2, 18, 2}, {water, 500, FluidOrigin::None});
+
+	const auto revision = [&world](ChunkCoordinate coordinate) {
+		const auto found = world.Fluids().Chunks().find(coordinate);
+		REQUIRE(found != world.Fluids().Chunks().end());
+		return found->second.revision;
+	};
+
+	const std::uint64_t own = revision({0, 0, 0});
+	const std::uint64_t other = revision({2, 0, 0});
+	const std::uint64_t above = revision({0, 1, 0});
+
+	// A cell in the middle of a chunk dirties that chunk and nothing else: the
+	// sea no longer has to rebuild its whole mesh for one changed cell.
+	world.Fluids().Set({3, 3, 3}, {water, 400, FluidOrigin::None});
+	CHECK(revision({0, 0, 0}) > own);
+	CHECK(revision({2, 0, 0}) == other);
+	CHECK(revision({0, 1, 0}) == above);
+
+	// The bottom row of a chunk is the cell above the chunk below, whose surface
+	// quad depends on it, so both are marked.
+	const std::uint64_t lower = revision({0, 0, 0});
+	const std::uint64_t upper = revision({0, 1, 0});
+	world.Fluids().Set({3, 16, 3}, {water, 400, FluidOrigin::None});
+	CHECK(revision({0, 1, 0}) > upper);
+	CHECK(revision({0, 0, 0}) > lower);
+}
+
 TEST_CASE("SurfaceMatchesThePlanetTerrain")
 {
 	const Settlement settlement = MakeSettlement(LandAnchor());

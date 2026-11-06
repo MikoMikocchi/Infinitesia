@@ -26,6 +26,9 @@ struct FluidChunk
 	// A player or a block change touched this water. Unmodified fluid chunks can
 	// be dropped with their block chunk and rebuilt from the terrain.
 	bool modified = false;
+	// Changes whenever a cell of this chunk changed, so only its mesh is stale:
+	// a change in one chunk no longer invalidates the meshes of the whole sea.
+	std::uint64_t revision = 0;
 	std::vector<FluidCell> cells; // indexed like WorldChunk::blocks
 };
 
@@ -63,7 +66,9 @@ public:
 	// One simulation tick: move the active fluid down, then sideways.
 	void Step(const VoxelWorld &world);
 
-	// Changes whenever a cell changed, so meshes know they are stale.
+	// Changes whenever a cell changed, so meshes know they are stale. The
+	// per-chunk `FluidChunk::revision` is what the renderer compares; this one
+	// still tells that something in the world changed.
 	std::uint64_t Revision() const noexcept
 	{
 		return m_revision;
@@ -88,6 +93,8 @@ private:
 
 	// Writes without touching the active set. Returns whether the cell changed.
 	bool WriteCell(GridCell cell, FluidCell value);
+	// Bumps the revision of a fluid chunk, if it exists: its mesh is stale.
+	void TouchChunk(ChunkCoordinate coordinate);
 	// Marks the fluid chunk of a cell, and the chunks around it, as changed by
 	// the player. Natural flow in Step does not mark anything: it can be rebuilt.
 	void MarkModified(GridCell cell);

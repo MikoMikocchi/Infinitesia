@@ -208,7 +208,6 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 {
 	const int centerChunkX = viewCenter.x / kChunkSize;
 	const int centerChunkZ = viewCenter.z / kChunkSize;
-	const std::uint64_t revision = world.Fluids().Revision();
 	std::set<FluidMeshKey> wanted;
 
 	for (const auto &[coordinate, chunk] : world.Fluids().Chunks())
@@ -223,13 +222,13 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		const FluidMeshKey key = GetMeshKey(chunk, viewLevel, mode);
 		wanted.insert(key);
 		auto cached = meshCache.find(key);
-		if (cached == meshCache.end() || cached->second.fluidRevision != revision)
+		if (cached == meshCache.end() || cached->second.fluidRevision != chunk.revision)
 		{
 			if (cached != meshCache.end() && IsMeshLoaded(cached->second.mesh))
 			{
 				UnloadMesh(cached->second.mesh);
 			}
-			FluidMeshCacheEntry entry{BuildFluidMesh(grid, world, chunk, key.second, &atlas), revision};
+			FluidMeshCacheEntry entry{BuildFluidMesh(grid, world, chunk, key.second, &atlas), chunk.revision};
 			if (cached == meshCache.end())
 			{
 				cached = meshCache.emplace(key, entry).first;
