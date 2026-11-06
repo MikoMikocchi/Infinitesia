@@ -11,6 +11,7 @@
 
 #include "presentation/rendering/terrain/internal/TerrainMeshGeometry.h"
 #include "raymath.h"
+#include "rlgl.h"
 
 namespace Infinitesia
 {
@@ -91,8 +92,8 @@ void DrawFluidMesh(const Mesh &mesh, Material material)
 }
 } // namespace
 
-Mesh BuildFluidMesh(const Grid &grid, const VoxelWorld &world, const FluidChunk &chunk, int cutLevel,
-                    const BlockTextureAtlas *atlas)
+Mesh BuildFluidMeshData(const Grid &grid, const VoxelWorld &world, const FluidChunk &chunk, int cutLevel,
+                        const BlockTextureAtlas *atlas)
 {
 	const int firstLevel = chunk.coordinate.y * kChunkSize;
 	const bool isCut = cutLevel != kNoFluidCut;
@@ -202,9 +203,67 @@ Mesh BuildFluidMesh(const Grid &grid, const VoxelWorld &world, const FluidChunk 
 		MemFree(mesh.indices);
 		throw;
 	}
-	UploadMesh(&mesh, false);
 	return mesh;
 }
+
+namespace
+{
+void FreeMeshData(Mesh &mesh)
+{
+	MemFree(mesh.vertices);
+	MemFree(mesh.texcoords);
+	MemFree(mesh.normals);
+	MemFree(mesh.colors);
+	MemFree(mesh.indices);
+	mesh.vertices = nullptr;
+	mesh.texcoords = nullptr;
+	mesh.normals = nullptr;
+	mesh.colors = nullptr;
+	mesh.indices = nullptr;
+}
+
+// Takes a CPU-built mesh into an entry: the buffers are created the first time
+// and then reused while the mesh keeps fitting, so a flowing river updates its
+// water instead of creating and destroying GPU buffers every frame.
+void ReplaceFluidMesh(FluidMeshCacheEntry &entry, Mesh rebuilt)
+{
+	if (rebuilt.vertexCount == 0)
+	{
+		FreeMeshData(rebuilt);
+		// Keep the buffers for when the water comes back, but draw nothing.
+		entry.mesh.vertexCount = 0;
+		entry.mesh.triangleCount = 0;
+		return;
+	}
+
+	const bool canReuse = entry.mesh.vaoId != 0 && rebuilt.vertexCount <= entry.vertexCapacity &&
+	                      rebuilt.triangleCount <= entry.triangleCapacity;
+	if (canReuse)
+	{
+		UpdateMeshBuffer(entry.mesh, 0, rebuilt.vertices, rebuilt.vertexCount * 3 * static_cast<int>(sizeof(float)), 0);
+		UpdateMeshBuffer(entry.mesh, 1, rebuilt.texcoords, rebuilt.vertexCount * 2 * static_cast<int>(sizeof(float)),
+		                 0);
+		UpdateMeshBuffer(entry.mesh, 2, rebuilt.normals, rebuilt.vertexCount * 3 * static_cast<int>(sizeof(float)), 0);
+		UpdateMeshBuffer(entry.mesh, 3, rebuilt.colors,
+		                 rebuilt.vertexCount * 4 * static_cast<int>(sizeof(unsigned char)), 0);
+		rlUpdateVertexBufferElements(entry.mesh.vboId[RL_DEFAULT_SHADER_ATTRIB_LOCATION_INDICES], rebuilt.indices,
+		                             rebuilt.triangleCount * 3 * static_cast<int>(sizeof(unsigned short)), 0);
+		entry.mesh.vertexCount = rebuilt.vertexCount;
+		entry.mesh.triangleCount = rebuilt.triangleCount;
+		FreeMeshData(rebuilt);
+		return;
+	}
+
+	if (IsMeshLoaded(entry.mesh))
+	{
+		UnloadMesh(entry.mesh);
+	}
+	UploadMesh(&rebuilt, true);
+	entry.mesh = rebuilt;
+	entry.vertexCapacity = rebuilt.vertexCount;
+	entry.triangleCapacity = rebuilt.triangleCount;
+}
+} // namespace
 
 void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, int chunkRadius, int viewLevel,
                 ViewMode mode, Material material, const BlockTextureAtlas &atlas, FluidMeshCache &meshCache)
@@ -232,11 +291,7 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 			// only produce an empty mesh, so do not spend a build on it.
 			if (cached != meshCache.end())
 			{
-				if (IsMeshLoaded(cached->second.mesh))
-				{
-					UnloadMesh(cached->second.mesh);
-				}
-				cached->second = FluidMeshCacheEntry{};
+				ReplaceFluidMesh(cached->second, Mesh{});
 				cached->second.fluidRevision = chunk.revision;
 			}
 			continue;
@@ -256,19 +311,12 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 			continue;
 		}
 		--buildsLeft;
-		if (cached != meshCache.end() && IsMeshLoaded(cached->second.mesh))
-		{
-			UnloadMesh(cached->second.mesh);
-		}
-		FluidMeshCacheEntry entry{BuildFluidMesh(grid, world, chunk, key.second, &atlas), chunk.revision};
 		if (cached == meshCache.end())
 		{
-			cached = meshCache.emplace(key, entry).first;
+			cached = meshCache.emplace(key, FluidMeshCacheEntry{}).first;
 		}
-		else
-		{
-			cached->second = entry;
-		}
+		ReplaceFluidMesh(cached->second, BuildFluidMeshData(grid, world, chunk, key.second, &atlas));
+		cached->second.fluidRevision = chunk.revision;
 		DrawFluidMesh(cached->second.mesh, material);
 	}
 

@@ -22,14 +22,19 @@ struct FluidMeshCacheEntry
 {
 	Mesh mesh{};
 	std::uint64_t fluidRevision = 0;
+	// Space allocated in the mesh buffers (in vertices and triangles); a rebuilt
+	// mesh that fits is copied into them instead of recreating the buffers.
+	int vertexCapacity = 0;
+	int triangleCapacity = 0;
 };
 
 using FluidMeshKey = std::pair<ChunkCoordinate, int>;
 using FluidMeshCache = std::map<FluidMeshKey, FluidMeshCacheEntry>;
 
-// The top quads of the fluid columns of one chunk, at a cut level or whole.
-Mesh BuildFluidMesh(const Grid &grid, const VoxelWorld &world, const FluidChunk &chunk, int cutLevel,
-                    const BlockTextureAtlas *atlas);
+// The top quads of the fluid columns of one chunk, at a cut level or whole, on
+// the CPU: the caller uploads or reuses a GPU mesh for it.
+Mesh BuildFluidMeshData(const Grid &grid, const VoxelWorld &world, const FluidChunk &chunk, int cutLevel,
+                        const BlockTextureAtlas *atlas);
 
 // Draws the fluid of the loaded chunks in the view radius, rebuilding only the
 // meshes whose fluid changed. Call it after the opaque terrain with alpha
