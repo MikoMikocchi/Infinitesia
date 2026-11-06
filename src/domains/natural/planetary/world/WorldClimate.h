@@ -10,7 +10,7 @@ namespace Infinitesia
 {
 // Climate parameters that the world-scale model needs from the planet. The
 // planet fields already carry the global energy balance and circulation; the
-// local model adds the effects of the 257 x 257 terrain and water bodies.
+// local model adds the effects of the 250 x 250 terrain and water bodies.
 struct WorldClimateInputs
 {
 	double rotationPeriodHours = 24.0;

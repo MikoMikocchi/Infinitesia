@@ -12,13 +12,14 @@ WorldMap::WorldMap(LocalGrid grid, std::vector<RegionTile> tiles, std::vector<Ri
 {
 	if (m_tiles.size() != static_cast<std::size_t>(kSide) * static_cast<std::size_t>(kSide))
 	{
-		throw std::invalid_argument("A world map must hold exactly 257 x 257 region tiles.");
+		throw std::invalid_argument("A world map must hold exactly one tile per grid position.");
 	}
 }
 
 bool WorldMap::Contains(RegionTileId id) noexcept
 {
-	return id.i >= -kHalfSide && id.i <= kHalfSide && id.j >= -kHalfSide && id.j <= kHalfSide;
+	// The side is even, so the valid range is [-half .. half - 1].
+	return id.i >= -kHalfSide && id.i < kHalfSide && id.j >= -kHalfSide && id.j < kHalfSide;
 }
 
 std::size_t WorldMap::Index(RegionTileId id) noexcept
@@ -32,7 +33,7 @@ const RegionTile &WorldMap::At(RegionTileId id) const
 {
 	if (!Contains(id) || m_tiles.empty())
 	{
-		throw std::out_of_range("Region tile is outside the world map.");
+		throw std::out_of_range("Theater tile is outside the world map.");
 	}
 	return m_tiles[Index(id)];
 }
@@ -60,19 +61,22 @@ std::optional<RegionTile> WorldMap::SampleAt(CartesianPoint3D direction) const n
 	m_grid.Project(direction, eastMeters, northMeters);
 	const double tileX = eastMeters / kRegionTileSizeMeters;
 	const double tileY = northMeters / kRegionTileSizeMeters;
-	// Match Locate: a point may lie in the outer half of the edge tiles.
-	constexpr double kEdge = static_cast<double>(kHalfSide) + 0.5;
-	if (tileX < -kEdge || tileX > kEdge || tileY < -kEdge || tileY > kEdge)
+	// Match Locate: a point may lie in the outer half of the edge tiles. The
+	// tile centres run [-half .. half - 1], so the covered span is
+	// [-half - 0.5 .. half - 0.5).
+	constexpr double kMinEdge = -static_cast<double>(kHalfSide) - 0.5;
+	constexpr double kMaxEdge = static_cast<double>(kHalfSide) - 0.5;
+	if (tileX < kMinEdge || tileX >= kMaxEdge || tileY < kMinEdge || tileY >= kMaxEdge)
 	{
 		return std::nullopt;
 	}
 
 	const int x0 = static_cast<int>(std::floor(tileX));
 	const int y0 = static_cast<int>(std::floor(tileY));
-	const int x1 = std::clamp(x0 + 1, -kHalfSide, kHalfSide);
-	const int y1 = std::clamp(y0 + 1, -kHalfSide, kHalfSide);
-	const int cx0 = std::clamp(x0, -kHalfSide, kHalfSide);
-	const int cy0 = std::clamp(y0, -kHalfSide, kHalfSide);
+	const int x1 = std::clamp(x0 + 1, -kHalfSide, kHalfSide - 1);
+	const int y1 = std::clamp(y0 + 1, -kHalfSide, kHalfSide - 1);
+	const int cx0 = std::clamp(x0, -kHalfSide, kHalfSide - 1);
+	const int cy0 = std::clamp(y0, -kHalfSide, kHalfSide - 1);
 
 	const float tx = static_cast<float>(tileX - x0);
 	const float ty = static_cast<float>(tileY - y0);
@@ -100,8 +104,8 @@ std::optional<RegionTile> WorldMap::SampleAt(CartesianPoint3D direction) const n
 	result.soilFertility = blend(a.soilFertility, b.soilFertility, c.soilFertility, d.soilFertility);
 	result.riverDischarge = blend(a.riverDischarge, b.riverDischarge, c.riverDischarge, d.riverDischarge);
 
-	const int nearestX = std::clamp(static_cast<int>(std::lround(tileX)), -kHalfSide, kHalfSide);
-	const int nearestY = std::clamp(static_cast<int>(std::lround(tileY)), -kHalfSide, kHalfSide);
+	const int nearestX = std::clamp(static_cast<int>(std::lround(tileX)), -kHalfSide, kHalfSide - 1);
+	const int nearestY = std::clamp(static_cast<int>(std::lround(tileY)), -kHalfSide, kHalfSide - 1);
 	const RegionTile &nearest = m_tiles[Index({nearestX, nearestY})];
 	result.biome = nearest.biome;
 	result.province = nearest.province;
@@ -130,9 +134,11 @@ RegionTileLocation WorldMap::Locate(CartesianPoint3D direction) const noexcept
 	const double tileX = eastMeters / kRegionTileSizeMeters;
 	const double tileY = northMeters / kRegionTileSizeMeters;
 	// Tiles are centred on integer coordinates and span half a tile to each
-	// side, so the outer edge of the window is at +/- (kHalfSide + 0.5).
-	constexpr double kEdge = static_cast<double>(kHalfSide) + 0.5;
-	if (tileX < -kEdge || tileX > kEdge || tileY < -kEdge || tileY > kEdge)
+	// side. The centres run [-half .. half - 1], so the covered span is
+	// [-half - 0.5 .. half - 0.5).
+	constexpr double kMinEdge = -static_cast<double>(kHalfSide) - 0.5;
+	constexpr double kMaxEdge = static_cast<double>(kHalfSide) - 0.5;
+	if (tileX < kMinEdge || tileX >= kMaxEdge || tileY < kMinEdge || tileY >= kMaxEdge)
 	{
 		return {};
 	}

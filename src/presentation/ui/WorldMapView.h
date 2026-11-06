@@ -10,9 +10,9 @@
 
 namespace Infinitesia
 {
-// The whole 257 x 257 known world as one square image: biome colours, relief
-// shading, lakes and rivers. This is the view that makes the world window
-// visible instead of showing only the patch around one region.
+// The whole 250 x 250 theater as one square image: biome colours, relief
+// shading, lakes and rivers. This is the view that makes the theater window
+// visible instead of showing only the patch around one tile.
 class WorldMapView
 {
 public:

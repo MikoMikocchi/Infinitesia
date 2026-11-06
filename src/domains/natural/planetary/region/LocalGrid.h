@@ -38,11 +38,11 @@ struct TangentFrame
 };
 
 // One chessboard of identical squares laid over the planet around an anchor
-// point: 16 m cells, 48 x 48 cells (768 m) per region tile, aligned with
-// east/north at the anchor. A region tile is the Dwarf Fortress region tile:
-// 16 x 16 local area blocks of 48 x 48 tiles each (docs/08_WORLD_GRID.md).
-// A game has one settlement and so one anchor, chosen anywhere on the planet,
-// poles included; the grid itself has no seams and no forbidden places.
+// point: 16 m cells, 64 x 64 cells (1024 m) per theater tile, aligned with
+// east/north at the anchor. A theater tile is 16 x 16 local area blocks of
+// 64 x 64 one-metre tiles each (docs/08_WORLD_GRID.md). A game has one
+// settlement and so one anchor, chosen anywhere on the planet, poles included;
+// the grid itself has no seams and no forbidden places.
 //
 // Grid coordinates are metres east and north of the anchor measured on the
 // tangent plane. They map to the sphere by projecting the plane point radially
@@ -50,20 +50,20 @@ struct TangentFrame
 // km, 1% at 640 km, 3% at 1600 km. Heights are measured from sea level, so the
 // local world has no visible curvature.
 //
-// The anchor is the centre of region tile (0, 0).
+// The anchor is the centre of theater tile (0, 0).
 class LocalGrid
 {
 public:
-	static constexpr int kCellsPerRegionEdge = 48;
+	static constexpr int kCellsPerRegionEdge = 64;
 	static constexpr int kPointsPerRegionEdge = kCellsPerRegionEdge + 1;
 	static constexpr double kCellSizeMeters = 16.0;
 	static constexpr double kRegionSizeMeters = kCellsPerRegionEdge * kCellSizeMeters;
 
-	// A region tile must be the 16 x 16 local blocks of 48 x 48 one-metre
+	// A theater tile must be the 16 x 16 local blocks of 64 x 64 one-metre
 	// blocks that the world grid uses.
-	static_assert(kRegionSizeMeters == 768.0);
+	static_assert(kRegionSizeMeters == 1024.0);
 
-	// Regions farther than this from the anchor (about 1600 km) are refused: the
+	// Regions farther than this from the anchor (about 410 km) are refused: the
 	// plane-to-sphere projection stretches too much there.
 	static constexpr int kMaxRegionIndex = 400;
 
@@ -90,8 +90,8 @@ public:
 
 	// Direction of lattice point (x, y), in cells from the region's south-west
 	// corner. Values outside [0, kCellsPerRegionEdge] continue into the
-	// neighbours. Neighbouring regions share their border points exactly, on all
-	// four sides.
+	// neighbours. Neighbouring theater tiles share their border points exactly,
+	// on all four sides.
 	CartesianPoint3D PointDirection(RegionId id, double x, double y) const noexcept;
 	CartesianPoint3D CenterDirection(RegionId id) const noexcept;
 	GeographicCoordinates Center(RegionId id) const noexcept;

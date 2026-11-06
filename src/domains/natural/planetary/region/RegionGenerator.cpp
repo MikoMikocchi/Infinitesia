@@ -77,7 +77,7 @@ RegionPatch RegionGenerator::GeneratePatch(const LocalGrid &grid, RegionId cente
 	}
 	if (!(cellSizeMeters > 0.0) || cellSizeMeters > LocalGrid::kRegionSizeMeters)
 	{
-		throw std::invalid_argument("Patch cell size is outside the region tile.");
+		throw std::invalid_argument("Patch cell size is outside the theater tile.");
 	}
 
 	const int cellsPerRegion = std::max(1, static_cast<int>(std::lround(LocalGrid::kRegionSizeMeters / cellSizeMeters)));

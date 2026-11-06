@@ -6,8 +6,10 @@
 #include <set>
 #include <span>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
+#include "core/PlanetId.h"
 #include "domains/natural/planetary/PlanetMap.h"
 #include "domains/natural/planetary/world/WorldClimate.h"
 #include "domains/natural/planetary/world/WorldGenerator.h"
@@ -17,6 +19,9 @@
 namespace
 {
 using namespace Infinitesia;
+
+constexpr std::size_t kWorldTileCount =
+    static_cast<std::size_t>(kRegionTilesPerWorldSide) * static_cast<std::size_t>(kRegionTilesPerWorldSide);
 
 PlanetParameters CoarsePlanetParameters()
 {
@@ -105,40 +110,48 @@ std::span<const RiverChannel> ChannelsOf(const RegionTile &tile, const std::vect
 }
 } // namespace
 
-TEST_CASE("WorldGridMatchesTheDwarfFortressHierarchy")
+TEST_CASE("PlanetIdsAreStableAddresses")
 {
-	static_assert(kTilesPerLocalBlock == 48);
-	static_assert(kLocalBlocksPerRegionTile == 16);
-	static_assert(kRegionTilesPerWorldSide == 257);
-	static_assert(kChunksPerLocalBlock == 3);
-	static_assert(kChunksPerRegionTile == 48);
-	static_assert(kBlockSizeMeters == 1.0);
-	static_assert(kLocalBlockSizeMeters == 48.0);
-	static_assert(kRegionTileSizeMeters == 768.0);
-	static_assert(kWorldSizeMeters == 197376.0);
-	static_assert(sizeof(RegionTile) <= 64);
-
-	CHECK(kRegionTilesPerWorldHalfSide == 128);
-	CHECK(kRegionTilesPerWorldSide * kRegionTilesPerWorldSide == 66049);
+	static_assert(std::is_same_v<PlanetId, std::uint32_t>);
+	CHECK(kHomePlanet != 0);
+	CHECK(PlanetCellId{1, 2} == PlanetCellId{1, 2});
+	CHECK(PlanetCellId{1, 2}.Pack() != PlanetCellId{2, 1}.Pack());
 }
 
-TEST_CASE("WorldMapCoversA257By257WindowOfRegionTiles")
+TEST_CASE("WorldGridKeepsTheBinaryLocalHierarchyAndA256KmTheater")
+{
+	static_assert(kTilesPerLocalBlock == 64);
+	static_assert(kLocalBlocksPerRegionTile == 16);
+	static_assert(kRegionTilesPerWorldSide == 250);
+	static_assert(kChunksPerLocalBlock == 4);
+	static_assert(kChunksPerRegionTile == 64);
+	static_assert(kBlockSizeMeters == 1.0);
+	static_assert(kLocalBlockSizeMeters == 64.0);
+	static_assert(kRegionTileSizeMeters == 1024.0);
+	static_assert(kWorldSizeMeters == 256000.0);
+	static_assert(sizeof(RegionTile) <= 64);
+
+	CHECK(kRegionTilesPerWorldHalfSide == 125);
+	CHECK(kRegionTilesPerWorldSide * kRegionTilesPerWorldSide == 62500);
+}
+
+TEST_CASE("WorldMapCoversA250By250WindowOfTheaterTiles")
 {
 	const PlanetMap planet(CoarsePlanetParameters());
 	const WorldGenerator generator(planet);
 	const GeographicCoordinates anchor = FindWorldAnchor(planet);
 	const WorldMap world = generator.Generate(anchor);
 
-	REQUIRE(world.TileCount() == 66049);
-	CHECK(world.Side() == 257);
+	REQUIRE(world.TileCount() == kWorldTileCount);
+	CHECK(world.Side() == 250);
 	CHECK(world.Grid().PlanetRadiusMeters() == planet.GetPlanet().GetRadius());
 
 	CHECK(WorldMap::Contains({0, 0}));
-	CHECK(WorldMap::Contains({-128, -128}));
-	CHECK(WorldMap::Contains({128, 128}));
-	CHECK_FALSE(WorldMap::Contains({129, 0}));
-	CHECK_FALSE(WorldMap::Contains({0, -129}));
-	CHECK_THROWS_AS(world.At({129, 0}), std::out_of_range);
+	CHECK(WorldMap::Contains({-125, -125}));
+	CHECK(WorldMap::Contains({124, 124}));
+	CHECK_FALSE(WorldMap::Contains({125, 0}));
+	CHECK_FALSE(WorldMap::Contains({0, -126}));
+	CHECK_THROWS_AS(world.At({125, 0}), std::out_of_range);
 
 	std::size_t oceanTiles = 0;
 	std::size_t lakeTiles = 0;
@@ -146,9 +159,9 @@ TEST_CASE("WorldMapCoversA257By257WindowOfRegionTiles")
 	std::size_t coastalTiles = 0;
 	std::size_t riverTiles = 0;
 	std::set<int> biomes;
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			const RegionTile &tile = world.At(i, j);
 			Require(std::isfinite(tile.elevationMeters), "A world tile has no finite elevation.");
@@ -173,7 +186,7 @@ TEST_CASE("WorldMapCoversA257By257WindowOfRegionTiles")
 		}
 	}
 
-	CHECK(oceanTiles + lakeTiles + landTiles == 66049);
+	CHECK(oceanTiles + lakeTiles + landTiles == kWorldTileCount);
 	CHECK(oceanTiles > 0);
 	CHECK(landTiles > 0);
 	CHECK(coastalTiles > 0);
@@ -197,9 +210,9 @@ TEST_CASE("WorldMapIsDeterministic")
 		Require(SameRiver(first.Rivers()[index], second.Rivers()[index]),
 		        "World-map river channels are not deterministic.");
 	}
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			Require(SameTile(first.At(i, j), second.At(i, j)),
 			        "World-map generation is not deterministic for an identical anchor.");
@@ -217,9 +230,9 @@ TEST_CASE("WorldMapChangesWhenTheAnchorMoves")
 	    generator.Generate(GeographicCoordinates{anchor.latitudeDegrees + 0.5, anchor.longitudeDegrees + 0.5});
 
 	std::size_t differences = 0;
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			differences += SameTile(first.At(i, j), second.At(i, j)) ? 0 : 1;
 		}
@@ -240,15 +253,15 @@ TEST_CASE("WorldMapFitsTheStartupBudget")
 	constexpr auto budget = std::chrono::seconds(60);
 #endif
 	Require(elapsed < budget, "World-map generation exceeded its startup budget.");
-	Require(world.TileCount() == 66049, "The world map is incomplete.");
+	Require(world.TileCount() == kWorldTileCount, "The world map is incomplete.");
 }
 
 TEST_CASE("WorldHydrologyFillsBasinsAndRoutesRiversDownhill")
 {
-	std::vector<RegionTile> basin(66049);
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	std::vector<RegionTile> basin(kWorldTileCount);
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			RegionTile &tile = basin[WorldMap::Index({i, j})];
 			tile.elevationMeters = 10.0f + 0.1f * static_cast<float>(std::abs(i) + std::abs(j));
@@ -259,10 +272,10 @@ TEST_CASE("WorldHydrologyFillsBasinsAndRoutesRiversDownhill")
 	ComputeWorldHydrology(basin);
 	CHECK(basin[WorldMap::Index({0, 0})].IsLake());
 
-	std::vector<RegionTile> slope(66049);
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	std::vector<RegionTile> slope(kWorldTileCount);
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			RegionTile &tile = slope[WorldMap::Index({i, j})];
 			tile.elevationMeters = 100.0f - 0.1f * static_cast<float>(i);
@@ -278,16 +291,16 @@ TEST_CASE("WorldHydrologyFillsBasinsAndRoutesRiversDownhill")
 		rivers += tile.HasRiver() ? 1 : 0;
 	}
 	CHECK(rivers > 0);
-	CHECK(slope[WorldMap::Index({kRegionTilesPerWorldHalfSide, 0})].riverDischarge >
+	CHECK(slope[WorldMap::Index({kRegionTilesPerWorldHalfSide - 1, 0})].riverDischarge >
 	      slope[WorldMap::Index({-kRegionTilesPerWorldHalfSide, 0})].riverDischarge);
 }
 
 TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
 {
-	std::vector<RegionTile> basin(66049);
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	std::vector<RegionTile> basin(kWorldTileCount);
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			RegionTile &tile = basin[WorldMap::Index({i, j})];
 			tile.elevationMeters = 10.0f + 0.1f * static_cast<float>(std::abs(i) + std::abs(j));
@@ -303,10 +316,10 @@ TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
 	CHECK(lake.riverCount == 0);
 	CHECK(lake.HasWater());
 
-	std::vector<RegionTile> slope(66049);
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	std::vector<RegionTile> slope(kWorldTileCount);
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			RegionTile &tile = slope[WorldMap::Index({i, j})];
 			tile.elevationMeters = 100.0f - 0.1f * static_cast<float>(i);
@@ -364,10 +377,10 @@ TEST_CASE("WorldHydrologyStoresLakeLevelsAndRiverChannels")
 
 TEST_CASE("WorldHydrologyBuildsAConfluenceWithSeveralTributaries")
 {
-	std::vector<RegionTile> tiles(66049);
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	std::vector<RegionTile> tiles(kWorldTileCount);
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			RegionTile &tile = tiles[WorldMap::Index({i, j})];
 			tile.elevationMeters = 100.0f + 0.1f * static_cast<float>(std::abs(i) + std::abs(j));
@@ -401,7 +414,7 @@ TEST_CASE("WorldHydrologyBuildsAConfluenceWithSeveralTributaries")
 TEST_CASE("WorldMapLocatesPointsInsideRegionTiles")
 {
 	const LocalGrid grid(6371000.0, PlanetaryCoordinates::ToCartesian({0.0, 0.0}));
-	std::vector<RegionTile> tiles(66049);
+	std::vector<RegionTile> tiles(kWorldTileCount);
 	for (std::size_t index = 0; index < tiles.size(); ++index)
 	{
 		tiles[index].elevationMeters = static_cast<float>(index);
@@ -434,7 +447,7 @@ TEST_CASE("WorldMapLocatesPointsInsideRegionTiles")
 TEST_CASE("WorldMapBlendsTileBordersInsteadOfStepping")
 {
 	const LocalGrid grid(6371000.0, PlanetaryCoordinates::ToCartesian({0.0, 0.0}));
-	std::vector<RegionTile> tiles(66049);
+	std::vector<RegionTile> tiles(kWorldTileCount);
 	tiles[WorldMap::Index({0, 0})].elevationMeters = 0.0f;
 	tiles[WorldMap::Index({1, 0})].elevationMeters = 100.0f;
 	const WorldMap world(grid, std::move(tiles));
@@ -455,10 +468,10 @@ namespace
 {
 std::vector<GeographicCoordinates> PositionsAtLatitude(double latitudeDegrees)
 {
-	std::vector<GeographicCoordinates> positions(66049);
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	std::vector<GeographicCoordinates> positions(kWorldTileCount);
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			positions[WorldMap::Index({i, j})] = {latitudeDegrees, 0.0};
 		}
@@ -470,10 +483,10 @@ std::vector<GeographicCoordinates> PositionsAtLatitude(double latitudeDegrees)
 TEST_CASE("WorldClimateModeratesTheCoastAndCoolsContinentalInteriors")
 {
 	const std::vector<GeographicCoordinates> positions = PositionsAtLatitude(45.0);
-	std::vector<RegionTile> tiles(66049);
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	std::vector<RegionTile> tiles(kWorldTileCount);
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			RegionTile &tile = tiles[WorldMap::Index({i, j})];
 			tile.precipitationMm = 1000.0f;
@@ -501,10 +514,10 @@ TEST_CASE("WorldClimateModeratesTheCoastAndCoolsContinentalInteriors")
 TEST_CASE("WorldClimateRaisesOrographicRainAndLeavesARainShadow")
 {
 	const std::vector<GeographicCoordinates> positions = PositionsAtLatitude(45.0);
-	std::vector<RegionTile> tiles(66049);
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	std::vector<RegionTile> tiles(kWorldTileCount);
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			RegionTile &tile = tiles[WorldMap::Index({i, j})];
 			tile.precipitationMm = 1000.0f;

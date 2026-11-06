@@ -34,7 +34,7 @@ void PlanetViewer::Draw() const
 
 	DrawRectangleRounded(layout.mapPanel, 0.035f, 8, {19, 28, 40, 255});
 	DrawRectangleRounded(layout.globePanel, 0.035f, 8, {19, 28, 40, 255});
-	const char *mapTitle = m_regionMode ? "REGION MAP" : (m_worldMapMode ? "WORLD MAP" : "SURFACE MAP");
+	const char *mapTitle = m_regionMode ? "SITE MAP" : (m_worldMapMode ? "THEATER MAP" : "SURFACE MAP");
 	DrawText(mapTitle, static_cast<int>(layout.mapPanel.x + 18.0f), static_cast<int>(layout.mapPanel.y + 16.0f), 16,
 	         SKYBLUE);
 	DrawText("ROTATING GLOBE", static_cast<int>(layout.globePanel.x + 18.0f),
@@ -66,7 +66,7 @@ void PlanetViewer::Draw() const
 		DrawRectangleRounded({cardX, cardY, cardWidth, cardHeight}, 0.04f, 6, Fade({14, 21, 31, 255}, 0.90f));
 		DrawRectangleLinesEx({cardX, cardY, cardWidth, cardHeight}, 1.0f, Fade({129, 158, 180, 255}, 0.45f));
 		char cardLine[256];
-		std::snprintf(cardLine, sizeof(cardLine), "Region tile (%d, %d)  |  %.1f km across", focus.i, focus.j,
+		std::snprintf(cardLine, sizeof(cardLine), "Theater tile (%d, %d)  |  %.1f km across", focus.i, focus.j,
 		              spanKilometres);
 		DrawText(cardLine, static_cast<int>(cardX + 10.0f), static_cast<int>(cardY + 8.0f), 13, RAYWHITE);
 		std::snprintf(cardLine, sizeof(cardLine), "%s  |  %.0f m", biome ? BiomeName(*biome) : "Unknown", elevation);
@@ -122,12 +122,15 @@ void PlanetViewer::Draw() const
 	{
 		if (const auto world = m_regionMap.GetWorldMap())
 		{
-			const double halfExtent = (kRegionTilesPerWorldHalfSide + 0.5) * kRegionTileSizeMeters;
+			// The tile centres run [-half .. half - 1], so the window is
+			// asymmetric by half a tile: [-half - 0.5 .. half - 0.5].
+			const double minExtent = -(kRegionTilesPerWorldHalfSide + 0.5) * kRegionTileSizeMeters;
+			const double maxExtent = (kRegionTilesPerWorldHalfSide - 0.5) * kRegionTileSizeMeters;
 			const CartesianPoint3D corners[4] = {
-			    world->Grid().Direction(-halfExtent, -halfExtent),
-			    world->Grid().Direction(halfExtent, -halfExtent),
-			    world->Grid().Direction(halfExtent, halfExtent),
-			    world->Grid().Direction(-halfExtent, halfExtent),
+			    world->Grid().Direction(minExtent, minExtent),
+			    world->Grid().Direction(maxExtent, minExtent),
+			    world->Grid().Direction(maxExtent, maxExtent),
+			    world->Grid().Direction(minExtent, maxExtent),
 			};
 			Vector3 screenCorners[4];
 			for (int index = 0; index < 4; ++index)
@@ -177,25 +180,25 @@ void PlanetViewer::Draw() const
 				const char *water =
 				    tile->IsOcean() ? "Ocean" : (tile->IsLake() ? "Lake" : (tile->HasRiver() ? "River" : "Dry"));
 				std::snprintf(worldText, sizeof(worldText),
-				              "World tile (%d, %d)  |  %.0f m  |  %.1f C  |  %.0f mm/yr  |  %s  |  %s", focus.i,
+				              "Theater tile (%d, %d)  |  %.0f m  |  %.1f C  |  %.0f mm/yr  |  %s  |  %s", focus.i,
 				              focus.j, static_cast<double>(tile->elevationMeters),
 				              static_cast<double>(tile->temperatureCelsius), static_cast<double>(tile->precipitationMm),
 				              BiomeName(tile->biome), water);
 			}
 			else
 			{
-				std::snprintf(worldText, sizeof(worldText), "World tile (%d, %d) is outside the known world", focus.i,
+				std::snprintf(worldText, sizeof(worldText), "Theater tile (%d, %d) is outside the theater", focus.i,
 				              focus.j);
 			}
 		}
 		else
 		{
-			std::snprintf(worldText, sizeof(worldText), "World map is not available");
+			std::snprintf(worldText, sizeof(worldText), "Theater map is not available");
 		}
 		DrawText(worldText, 30, footerY, 16, RAYWHITE);
 		char worldDetail[256];
 		std::snprintf(worldDetail, sizeof(worldDetail),
-		              "WorldMap %d x %d region tiles  |  %.0f km across  |  %.0f m per tile", kRegionTilesPerWorldSide,
+		              "Theater %d x %d tiles  |  %.0f km across  |  %.0f m per tile", kRegionTilesPerWorldSide,
 		              kRegionTilesPerWorldSide, kWorldSizeMeters / 1000.0, kRegionTileSizeMeters);
 		DrawText(worldDetail, 30, footerY + 20, 14, {180, 195, 210, 255});
 		DrawText(m_foundingEnabled
@@ -273,7 +276,7 @@ void PlanetViewer::Draw() const
 		if (cursorElevation && cursorBiome)
 		{
 			std::snprintf(regionText, sizeof(regionText),
-			              "Region (%d, %d)  |  %.3f, %.3f deg  |  "
+			              "Theater tile (%d, %d)  |  %.3f, %.3f deg  |  "
 			              "Cursor: %.0f m, %s",
 			              focus.i, focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees, *cursorElevation,
 			              BiomeName(*cursorBiome));
@@ -281,16 +284,16 @@ void PlanetViewer::Draw() const
 		else
 		{
 			std::snprintf(
-			    regionText, sizeof(regionText), "Region (%d, %d)  |  %.3f, %.3f deg  |  %.1f km across", focus.i,
+			    regionText, sizeof(regionText), "Theater tile (%d, %d)  |  %.3f, %.3f deg  |  %.1f km across", focus.i,
 			    focus.j, focusCenter.latitudeDegrees, focusCenter.longitudeDegrees,
 			    (m_regionMap.PatchSpanMeters() > 0.0 ? m_regionMap.PatchSpanMeters() : LocalGrid::kRegionSizeMeters) /
 			        1000.0);
 		}
 		DrawText(regionText, 30, footerY + 40, 13, kSelectedCellColor);
-		DrawText(m_foundingEnabled ? "Wheel: zoom  |  Click / WASD / arrows: pick a region  |  "
-		                             "Enter: found  |  R/Backspace: World Map"
-		                           : "Wheel: zoom  |  Click / WASD / arrows: pick a region  |  "
-		                             "M: settlement  |  R/Backspace: World Map",
+		DrawText(m_foundingEnabled ? "Wheel: zoom  |  Click / WASD / arrows: pick a site  |  "
+		                             "Enter: found  |  R/Backspace: Theater Map"
+		                           : "Wheel: zoom  |  Click / WASD / arrows: pick a site  |  "
+		                             "M: settlement  |  R/Backspace: Theater Map",
 		         30, footerY + 57, 12, {100, 118, 140, 255});
 		if (m_noticeSeconds > 0.0f)
 		{
@@ -314,7 +317,7 @@ void PlanetViewer::Draw() const
 	              selectedRegion.monthlyTemperatureCelsius[kSeasonMonths[3]],
 	              selectedRegion.monthlyPrecipitationMm[kSeasonMonths[3]]);
 	DrawText(seasonalText, 30, footerY + 40, 13, {100, 118, 140, 255});
-	DrawText("Click the map or globe to select a region  |  W: world map  |  R: open region map  |  "
+	DrawText("Click the map or globe to select a tile  |  W: theater map  |  R: open site map  |  "
 	         "Drag to rotate  |  Scroll to zoom",
 	         30, footerY + 57, 12, {100, 118, 140, 255});
 }

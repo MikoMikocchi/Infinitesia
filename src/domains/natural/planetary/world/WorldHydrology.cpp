@@ -20,7 +20,7 @@ constexpr float kTileAreaKm2 = static_cast<float>((kRegionTileSizeMeters / 1000.
 // Water sits this far below the surrounding ground so the banks stay visible.
 constexpr float kRiverFreeboardMeters = 0.25f;
 
-// A river occupies a channel in its region tile. Width follows the square root
+// A river occupies a channel in its theater tile. Width follows the square root
 // of the catchment (a river twice as wide drains four times the area). The
 // result approaches a DF-like major-river width of 40 m instead of clamping
 // every large river to the same value, so tributaries and the main stem keep
@@ -174,13 +174,13 @@ std::vector<RiverChannel> ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 		open.push({elevation, index});
 	};
 
-	for (int j = -half; j <= half; ++j)
+	for (int j = -half; j < half; ++j)
 	{
-		for (int i = -half; i <= half; ++i)
+		for (int i = -half; i < half; ++i)
 		{
 			const int index = static_cast<int>(WorldMap::Index({i, j}));
 			const RegionTile &tile = tiles[static_cast<std::size_t>(index)];
-			const bool edge = i == -half || i == half || j == -half || j == half;
+			const bool edge = i == -half || i == half - 1 || j == -half || j == half - 1;
 			if (tile.IsOcean() || edge)
 			{
 				seed(index, tile.elevationMeters);
@@ -213,9 +213,9 @@ std::vector<RiverChannel> ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 	// neighbour with a lower original elevation; the pair of strict decreases
 	// (filled level or original elevation) keeps the graph acyclic.
 	std::vector<int> downstream(count, -1);
-	for (int j = -half; j <= half; ++j)
+	for (int j = -half; j < half; ++j)
 	{
-		for (int i = -half; i <= half; ++i)
+		for (int i = -half; i < half; ++i)
 		{
 			const int index = static_cast<int>(WorldMap::Index({i, j}));
 			const RegionTile &tile = tiles[static_cast<std::size_t>(index)];
@@ -258,9 +258,9 @@ std::vector<RiverChannel> ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 	// weighted by precipitation, so a wet basin feeds a river with a smaller
 	// geometric area than a dry one.
 	std::vector<float> catchment(count, 0.0f);
-	for (int j = -half; j <= half; ++j)
+	for (int j = -half; j < half; ++j)
 	{
-		for (int i = -half; i <= half; ++i)
+		for (int i = -half; i < half; ++i)
 		{
 			const int index = static_cast<int>(WorldMap::Index({i, j}));
 			const RegionTile &tile = tiles[static_cast<std::size_t>(index)];
@@ -295,9 +295,9 @@ std::vector<RiverChannel> ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 	}
 
 	float maximumCatchment = 0.0f;
-	for (int j = -half; j <= half; ++j)
+	for (int j = -half; j < half; ++j)
 	{
-		for (int i = -half; i <= half; ++i)
+		for (int i = -half; i < half; ++i)
 		{
 			const int index = static_cast<int>(WorldMap::Index({i, j}));
 			if (!tiles[static_cast<std::size_t>(index)].IsOcean())
@@ -307,9 +307,9 @@ std::vector<RiverChannel> ComputeWorldHydrology(std::vector<RegionTile> &tiles)
 		}
 	}
 
-	for (int j = -half; j <= half; ++j)
+	for (int j = -half; j < half; ++j)
 	{
-		for (int i = -half; i <= half; ++i)
+		for (int i = -half; i < half; ++i)
 		{
 			const int index = static_cast<int>(WorldMap::Index({i, j}));
 			RegionTile &tile = tiles[static_cast<std::size_t>(index)];

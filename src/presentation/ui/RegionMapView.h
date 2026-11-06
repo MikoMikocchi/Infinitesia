@@ -23,7 +23,7 @@ public:
 	using ColorFunction = std::function<Color(const PlanetRegion &, float elevationMeters)>;
 
 	// Regions on each side of the focus that the map covers. 8 => 17 x 17
-	// world tiles, about 13 km across. The image is coarsened for large radii.
+	// theater tiles, about 17 km across. The image is coarsened for large radii.
 	static constexpr int kDefaultPatchRadiusRegions = 8;
 
 	RegionMapView(const PlanetMap &map, ColorFunction color);

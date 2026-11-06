@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "core/PlanetId.h"
 #include "core/PlanetaryCoordinates.h"
 #include "domains/natural/planetary/region/LocalFrame.h"
 #include "domains/natural/planetary/region/LocalGrid.h"
@@ -27,6 +28,7 @@ enum class SiteKind : std::uint8_t
 struct Site
 {
 	SiteId id = kNoSite;
+	PlanetId planet = kHomePlanet;
 	SiteKind kind = SiteKind::Settlement;
 	GeographicCoordinates center{};
 	LocalFrame frame{};

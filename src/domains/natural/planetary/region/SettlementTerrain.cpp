@@ -95,7 +95,7 @@ SurfaceColumn SettlementTerrain::Column(int eastBlocks, int northBlocks) const n
 	}
 	else if (planet.surface.lakeFraction > 0.0)
 	{
-		// No world map (or outside its window): the coarse planet hydrology is
+		// No theater map (or outside its window): the coarse planet hydrology is
 		// still the only lake source.
 		const double lakeLevel = planet.surface.lakeWaterLevelKm * 1000.0;
 		if (groundTopMeters < lakeLevel)

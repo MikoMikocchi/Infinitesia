@@ -9,9 +9,9 @@
 
 namespace Infinitesia
 {
-// Refined fields for one region on a (kPointsPerRegionEdge)^2 lattice.
+// Refined fields for one theater tile on a (kPointsPerRegionEdge)^2 lattice.
 // Row-major, index = y * kPoints + x; x runs east, y runs north. Border points
-// are shared with the neighbouring regions on every side and hold identical
+// are shared with the neighbouring tiles on every side and hold identical
 // values.
 struct RegionData
 {

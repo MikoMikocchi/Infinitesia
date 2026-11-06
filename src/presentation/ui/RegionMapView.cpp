@@ -61,7 +61,7 @@ RegionMapView::~RegionMapView()
 
 void RegionMapView::Anchor(CartesianPoint3D direction)
 {
-	// The worker reads the generator and its world map; let it finish before the
+	// The worker reads the generator and its theater map; let it finish before the
 	// map is replaced.
 	if (m_pending.valid())
 	{

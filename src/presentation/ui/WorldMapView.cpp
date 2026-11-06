@@ -29,8 +29,8 @@ Color TileColor(const WorldMap &world, RegionTileId id)
 
 	Color color = GetRegionColor(region);
 
-	// A river is a whole region tile on this map, so a blue wash is enough to
-	// read the network at 768 m per pixel.
+	// A river is a whole theater tile on this map, so a blue wash is enough to
+	// read the network at 1024 m per pixel.
 	if (tile.HasRiver() && tile.riverCount > 0 && !tile.IsOcean() && !tile.IsLake())
 	{
 		color = LerpColor(color, {48, 128, 196, 255}, 0.72f);
@@ -82,11 +82,13 @@ void WorldMapView::BuildTexture()
 	constexpr int side = kRegionTilesPerWorldSide;
 	constexpr int half = kRegionTilesPerWorldHalfSide;
 	m_pixels.assign(static_cast<std::size_t>(side) * static_cast<std::size_t>(side), BLACK);
-	for (int j = -half; j <= half; ++j)
+	// The image is north-up. Tile j = half - 1 is the north edge, so image row
+	// zero is (half - 1 - j).
+	for (int j = -half; j < half; ++j)
 	{
-		for (int i = -half; i <= half; ++i)
+		for (int i = -half; i < half; ++i)
 		{
-			const std::size_t imageIndex = static_cast<std::size_t>(half - j) * static_cast<std::size_t>(side) +
+			const std::size_t imageIndex = static_cast<std::size_t>(half - 1 - j) * static_cast<std::size_t>(side) +
 			                               static_cast<std::size_t>(i + half);
 			m_pixels[imageIndex] = TileWithRelief(*m_world, {i, j});
 		}
@@ -143,7 +145,7 @@ void WorldMapView::Draw(Rectangle bounds, RegionId focus) const
 	if (!m_texture.IsValid())
 	{
 		DrawRectangleRec(square, {14, 21, 31, 255});
-		DrawText("Generating world map...", static_cast<int>(square.x + 16.0f), static_cast<int>(square.y + 16.0f), 18,
+		DrawText("Generating theater map...", static_cast<int>(square.x + 16.0f), static_cast<int>(square.y + 16.0f), 18,
 		         {139, 158, 177, 255});
 		return;
 	}
@@ -153,8 +155,8 @@ void WorldMapView::Draw(Rectangle bounds, RegionId focus) const
 	    {0.0f, 0.0f, static_cast<float>(kRegionTilesPerWorldSide), static_cast<float>(kRegionTilesPerWorldSide)},
 	    square, {0.0f, 0.0f}, 0.0f, WHITE);
 
-	// Sparse grid every 32 region tiles, not each of the 257 lines.
-	constexpr int kGridStep = 32;
+	// Sparse grid every 25 theater tiles, not each of the 250 lines.
+	constexpr int kGridStep = 25;
 	const float cell = square.width / static_cast<float>(kRegionTilesPerWorldSide);
 	for (int step = 0; step <= kRegionTilesPerWorldSide; step += kGridStep)
 	{
@@ -169,7 +171,7 @@ void WorldMapView::Draw(Rectangle bounds, RegionId focus) const
 	if (WorldMap::Contains({focus.i, focus.j}))
 	{
 		const float x = square.x + static_cast<float>(focus.i + kRegionTilesPerWorldHalfSide) * cell;
-		const float y = square.y + static_cast<float>(kRegionTilesPerWorldHalfSide - focus.j) * cell;
+		const float y = square.y + static_cast<float>(kRegionTilesPerWorldHalfSide - 1 - focus.j) * cell;
 		DrawRectangleLinesEx({x, y, std::max(2.0f, cell), std::max(2.0f, cell)}, 2.0f, kSelectedCellColor);
 	}
 

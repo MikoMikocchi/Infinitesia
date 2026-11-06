@@ -9,7 +9,7 @@
 
 namespace Infinitesia
 {
-// Water at one point of the local world, derived from the region tile and the
+// Water at one point of the local world, derived from the theater tile and the
 // continuous terrain. The surface is in metres above sea level; `incision` is
 // the depth by which a river channel has been cut into the ground (zero away
 // from a channel). `depthMeters` is the standing-water depth for a sea or lake,
@@ -35,7 +35,7 @@ struct LocalWater
 	}
 };
 
-// Planet terrain with an optional world-map overlay. Inside the 257 x 257
+// Planet terrain with an optional theater-map overlay. Inside the 250 x 250
 // window the base elevation, climate, soil and province come from the region
 // tile; the fine detail still comes from RegionTerrain, so neighbouring local
 // grids agree and the world tile is a real base rather than a second copy of
@@ -76,7 +76,7 @@ public:
 	double ElevationMeters(CartesianPoint3D direction, const PlanetFieldSample &planet,
 	                       double minWavelengthMeters) const noexcept;
 
-	// Water and river incision at a point. Without a world map this is empty.
+	// Water and river incision at a point. Without a theater map this is empty.
 	LocalWater WaterAt(const GeographicCoordinates &position, double minWavelengthMeters) const noexcept;
 
 private:

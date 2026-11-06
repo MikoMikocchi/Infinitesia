@@ -66,8 +66,8 @@ with integer arithmetic.
 `PlanetMap` is built by a pipeline of stages that declare what they need and provide; new
 domains add stages and layers instead of editing it. See `docs/05_PLANET_PIPELINE.md`.
 
-`WorldMap` (`src/domains/natural/planetary/world/`) is the 257 × 257 region-tile window the
-game plays in, generated from a finished `PlanetMap`; see `docs/08_WORLD_GRID.md`.
+`WorldMap` (`src/domains/natural/planetary/world/`) is the 250 × 250 theater-tile window
+(256 km) the game plays in, generated from a finished `PlanetMap`; see `docs/08_WORLD_GRID.md`.
 
 ## Planned (not done yet)
 

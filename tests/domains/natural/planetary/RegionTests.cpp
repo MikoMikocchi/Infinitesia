@@ -71,7 +71,7 @@ const GeographicCoordinates kAnchors[] = {{0.0, 0.0},    {35.0, 100.0}, {-50.0, 
 
 TEST_CASE("RegionsAreEqualSquaresOfOneRegionTile")
 {
-	static_assert(LocalGrid::kRegionSizeMeters == 768.0);
+	static_assert(LocalGrid::kRegionSizeMeters == 1024.0);
 	static_assert(LocalGrid::kCellSizeMeters == 16.0);
 
 	for (const GeographicCoordinates anchor : kAnchors)
@@ -253,7 +253,7 @@ TEST_CASE("WorldMapDrivesTheLocalTerrainInsideItsWindow")
 	Require(std::abs(column.elevationMeters - 1234.0) < 2000.0,
 	        "SettlementTerrain did not use the world tile's base elevation.");
 
-	// Outside the 257 x 257 window the planet field is still the fallback.
+	// Outside the 250 x 250 window the planet field is still the fallback.
 	const RegionId outside{300, 0};
 	const PlanetFieldSample fallback = generator.GetTerrain().SampleAt(grid.Center(outside));
 	Require(fallback.surface.temperatureCelsius != doctest::Approx(-10.0),
@@ -415,12 +415,12 @@ TEST_CASE("WorldRiversContinueAcrossARegionTileCorner")
 	const auto world = std::make_shared<const WorldMap>(grid, std::move(tiles), std::move(channels));
 	const WorldTerrain terrain(planet, world);
 
-	// The four tiles meet at local (384, 384) m from the anchor. A point four
+	// The four tiles meet at local (512, 512) m from the anchor. A point four
 	// metres inside the side tile is in the water disc around that corner.
 	const GeographicCoordinates eastSide =
-	    PlanetaryCoordinates::ToGeographic(grid.Direction(384.0 + 4.0, 384.0 - 4.0));
+	    PlanetaryCoordinates::ToGeographic(grid.Direction(512.0 + 4.0, 512.0 - 4.0));
 	const GeographicCoordinates northSide =
-	    PlanetaryCoordinates::ToGeographic(grid.Direction(384.0 - 4.0, 384.0 + 4.0));
+	    PlanetaryCoordinates::ToGeographic(grid.Direction(512.0 - 4.0, 512.0 + 4.0));
 	const LocalWater eastWater = terrain.WaterAt(eastSide, 2.0);
 	const LocalWater northWater = terrain.WaterAt(northSide, 2.0);
 	REQUIRE(eastWater.origin == FluidOrigin::River);
@@ -431,7 +431,8 @@ TEST_CASE("WorldRiversContinueAcrossARegionTileCorner")
 	CHECK(settlement.Column(380, 388).fluid == FluidOrigin::River);
 
 	// Far inside the side tile the river is not smeared over the whole tile.
-	const GeographicCoordinates dry = PlanetaryCoordinates::ToGeographic(grid.Direction(768.0, 0.0));
+	const GeographicCoordinates dry =
+	    PlanetaryCoordinates::ToGeographic(grid.Direction(LocalGrid::kRegionSizeMeters, 0.0));
 	CHECK(terrain.WaterAt(dry, 2.0).origin == FluidOrigin::None);
 }
 
@@ -768,7 +769,8 @@ TEST_CASE("CoarseRegionPatchesKeepTheRegionLattice")
 	const LocalGrid grid = generator.MakeGrid(Place(35.0, 100.0));
 	const RegionPatch patch = generator.GeneratePatch(grid, {2, -1}, 4, 32.0);
 	CHECK(patch.cellSizeMeters == doctest::Approx(32.0));
-	CHECK(patch.points == (2 * 4 + 1) * 24 + 1);
+	const int cellsPerRegion = static_cast<int>(LocalGrid::kRegionSizeMeters / 32.0);
+	CHECK(patch.points == (2 * 4 + 1) * cellsPerRegion + 1);
 	CHECK(Distance(patch.Direction((patch.points - 1) * 0.5, (patch.points - 1) * 0.5), grid.CenterDirection({2, -1})) <
 	      1e-9);
 	bool finite = true;
@@ -963,7 +965,7 @@ TEST_CASE("DiagnosticRiverFlooding" * doctest::skip(false))
 	                                   riverTile.j * kRegionTileSizeMeters);
 
 	constexpr int kStep = 4;
-	constexpr int kHalf = 384;
+	constexpr int kHalf = 512;
 	int total = 0;
 	int wet = 0;
 	int dryBelowLevel = 0;

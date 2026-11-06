@@ -13,20 +13,20 @@
 
 namespace Infinitesia
 {
-// The Dwarf Fortress world hierarchy, with one block per tile
-// (docs/08_WORLD_GRID.md):
+// The world hierarchy of the game (docs/08_WORLD_GRID.md), with one block per
+// tile:
 //
 //   tile (block)          1 m
-//   local area block      48 x 48 tiles = 48 m
-//   region tile           16 x 16 local blocks = 768 x 768 tiles = 768 m
-//   world                 257 x 257 region tiles = 197.376 km
+//   local area block      64 x 64 tiles = 64 m
+//   theater tile          16 x 16 local blocks = 1024 x 1024 tiles = 1024 m
+//   theater               250 x 250 theater tiles = 256 km
 //
-// The constants are scale-invariant: raising kBlockSizeMeters scales every
-// level together. A chunk is 16 blocks, so a local area block is 3 x 3 chunks
-// and a region tile is 48 x 48 chunks.
-inline constexpr int kTilesPerLocalBlock = 48;
+// The local hierarchy is deliberately binary: a chunk is 16 blocks, a local
+// area block is 4 x 4 chunks, and a theater tile is 64 x 64 chunks. The
+// theater is an even-sized square so 250 x 1024 m is exactly 256 km.
+inline constexpr int kTilesPerLocalBlock = 64;
 inline constexpr int kLocalBlocksPerRegionTile = 16;
-inline constexpr int kRegionTilesPerWorldSide = 257;
+inline constexpr int kRegionTilesPerWorldSide = 250;
 inline constexpr double kBlockSizeMeters = 1.0;
 inline constexpr double kChunkSizeMeters = 16.0 * kBlockSizeMeters;
 inline constexpr double kLocalBlockSizeMeters = kTilesPerLocalBlock * kBlockSizeMeters;
@@ -36,10 +36,18 @@ inline constexpr int kChunksPerLocalBlock = static_cast<int>(kLocalBlockSizeMete
 inline constexpr int kChunksPerRegionTile = kLocalBlocksPerRegionTile * kChunksPerLocalBlock;
 inline constexpr int kRegionTilesPerWorldHalfSide = kRegionTilesPerWorldSide / 2;
 
-static_assert(LocalGrid::kRegionSizeMeters == kRegionTileSizeMeters,
-              "A LocalGrid region must be one Dwarf Fortress region tile.");
+// Version of the world grid and the terrain derived from it. Raise it whenever
+// a change moves theater tiles, region-tile summaries or the local lattice.
+inline constexpr std::uint32_t kWorldGridVersion = 2;
 
-// Address of one region tile. Signed grid coordinates east and north of the
+static_assert(kRegionTilesPerWorldSide % 2 == 0,
+              "The theater uses an even number of tiles so the centre lies between tile -1 and 0.");
+static_assert(kTilesPerLocalBlock % 16 == 0, "A local area block must be a whole number of chunks.");
+
+static_assert(LocalGrid::kRegionSizeMeters == kRegionTileSizeMeters,
+              "A LocalGrid region must be one theater tile.");
+
+// Address of one theater tile. Signed grid coordinates east and north of the
 // anchor tile (0, 0), like RegionId but for the world level.
 struct RegionTileId
 {
@@ -81,9 +89,9 @@ inline void SetFlag(std::uint8_t &flags, RegionTileFlag flag, bool value = true)
 	}
 }
 
-// A river channel inside one region tile. The endpoints are normalised tile
+// A river channel inside one theater tile. The endpoints are normalised tile
 // coordinates: (0, 0) is the south-west corner, (1, 1) the north-east corner of
-// the 768 m tile. `from` is the upstream end (the border shared with the
+// the 1024 m tile. `from` is the upstream end (the border shared with the
 // tile that feeds this one, or the centre for a spring), `to` is the
 // downstream end. Neighbouring tiles agree on the crossing point because it is
 // always the midpoint of the shared border.
@@ -110,8 +118,8 @@ struct RiverChannel
 	}
 };
 
-// What the world map knows about one region tile. This is deliberately much
-// smaller than PlanetRegion: the world map is 257 x 257 summaries, not a second
+// What the theater map knows about one theater tile. This is deliberately much
+// smaller than PlanetRegion: the theater is 250 x 250 summaries, not a second
 // copy of the planet grid.
 struct RegionTile
 {
@@ -166,9 +174,9 @@ struct RegionTile
 	}
 };
 
-// Where a point lies inside the world map: the nearest region tile and the
+// Where a point lies inside the theater map: the nearest theater tile and the
 // normalised coordinates inside it (0 west/south, 1 east/north). `tile` is
-// null outside the 257 x 257 window.
+// null outside the 250 x 250 window.
 struct RegionTileLocation
 {
 	const RegionTile *tile = nullptr;
@@ -182,9 +190,9 @@ struct RegionTileLocation
 	}
 };
 
-// A square world of region tiles on the planet, centred on the anchor tile.
-// The world map is a local window on the sphere; the planet overview remains a
-// separate, coarser grid.
+// A square theater of tiles on the planet, centred on the anchor tile. The
+// theater is a local window on the sphere; the planet overview remains a
+// separate, coarser grid. The tile range is [-125..124] on both axes.
 class WorldMap
 {
 public:

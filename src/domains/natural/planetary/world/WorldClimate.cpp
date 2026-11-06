@@ -23,12 +23,12 @@ constexpr double kLakeModerationStrength = 0.35;
 // Continental interiors are colder in winter and hotter in summer. With only
 // an annual mean on the world tile, the cold-side effect dominates where
 // winters are severe, while warm interiors gain a small sensible-heat offset.
-constexpr int kContinentalityRadiusTiles = 32; // about 25 km
+constexpr int kContinentalityRadiusTiles = 32; // about 33 km
 constexpr double kContinentalHotOffset = 2.2;
 constexpr double kContinentalColdOffset = 3.0;
 
 // Moisture advection. Ocean air loses moisture over land; a short scale keeps
-// the world's 197 km window from being climatically uniform.
+// the theater's 256 km window from being climatically uniform.
 constexpr double kOceanMoistureScaleMeters = 150000.0;
 constexpr double kContinentalMoistureFactor = 0.55;
 constexpr double kLakeMoistureStrength = 0.82;

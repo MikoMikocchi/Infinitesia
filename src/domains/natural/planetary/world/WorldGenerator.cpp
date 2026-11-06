@@ -21,9 +21,9 @@ constexpr double kLapseRateCelsiusPerMeter = 0.0065;
 void MarkCoasts(std::vector<RegionTile> &tiles)
 {
 	const RegionTileId deltas[] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			RegionTile &tile = tiles[WorldMap::Index({i, j})];
 			if (!tile.IsLand())
@@ -107,9 +107,9 @@ WorldMap WorldGenerator::Generate(CartesianPoint3D anchorDirection) const
 	std::vector<PlanetSurface> surfaces(tileCount);
 	std::vector<GeographicCoordinates> positions(tileCount);
 
-	for (int j = -kRegionTilesPerWorldHalfSide; j <= kRegionTilesPerWorldHalfSide; ++j)
+	for (int j = -kRegionTilesPerWorldHalfSide; j < kRegionTilesPerWorldHalfSide; ++j)
 	{
-		for (int i = -kRegionTilesPerWorldHalfSide; i <= kRegionTilesPerWorldHalfSide; ++i)
+		for (int i = -kRegionTilesPerWorldHalfSide; i < kRegionTilesPerWorldHalfSide; ++i)
 		{
 			const double eastMeters = static_cast<double>(i) * kRegionTileSizeMeters;
 			const double northMeters = static_cast<double>(j) * kRegionTileSizeMeters;
@@ -140,10 +140,10 @@ WorldMap WorldGenerator::Generate(CartesianPoint3D anchorDirection) const
 		}
 	}
 
-	// Local climate at region-tile resolution: the planet fields supply the
+	// Local climate at theater-tile resolution: the planet fields supply the
 	// large-scale boundary, while water bodies, continentality, prevailing
 	// winds and terrain produce rain shadows and orographic rain inside the
-	// 197 x 197 km world.
+	// 256 x 256 km theater.
 	const ClimateInputs &planetClimate = m_terrain.GetPlanetMap().GetClimateInputs();
 	WorldClimateInputs climate;
 	climate.rotationPeriodHours = planetClimate.rotationPeriodHours;

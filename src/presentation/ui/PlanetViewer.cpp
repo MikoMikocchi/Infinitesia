@@ -241,7 +241,7 @@ std::optional<GeographicCoordinates> PlanetViewer::FindDrySite(const LocalGrid &
 {
 	const WorldTerrain &terrain = m_regionMap.GetTerrain();
 	constexpr double kStepMeters = 24.0;
-	constexpr int kHalfSteps = 8; // +/- 192 m, inside the 768 m tile
+	constexpr int kHalfSteps = 8; // +/- 192 m, inside the 1024 m tile
 	const double centerEast = static_cast<double>(tile.i) * kRegionTileSizeMeters;
 	const double centerNorth = static_cast<double>(tile.j) * kRegionTileSizeMeters;
 
