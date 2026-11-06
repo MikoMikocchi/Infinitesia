@@ -29,6 +29,10 @@ struct FluidChunk
 	// Changes whenever a cell of this chunk changed, so only its mesh is stale:
 	// a change in one chunk no longer invalidates the meshes of the whole sea.
 	std::uint64_t revision = 0;
+	// Some column of this chunk reaches the air (or the cut), so the chunk can
+	// draw a surface. Deep full water under other chunks cannot: its mesh would
+	// be empty and is not worth building.
+	bool hasSurface = false;
 	std::vector<FluidCell> cells; // indexed like WorldChunk::blocks
 };
 
@@ -93,8 +97,9 @@ private:
 
 	// Writes without touching the active set. Returns whether the cell changed.
 	bool WriteCell(GridCell cell, FluidCell value);
-	// Bumps the revision of a fluid chunk, if it exists: its mesh is stale.
-	void TouchChunk(ChunkCoordinate coordinate);
+	// Bumps the revision of a fluid chunk, if it exists: its mesh is stale. The
+	// surface flag is set when the change may have exposed water to the air.
+	void TouchChunk(ChunkCoordinate coordinate, bool mayExposeSurface = false);
 	// Marks the fluid chunk of a cell, and the chunks around it, as changed by
 	// the player. Natural flow in Step does not mark anything: it can be rebuilt.
 	void MarkModified(GridCell cell);

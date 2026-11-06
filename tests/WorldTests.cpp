@@ -668,6 +668,30 @@ TEST_CASE("AFluidChangeDirtiesOnlyItsOwnChunk")
 	CHECK(revision({0, 0, 0}) > lower);
 }
 
+TEST_CASE("OnlyTheChunkWithTheWaterlineHasASurface")
+{
+	const Settlement settlement = MakeSettlement(OceanAnchor());
+	const Grid grid(GridConfig{kWidth, kHeight, kDepth, 1.0f});
+	VoxelWorld world(grid, settlement.source);
+	const std::optional<GridCell> bottom = FindFluidCell(*settlement.source, FluidOrigin::Sea, true);
+	REQUIRE(bottom.has_value());
+	const FluidColumn column = settlement.source->FluidAt(bottom->x, bottom->z);
+	REQUIRE(column.topBlock > column.groundBlock);
+
+	world.EnsureChunkContaining(*bottom);
+	world.EnsureChunkContaining({bottom->x, column.topBlock, bottom->z});
+	const ChunkCoordinate lower{bottom->x / kChunkSize, bottom->y / kChunkSize, bottom->z / kChunkSize};
+	const ChunkCoordinate waterline{bottom->x / kChunkSize, column.topBlock / kChunkSize,
+	                                bottom->z / kChunkSize};
+	REQUIRE(world.Fluids().Chunks().find(waterline) != world.Fluids().Chunks().end());
+	CHECK(world.Fluids().Chunks().at(waterline).hasSurface);
+	if (lower != waterline)
+	{
+		REQUIRE(world.Fluids().Chunks().find(lower) != world.Fluids().Chunks().end());
+		CHECK_FALSE(world.Fluids().Chunks().at(lower).hasSurface);
+	}
+}
+
 TEST_CASE("SurfaceMatchesThePlanetTerrain")
 {
 	const Settlement settlement = MakeSettlement(LandAnchor());

@@ -226,6 +226,21 @@ void DrawFluids(const Grid &grid, const VoxelWorld &world, GridCell viewCenter, 
 		const FluidMeshKey key = GetMeshKey(chunk, viewLevel, mode);
 		wanted.insert(key);
 		auto cached = meshCache.find(key);
+		if (key.second == kNoFluidCut && !chunk.hasSurface)
+		{
+			// Every column of this chunk is full water under another chunk: it can
+			// only produce an empty mesh, so do not spend a build on it.
+			if (cached != meshCache.end())
+			{
+				if (IsMeshLoaded(cached->second.mesh))
+				{
+					UnloadMesh(cached->second.mesh);
+				}
+				cached->second = FluidMeshCacheEntry{};
+				cached->second.fluidRevision = chunk.revision;
+			}
+			continue;
+		}
 		if (cached != meshCache.end() && cached->second.fluidRevision == chunk.revision)
 		{
 			DrawFluidMesh(cached->second.mesh, material);

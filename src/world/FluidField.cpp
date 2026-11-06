@@ -141,21 +141,27 @@ bool FluidField::WriteCell(GridCell cell, FluidCell value)
 	*current = value;
 	++m_revision;
 	++chunk->revision;
+	chunk->hasSurface = true;
 	// The top row of a chunk is the cell above the chunk below: the surface quad
-	// of that chunk depends on it too.
+	// of that chunk depends on it too, and water may have left its top row.
 	if (cell.y % kChunkSize == 0)
 	{
-		TouchChunk(ChunkCoordinate{coordinate.x, coordinate.y - 1, coordinate.z});
+		TouchChunk(ChunkCoordinate{coordinate.x, coordinate.y - 1, coordinate.z}, true);
 	}
 	return true;
 }
 
-void FluidField::TouchChunk(ChunkCoordinate coordinate)
+void FluidField::TouchChunk(ChunkCoordinate coordinate, bool mayExposeSurface)
 {
 	const auto found = m_chunks.find(coordinate);
-	if (found != m_chunks.end())
+	if (found == m_chunks.end())
 	{
-		++found->second.revision;
+		return;
+	}
+	++found->second.revision;
+	if (mayExposeSurface)
+	{
+		found->second.hasSurface = true;
 	}
 }
 
@@ -229,7 +235,7 @@ void FluidField::RemoveChunk(ChunkCoordinate coordinate)
 	++m_revision;
 	// Without this chunk the one below loses the water that covered its top row,
 	// so its surface may appear again.
-	TouchChunk(ChunkCoordinate{coordinate.x, coordinate.y - 1, coordinate.z});
+	TouchChunk(ChunkCoordinate{coordinate.x, coordinate.y - 1, coordinate.z}, true);
 }
 
 void FluidField::InitializeChunk(const WorldChunk &chunk, const TerrainSource &terrain)
@@ -291,6 +297,9 @@ void FluidField::InitializeChunk(const WorldChunk &chunk, const TerrainSource &t
 				if (isTop)
 				{
 					m_active.insert({x, y, z});
+					// This chunk holds the top of the column, so it is the one that
+					// draws the water surface. Deeper chunks draw nothing.
+					fluidChunk.hasSurface = true;
 				}
 				anyFluid = true;
 			}
