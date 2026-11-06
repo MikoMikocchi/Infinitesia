@@ -77,6 +77,11 @@ private:
 
 	std::map<ChunkCoordinate, WorldChunk> m_chunks;
 	std::vector<ChunkCoordinate> m_pendingChunks;
+	// The view the pending list was built for; a view that did not move to another
+	// chunk needs no new list.
+	ChunkCoordinate m_pendingCenter{};
+	int m_pendingHorizontalRadius = -1;
+	int m_pendingVerticalRadius = -1;
 	FluidField m_fluids;
 	int m_gridWidth;
 	int m_gridHeight;

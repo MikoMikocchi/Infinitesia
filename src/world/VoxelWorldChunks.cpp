@@ -29,6 +29,12 @@ void VoxelWorld::RequestChunksAround(GridCell center, int horizontalRadius, int 
 	}
 
 	const ChunkCoordinate centerChunk = GetChunkCoordinate(center);
+	if (centerChunk == m_pendingCenter && horizontalRadius == m_pendingHorizontalRadius &&
+	    verticalRadius == m_pendingVerticalRadius)
+	{
+		// The list already covers this view; it shrinks as chunks are generated.
+		return;
+	}
 	const int maxChunkX = GetChunkCount(m_gridWidth) - 1;
 	const int maxChunkY = GetChunkCount(m_gridHeight) - 1;
 	const int maxChunkZ = GetChunkCount(m_gridDepth) - 1;
@@ -73,6 +79,9 @@ void VoxelWorld::RequestChunksAround(GridCell center, int horizontalRadius, int 
 		          return left.z < right.z;
 	          });
 	m_pendingChunks = std::move(requestedChunks);
+	m_pendingCenter = centerChunk;
+	m_pendingHorizontalRadius = horizontalRadius;
+	m_pendingVerticalRadius = verticalRadius;
 }
 
 std::size_t VoxelWorld::GeneratePendingChunks(std::size_t maximumChunks)
