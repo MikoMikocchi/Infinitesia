@@ -227,14 +227,21 @@ void PlanetViewer::Update()
 
 	const float frameTime = GetFrameTime();
 	m_noticeSeconds = std::max(0.0f, m_noticeSeconds - frameTime);
-	const float levelTarget = m_regionMode ? 2.0f : (m_worldMapMode ? 1.0f : 0.0f);
+	// Do not start the camera move while the background workers are still
+	// building the next theater or site patch. The old image is hidden behind a
+	// loading card, so the transition starts when the data is ready instead of
+	// competing with generation for the main thread.
+	const bool waiting =
+	    (m_worldMapMode && (m_regionMap.IsAnchoring() || m_worldMapView.IsLoading())) ||
+	    (m_regionMode && m_regionMap.IsLoading());
+	const float levelTarget = waiting ? m_levelBlend : (m_regionMode ? 2.0f : (m_worldMapMode ? 1.0f : 0.0f));
 	m_levelBlend += (levelTarget - m_levelBlend) * std::min(1.0f, frameTime * 4.0f);
 	if (std::abs(levelTarget - m_levelBlend) < 0.002f)
 	{
 		m_levelBlend = levelTarget;
 	}
 
-	if (m_hasOrientationTarget)
+	if (m_hasOrientationTarget && !waiting)
 	{
 		// Smoothly turn the globe to the selected place. The same path is used
 		// when entering a theater after a previous visit, so it never jumps.

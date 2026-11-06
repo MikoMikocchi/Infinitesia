@@ -374,7 +374,9 @@ void RegionMapView::Zoom(int steps)
 void RegionMapView::Draw(Rectangle bounds) const
 {
 	const Rectangle square = FitSquare(bounds);
-	if (!m_hasImage)
+	const bool stale = m_hasImage && (m_displayed != m_focus || m_displayedVersion != m_gridVersion ||
+	                                  m_displayedRadius != m_patchRadius);
+	if (!m_hasImage || stale)
 	{
 		DrawRectangleRec(square, {14, 21, 31, 255});
 		DrawText("Generating region...", static_cast<int>(square.x + 16.0f), static_cast<int>(square.y + 16.0f), 18,

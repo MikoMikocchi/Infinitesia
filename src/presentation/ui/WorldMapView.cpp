@@ -1,6 +1,7 @@
 #include "presentation/ui/WorldMapView.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 
 #include "presentation/ui/PlanetPalette.h"
@@ -53,7 +54,21 @@ Color TileWithRelief(const WorldMap &world, RegionTileId id)
 }
 } // namespace
 
-WorldMapView::~WorldMapView() = default;
+WorldMapView::~WorldMapView()
+{
+	if (m_pendingPixels.valid())
+	{
+		m_pendingPixels.wait();
+	}
+}
+
+void WorldMapView::StartBuild(std::shared_ptr<const WorldMap> world)
+{
+	m_pendingWorld = std::move(world);
+	m_pendingPixels = std::async(std::launch::async, [world = m_pendingWorld] {
+		return BuildPixels(*world);
+	});
+}
 
 void WorldMapView::SetWorld(std::shared_ptr<const WorldMap> world)
 {
@@ -62,26 +77,42 @@ void WorldMapView::SetWorld(std::shared_ptr<const WorldMap> world)
 		return;
 	}
 	m_world = std::move(world);
-	m_dirty = true;
+	if (!m_world)
+	{
+		m_texture.Reset();
+		m_builtWorld = nullptr;
+		return;
+	}
+	if (m_pendingPixels.valid())
+	{
+		// A newer theater arrived while the previous image is still being built;
+		// let the old worker finish and start this one next.
+		m_queuedWorld = m_world;
+		return;
+	}
+	StartBuild(m_world);
 }
 
 void WorldMapView::ReleaseRenderResources() noexcept
 {
+	if (m_pendingPixels.valid())
+	{
+		m_pendingPixels.wait();
+		m_pendingPixels = {};
+	}
+	m_pendingWorld.reset();
+	m_queuedWorld.reset();
 	m_texture.Reset();
+	m_world.reset();
 	m_builtWorld = nullptr;
 	m_dirty = true;
 }
 
-void WorldMapView::BuildTexture()
+std::vector<Color> WorldMapView::BuildPixels(const WorldMap &world)
 {
-	if (!m_world)
-	{
-		return;
-	}
-
 	constexpr int side = kRegionTilesPerWorldSide;
 	constexpr int half = kRegionTilesPerWorldHalfSide;
-	m_pixels.assign(static_cast<std::size_t>(side) * static_cast<std::size_t>(side), BLACK);
+	std::vector<Color> pixels(static_cast<std::size_t>(side) * static_cast<std::size_t>(side), BLACK);
 	// The image is north-up. Tile j = half - 1 is the north edge, so image row
 	// zero is (half - 1 - j).
 	for (int j = -half; j < half; ++j)
@@ -90,26 +121,46 @@ void WorldMapView::BuildTexture()
 		{
 			const std::size_t imageIndex = static_cast<std::size_t>(half - 1 - j) * static_cast<std::size_t>(side) +
 			                               static_cast<std::size_t>(i + half);
-			m_pixels[imageIndex] = TileWithRelief(*m_world, {i, j});
+			pixels[imageIndex] = TileWithRelief(world, {i, j});
 		}
 	}
+	return pixels;
+}
 
-	const Image image{m_pixels.data(), side, side, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+void WorldMapView::UploadPixels(const std::vector<Color> &pixels)
+{
+	constexpr int side = kRegionTilesPerWorldSide;
+	const Image image{const_cast<Color *>(pixels.data()), side, side, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
 	Texture2D texture = LoadTextureFromImage(image);
 	if (texture.id != 0)
 	{
 		SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
 		m_texture = UniqueTexture(texture);
 	}
-	m_builtWorld = m_world.get();
+	m_builtWorld = m_pendingWorld.get();
 }
 
 void WorldMapView::Update()
 {
-	if (m_dirty && m_world && m_builtWorld != m_world.get())
+	if (m_pendingPixels.valid() &&
+	    m_pendingPixels.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
 	{
-		BuildTexture();
-		m_dirty = false;
+		std::vector<Color> pixels = m_pendingPixels.get();
+		if (m_queuedWorld)
+		{
+			// Drop the stale image; the queued theater is the one the player
+			// asked for last.
+			std::shared_ptr<const WorldMap> next = std::move(m_queuedWorld);
+			m_queuedWorld.reset();
+			StartBuild(std::move(next));
+		}
+		else
+		{
+			m_pixels = std::move(pixels);
+			UploadPixels(m_pixels);
+			m_pendingWorld.reset();
+			m_dirty = false;
+		}
 	}
 }
 
@@ -142,7 +193,7 @@ std::optional<RegionTileId> WorldMapView::TileAt(Vector2 mouse, Rectangle bounds
 void WorldMapView::Draw(Rectangle bounds, RegionId focus) const
 {
 	const Rectangle square = FitSquare(bounds);
-	if (!m_texture.IsValid())
+	if (!m_texture.IsValid() || m_pendingPixels.valid() || m_queuedWorld)
 	{
 		DrawRectangleRec(square, {14, 21, 31, 255});
 		DrawText("Generating theater map...", static_cast<int>(square.x + 16.0f), static_cast<int>(square.y + 16.0f), 18,

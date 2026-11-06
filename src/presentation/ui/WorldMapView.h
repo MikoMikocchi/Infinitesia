@@ -1,5 +1,6 @@
 #pragma once
 
+#include <future>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -27,6 +28,10 @@ public:
 	void SetWorld(std::shared_ptr<const WorldMap> world);
 	void Update();
 	void Draw(Rectangle bounds, RegionId focus) const;
+	bool IsLoading() const noexcept
+	{
+		return m_pendingPixels.valid() || m_queuedWorld != nullptr;
+	}
 
 	// Tile under the mouse, if the mouse is inside the drawn square.
 	std::optional<RegionTileId> TileAt(Vector2 mouse, Rectangle bounds) const;
@@ -36,9 +41,14 @@ public:
 	void ReleaseRenderResources() noexcept;
 
 private:
-	void BuildTexture();
+	static std::vector<Color> BuildPixels(const WorldMap &world);
+	void StartBuild(std::shared_ptr<const WorldMap> world);
+	void UploadPixels(const std::vector<Color> &pixels);
 
 	std::shared_ptr<const WorldMap> m_world;
+	std::shared_ptr<const WorldMap> m_pendingWorld;
+	std::shared_ptr<const WorldMap> m_queuedWorld;
+	std::future<std::vector<Color>> m_pendingPixels;
 	const WorldMap *m_builtWorld = nullptr;
 	std::vector<Color> m_pixels;
 	UniqueTexture m_texture;
