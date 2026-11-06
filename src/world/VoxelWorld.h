@@ -122,10 +122,11 @@ private:
 	int m_pendingHorizontalRadius = -1;
 	int m_pendingVerticalRadius = -1;
 	FluidField m_fluids;
-	// The sky top of a column, by (x, z); the terrain is static, so only a block
-	// change has to forget one. Sparse and losing, like the terrain caches.
-	static constexpr std::size_t kMaxCachedSkyTops = 262144;
-	mutable std::unordered_map<std::uint64_t, int> m_skyTops;
+	// The highest cell of a column that stops the light, by z * width + x. The
+	// grid is fixed, so a dense table is smaller and faster than a hash map that
+	// would have to be cleared at a wide view; kSkyUnknown means "not asked yet".
+	static constexpr int kSkyUnknown = -2;
+	mutable std::vector<int> m_skyTops;
 	int m_gridWidth;
 	int m_gridHeight;
 	int m_gridDepth;

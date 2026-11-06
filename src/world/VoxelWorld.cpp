@@ -18,6 +18,7 @@ VoxelWorld::VoxelWorld(const Grid &grid, std::shared_ptr<const TerrainSource> te
 	{
 		throw std::invalid_argument("World needs a terrain source.");
 	}
+	m_skyTops.assign(static_cast<std::size_t>(m_gridWidth) * static_cast<std::size_t>(m_gridDepth), kSkyUnknown);
 }
 
 void VoxelWorld::EnsureChunkContaining(GridCell cell)

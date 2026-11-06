@@ -61,15 +61,12 @@ bool VoxelWorld::HasSkyAccess(GridCell cell) const
 
 int VoxelWorld::SkyTopOf(int x, int z) const
 {
-	const std::uint64_t key = SkyKey(x, z);
-	const auto cached = m_skyTops.find(key);
-	if (cached != m_skyTops.end())
+	const std::size_t column = static_cast<std::size_t>(z) * static_cast<std::size_t>(m_gridWidth) +
+	                           static_cast<std::size_t>(x);
+	int &skyTop = m_skyTops[column];
+	if (skyTop != kSkyUnknown)
 	{
-		return cached->second;
-	}
-	if (m_skyTops.size() >= kMaxCachedSkyTops)
-	{
-		m_skyTops.clear();
+		return skyTop;
 	}
 
 	const BlockRegistry &registry = m_terrain->Registry();
@@ -120,7 +117,8 @@ int VoxelWorld::SkyTopOf(int x, int z) const
 			break;
 		}
 	}
-	return m_skyTops.emplace(key, top).first->second;
+	skyTop = top;
+	return top;
 }
 
 void VoxelWorld::SetBlock(GridCell cell, BlockState state)
@@ -142,7 +140,8 @@ void VoxelWorld::SetBlock(GridCell cell, BlockState state)
 	Block &changed = chunk.blocks[GetBlockIndexHelper(chunk, cell)];
 	changed.state = state;
 	// The column's sky top may have moved.
-	m_skyTops.erase(SkyKey(cell.x, cell.z));
+	m_skyTops[static_cast<std::size_t>(cell.z) * static_cast<std::size_t>(m_gridWidth) +
+	          static_cast<std::size_t>(cell.x)] = kSkyUnknown;
 	++m_terrainRevision;
 	// Keep the separate fluid layer in step: a dug cell lets water in, a placed
 	// block pushes it out.
